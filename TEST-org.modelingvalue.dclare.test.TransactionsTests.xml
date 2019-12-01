@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite errors="0" failures="0" hostname="fv-az88" name="org.modelingvalue.dclare.test.TransactionsTests" skipped="0" tests="9" time="87.382" timestamp="2019-12-01T23:42:55">
+  <properties>
+    <property name="jdk.home.11" value="/opt/hostedtoolcache/jdk/11.0.5/x64" />
+    <property name="ant.library.dir" value="/usr/share/ant/lib" />
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit" />
+    <property name="ant.file.type" value="file" />
+    <property name="java.specification.version" value="11" />
+    <property name="ant.file.test.dclare" value="/home/runner/work/dclare/dclare/dclare/test.xml" />
+    <property name="ant.project.name" value="dclare" />
+    <property name="sun.cpu.isalist" value="" />
+    <property name="sun.jnu.encoding" value="UTF-8" />
+    <property name="java.class.path" value="/home/runner/.m2/repository/junit/junit/4.12/junit-4.12.jar:/home/runner/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/home/runner/.m2/repository/org/modelingvalue/immutable-collections/1.0.1/immutable-collections-1.0.1.jar:/home/runner/work/dclare/dclare/out/production/dclare:/home/runner/work/dclare/dclare/out/test/dclare:/usr/share/java/ant-launcher-1.10.5.jar:/usr/share/ant/lib/ant.jar:/usr/share/ant/lib/ant-junit.jar:/usr/share/ant/lib/ant-junit4.jar" />
+    <property name="compiler.args.dclare" value="-encoding UTF-8 -source 11 -target 11 " />
+    <property name="java.vm.vendor" value="Azul Systems, Inc." />
+    <property name="sun.arch.data.model" value="64" />
+    <property name="module.jdk.bin.dclare" value="/opt/hostedtoolcache/jdk/11.0.5/x64/bin" />
+    <property name="compiler.args" value="" />
+    <property name="java.vendor.url" value="http://www.azulsystems.com/" />
+    <property name="project.jdk.classpath" value="jdk.classpath.11" />
+    <property name="user.timezone" value="" />
+    <property name="compiler.debug" value="on" />
+    <property name="project.jdk.bin" value="/opt/hostedtoolcache/jdk/11.0.5/x64/bin" />
+    <property name="os.name" value="Linux" />
+    <property name="java.vm.specification.version" value="11" />
+    <property name="sun.java.launcher" value="SUN_STANDARD" />
+    <property name="sun.boot.library.path" value="/opt/hostedtoolcache/jdk/11.0.5/x64/lib" />
+    <property name="sun.java.command" value="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner org.modelingvalue.dclare.test.TransactionsTests skipNonTests=false filtertrace=true haltOnError=false haltOnFailure=true showoutput=false outputtoformatters=true logfailedtests=true threadid=0 logtestlistenerevents=false formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/home/runner/work/dclare/dclare/TEST-org.modelingvalue.dclare.test.TransactionsTests.xml crashfile=/home/runner/work/dclare/dclare/junitvmwatcher10874861403561826763.properties propsfile=/home/runner/work/dclare/dclare/junit11880888278606863971.properties" />
+    <property name="jdk.debug" value="release" />
+    <property name="sun.cpu.endian" value="little" />
+    <property name="dclare.testoutput.dir" value="/home/runner/work/dclare/dclare/dclare/../out/test/dclare" />
+    <property name="user.home" value="/home/runner" />
+    <property name="user.language" value="en" />
+    <property name="java.specification.vendor" value="Oracle Corporation" />
+    <property name="java.version.date" value="2019-10-15" />
+    <property name="java.home" value="/opt/hostedtoolcache/jdk/11.0.5/x64" />
+    <property name="file.separator" value="/" />
+    <property name="basedir" value="/home/runner/work/dclare/dclare" />
+    <property name="ant.file.module_dclare" value="/home/runner/work/dclare/dclare/dclare/module_dclare.xml" />
+    <property name="java.vm.compressedOopsMode" value="32-bit" />
+    <property name="line.separator" value="&#xa;" />
+    <property name="ant.java.version" value="11" />
+    <property name="java.specification.name" value="Java Platform API Specification" />
+    <property name="java.vm.specification.vendor" value="Oracle Corporation" />
+    <property name="module.jdk.classpath.dclare" value="jdk.classpath.11" />
+    <property name="ant.file.javadoc.dclare" value="/home/runner/work/dclare/dclare/dclare/javadoc.xml" />
+    <property name="ant.file.type.module_dclare" value="file" />
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment" />
+    <property name="module.dclare.basedir" value="/home/runner/work/dclare/dclare/dclare" />
+    <property name="ant.file.type.test.dclare" value="file" />
+    <property name="ant.file.dclare" value="/home/runner/work/dclare/dclare/build.xml" />
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers" />
+    <property name="java.runtime.version" value="11.0.5+10-LTS" />
+    <property name="user.name" value="runner" />
+    <property name="ant.file" value="/home/runner/work/dclare/dclare/build.xml" />
+    <property name="path.separator" value=":" />
+    <property name="os.version" value="5.0.0-1023-azure" />
+    <property name="jdk.bin.11" value="/opt/hostedtoolcache/jdk/11.0.5/x64/bin" />
+    <property name="java.runtime.name" value="OpenJDK Runtime Environment" />
+    <property name="compiler.generate.no.warnings" value="off" />
+    <property name="ant.project.invoked-targets" value="test.results.jar.dclare" />
+    <property name="file.encoding" value="UTF-8" />
+    <property name="java.vm.name" value="OpenJDK 64-Bit Server VM" />
+    <property name="compiler.max.memory" value="700m" />
+    <property name="java.vendor.version" value="Zulu11.35+15-CA" />
+    <property name="ant.core.lib" value="/usr/share/ant/lib/ant.jar" />
+    <property name="java.vendor.url.bug" value="http://www.azulsystems.com/support/" />
+    <property name="dclare.output.dir" value="/home/runner/work/dclare/dclare/dclare/../out/production/dclare" />
+    <property name="java.io.tmpdir" value="/tmp" />
+    <property name="java.version" value="11.0.5" />
+    <property name="user.dir" value="/home/runner/work/dclare/dclare" />
+    <property name="os.arch" value="amd64" />
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification" />
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob" />
+    <property name="ant.file.type.dclare" value="file" />
+    <property name="ant.home" value="/usr/share/ant" />
+    <property name="dclare.javadoc.dir" value="/home/runner/work/dclare/dclare/out/artifacts" />
+    <property name="sun.os.patch.level" value="unknown" />
+    <property name="ant.version" value="Apache Ant(TM) version 1.10.5 compiled on March 28 2019" />
+    <property name="java.library.path" value="/usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib" />
+    <property name="java.vm.info" value="mixed mode" />
+    <property name="java.vendor" value="Azul Systems, Inc." />
+    <property name="java.vm.version" value="11.0.5+10-LTS" />
+    <property name="path.variable.maven_repository" value="/home/runner/.m2/repository" />
+    <property name="project.jdk.home" value="/opt/hostedtoolcache/jdk/11.0.5/x64" />
+    <property name="ant.file.type.javadoc.dclare" value="file" />
+    <property name="dclare.javadoc.tmp" value="/home/runner/work/dclare/dclare/out/artifacts/tmp" />
+    <property name="module.jdk.home.dclare" value="/opt/hostedtoolcache/jdk/11.0.5/x64" />
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle" />
+    <property name="dclare.javadoc.jar" value="/home/runner/work/dclare/dclare/out/artifacts/dclare-javadoc.jar" />
+    <property name="java.class.version" value="55.0" />
+    <property name="ant.project.default-target" value="all" />
+  </properties>
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="opposites" time="0.289" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="source2target" time="0.024" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="constants" time="2.462" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="emptyMandatoryTest" time="0.015" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="derivationChain" time="0.198" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="cycle1second" time="1.008" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="orphanReferenceTest" time="0.03" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="moveAndRemove" time="0.075" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="zuperBig" time="83.026" />
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[********************************************************************
+State{
+  Object@0{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@1}
+  Object@1{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@2
+    previous=Object@0}
+  Object@10{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@11
+    previous=Object@9}
+  Object@11{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@12
+    previous=Object@10}
+  Object@12{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@13
+    previous=Object@11}
+  Object@13{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@14
+    previous=Object@12}
+  Object@14{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@15
+    previous=Object@13}
+  Object@15{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@16
+    previous=Object@14}
+  Object@16{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@17
+    previous=Object@15}
+  Object@17{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@18
+    previous=Object@16}
+  Object@18{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@19
+    previous=Object@17}
+  Object@19{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@20
+    previous=Object@18}
+  Object@2{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@3
+    previous=Object@1}
+  Object@20{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@21
+    previous=Object@19}
+  Object@21{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@22
+    previous=Object@20}
+  Object@22{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@23
+    previous=Object@21}
+  Object@23{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@24
+    previous=Object@22}
+  Object@24{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@25
+    previous=Object@23}
+  Object@25{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@26
+    previous=Object@24}
+  Object@26{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@27
+    previous=Object@25}
+  Object@27{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@28
+    previous=Object@26}
+  Object@28{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@29
+    previous=Object@27}
+  Object@29{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    previous=Object@28}
+  Object@3{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@4
+    previous=Object@2}
+  Object@4{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@5
+    previous=Object@3}
+  Object@5{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@6
+    previous=Object@4}
+  Object@6{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@7
+    previous=Object@5}
+  Object@7{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@8
+    previous=Object@6}
+  Object@8{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@9
+    previous=Object@7}
+  Object@9{
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    next=Object@10
+    previous=Object@8}
+  Universe@universe{
+    children=Set[Object@29,Object@28,Object@27,Object@26,Object@25,Object@24,Object@23,Object@22,Object@21,Object@20,Object@19,Object@18,Object@17,Object@16,Object@15,Object@14,Object@13,Object@12,Object@11,Object@10,Object@9,Object@8,Object@7,Object@6,Object@5,Object@4,Object@3,Object@2,Object@1,Object@0]
+    postActions=Set[$checkConsistency]
+    stopped=true}}
+********************************************************************
+********************************************************************
+State{
+  Object@object{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,child]
+    Observerds[observer,forward]=DefaultMap[Entry[source,Set[<this>]]]
+    Observers[source,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    source=10
+    target=10}
+  Universe@universe{
+    child=Object@object
+    postActions=Set[$checkConsistency]
+    stopped=true}}
+********************************************************************
+********************************************************************
+State{
+  Universe@universe{
+    postActions=Set[$checkConsistency]
+    stopped=true}}
+********************************************************************
+********************************************************************
+State{
+  Object@0{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@1]]]
+    number=1
+    total=1}
+  Object@1{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@0]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@2]]]
+    number=1
+    total=2}
+  Object@10{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@9]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@11]]]
+    number=1
+    total=11}
+  Object@11{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@10]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@12]]]
+    number=1
+    total=12}
+  Object@12{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@11]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@13]]]
+    number=1
+    total=13}
+  Object@13{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@12]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@14]]]
+    number=1
+    total=14}
+  Object@14{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@13]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@15]]]
+    number=1
+    total=15}
+  Object@15{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@14]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@16]]]
+    number=1
+    total=16}
+  Object@16{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@15]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@17]]]
+    number=1
+    total=17}
+  Object@17{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@16]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@18]]]
+    number=1
+    total=18}
+  Object@18{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@17]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@19]]]
+    number=1
+    total=19}
+  Object@19{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@18]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@20]]]
+    number=1
+    total=20}
+  Object@2{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@1]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@3]]]
+    number=1
+    total=3}
+  Object@20{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@19]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@21]]]
+    number=1
+    total=21}
+  Object@21{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@20]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@22]]]
+    number=1
+    total=22}
+  Object@22{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@21]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@23]]]
+    number=1
+    total=23}
+  Object@23{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@22]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@24]]]
+    number=1
+    total=24}
+  Object@24{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@23]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@25]]]
+    number=1
+    total=25}
+  Object@25{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@24]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@26]]]
+    number=1
+    total=26}
+  Object@26{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@25]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@27]]]
+    number=1
+    total=27}
+  Object@27{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@26]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@28]]]
+    number=1
+    total=28}
+  Object@28{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@27]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@29]]]
+    number=1
+    total=29}
+  Object@29{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@28]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    number=1
+    total=30}
+  Object@3{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@2]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@4]]]
+    number=1
+    total=4}
+  Object@4{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@3]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@5]]]
+    number=1
+    total=5}
+  Object@5{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@4]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@6]]]
+    number=1
+    total=6}
+  Object@6{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@5]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@7]]]
+    number=1
+    total=7}
+  Object@7{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@6]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@8]]]
+    number=1
+    total=8}
+  Object@8{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@7]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@9]]]
+    number=1
+    total=9}
+  Object@9{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,backward]=DefaultMap[Entry[total,Set[<this>]]]
+    Observerds[observer,forward]=DefaultMap[Entry[total,Set[Object@8]],Entry[number,Set[<this>]]]
+    Observers[number,forward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,backward]=DefaultMap[Entry[observer,Set[<this>]]]
+    Observers[total,forward]=DefaultMap[Entry[observer,Set[Object@10]]]
+    number=1
+    total=10}
+  Universe@universe{
+    children=Set[Object@29,Object@28,Object@27,Object@26,Object@25,Object@24,Object@23,Object@22,Object@21,Object@20,Object@19,Object@18,Object@17,Object@16,Object@15,Object@14,Object@13,Object@12,Object@11,Object@10,Object@9,Object@8,Object@7,Object@6,Object@5,Object@4,Object@3,Object@2,Object@1,Object@0]
+    postActions=Set[$checkConsistency]
+    stopped=true}}
+********************************************************************
+********************************************************************
+State{
+  Object@0{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@1{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@2{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@3{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@4{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@5{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@6{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Object@7{
+    D_OBSERVERS=Set[observer]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[observer,forward]=DefaultMap[Entry[time,Set[Universe@universe]]]}
+  Universe@universe{
+    Observers[time,forward]=DefaultMap[Entry[observer,Set[Object@7,Object@6,Object@5,Object@4,Object@3,Object@2,Object@1,Object@0]]]
+    children=Set[Object@7,Object@6,Object@5,Object@4,Object@3,Object@2,Object@1,Object@0]
+    postActions=Set[$checkConsistency]
+    stopped=true
+    time=1575243779982}}
+********************************************************************
+1 s
+********************************************************************
+********************************************************************
+State{
+  Object@c1{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Universe@universe]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    name=c1
+    qualifiedName=u.c1}
+  Object@c2{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Universe@universe,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Universe@universe]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,forward]=DefaultMap[Entry[qualifiedName,Set[Object@gc2,Object@gc1]]]
+    children=Set[Object@gc2,Object@gc1]
+    name=c2
+    qualifiedName=u.c2}
+  Object@gc1{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@c2,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@c2]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,forward]=DefaultMap[Entry[qualifiedName,Set[Object@ggc2,Object@ggc1]]]
+    children=Set[Object@ggc2,Object@ggc1]
+    name=gc1
+    qualifiedName=u.c2.gc1}
+  Object@gc2{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@c2,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@c2]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,forward]=DefaultMap[Entry[qualifiedName,Set[Object@ggc4,Object@ggc3]]]
+    children=Set[Object@ggc4,Object@ggc3]
+    name=gc2
+    qualifiedName=u.c2.gc2}
+  Object@ggc1{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@gc1,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@gc1]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    name=ggc1
+    qualifiedName=u.c2.gc1.ggc1}
+  Object@ggc2{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@gc1,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@gc1]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    name=ggc2
+    qualifiedName=u.c2.gc1.ggc2}
+  Object@ggc3{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@gc2,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@gc2]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    name=ggc3
+    qualifiedName=u.c2.gc2.ggc3}
+  Object@ggc4{
+    D_OBSERVERS=Set[name,qualifiedName]
+    D_PARENT_CONTAINING=Pair[Object@gc2,children]
+    Observerds[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observerds[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observerds[qualifiedName,forward]=DefaultMap[Entry[name,Set[<this>]],Entry[D_PARENT_CONTAINING,Set[<this>]],Entry[qualifiedName,Set[Object@gc2]]]
+    Observers[D_PARENT_CONTAINING,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[name,backward]=DefaultMap[Entry[name,Set[<this>]]]
+    Observers[name,forward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    Observers[qualifiedName,backward]=DefaultMap[Entry[qualifiedName,Set[<this>]]]
+    name=ggc4
+    qualifiedName=u.c2.gc2.ggc4}
+  Universe@universe{
+    Observers[qualifiedName,forward]=DefaultMap[Entry[qualifiedName,Set[Object@c2,Object@c1]]]
+    children=Set[Object@c2,Object@c1]
+    postActions=Set[$checkConsistency]
+    qualifiedName=u
+    stopped=true}}
+********************************************************************
+********************************************************************
+1111112
+********************************************************************
+]]></system-err>
+</testsuite>
