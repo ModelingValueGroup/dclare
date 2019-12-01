@@ -1,0 +1,105 @@
+name: build
+
+on: [push]
+
+jobs:
+  build-and-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "checkout"
+        uses: actions/checkout@v1
+
+      - name: "attach head"
+        run: git checkout "${GITHUB_REF#refs/heads/}"
+
+      - name: "setup JDK"
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: "get buildTools"
+        uses: ModelingValueGroup/buildTools@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "prepare ant"
+        run:  |
+          cat <<EOF >build.properties
+          jdk.home.11=$JAVA_HOME
+          path.variable.maven_repository=$HOME/.m2/repository
+          EOF
+
+      - name: "(re)generate some files"
+        run:  |
+          . <(java -jar buildTools.jar)
+          updateAllPomsFromIntellijDependencies
+          generateAntTestFilesFromIntellij
+          generateAntJavadocFilesFromIntellij
+          cleanupIntellijAntFiles
+          correctEols
+          correctHeaders header
+
+      - name: "download dependencies (as mentioned in pom)"
+        run:  |
+          . <(java -jar buildTools.jar)
+          mkdir -p lib
+          mvn_ ${{ secrets.GITHUB_TOKEN }} dependency:copy-dependencies -DoutputDirectory=lib
+
+      - name: "build"
+        run:  ant
+
+      - name: "test"
+        run:  ant test.results.jar.dclare
+
+      - name: "javadoc"
+        run:  ant javadoc.module.dclare
+
+      - name: "upload dclare.jar"
+        uses: actions/upload-artifact@v1
+        with:
+          name: jdclare.jar
+          path: out/artifacts/dclare.jar
+
+      - name: "upload dclare-sources.jar"
+        uses: actions/upload-artifact@v1
+        with:
+          name: dclare-sources.jar
+          path: out/artifacts/dclare-sources.jar
+
+      - name: "upload dclare-javadoc.jar"
+        uses: actions/upload-artifact@v1
+        with:
+          name: dclare-javadoc.jar
+          path: out/artifacts/dclare-javadoc.jar
+
+      - name: "upload dclare-testresults.jar"
+        uses: actions/upload-artifact@v1
+        with:
+          name: dclare-testresults.jar
+          path: out/artifacts/dclare-testresults.jar
+
+      - name: "push changes back to github"
+        run:  |
+          if [[ "$(git ls-files -o --exclude-standard)" ]]; then
+            echo "changes need to be pushed back to github"
+
+            echo "::group::git commit and push"
+              git config user.email "automation@modelingvalue.org"
+              git config user.name "automation"
+              git add .
+              git commit -m "adjusted files [by github actions]"
+              git push "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY.git"
+            echo "::endgroup::"
+
+          else
+            echo "no changes need to be pushed back to github"
+          fi
+
+      - name: "upload package dclare.jar"
+        uses: ModelingValueGroup/upload-maven-package-action@master
+        if: github.ref == 'refs/heads/master'
+        with:
+          file: "out/artifacts/dclare.jar"
+          token: "${{ secrets.GITHUB_TOKEN }}"
