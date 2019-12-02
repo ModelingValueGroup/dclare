@@ -19,6 +19,9 @@ jobs:
         with:
           java-version: 11
 
+      - name: "get generic info"
+        uses: ModelingValueGroup/generic-info@master
+
       - name: "get buildTools"
         uses: ModelingValueGroup/buildTools@master
         with:
@@ -82,20 +85,8 @@ jobs:
 
       - name: "push changes back to github"
         run:  |
-          if [[ "$(git ls-files -o --exclude-standard)" ]]; then
-            echo "changes need to be pushed back to github"
-
-            echo "::group::git commit and push"
-              git config user.email "automation@modelingvalue.org"
-              git config user.name "automation"
-              git add .
-              git commit -m "adjusted files [by github actions]"
-              git push "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY.git"
-            echo "::endgroup::"
-
-          else
-            echo "no changes need to be pushed back to github"
-          fi
+          . <(java -jar buildTools.jar)
+          pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
       - name: "upload package dclare.jar"
         uses: ModelingValueGroup/upload-maven-package-action@master

@@ -1,10 +1,19 @@
 <?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <!--=========================================================-->
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>0.0.1</version>
+  <version>0.0.2</version>
   <packaging>jar</packaging>
+  <!--=========================================================-->
+  <!--    <repositories>-->
+  <!--        <repository>-->
+  <!--            <id>ModelingValueGroup/tools</id>-->
+  <!--            <url>https://maven.pkg.github.com/ModelingValueGroup/tools</url>-->
+  <!--        </repository>-->
+  <!--    </repositories>-->
+  <!--=========================================================-->
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -19,7 +28,8 @@
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>immutable-collections</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.4</version>
     </dependency>
   </dependencies>
+  <!--=========================================================-->
 </project>
