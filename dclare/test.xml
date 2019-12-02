@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="test.dclare" default="test.results.jar.dclare">
+  <!--==============================================================-->
+  <!-- WARNING: this file will be overwritten by the build scripts! -->
+  <!--==============================================================-->
   <path id="classpath.test.dclare">
     <path>
       <pathelement location="${path.variable.maven_repository}/junit/junit/4.12/junit-4.12.jar"/>
