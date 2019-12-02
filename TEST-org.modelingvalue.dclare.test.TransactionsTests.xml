@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuite errors="0" failures="0" hostname="fv-az88" name="org.modelingvalue.dclare.test.TransactionsTests" skipped="0" tests="9" time="87.382" timestamp="2019-12-01T23:42:55">
+<testsuite errors="0" failures="0" hostname="fv-az88" name="org.modelingvalue.dclare.test.TransactionsTests" skipped="0" tests="9" time="94.902" timestamp="2019-12-02T09:16:42">
   <properties>
     <property name="jdk.home.11" value="/opt/hostedtoolcache/jdk/11.0.5/x64" />
     <property name="ant.library.dir" value="/usr/share/ant/lib" />
@@ -25,7 +25,7 @@
     <property name="java.vm.specification.version" value="11" />
     <property name="sun.java.launcher" value="SUN_STANDARD" />
     <property name="sun.boot.library.path" value="/opt/hostedtoolcache/jdk/11.0.5/x64/lib" />
-    <property name="sun.java.command" value="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner org.modelingvalue.dclare.test.TransactionsTests skipNonTests=false filtertrace=true haltOnError=false haltOnFailure=true showoutput=false outputtoformatters=true logfailedtests=true threadid=0 logtestlistenerevents=false formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/home/runner/work/dclare/dclare/TEST-org.modelingvalue.dclare.test.TransactionsTests.xml crashfile=/home/runner/work/dclare/dclare/junitvmwatcher10874861403561826763.properties propsfile=/home/runner/work/dclare/dclare/junit11880888278606863971.properties" />
+    <property name="sun.java.command" value="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner org.modelingvalue.dclare.test.TransactionsTests skipNonTests=false filtertrace=true haltOnError=false haltOnFailure=true showoutput=false outputtoformatters=true logfailedtests=true threadid=0 logtestlistenerevents=false formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/home/runner/work/dclare/dclare/TEST-org.modelingvalue.dclare.test.TransactionsTests.xml crashfile=/home/runner/work/dclare/dclare/junitvmwatcher12173062820630744322.properties propsfile=/home/runner/work/dclare/dclare/junit10486746968051999301.properties" />
     <property name="jdk.debug" value="release" />
     <property name="sun.cpu.endian" value="little" />
     <property name="dclare.testoutput.dir" value="/home/runner/work/dclare/dclare/dclare/../out/test/dclare" />
@@ -91,15 +91,15 @@
     <property name="java.class.version" value="55.0" />
     <property name="ant.project.default-target" value="all" />
   </properties>
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="opposites" time="0.289" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="source2target" time="0.024" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="constants" time="2.462" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="emptyMandatoryTest" time="0.015" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="derivationChain" time="0.198" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="opposites" time="0.348" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="source2target" time="0.037" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="constants" time="2.252" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="emptyMandatoryTest" time="0.026" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="derivationChain" time="0.255" />
   <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="cycle1second" time="1.008" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="orphanReferenceTest" time="0.03" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="moveAndRemove" time="0.075" />
-  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="zuperBig" time="83.026" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="orphanReferenceTest" time="0.029" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="moveAndRemove" time="0.074" />
+  <testcase classname="org.modelingvalue.dclare.test.TransactionsTests" name="zuperBig" time="90.618" />
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[********************************************************************
 State{
@@ -591,7 +591,7 @@ State{
     children=Set[Object@7,Object@6,Object@5,Object@4,Object@3,Object@2,Object@1,Object@0]
     postActions=Set[$checkConsistency]
     stopped=true
-    time=1575243779982}}
+    time=1575278206811}}
 ********************************************************************
 1 s
 ********************************************************************
