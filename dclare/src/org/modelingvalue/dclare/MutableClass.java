@@ -18,12 +18,12 @@ import org.modelingvalue.collections.*;
 public interface MutableClass {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Constant <MutableClass, Set <Setable>> D_CONTAINMENTS = Constant.of("D_CONTAINMENTS", c ->                                        //
-            (Set <Setable>) c.dSetables().filter(s -> s.containment()).toSet());
+    Constant <MutableClass, Set <Setable>> D_CONTAINMENTS = Constant.of("D_CONTAINMENTS", //
+            c -> c.dSetables().filter(Setable::containment).map(s -> (Setable) s).toSet());
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Constant <MutableClass, Set <Constant>> D_PUSHING_CONSTANTS = Constant.of("D_PUSHING_CONSTANTS", c ->                                   //
-            (Set <Constant>) c.dSetables().filter(s -> s instanceof Constant && s.isHandlingChange() && ((Constant) s).deriver() != null).toSet());
+    Constant <MutableClass, Set <Constant>> D_PUSHING_CONSTANTS = Constant.of("D_PUSHING_CONSTANTS", //
+            c -> c.dSetables().filter(s -> s instanceof Constant && s.isHandlingChange() && ((Constant) s).deriver() != null).map(s -> (Constant) s).toSet());
 
     Collection <? extends Observer <?>> dObservers();
 
