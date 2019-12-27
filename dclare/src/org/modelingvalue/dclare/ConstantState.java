@@ -1,18 +1,3 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.List;
@@ -28,7 +13,7 @@ import java.util.function.*;
 @SuppressWarnings("rawtypes")
 public class ConstantState {
 
-    private static final Context<Boolean> WEAK = Context.of(false);
+    private static final Context <Boolean> WEAK = Context.of(false);
 
     private static final Object NULL = new Object() {
         @Override
@@ -37,12 +22,12 @@ public class ConstantState {
         }
     };
 
-    private static final AtomicReferenceFieldUpdater<Constants, Map> UPDATOR = AtomicReferenceFieldUpdater.newUpdater(Constants.class, Map.class, "constants");
+    private static final AtomicReferenceFieldUpdater <Constants, Map> UPDATOR = AtomicReferenceFieldUpdater.newUpdater(Constants.class, Map.class, "constants");
 
     private static final class ConstantDepthOverflowException extends RuntimeException {
         private static final long serialVersionUID = -6980064786088373917L;
 
-        private List<Pair<Object, Constant>> list = List.of();
+        private List <Pair <Object, Constant>> list = List.of();
 
         public ConstantDepthOverflowException(Object object, Constant lazy) {
             addLazy(object, lazy);
@@ -81,16 +66,16 @@ public class ConstantState {
             }
 
             @Override
-            public Constants<O> constants() {
+            public Constants <O> constants() {
                 return Constants.this;
             }
         }
 
-        public volatile Map<Constant<O, ?>, Object> constants;
-        private final   int                         hash;
-        private final   Reference<O>                ref;
+        public volatile Map <Constant <O, ?>, Object> constants;
+        private final   int                           hash;
+        private final   Reference <O>                 ref;
 
-        public Constants(O object, boolean weak, ReferenceQueue<? super O> queue) {
+        public Constants(O object, boolean weak, ReferenceQueue <? super O> queue) {
             ref = weak ? new WeakRef(object, queue) : new SoftRef(object, queue);
             UPDATOR.lazySet(this, Map.of());
             hash = object.hashCode();
@@ -103,14 +88,12 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, boolean forced) {
-            Map<Constant<O, ?>, Object> prev = constants;
-            V                           ist  = (V) prev.get(constant);
+        public <V> V get(LeafTransaction leafTransaction, O object, Constant <O, V> constant) {
+            Map <Constant <O, ?>, Object> prev = constants;
+            V                             ist  = (V) prev.get(constant);
             if (ist == null) {
                 if (constant.deriver() == null) {
-                    if (!forced) {
-                        throw new Error("Constant " + constant + " is not set and not derived");
-                    }
+                    throw new Error("Constant " + constant + " is not set and not derived");
                 } else {
                     V soll = derive(leafTransaction, object, constant);
                     ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
@@ -120,9 +103,16 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V soll, boolean forced) {
-            Map<Constant<O, ?>, Object> prev = constants;
-            V                           ist  = (V) prev.get(constant);
+        public <V> boolean isSet(LeafTransaction leafTransaction, O object, Constant <O, V> constant) {
+            Map <Constant <O, ?>, Object> prev = constants;
+            V                             ist  = (V) prev.get(constant);
+            return ist != null;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <V> V set(LeafTransaction leafTransaction, O object, Constant <O, V> constant, V soll, boolean forced) {
+            Map <Constant <O, ?>, Object> prev = constants;
+            V                             ist  = (V) prev.get(constant);
             if (ist == null) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
@@ -134,9 +124,9 @@ public class ConstantState {
 
         @SuppressWarnings("unchecked")
         public <V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
-            Map<Constant<O, ?>, Object> prev = constants;
-            V                           ist  = (V) prev.get(constant);
-            V                           soll = function.apply(ist, element);
+            Map <Constant <O, ?>, Object> prev = constants;
+            V                             ist  = (V) prev.get(constant);
+            V                             soll = function.apply(ist, element);
             if (ist == null) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
@@ -163,8 +153,8 @@ public class ConstantState {
 
         @SuppressWarnings("unchecked")
         private <V> V set(LeafTransaction tx, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
-            V                           ist;
-            Map<Constant<O, ?>, Object> next = prev.put(constant, soll);
+            V                             ist;
+            Map <Constant <O, ?>, Object> next = prev.put(constant, soll);
             while (!UPDATOR.compareAndSet(this, prev, next)) {
                 prev = constants;
                 ist = (V) prev.get(constant);
@@ -193,7 +183,7 @@ public class ConstantState {
                                     Pair<Object, Constant> me = Pair.of(object, constant);
                                     throw new NonDeterministicException(object, constant, "Circular constant definition: " + list.sublist(list.lastIndexOf(me), list.size()).add(me));
                                 }
-                                ConstantState.this.get(leafTransaction, lazy.a(), lazy.b(), false);
+                                ConstantState.this.get(leafTransaction, lazy.a(), lazy.b());
                             }
                         } finally {
                             WEAK.set(weak);
@@ -235,27 +225,31 @@ public class ConstantState {
         remover.interrupt();
     }
 
-    public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, boolean forced) {
-        return getConstants(leafTransaction, object).get(leafTransaction, object, constant, forced);
+    public <O, V> V get(LeafTransaction leafTransaction, O object, Constant <O, V> constant) {
+        return getConstants(leafTransaction, object).get(leafTransaction, object, constant);
     }
 
-    public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
+    public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant <O, V> constant) {
+        return getConstants(leafTransaction, object).isSet(leafTransaction, object, constant);
+    }
+
+    public <O, V> V set(LeafTransaction leafTransaction, O object, Constant <O, V> constant, V value, boolean forced) {
         return getConstants(leafTransaction, object).set(leafTransaction, object, constant, value, forced);
     }
 
-    public <O, V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
+    public <O, V, E> V set(LeafTransaction leafTransaction, O object, Constant <O, V> constant, BiFunction <V, E, V> deriver, E element) {
         return getConstants(leafTransaction, object).set(leafTransaction, object, constant, deriver, element);
     }
 
     @SuppressWarnings("unchecked")
     private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object) {
-        QualifiedSet<Object, Constants> prev      = state.get();
-        Constants                       constants = prev.get(object);
+        QualifiedSet <Object, Constants> prev      = state.get();
+        Constants                        constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants<O>(object, WEAK.get(), queue);
-            QualifiedSet<Object, Constants> next = prev.add(constants);
-            Constants<O>                    now;
+            constants = new Constants <O>(object, WEAK.get(), queue);
+            QualifiedSet <Object, Constants> next = prev.add(constants);
+            Constants <O>                    now;
             while (!state.compareAndSet(prev, next)) {
                 prev = state.get();
                 now = prev.get(object);
@@ -270,11 +264,11 @@ public class ConstantState {
     }
 
     private void removeConstants(Constants constants) {
-        QualifiedSet<Object, Constants> prev   = state.get();
-        Object                          object = constants.object();
+        QualifiedSet <Object, Constants> prev   = state.get();
+        Object                           object = constants.object();
         constants = prev.get(object);
         if (constants != null) {
-            QualifiedSet<Object, Constants> next = prev.removeKey(object);
+            QualifiedSet <Object, Constants> next = prev.removeKey(object);
             while (!state.compareAndSet(prev, next)) {
                 prev = state.get();
                 if (prev.get(object) == null) {

@@ -1,16 +1,14 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018 Modeling Value Group B.V. (http://modelingvalue.org)                                             ~
 //                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
+// Licensed under the GNU Lesser General Public License v3.0 (the "License"). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
+// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
 // specific language governing permissions and limitations under the License.                                          ~
 //                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
 // Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
+//     Wim Bast, Carel Bast, Tom Brus, Arjan Kok, Ronald Krijgsheld                                                    ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
@@ -22,30 +20,34 @@ import java.util.function.*;
 
 public class Setable<O, T> extends Getable<O, T> {
 
-    private static final Context<Boolean> MOVING = Context.of(false);
+    private static final Context <Boolean> MOVING = Context.of(false);
 
-    public static <C, V> Setable<C, V> of(Object id, V def) {
-        return new Setable<C, V>(id, def, false, null, null, null, true);
+    public static <C, V> Setable <C, V> of(Object id, V def) {
+        return new Setable <C, V>(id, def, false, null, null, null, true);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Setable<C, V>(id, def, false, null, null, changed, true);
+    public static <C, V> Setable <C, V> of(Object id, V def, QuadConsumer <LeafTransaction, C, V, V> changed) {
+        return new Setable <C, V>(id, def, false, null, null, changed, true);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
-        return new Setable<C, V>(id, def, containment, null, null, null, true);
+    public static <C, V> Setable <C, V> of(Object id, V def, Supplier <Setable <?, ?>> opposite) {
+        return new Setable <C, V>(id, def, false, opposite, null, null, true);
     }
 
-    protected       QuadConsumer<LeafTransaction, O, T, T> changed;
-    protected final boolean                                containment;
-    private final   Supplier<Setable<?, ?>>                opposite;
-    private final   Supplier<Setable<O, Set<?>>>           scope;
+    public static <C, V> Setable <C, V> of(Object id, V def, boolean containment) {
+        return new Setable <C, V>(id, def, containment, null, null, null, true);
+    }
+
+    protected       QuadConsumer <LeafTransaction, O, T, T> changed;
+    protected final boolean                                 containment;
+    private final   Supplier <Setable <?, ?>>               opposite;
+    private final   Supplier <Setable <O, Set <?>>>         scope;
     @SuppressWarnings("rawtypes")
-    private final   Constant<T, Entry<Setable, Object>>    internal;
-    protected final boolean                                checkConsistency;
-    private         boolean                                isReference;
+    private final   Constant <T, Entry <Setable, Object>>   internal;
+    protected final boolean                                 checkConsistency;
+    private         boolean                                 isReference;
 
-    protected Setable(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    protected Setable(Object id, T def, boolean containment, Supplier <Setable <?, ?>> opposite, Supplier <Setable <O, Set <?>>> scope, QuadConsumer <LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, def);
         this.checkConsistency = checkConsistency;
         this.containment = containment;
@@ -96,27 +98,31 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @Override
-    public Setable<?, ?> opposite() {
+    public Setable <?, ?> opposite() {
         return opposite != null ? opposite.get() : null;
     }
 
     @Override
-    public Setable<O, Set<?>> scope() {
+    public Setable <O, Set <?>> scope() {
         return scope != null ? scope.get() : null;
     }
 
+    protected final boolean isHandlingChange() {
+        return changed != null || containment || opposite != null;
+    }
+
     @SuppressWarnings("unchecked")
-    protected void changed(LeafTransaction tx, O object, T preValue, T postValue) {
+    protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
         if (changed != null) {
             changed.accept(tx, object, preValue, postValue);
         }
         if (containment) {
-            Setable.<T, Mutable>diff(preValue, postValue, added -> {
-                Pair<Mutable, Setable<Mutable, ?>> prePair = Mutable.D_PARENT_CONTAINING.get(added);
+            Setable. <T, Mutable>diff(preValue, postValue, added -> {
+                Pair <Mutable, Setable <Mutable, ?>> prePair = Mutable.D_PARENT_CONTAINING.get(added);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
-                Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
+                Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable <Mutable, ?>) this));
                 if (prePair == null) {
                     added.dActivate();
                 }
@@ -128,7 +134,7 @@ public class Setable<O, T> extends Getable<O, T> {
             });
         } else if (opposite != null) {
             Setable<Object, ?> opp = (Setable<Object, ?>) opposite.get();
-            Setable.<T, Object>diff(preValue, postValue, added -> {
+            Setable. <T, Object>diff(preValue, postValue, added -> {
                 opp.add(added, object);
             }, removed -> {
                 opp.remove(removed, object);

@@ -36,8 +36,8 @@
     <include name="*.swc"/>
     <include name="*.apk"/>
     <include name="*.zip"/>
-    <include name="*.egg"/>
     <include name="*.ane"/>
+    <include name="*.egg"/>
     <include name="*.jar"/>
     <include name="*.ear"/>
     <include name="*.klib"/>
@@ -152,9 +152,6 @@
     <pathelement location="${path.variable.maven_repository}/org/modelingvalue/immutable-collections/1.0.1/immutable-collections-1.0.1.jar"/>
   </path>
   
-  
-  <!-- Global Libraries -->
-  
   <!-- Modules -->
   
   <import file="${basedir}/dclare/module_dclare.xml"/>
@@ -210,4 +207,4 @@
   </target>
   
   <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
-<import file="${basedir}/dclare/test.xml"/><import file="${basedir}/dclare/javadoc.xml"/></project>
+</project>

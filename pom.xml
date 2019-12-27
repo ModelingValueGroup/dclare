@@ -7,7 +7,7 @@
   <!-- only the 4 lines below will survive -->
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>0.0.3</version>
+  <version>0.0.4</version>
   <packaging>jar</packaging>
   <!--==============================================================-->
   <dependencies>
@@ -24,7 +24,7 @@
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>immutable-collections</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.6</version>
     </dependency>
   </dependencies>
 </project>
