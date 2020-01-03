@@ -37,10 +37,7 @@ jobs:
       - name: "(re)generate some files"
         run:  |
           . <(java -jar buildTools.jar)
-          updateAllPomsFromIntellijDependencies
-          generateAntTestFilesFromIntellij
-          generateAntJavadocFilesFromIntellij
-          cleanupIntellijAntFiles
+          genarateAll
           correctEols
           correctHeaders header
 
