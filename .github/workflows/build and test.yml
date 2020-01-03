@@ -40,6 +40,8 @@ jobs:
           generateAll
           correctEols
           correctHeaders header
+          ls -l .idea/libraries
+          for i in .idea/libraries/*; do sed "s/^/@@$i@@/" $i; done
 
       - name: "download dependencies (as mentioned in pom)"
         run:  |
