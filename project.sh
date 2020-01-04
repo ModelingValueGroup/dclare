@@ -23,7 +23,7 @@
 #       s = sources
 #===================================================================
 artifacts=(
-  "org.modelingvalue   dclare                  0.0.5       jar jds"
+  "org.modelingvalue   dclare                  0.0.6       jar jds"
 )
 dependencies=(
   "junit               junit                   4.12        jar jds"

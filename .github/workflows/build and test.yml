@@ -48,7 +48,7 @@ jobs:
           mvn_ ${{ secrets.GITHUB_TOKEN }} dependency:copy-dependencies -DoutputDirectory=lib
 
       - name: "build"
-        run:  ant -debug
+        run:  ant
 
       - name: "test"
         run:  ant test.results.jar.dclare
