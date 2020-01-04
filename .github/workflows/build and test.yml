@@ -43,6 +43,11 @@ jobs:
           ls -l .idea/libraries
           for i in .idea/libraries/*; do sed "s|^|@@$i@@|" $i; done
 
+      - name: "push changes back to repos (temp)"
+        run:  |
+          . <(java -jar buildTools.jar)
+          pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
+
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar buildTools.jar)
@@ -82,7 +87,7 @@ jobs:
           name: dclare-testresults.jar
           path: out/artifacts/dclare-testresults.jar
 
-      - name: "push changes back to github"
+      - name: "push changes back to repos"
         run:  |
           . <(java -jar buildTools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
