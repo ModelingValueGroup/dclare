@@ -149,7 +149,7 @@
   </path>
   
   <path id="library.maven:_org.modelingvalue:immutable-collections.classpath">
-    <pathelement location="${path.variable.maven_repository}/org/modelingvalue/immutable-collections/1.0.1/immutable-collections-1.0.1.jar"/>
+    <pathelement location="${path.variable.maven_repository}/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8.jar"/>
   </path>
   
   <!-- Modules -->
@@ -207,4 +207,4 @@
   </target>
   
   <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
-<import file="${basedir}/dclare/test.xml"/><import file="${basedir}/dclare/javadoc.xml"/></project>
+</project>
