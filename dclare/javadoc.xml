@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--==============================================================-->
+<!-- WARNING: this file will be overwritten by the build scripts! -->
+<!--          change  project.sh  instead                         -->
+<!--==============================================================-->
 <project name="javadoc.dclare" default="javadoc.module.dclare">
-    <!--==============================================================-->
-    <!-- WARNING: this file will be overwritten by the build scripts! -->
-    <!--==============================================================-->
     <property name="dclare.javadoc.dir" value="${basedir}/out/artifacts"/>
     <property name="dclare.javadoc.tmp" value="${dclare.javadoc.dir}/tmp"/>
     <property name="dclare.javadoc.jar" value="${dclare.javadoc.dir}/dclare-javadoc.jar"/>

@@ -1,9 +1,17 @@
+<!--==============================================================-->
+<!-- WARNING: this file will be overwritten by the build scripts! -->
+<!--          change  project.sh  instead                         -->
+<!--==============================================================-->
 <component name="libraryTable">
   <library name="Maven: org.modelingvalue:immutable-collections">
     <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.1/immutable-collections-1.0.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8.jar!/" />
     </CLASSES>
-    <JAVADOC />
-    <SOURCES />
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8-sources.jar!/" />
+    </SOURCES>
   </library>
 </component>
