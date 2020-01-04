@@ -43,11 +43,6 @@ jobs:
           ls -l .idea/libraries
           for i in .idea/libraries/*; do sed "s|^|@@$i@@|" $i; done
 
-      - name: "push changes back to repos (temp)"
-        run:  |
-          . <(java -jar buildTools.jar)
-          pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
-
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar buildTools.jar)
@@ -55,12 +50,12 @@ jobs:
           mvn_ ${{ secrets.GITHUB_TOKEN }} dependency:copy-dependencies -DoutputDirectory=lib
 
       - name: "build"
-        run:  ant
+        run:  ant -debug
 
       - name: "test"
         run:  ant test.results.jar.dclare
 
-      - name: "javadoc"
+      - name: "make javadoc"
         run:  ant javadoc.module.dclare
 
       - name: "upload dclare.jar"
