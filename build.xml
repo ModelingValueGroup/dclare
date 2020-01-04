@@ -178,6 +178,7 @@
     <mkdir dir="${artifact.temp.output.dclare-sources}"/>
     <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
       <zipfileset dir="${basedir}/dclare/src"/>
+      <zipfileset src="${path.variable.maven_repository}/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8-sources.jar"/>
     </jar>
     <copy file="${temp.jar.path.dclare-sources.jar}" tofile="${artifact.temp.output.dclare-sources}/dclare-sources.jar"/>
   </target>
