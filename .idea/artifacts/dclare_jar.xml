@@ -3,7 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts</output-path>
     <root id="archive" name="dclare.jar">
       <element id="module-output" name="dclare" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.1/immutable-collections-1.0.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/modelingvalue/immutable-collections/1.0.8/immutable-collections-1.0.8.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
