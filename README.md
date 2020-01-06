@@ -13,4 +13,10 @@ To get all the dependencies in you .m2 repos use the following commands:
 mvn dependency:resolve
 mvn dependency:resolve -Dclassifier=javadoc
 mvn dependency:resolve -Dclassifier=sources
+
+or
+
+mvn dependency:copy-dependencies -DoutputDirectory=lib
+mvn dependency:copy-dependencies -DoutputDirectory=lib -Dclassifier=javadoc
+mvn dependency:copy-dependencies -DoutputDirectory=lib -Dclassifier=sources
 ````
