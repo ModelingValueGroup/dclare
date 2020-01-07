@@ -2,11 +2,10 @@ name: build and test
 
 on: [push]
 
-env:
-  MYNAME: dclare
-
 jobs:
   build-and-test:
+    env:
+      MYNAME: dclare
 
     runs-on: ubuntu-latest
 
