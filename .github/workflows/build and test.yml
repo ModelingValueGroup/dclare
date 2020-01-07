@@ -1,6 +1,8 @@
 name: build and test
 
 on: [push]
+env:
+  name: "dclare"
 
 jobs:
   build-and-test:
@@ -11,7 +13,7 @@ jobs:
       - name: "checkout"
         uses: actions/checkout@v1
 
-      - name: "attach head"
+      - name: "attach git head"
         run: git checkout "${GITHUB_REF#refs/heads/}"
 
       - name: "setup JDK"
@@ -41,53 +43,57 @@ jobs:
           correctEols
           correctHeaders header
 
+      - name: "TMP - push changes back to github"
+        run:  |
+          . <(java -jar buildTools.jar)
+          pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
+
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar buildTools.jar)
-          mkdir -p lib
-          mvn_ ${{ secrets.GITHUB_TOKEN }} dependency:copy-dependencies -DoutputDirectory=lib
+          getAllDependencies ${{ secrets.GITHUB_TOKEN }}
 
       - name: "build"
         run:  ant
 
       - name: "test"
-        run:  ant test.results.jar.dclare
+        run:  ant test.results.jar.${{name}}
 
-      - name: "make javadoc"
-        run:  ant javadoc.module.dclare
+      - name: "generate javadoc"
+        run:  ant javadoc.module.${{name}}
 
-      - name: "upload dclare.jar"
-        uses: actions/upload-artifact@v1
-        with:
-          name: jdclare.jar
-          path: out/artifacts/dclare.jar
-
-      - name: "upload dclare-sources.jar"
-        uses: actions/upload-artifact@v1
-        with:
-          name: dclare-sources.jar
-          path: out/artifacts/dclare-sources.jar
-
-      - name: "upload dclare-javadoc.jar"
-        uses: actions/upload-artifact@v1
-        with:
-          name: dclare-javadoc.jar
-          path: out/artifacts/dclare-javadoc.jar
-
-      - name: "upload dclare-testresults.jar"
-        uses: actions/upload-artifact@v1
-        with:
-          name: dclare-testresults.jar
-          path: out/artifacts/dclare-testresults.jar
-
-      - name: "push changes back to repos"
+      - name: "push changes back to github"
         run:  |
           . <(java -jar buildTools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
-      - name: "upload package dclare.jar"
+      - name: "publish action-artifact jar"
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{name}}.jar
+          path: out/artifacts/${{name}}.jar
+
+      - name: "publish action-artifact sources"
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{name}}-sources.jar
+          path: out/artifacts/${{name}}-sources.jar
+
+      - name: "publish action-artifact javadoc"
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{name}}-javadoc.jar
+          path: out/artifacts/${{name}}-javadoc.jar
+
+      - name: "publish action-artifact test-results"
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{name}}-testresults.jar
+          path: out/artifacts/${{name}}-testresults.jar
+
+      - name: "publish maven-artifacts (jar/pom/sources/javadoc)"
         uses: ModelingValueGroup/upload-maven-package-action@master
         if: github.ref == 'refs/heads/master'
         with:
-          file: "out/artifacts/dclare.jar"
+          file: "out/artifacts/${{name}}.jar"
           token: "${{ secrets.GITHUB_TOKEN }}"
