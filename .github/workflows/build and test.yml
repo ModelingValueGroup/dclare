@@ -4,9 +4,6 @@ on: [push]
 
 jobs:
   build-and-test:
-    env:
-      MYNAME: dclare
-
     runs-on: ubuntu-latest
 
     steps:
@@ -43,11 +40,6 @@ jobs:
           correctEols
           correctHeaders header
 
-      - name: "TMP - push changes back to github"
-        run:  |
-          . <(java -jar buildTools.jar)
-          pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
-
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar buildTools.jar)
@@ -57,10 +49,10 @@ jobs:
         run:  ant
 
       - name: "test"
-        run:  ant test.results.jar.${MYNAME}
+        run:  ant test.results.jar.dclare
 
       - name: "generate javadoc"
-        run:  ant javadoc.module.${MYNAME}
+        run:  ant javadoc.module.dclare
 
       - name: "push changes back to github"
         run:  |
@@ -70,30 +62,30 @@ jobs:
       - name: "publish action-artifact jar"
         uses: actions/upload-artifact@v1
         with:
-          name: ${MYNAME}.jar
-          path: out/artifacts/${MYNAME}.jar
+          name: dclare.jar
+          path: out/artifacts/dclare.jar
 
       - name: "publish action-artifact sources"
         uses: actions/upload-artifact@v1
         with:
-          name: ${MYNAME}-sources.jar
-          path: out/artifacts/${MYNAME}-sources.jar
+          name: dclare-sources.jar
+          path: out/artifacts/dclare-sources.jar
 
       - name: "publish action-artifact javadoc"
         uses: actions/upload-artifact@v1
         with:
-          name: ${MYNAME}-javadoc.jar
-          path: out/artifacts/${MYNAME}-javadoc.jar
+          name: dclare-javadoc.jar
+          path: out/artifacts/dclare-javadoc.jar
 
       - name: "publish action-artifact test-results"
         uses: actions/upload-artifact@v1
         with:
-          name: ${MYNAME}-testresults.jar
-          path: out/artifacts/${MYNAME}-testresults.jar
+          name: dclare-testresults.jar
+          path: out/artifacts/dclare-testresults.jar
 
       - name: "publish maven-artifacts (jar/pom/sources/javadoc)"
         uses: ModelingValueGroup/upload-maven-package-action@master
         if: github.ref == 'refs/heads/master'
         with:
-          file: "out/artifacts/${MYNAME}.jar"
+          file: "out/artifacts/dclare.jar"
           token: "${{ secrets.GITHUB_TOKEN }}"
