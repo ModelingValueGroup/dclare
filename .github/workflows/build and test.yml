@@ -1,8 +1,9 @@
 name: build and test
 
 on: [push]
+
 env:
-  name: "dclare"
+  myname: "dclare"
 
 jobs:
   build-and-test:
@@ -57,10 +58,10 @@ jobs:
         run:  ant
 
       - name: "test"
-        run:  ant test.results.jar.${{name}}
+        run:  ant test.results.jar.${{myname}}
 
       - name: "generate javadoc"
-        run:  ant javadoc.module.${{name}}
+        run:  ant javadoc.module.${{myname}}
 
       - name: "push changes back to github"
         run:  |
@@ -70,30 +71,30 @@ jobs:
       - name: "publish action-artifact jar"
         uses: actions/upload-artifact@v1
         with:
-          name: ${{name}}.jar
-          path: out/artifacts/${{name}}.jar
+          name: ${{myname}}.jar
+          path: out/artifacts/${{myname}}.jar
 
       - name: "publish action-artifact sources"
         uses: actions/upload-artifact@v1
         with:
-          name: ${{name}}-sources.jar
-          path: out/artifacts/${{name}}-sources.jar
+          name: ${{myname}}-sources.jar
+          path: out/artifacts/${{myname}}-sources.jar
 
       - name: "publish action-artifact javadoc"
         uses: actions/upload-artifact@v1
         with:
-          name: ${{name}}-javadoc.jar
-          path: out/artifacts/${{name}}-javadoc.jar
+          name: ${{myname}}-javadoc.jar
+          path: out/artifacts/${{myname}}-javadoc.jar
 
       - name: "publish action-artifact test-results"
         uses: actions/upload-artifact@v1
         with:
-          name: ${{name}}-testresults.jar
-          path: out/artifacts/${{name}}-testresults.jar
+          name: ${{myname}}-testresults.jar
+          path: out/artifacts/${{myname}}-testresults.jar
 
       - name: "publish maven-artifacts (jar/pom/sources/javadoc)"
         uses: ModelingValueGroup/upload-maven-package-action@master
         if: github.ref == 'refs/heads/master'
         with:
-          file: "out/artifacts/${{name}}.jar"
+          file: "out/artifacts/${{myname}}.jar"
           token: "${{ secrets.GITHUB_TOKEN }}"
