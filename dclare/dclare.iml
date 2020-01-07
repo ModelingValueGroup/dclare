@@ -8,8 +8,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" scope="TEST" name="Maven: junit:junit" level="project" />
-    <orderEntry type="library" scope="TEST" name="Maven: org.hamcrest:hamcrest-core" level="project" />
-    <orderEntry type="library" name="Maven: org.modelingvalue:immutable-collections" level="project" />
+    <orderEntry type="library" name="hamcrest-core-javadoc" level="project" />
+    <orderEntry type="library" name="immutable-collections-sources" level="project" />
+    <orderEntry type="library" name="junit-javadoc" level="project" />
   </component>
 </module>
