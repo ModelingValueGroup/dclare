@@ -1,0 +1,17 @@
+<!--==============================================================-->
+<!-- WARNING: this file will be overwritten by the build scripts! -->
+<!--          change  project.sh  instead                         -->
+<!--==============================================================-->
+<component name="libraryTable">
+  <library name="gen: hamcrest-core">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
