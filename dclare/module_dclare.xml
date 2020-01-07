@@ -17,28 +17,28 @@
 
   <path id="dclare.module.production.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
-    <path refid="library.maven:_org.modelingvalue:immutable-collections.classpath"/>
+    <path refid="library.gen:_immutable-collections.classpath"/>
   </path>
 
   <path id="dclare.runtime.production.module.classpath">
     <pathelement location="${dclare.output.dir}"/>
-    <path refid="library.maven:_org.modelingvalue:immutable-collections.classpath"/>
+    <path refid="library.gen:_immutable-collections.classpath"/>
   </path>
 
   <path id="dclare.module.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <pathelement location="${dclare.output.dir}"/>
-    <path refid="library.maven:_junit:junit.classpath"/>
-    <path refid="library.maven:_org.hamcrest:hamcrest-core.classpath"/>
-    <path refid="library.maven:_org.modelingvalue:immutable-collections.classpath"/>
+    <path refid="library.gen:_hamcrest-core.classpath"/>
+    <path refid="library.gen:_immutable-collections.classpath"/>
+    <path refid="library.gen:_junit.classpath"/>
   </path>
 
   <path id="dclare.runtime.module.classpath">
     <pathelement location="${dclare.testoutput.dir}"/>
     <pathelement location="${dclare.output.dir}"/>
-    <path refid="library.maven:_junit:junit.classpath"/>
-    <path refid="library.maven:_org.hamcrest:hamcrest-core.classpath"/>
-    <path refid="library.maven:_org.modelingvalue:immutable-collections.classpath"/>
+    <path refid="library.gen:_hamcrest-core.classpath"/>
+    <path refid="library.gen:_immutable-collections.classpath"/>
+    <path refid="library.gen:_junit.classpath"/>
   </path>
 
 
@@ -68,7 +68,7 @@
 
   <target name="compile.module.dclare.production" description="Compile module dclare; production classes">
     <mkdir dir="${dclare.output.dir}"/>
-    <javac includeantruntime="false" destdir="${dclare.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
+    <javac destdir="${dclare.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
            memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
       <compilerarg line="${compiler.args.dclare}"/>
       <bootclasspath refid="dclare.module.bootclasspath"/>
@@ -88,7 +88,7 @@
   <target name="compile.module.dclare.tests" depends="compile.module.dclare.production"
           description="compile module dclare; test classes" unless="skip.tests">
     <mkdir dir="${dclare.testoutput.dir}"/>
-    <javac includeantruntime="false" destdir="${dclare.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
+    <javac destdir="${dclare.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
            memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
       <compilerarg line="${compiler.args.dclare}"/>
       <bootclasspath refid="dclare.module.bootclasspath"/>
