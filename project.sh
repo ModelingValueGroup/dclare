@@ -27,7 +27,8 @@ artifacts=(
   "org.modelingvalue   dclare                  0.0.6       jar jds"
 )
 dependencies=(
+  "org.modelingvalue   immutable-collections   1.0.15      jar jds-"
+
   "junit               junit                   4.12        jar jdst"
   "org.hamcrest        hamcrest-core           1.3         jar jdst"
-  "org.modelingvalue   immutable-collections   1.0.15      jar jds-"
 )
