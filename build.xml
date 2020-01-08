@@ -208,5 +208,4 @@
   </target>
   
   <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
-<import file="${basedir}/dclare/javadoc.xml"/>
 </project>
