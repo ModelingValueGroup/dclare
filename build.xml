@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="dclare" default="all">
-  
-  
   <property file="build.properties"/>
   <!-- Uncomment the following property if no tests compilation is needed -->
   <!-- 
   <property name="skip.tests" value="true"/>
    -->
-  
   <!-- Compiler options -->
-  
   <property name="compiler.debug" value="on"/>
   <property name="compiler.generate.no.warnings" value="off"/>
   <property name="compiler.args" value=""/>
@@ -54,9 +50,7 @@
     <include name="**/?*.tld"/>
     <include name="**/?*.ftl"/>
   </patternset>
-  
   <!-- JDK definitions -->
-  
   <property name="jdk.bin.11" value="${jdk.home.11}/bin"/>
   <path id="jdk.classpath.11">
     <fileset dir="${jdk.home.11}">
@@ -132,38 +126,26 @@
       <include name="../Home!/jdk.zipfs"/>
     </fileset>
   </path>
-  
   <property name="project.jdk.home" value="${jdk.home.11}"/>
   <property name="project.jdk.bin" value="${jdk.bin.11}"/>
   <property name="project.jdk.classpath" value="jdk.classpath.11"/>
-  
-  
   <!-- Project Libraries -->
-  
   <path id="library.gen:_hamcrest-core.classpath">
     <pathelement location="${basedir}/lib/hamcrest-core.jar"/>
   </path>
-  
   <path id="library.gen:_immutable-collections.classpath">
     <pathelement location="${basedir}/lib/immutable-collections.jar"/>
   </path>
-  
   <path id="library.gen:_junit.classpath">
     <pathelement location="${basedir}/lib/junit.jar"/>
   </path>
-  
   <!-- Modules -->
-  
   <import file="${basedir}/dclare/module_dclare.xml"/>
-  
   <target name="init" description="Build initialization">
     <!-- Perform any build initialization in this target -->
   </target>
-  
   <target name="clean" depends="clean.module.dclare" description="cleanup all"/>
-  
   <target name="build.modules" depends="init, clean, compile.module.dclare" description="build all modules"/>
-  
   <target name="init.artifacts">
     <property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
     <property name="artifact.output.dclare-sources" value="${basedir}/out/artifacts"/>
@@ -172,8 +154,7 @@
     <property name="temp.jar.path.dclare-sources.jar" value="${artifacts.temp.dir}/dclare-sources.jar"/>
     <property name="temp.jar.path.dclare.jar" value="${artifacts.temp.dir}/dclare.jar"/>
   </target>
-  
-  <target name="artifact.dclare-sources" depends="init.artifacts" description="Build &#39;dclare-sources&#39; artifact">
+  <target name="artifact.dclare-sources" depends="init.artifacts" description="Build 'dclare-sources' artifact">
     <property name="artifact.temp.output.dclare-sources" value="${artifacts.temp.dir}/dclare_sources"/>
     <mkdir dir="${artifact.temp.output.dclare-sources}"/>
     <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
@@ -182,8 +163,7 @@
     </jar>
     <copy file="${temp.jar.path.dclare-sources.jar}" tofile="${artifact.temp.output.dclare-sources}/dclare-sources.jar"/>
   </target>
-  
-  <target name="artifact.dclare:jar" depends="init.artifacts, compile.module.dclare" description="Build &#39;dclare:jar&#39; artifact">
+  <target name="artifact.dclare:jar" depends="init.artifacts, compile.module.dclare" description="Build 'dclare:jar' artifact">
     <property name="artifact.temp.output.dclare:jar" value="${artifacts.temp.dir}/dclare_jar"/>
     <mkdir dir="${artifact.temp.output.dclare:jar}"/>
     <jar destfile="${temp.jar.path.dclare.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
@@ -192,7 +172,6 @@
     </jar>
     <copy file="${temp.jar.path.dclare.jar}" tofile="${artifact.temp.output.dclare:jar}/dclare.jar"/>
   </target>
-  
   <target name="build.all.artifacts" depends="artifact.dclare-sources, artifact.dclare:jar" description="Build all artifacts">
     <mkdir dir="${artifact.output.dclare-sources}"/>
     <copy todir="${artifact.output.dclare-sources}">
@@ -202,10 +181,11 @@
     <copy todir="${artifact.output.dclare:jar}">
       <fileset dir="${artifact.temp.output.dclare:jar}"/>
     </copy>
-    
     <!-- Delete temporary files -->
     <delete dir="${artifacts.temp.dir}"/>
   </target>
-  
   <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
+  <target name="javadoc" depends="javadoc.module.dclare">
+    <echo>all javadoc generated</echo>
+  </target>
 </project>

@@ -104,4 +104,14 @@
       <zipfileset file="${basedir}/TEST-*.xml"/>
     </jar>
   </target>
+  <target name="javadoc.module.dclare">
+    <property name="dclare.javadoc.dir" value="${basedir}/out/artifacts"/>
+    <property name="dclare.javadoc.tmp" value="${dclare.javadoc.dir}/tmp"/>
+    <property name="dclare.javadoc.jar" value="${dclare.javadoc.dir}/dclare-javadoc.jar"/>
+    <javadoc sourcepathref="dclare.module.test.sourcepath" destdir="${dclare.javadoc.tmp}" classpathref="dclare.module.classpath"/>
+    <jar destfile="${dclare.javadoc.jar}" filesetmanifest="skip">
+      <zipfileset dir="${dclare.javadoc.tmp}"/>
+    </jar>
+    <delete dir="${dclare.javadoc.tmp}"/>
+  </target>
 </project>
