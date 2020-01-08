@@ -24,7 +24,7 @@
 #       t = test
 #===================================================================
 artifacts=(
-  "org.modelingvalue   dclare                  0.0.7       jar jds"
+  "org.modelingvalue   dclare                  0.0.8       jar jds"
 )
 dependencies=(
   "org.modelingvalue   immutable-collections   1.0.16      jar jds-"
