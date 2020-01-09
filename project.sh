@@ -24,10 +24,10 @@
 #       t = test
 #===================================================================
 artifacts=(
-  "org.modelingvalue   dclare                  0.0.9       jar jds"
+  "org.modelingvalue   dclare                  0.0.10      jar jds"
 )
 dependencies=(
-  "org.modelingvalue   immutable-collections   1.0.18      jar jds-"
+  "org.modelingvalue   immutable-collections   1.0.19      jar jds-"
 
   "junit               junit                   4.12        jar jdst"
   "org.hamcrest        hamcrest-core           1.3         jar jdst"

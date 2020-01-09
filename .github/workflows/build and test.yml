@@ -54,10 +54,10 @@ jobs:
         run:  ant
 
       - name: "test"
-        run:  ant test.results.jar.dclare
+        run:  ant test
 
       - name: "generate javadoc"
-        run:  ant javadoc.module.dclare
+        run:  ant javadoc
 
       - name: "push changes back to github"
         run:  |
