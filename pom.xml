@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>0.0.11</version>
+  <version>0.0.12</version>
   <packaging>jar</packaging>
   <scm>
     <url>https://maven.pkg.github.com/ModelingValueGroup/dclare</url>
@@ -28,7 +28,7 @@
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>immutable-collections</artifactId>
-      <version>1.0.19</version>
+      <version>1.0.20</version>
     </dependency>
   </dependencies>
 </project>
