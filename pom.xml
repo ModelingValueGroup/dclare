@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>0.0.10</version>
+  <version>0.0.11</version>
   <packaging>jar</packaging>
   <scm>
     <url>https://maven.pkg.github.com/ModelingValueGroup/dclare</url>

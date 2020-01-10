@@ -186,9 +186,9 @@
   </target>
   <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
   <target name="test" depends="testresults.module.dclare">
-    <echo>all tests done</echo>
+    <echo>all done for test</echo>
   </target>
   <target name="javadoc" depends="javadoc.module.dclare">
-    <echo>all javadoc generated</echo>
+    <echo>all done for javadoc</echo>
   </target>
 </project>
