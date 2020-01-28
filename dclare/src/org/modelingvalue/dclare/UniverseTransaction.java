@@ -23,6 +23,7 @@ import org.modelingvalue.dclare.NonCheckingObserver.*;
 import java.util.concurrent.*;
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
 
     public static final int MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
@@ -90,6 +91,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final BlockingQueue <Action <Universe>> inQueue;
     private final   BlockingQueue <State>             resultQueue;
     private final   State                             emptyState = new State(this, State.EMPTY_OBJECTS_MAP);
+    //REVIEW: why copy the constants over to instance vars while they will never ever be different from the constants?
     private final   int                               maxTotalNrOfChanges;
     private final   int                               maxNrOfChanges;
     private final   int                               maxNrOfObserved;
@@ -129,7 +131,7 @@ public class UniverseTransaction extends MutableTransaction {
         this.forward = Action.of("$forward", o -> {
         });
         this.cycle = cycle != null ? Action.of("$cycle", o -> cycle.accept(this)) : null;
-        this.clearOrphans = Action.of("$clearOrphans", o -> clearOrphans(o));
+        this.clearOrphans = Action.of("$clearOrphans", this::clearOrphans);
         start(universe, null);
         pool.execute(() -> {
             state = start != null ? start.clone(this) : emptyState;
@@ -185,6 +187,7 @@ public class UniverseTransaction extends MutableTransaction {
             stop();
             history = history.append(state);
             constantState.stop();
+            universe.incrementUniverseTransactionCount();
             end(state);
         });
         init();
@@ -215,6 +218,7 @@ public class UniverseTransaction extends MutableTransaction {
             if (e0.getKey() instanceof Universe || e0.getValue().b().get(Mutable.D_PARENT_CONTAINING) != null) {
                 ((Mutable) e0.getKey()).dClass().dSetables().filter(Setable::checkConsistency).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, e0.getKey(), (Constant) s)) {
+                        //noinspection RedundantCast
                         ((Setable) s).checkConsistency(post, e0.getKey(), s instanceof Constant ? constantState.get(lt, e0.getKey(), (Constant) s) : e0.getValue().b().get(s));
                     }
                 });
@@ -236,6 +240,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected <O extends Mutable> State trigger(State state, Set<Action<Universe>> actions, Direction direction) {
+        //REVIEW: direction is always 'forward' here
         for (Action<Universe> action : actions) {
             state = trigger(state, universe(), action, direction);
         }
@@ -244,9 +249,13 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void handleTooManyChanges(State state) {
-        ObserverTrace trace = state.filter(o -> o instanceof Mutable, s -> s.id instanceof Pair && ((Pair) s.id).a() instanceof Observer && ((Pair) s.id).b().equals("TRACES")).//
-                flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElse(null))).//
-                sorted((a, b) -> Integer.compare(b.done().size(), a.done().size())).findFirst().orElse(null);
+        ObserverTrace trace = state//
+                .filter(o -> o instanceof Mutable, s -> s.id instanceof Pair && ((Pair) s.id).a() instanceof Observer && ((Pair) s.id).b().equals("TRACES"))//
+                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set <ObserverTrace>) e2.getValue()).sorted().findFirst().orElse(null)))//
+                //REVIEW: a can be null and trigger an NPE
+                .min((a, b) -> Integer.compare(b.done().size(), a.done().size()))//
+                .orElse(null);
+        //REVIEW: trace can be null and trigger an NPE inside the TooManyChangesException creator
         throw new TooManyChangesException(state, trace, trace.done().size());
     }
 
@@ -267,14 +276,13 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State           st = tx.state();
-        Map <Object, Map <Setable, Pair <Object, Object>>> changed = //
-                preState().diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, s -> true).toMap(Function.identity());
-        changed.forEach(e0 -> {
-            clear(tx, (Mutable) e0.getKey());
-        });
-        changed.forEach(e0 -> {
-            clear(tx, (Mutable) e0.getKey());
-        });
+        Map <Object, Map <Setable, Pair <Object, Object>>> changed //
+                = preState()//
+                .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, s -> true)//
+                .toMap(Function.identity());
+        //REVIEW: is this ok? 2x same code line? please explain.
+        changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
+        changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
     protected void clear(LeafTransaction tx, Mutable orphan) {
@@ -458,5 +466,4 @@ public class UniverseTransaction extends MutableTransaction {
 
     public void startOpposite() {
     }
-
 }

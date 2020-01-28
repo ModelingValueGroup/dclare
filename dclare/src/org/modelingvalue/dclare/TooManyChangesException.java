@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+@SuppressWarnings("unused")
 public final class TooManyChangesException extends ConsistencyError {
 
     private static final long serialVersionUID = 7857822332170335179L;

@@ -23,4 +23,9 @@ public interface Universe extends Mutable, Internable {
         dActivate();
     }
 
+    void incrementUniverseTransactionCount();
+    long getUniverseTransactionCount();
+
+    void incrementTransactionCount();
+    long getTransactionCount();
 }

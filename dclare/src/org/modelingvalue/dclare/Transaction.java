@@ -69,6 +69,7 @@ public abstract class Transaction {
         }
         cls = null;
         parent = null;
+        universeTransaction.universe().incrementTransactionCount();
     }
 
 }

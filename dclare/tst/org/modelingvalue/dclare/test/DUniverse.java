@@ -19,20 +19,23 @@ import org.modelingvalue.dclare.*;
 
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public class DUniverse extends DObject implements Universe {
+    private long universeTransactionCount;
+    private long transactionCount;
 
     public static DUniverse of(Object id, DClass dClass) {
         return new DUniverse(id, u -> {
         }, dClass);
     }
 
-    public static DUniverse of(Object id, Consumer<Universe> init, DClass dClass) {
+    public static DUniverse of(Object id, Consumer <Universe> init, DClass dClass) {
         return new DUniverse(id, init, dClass);
     }
 
-    private final Consumer<Universe> init;
+    private final Consumer <Universe> init;
 
-    protected DUniverse(Object id, Consumer<Universe> init, DClass dClass) {
+    protected DUniverse(Object id, Consumer <Universe> init, DClass dClass) {
         super(id, dClass);
         this.init = init;
     }
@@ -41,6 +44,32 @@ public class DUniverse extends DObject implements Universe {
     public void init() {
         Universe.super.init();
         init.accept(this);
+    }
+
+    @Override
+    public void incrementUniverseTransactionCount() {
+        universeTransactionCount++;
+        if (universeTransactionCount < 0) {
+            universeTransactionCount = 1;
+        }
+    }
+
+    @Override
+    public long getUniverseTransactionCount() {
+        return universeTransactionCount;
+    }
+
+    @Override
+    public void incrementTransactionCount() {
+        transactionCount++;
+        if (transactionCount < 0) {
+            transactionCount = 1;
+        }
+    }
+
+    @Override
+    public long getTransactionCount() {
+        return transactionCount;
     }
 
 }

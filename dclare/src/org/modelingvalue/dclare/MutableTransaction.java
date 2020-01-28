@@ -65,7 +65,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     protected State run(State state) {
         TraceTimer.traceBegin("compound");
         try {
-            State   sb      = null;
             Mutable mutable = mutable();
             sa[0] = state;
             if (this == universeTransaction()) {
@@ -77,7 +76,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                 sa[0] = sa[0].set(mutable, Direction.scheduled.sequence[i], Set.of(), ts);
                 if (ts[0].isEmpty()) {
                     if (++i == 3 && this == universeTransaction()) {
-                        sb = schedule(mutable, sa[0], Direction.backward);
+                        State sb = schedule(mutable, sa[0], Direction.backward);
                         if (sb != sa[0]) {
                             sa[0] = sb;
                             universeTransaction().startOpposite();
@@ -246,5 +245,4 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         return state;
     }
-
 }
