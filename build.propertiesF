@@ -1,0 +1,2 @@
+jdk.home.11=/opt/hostedtoolcache/jdk/11.0.6/x64
+path.variable.maven_repository=/home/runner/.m2/repository
