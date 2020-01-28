@@ -28,7 +28,7 @@ jobs:
 
       - name: "prepare ant"
         run:  |
-          cat <<EOF >build.propertiesF
+          cat <<EOF >build.properties
           jdk.home.11=$JAVA_HOME
           path.variable.maven_repository=$HOME/.m2/repository
           EOF
