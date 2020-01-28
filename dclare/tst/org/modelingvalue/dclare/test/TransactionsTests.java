@@ -82,7 +82,7 @@ public class TransactionsTests {
             }
         });
         State result = universeTransaction.waitForEnd();
-        assertEquals(50_000, universe.getTransactionCount(),20_000);
+        assertEquals(50_000, universe.getTransactionCount(),35_000);
         assertEquals(1, universe.getUniverseTransactionCount());
         System.err.println("********************************************************************");
         System.err.println(result.asString());
@@ -117,7 +117,7 @@ public class TransactionsTests {
         });
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();
-        assertEquals(1688, universe.getTransactionCount(),100);
+        assertEquals(1500, universe.getTransactionCount(),1000);
         assertEquals(1, universe.getUniverseTransactionCount());
         assertEquals(length, (int) result.get(DObject.of(length - 1, dClass), total));
         System.err.println("********************************************************************");
@@ -243,7 +243,7 @@ public class TransactionsTests {
         universeTransaction.put("init", () -> child.set(universe, DObject.of("object", dClass)));
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();
-        assertEquals(6_961_216,universe.getTransactionCount(),30_000);
+        assertEquals(7_000_000,universe.getTransactionCount(),200_000);
         assertEquals(1,universe.getUniverseTransactionCount());
         System.err.println("********************************************************************");
         System.err.println(result.getObjects(DObject.class).size());
