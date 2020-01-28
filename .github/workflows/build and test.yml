@@ -28,7 +28,7 @@ jobs:
 
       - name: "prepare ant"
         run:  |
-          cat <<EOF >build.properties
+          cat <<EOF >build.propertiesF
           jdk.home.11=$JAVA_HOME
           path.variable.maven_repository=$HOME/.m2/repository
           EOF
@@ -54,7 +54,8 @@ jobs:
         run:  ant
 
       - name: "test"
-        run:  ant test
+        run:  |
+          ant test || (for i in TEST-*.xml; do echo "=============== $i"; sed "s/^/>> /" $i; done, exit 42)
 
       - name: "generate javadoc"
         run:  ant javadoc
