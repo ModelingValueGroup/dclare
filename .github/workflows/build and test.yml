@@ -55,7 +55,7 @@ jobs:
 
       - name: "test"
         run:  |
-          ant test || (for i in TEST-*.xml; do echo "=============== $i"; sed "s/^/>> /" $i; done, exit 42)
+          ant test || (for i in TEST-*.xml; do echo "=============== $i"; sed "s/^/>> /" $i; done, exit 42;)
 
       - name: "generate javadoc"
         run:  ant javadoc
