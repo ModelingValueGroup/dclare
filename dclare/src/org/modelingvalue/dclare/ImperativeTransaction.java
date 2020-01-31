@@ -15,30 +15,32 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
-import java.util.*;
-import java.util.function.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer <Runnable> scheduler, TriConsumer <State, State, Boolean> diffHandler) {
+    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler) {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler);
     }
 
-    private static Setable <ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0l);
+    private static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0l);
 
-    private final Consumer <Runnable> scheduler;
+    private final Consumer<Runnable>                    scheduler;
 
     @SuppressWarnings("rawtypes")
-    private Set <Pair <Object, Setable>>        setted;
-    private State                               pre;
-    private State                               state;
-    private TriConsumer <State, State, Boolean> diffHandler;
+    private Set<Pair<Object, Setable>>                  setted;
+    private State                                       pre;
+    private State                                       state;
+    private TriConsumer<State, State, Boolean>          diffHandler;
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer <Runnable> scheduler, TriConsumer <State, State, Boolean> diffHandler) {
+    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
@@ -105,12 +107,12 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void intern2extern(State post, boolean timeTraveling) {
         if (pre != post) {
-            State   finalState = state;
-            boolean last       = post.get(this, CHANGE_NR).equals(finalState.get(this, CHANGE_NR));
+            State finalState = state;
+            boolean last = post.get(this, CHANGE_NR).equals(finalState.get(this, CHANGE_NR));
             if (last) {
                 setted = Set.of();
             } else {
-                for (Pair <Object, Setable> slot : setted) {
+                for (Pair<Object, Setable> slot : setted) {
                     post = post.set(slot.a(), slot.b(), finalState.get(slot.a(), slot.b()));
                 }
             }
@@ -128,7 +130,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T[]     old   = (T[]) new Object[1];
+        T[] old = (T[]) new Object[1];
         boolean first = pre == state;
         state = state.set(object, property, post, old);
         changed(object, property, old[0], post, first);
@@ -138,8 +140,8 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        T[]     oldNew = (T[]) new Object[2];
-        boolean first  = pre == state;
+        T[] oldNew = (T[]) new Object[2];
+        boolean first = pre == state;
         state = state.set(object, property, function, element, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
