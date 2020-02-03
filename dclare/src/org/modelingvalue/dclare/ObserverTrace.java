@@ -20,38 +20,39 @@ import org.modelingvalue.collections.util.*;
 
 import java.util.function.*;
 
-public class ObserverTrace implements Comparable<ObserverTrace> {
+@SuppressWarnings("unused")
+public class ObserverTrace implements Comparable <ObserverTrace> {
 
-    private final Mutable                                   mutable;
-    private final Observer<?>                               observer;
-    private final int                                       nrOfChanges;
-    private final ObserverTrace                             previous;
-    private final Map<ObservedInstance, Object>             read;
-    private final Map<ObservedInstance, Object>             written;
-    private final Set<ObserverTrace>                        done;
-    private final Map<ObservedInstance, Set<ObserverTrace>> backTrace;
+    private final Mutable                                     mutable;
+    private final Observer <?>                                observer;
+    private final int                                         nrOfChanges;
+    private final ObserverTrace                               previous;
+    private final Map <ObservedInstance, Object>              read;
+    private final Map <ObservedInstance, Object>              written;
+    private final Set <ObserverTrace>                         done;
+    private final Map <ObservedInstance, Set <ObserverTrace>> backTrace;
 
-    protected ObserverTrace(Mutable mutable, Observer<?> observer, ObserverTrace previous, int nrOfChanges, Map<ObservedInstance, Object> read, Map<ObservedInstance, Object> written) {
+    protected ObserverTrace(Mutable mutable, Observer <?> observer, ObserverTrace previous, int nrOfChanges, Map <ObservedInstance, Object> read, Map <ObservedInstance, Object> written) {
         this.mutable = mutable;
         this.observer = observer;
         this.nrOfChanges = nrOfChanges;
         this.previous = previous;
         this.read = read;
         this.written = written;
-        for (Entry<ObservedInstance, Object> e : read) {
+        for (Entry <ObservedInstance, Object> e : read) {
             e.getKey().observed().readers().set(e.getKey().mutable(), Set::add, this);
         }
-        for (Entry<ObservedInstance, Object> e : written) {
+        for (Entry <ObservedInstance, Object> e : written) {
             e.getKey().observed().writers().set(e.getKey().mutable(), Set::add, this);
         }
-        Set<ObserverTrace> done = previous != null ? previous.done : Set.of();
-        Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.toMap(e -> {
-            ObservedInstance   observedInstance = e.getKey();
-            Set<ObserverTrace> writers          = observedInstance.observed().writers().get(observedInstance.mutable());
+        Set <ObserverTrace> done = previous != null ? previous.done : Set.of();
+        Map <ObservedInstance, Set <ObserverTrace>> backTrace = read.toMap(e -> {
+            ObservedInstance    observedInstance = e.getKey();
+            Set <ObserverTrace> writers          = observedInstance.observed().writers().get(observedInstance.mutable());
             return Entry.of(observedInstance, writers.removeAll(done).remove(this));
         });
-        Set<ObserverTrace> back     = backTrace.flatMap(Entry::getValue).toSet();
-        Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
+        Set <ObserverTrace> back     = backTrace.flatMap(Entry::getValue).toSet();
+        Set <ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
         backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
         if (backTrace.anyMatch(e -> e.getValue().anyMatch(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)))) {
             backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).toSet()));
@@ -64,7 +65,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         return mutable;
     }
 
-    public Observer<?> observer() {
+    public Observer <?> observer() {
         return observer;
     }
 
@@ -72,15 +73,15 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         return nrOfChanges;
     }
 
-    public Set<ObserverTrace> done() {
+    public Set <ObserverTrace> done() {
         return done;
     }
 
-    public Map<ObservedInstance, Object> read() {
+    public Map <ObservedInstance, Object> read() {
         return read;
     }
 
-    public Map<ObservedInstance, Object> written() {
+    public Map <ObservedInstance, Object> written() {
         return written;
     }
 
@@ -88,7 +89,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         return previous;
     }
 
-    public Map<ObservedInstance, Set<ObserverTrace>> backTrace() {
+    public Map <ObservedInstance, Set <ObserverTrace>> backTrace() {
         return backTrace;
     }
 
@@ -104,27 +105,27 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
 
     @SuppressWarnings("unchecked")
     public String trace(String prefix, String message, int length) {
-        String[] result = new String[]{message};
-        trace(prefix, (c, r) -> {
-            result[0] += c + "run: " + r.mutable() + "." + r.observer() + " nr: " + r.nrOfChanges;
-        }, (c, r, s) -> {
-            result[0] += c + "read: " + s.mutable() + "." + s.observed() + "=" + r.read.get(s);
-        }, (c, w, s) -> {
-            result[0] += c + "  write: " + s.mutable() + "." + s.observed() + "=" + w.written.get(s);
-        }, p -> p + "  ", new Set[]{Set.of()}, length);
-        return result[0];
+        StringBuilder sb = new StringBuilder();
+        trace(prefix,
+                (c, r) -> sb.append(c).append("run: ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges),
+                (c, r, s) -> sb.append(c).append("read: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(r.read.get(s)),
+                (c, w, s) -> sb.append(c).append("  write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)),
+                p -> p + "  ",
+                new Set[]{Set.of()},
+                length);
+        return sb.toString();
     }
 
     @SuppressWarnings("unchecked")
-    public <C> void trace(C context, BiConsumer<C, ObserverTrace> runHandler, TriConsumer<C, ObserverTrace, ObservedInstance> readHandler, TriConsumer<C, ObserverTrace, ObservedInstance> writeHandler, Function<C, C> traceHandler, int length) {
+    public <C> void trace(C context, BiConsumer <C, ObserverTrace> runHandler, TriConsumer <C, ObserverTrace, ObservedInstance> readHandler, TriConsumer <C, ObserverTrace, ObservedInstance> writeHandler, Function <C, C> traceHandler, int length) {
         trace(context, runHandler, readHandler, writeHandler, traceHandler, new Set[]{Set.of()}, length);
     }
 
-    private <C> void trace(C context, BiConsumer<C, ObserverTrace> runHandler, TriConsumer<C, ObserverTrace, ObservedInstance> readHandler, TriConsumer<C, ObserverTrace, ObservedInstance> writeHandler, Function<C, C> traceHandler, Set<ObserverTrace>[] done, int length) {
+    private <C> void trace(C context, BiConsumer <C, ObserverTrace> runHandler, TriConsumer <C, ObserverTrace, ObservedInstance> readHandler, TriConsumer <C, ObserverTrace, ObservedInstance> writeHandler, Function <C, C> traceHandler, Set <ObserverTrace>[] done, int length) {
         runHandler.accept(context, this);
         if (done[0].size() < length && !done[0].contains(this)) {
             done[0] = done[0].add(this);
-            for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
+            for (Entry <ObservedInstance, Set <ObserverTrace>> e : backTrace()) {
                 if (!e.getValue().isEmpty()) {
                     readHandler.accept(context, this, e.getKey());
                     for (ObserverTrace writer : e.getValue()) {

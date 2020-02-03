@@ -19,16 +19,21 @@ import java.util.function.*;
 
 public class Action<O extends Mutable> extends Leaf {
 
+    public static <M extends Mutable> Action<M> of(Object id) {
+        return new Action<>(id, o -> {
+        }, Direction.forward, Priority.postDepth);
+    }
+
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<M>(id, action, Direction.forward, Priority.postDepth);
+        return new Action<>(id, action, Direction.forward, Priority.postDepth);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Priority priority) {
-        return new Action<M>(id, action, Direction.forward, priority);
+        return new Action<>(id, action, Direction.forward, priority);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new Action<M>(id, action, initDirection, priority);
+        return new Action<>(id, action, initDirection, priority);
     }
 
     private final Consumer<O> action;

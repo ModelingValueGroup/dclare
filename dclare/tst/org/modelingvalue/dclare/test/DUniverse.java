@@ -21,9 +21,6 @@ import java.util.function.*;
 
 @SuppressWarnings("unused")
 public class DUniverse extends DObject implements Universe {
-    private long universeTransactionCount;
-    private long transactionCount;
-
     public static DUniverse of(Object id, DClass dClass) {
         return new DUniverse(id, u -> {
         }, dClass);
@@ -45,31 +42,4 @@ public class DUniverse extends DObject implements Universe {
         Universe.super.init();
         init.accept(this);
     }
-
-    @Override
-    public void incrementUniverseTransactionCount() {
-        universeTransactionCount++;
-        if (universeTransactionCount < 0) {
-            universeTransactionCount = 1;
-        }
-    }
-
-    @Override
-    public long getUniverseTransactionCount() {
-        return universeTransactionCount;
-    }
-
-    @Override
-    public void incrementTransactionCount() {
-        transactionCount++;
-        if (transactionCount < 0) {
-            transactionCount = 1;
-        }
-    }
-
-    @Override
-    public long getTransactionCount() {
-        return transactionCount;
-    }
-
 }

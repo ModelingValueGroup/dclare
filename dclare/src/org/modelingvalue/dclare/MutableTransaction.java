@@ -21,6 +21,7 @@ import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.Direction.*;
 import org.modelingvalue.dclare.Observed.*;
+import org.modelingvalue.dclare.ex.*;
 
 import java.util.*;
 

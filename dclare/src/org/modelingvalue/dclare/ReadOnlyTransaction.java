@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
 
     private State state;

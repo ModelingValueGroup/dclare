@@ -27,15 +27,15 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
-        return new Observer<M>(id, action, Direction.forward, Priority.postDepth);
+        return new Observer <>(id, action, Direction.forward, Priority.postDepth);
     }
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority priority) {
-        return new Observer<M>(id, action, Direction.forward, priority);
+        return new Observer <>(id, action, Direction.forward, priority);
     }
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new Observer<M>(id, action, initDirection, priority);
+        return new Observer <>(id, action, initDirection, priority);
     }
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;

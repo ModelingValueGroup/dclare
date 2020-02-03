@@ -19,6 +19,7 @@ import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
 
+@SuppressWarnings("unused")
 public class DClass implements MutableClass {
 
     @SafeVarargs

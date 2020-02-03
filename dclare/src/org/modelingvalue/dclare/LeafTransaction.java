@@ -20,6 +20,7 @@ import org.modelingvalue.collections.util.*;
 
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
 
     protected static final Context<LeafTransaction> CURRENT = Context.of();
@@ -32,8 +33,8 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
-    protected static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + e.getValue().size(), (a, b) -> a + b);
+    public static int size(DefaultMap<?, Set<Mutable>> map) {
+        return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
     }
 
     public static LeafTransaction getCurrent() {

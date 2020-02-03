@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.Observer.*;
+import org.modelingvalue.dclare.ex.*;
 
 public class ObserverTransaction extends ActionTransaction {
 
@@ -48,24 +49,25 @@ public class ObserverTransaction extends ActionTransaction {
     protected void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
         try {
-            long rootCount = universeTransaction.runCount();
+            // check if the universe is still in the same transaction, if not: reset my state
+            long rootCount = universeTransaction.stats().runCount();
             if (observer.runCount != rootCount) {
                 observer.runCount = rootCount;
                 observer.changes = 0;
                 observer.stopped = false;
             }
-            if (observer.stopped || universeTransaction.isKilled()) {
-                return;
+            // check if we should do the work...
+            if (!observer.stopped && !universeTransaction.isKilled()) {
+                getted.init(Observed.OBSERVED_MAP);
+                setted.init(Observed.OBSERVED_MAP);
+                super.run(pre, universeTransaction);
+                DefaultMap<Observed, Set<Mutable>> gets = getted.result();
+                DefaultMap<Observed, Set<Mutable>> sets = setted.result();
+                if (changed) {
+                    checkTooManyChanges(pre, sets, gets);
+                }
+                observe(observer, sets, gets);
             }
-            getted.init(Observed.OBSERVED_MAP);
-            setted.init(Observed.OBSERVED_MAP);
-            super.run(pre, universeTransaction);
-            DefaultMap<Observed, Set<Mutable>> gets = getted.result();
-            DefaultMap<Observed, Set<Mutable>> sets = setted.result();
-            if (changed) {
-                checkTooManyChanges(pre, sets, gets);
-            }
-            observe(observer, sets, gets);
         } catch (DeferException soe) {
             clear();
             init(pre);
@@ -97,7 +99,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
-        if (universeTransaction().maxNrOfObserved() < size(gets) + size(sets)) {
+        if (universeTransaction().stats().maxNrOfObserved() < size(gets) + size(sets)) {
             throw new TooManyObservedException(parent().mutable(), observer(), gets.addAll(sets, Set::addAll), universeTransaction());
         }
     }
@@ -107,7 +109,7 @@ public class ObserverTransaction extends ActionTransaction {
         UniverseTransaction universeTransaction = universeTransaction();
         Observer<?>         observer            = observer();
         Mutable             mutable             = parent().mutable();
-        if (universeTransaction.isDebugging()) {
+        if (universeTransaction.stats().debugging()) {
             State post = result();
             init(post);
             Set<ObserverTrace> traces = observer.traces.get(mutable);
@@ -122,16 +124,16 @@ public class ObserverTransaction extends ActionTransaction {
                     })).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
         }
-        int totalChanges       = universeTransaction.countTotalChanges();
+        int totalChanges       = universeTransaction.stats().bumpAndGetTotalChanges();
         int changesPerInstance = observer.countChangesPerInstance();
-        if (changesPerInstance > universeTransaction.maxNrOfChanges()) {
-            universeTransaction.setDebugging();
-            if (changesPerInstance > universeTransaction.maxNrOfChanges() * 2) {
+        if (changesPerInstance > universeTransaction.stats().maxNrOfChanges()) {
+            universeTransaction.stats().setDebugging(true);
+            if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() * 2) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
             }
-        } else if (totalChanges > universeTransaction.maxTotalNrOfChanges()) {
-            universeTransaction.setDebugging();
-            if (totalChanges > universeTransaction.maxTotalNrOfChanges() + universeTransaction.maxNrOfChanges()) {
+        } else if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges()) {
+            universeTransaction.stats().setDebugging(true);
+            if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges() + universeTransaction.stats().maxNrOfChanges()) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }
@@ -141,7 +143,7 @@ public class ObserverTransaction extends ActionTransaction {
         State result = result();
         init(result);
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
-        if (last != null && last.done().size() >= (changes > universeTransaction.maxTotalNrOfChanges() ? 1 : universeTransaction.maxNrOfChanges())) {
+        if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
             observer.stopped = true;

@@ -17,36 +17,38 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observed, Set<Mutable>> OBSERVED_MAP = DefaultMap.of(k -> Set.of());
 
     public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new Observed<C, V>(id, def, false, null, null, null, true);
+        return new Observed <>(id, def, false, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new Observed<C, V>(id, def, containment, null, null, null, true);
+        return new Observed <>(id, def, containment, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Observed<C, V>(id, def, false, null, null, changed, true);
+        return new Observed <>(id, def, false, null, null, changed, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new Observed<C, V>(id, def, containment, null, null, null, checkConsistency);
+        return new Observed <>(id, def, containment, null, null, null, checkConsistency);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Observed<C, V>(id, def, false, opposite, null, null, true);
+        return new Observed <>(id, def, false, opposite, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed<C, V>(id, def, false, opposite, scope, null, checkConsistency);
+        return new Observed <>(id, def, false, opposite, scope, null, checkConsistency);
     }
 
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
@@ -72,6 +74,7 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Observed(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, def, containment, opposite, scope, null, checkConsistency);
+        //REVIEW: why is the 'changed' not passed to the super()? if passed, the 'changed' can be private final
         this.changed = (l, o, p, n) -> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
@@ -97,7 +100,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (tx.universeTransaction().maxNrOfObservers() < LeafTransaction.size(observers)) {
+        if (tx.universeTransaction().stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
             throw new TooManyObserversException(object, this, observers, tx.universeTransaction());
         }
     }
@@ -134,10 +137,11 @@ public class Observed<O, T> extends Setable<O, T> {
         private final Direction      direction;
 
         public static <C, V> Observers<C, V> of(Object id, Direction direction) {
-            return new Observers<C, V>(id, direction);
+            return new Observers <>(id, direction);
         }
 
         private Observers(Object id, Direction direction) {
+            //REVIEW: why is the 'changed' not passed to the super()? if passed, the 'changed' can be private final
             super(Pair.of(id, direction), Observer.OBSERVER_MAP, false, null, null, null, false);
             changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx, o, a);
             this.direction = direction;

@@ -25,7 +25,7 @@ public enum Priority {
 
     public final int nr;
 
-    private Priority(int nr) {
+    Priority(int nr) {
         this.nr = nr;
     }
 

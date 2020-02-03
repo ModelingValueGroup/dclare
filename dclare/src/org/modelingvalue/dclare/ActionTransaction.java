@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
 import java.util.*;
 import java.util.function.*;

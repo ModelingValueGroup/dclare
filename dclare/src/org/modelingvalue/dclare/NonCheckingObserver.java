@@ -22,7 +22,7 @@ import java.util.function.*;
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new NonCheckingObserver<M>(id, action, initDirection, priority);
+        return new NonCheckingObserver <>(id, action, initDirection, priority);
     }
 
     private NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection, Priority priority) {

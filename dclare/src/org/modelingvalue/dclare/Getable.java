@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 
+@SuppressWarnings("unused")
 public abstract class Getable<O, T> implements Feature, Internable {
 
     protected final Object id;

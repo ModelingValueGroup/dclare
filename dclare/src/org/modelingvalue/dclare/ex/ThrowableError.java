@@ -13,8 +13,11 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
+import org.modelingvalue.dclare.*;
+
+@SuppressWarnings("unused")
 public final class ThrowableError extends ConsistencyError {
 
     private static final long serialVersionUID = -4723221087879478090L;

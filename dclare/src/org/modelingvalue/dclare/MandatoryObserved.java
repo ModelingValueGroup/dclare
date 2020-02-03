@@ -17,33 +17,34 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
 import java.util.function.*;
 
 public class MandatoryObserved<O, T> extends Observed<O, T> {
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def, boolean containment) {
-        return new MandatoryObserved<C, V>(id, def, containment, null, null, null, true);
+        return new MandatoryObserved <>(id, def, containment, null, null, null, true);
     }
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new MandatoryObserved<C, V>(id, def, false, null, null, changed, true);
+        return new MandatoryObserved <>(id, def, false, null, null, changed, true);
     }
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new MandatoryObserved<C, V>(id, def, false, opposite, null, null, true);
+        return new MandatoryObserved <>(id, def, false, opposite, null, null, true);
     }
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def) {
-        return new MandatoryObserved<C, V>(id, def, false, null, null, null, true);
+        return new MandatoryObserved <>(id, def, false, null, null, null, true);
     }
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new MandatoryObserved<C, V>(id, def, containment, null, null, null, checkConsistency);
+        return new MandatoryObserved <>(id, def, containment, null, null, null, checkConsistency);
     }
 
     public static <C, V> MandatoryObserved<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new MandatoryObserved<C, V>(id, def, false, opposite, scope, null, checkConsistency);
+        return new MandatoryObserved <>(id, def, false, opposite, scope, null, checkConsistency);
     }
 
     protected MandatoryObserved(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {

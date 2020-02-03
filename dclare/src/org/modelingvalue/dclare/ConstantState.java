@@ -15,21 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.BiFunction;
-
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
+
+import java.lang.ref.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 @SuppressWarnings("rawtypes")
 public class ConstantState {
@@ -64,7 +59,7 @@ public class ConstantState {
         }
     }
 
-    private static interface Ref<O> {
+    private interface Ref<O> {
         Constants<O> constants();
     }
 
@@ -125,6 +120,7 @@ public class ConstantState {
 
         @SuppressWarnings("unchecked")
         public <V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
+            //REVIEW: parameters 'leafTransaction' and 'object' are never used, why are they there
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             return ist != null;
@@ -226,7 +222,7 @@ public class ConstantState {
     }
 
     private final ReferenceQueue<Object>                           queue = new ReferenceQueue<>();
-    private final AtomicReference<QualifiedSet<Object, Constants>> state = new AtomicReference<>(QualifiedSet.of(cs -> cs.object()));
+    private final AtomicReference<QualifiedSet<Object, Constants>> state = new AtomicReference<>(QualifiedSet.of(Constants::object));
     private final Thread                                           remover;
 
     public ConstantState() {
@@ -236,6 +232,7 @@ public class ConstantState {
                     removeConstants(((Ref<?>) queue.remove()).constants());
                 }
             } catch (InterruptedException e) {
+                //REVIEW: empty catch block needs at least a comment
             }
         });
         remover.setDaemon(true);
@@ -268,7 +265,7 @@ public class ConstantState {
         Constants constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants<O>(object, WEAK.get(), queue);
+            constants = new Constants <>(object, WEAK.get(), queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {

@@ -34,7 +34,7 @@ public enum Direction implements Internable {
     public final Queued<TransactionClass>[] sequence;
 
     @SuppressWarnings("unchecked")
-    private Direction(int nr) {
+    Direction(int nr) {
         preDepth = new Queued<>(Priority.preDepth);
         depth = new Queued<>(Priority.depth);
         postDepth = new Queued<>(Priority.postDepth);

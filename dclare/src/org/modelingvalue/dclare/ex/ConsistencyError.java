@@ -13,54 +13,34 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
-import java.util.stream.*;
+@SuppressWarnings({"serial", "unused"})
+public abstract class ConsistencyError extends RuntimeException {
 
-public final class TooManyObservedException extends ConsistencyError {
+    private final Object  object;
+    private final Feature feature;
 
-    private static final long serialVersionUID = 2091236807252565002L;
-
-    private final Observer<?>                        observer;
-    @SuppressWarnings("rawtypes")
-    private final DefaultMap<Observed, Set<Mutable>> observed;
-    private final UniverseTransaction                universeTransaction;
-
-    @SuppressWarnings("rawtypes")
-    public TooManyObservedException(Mutable mutable, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observed, UniverseTransaction universeTransaction) {
-        super(mutable, observer, universeTransaction.preState().get(() -> {
-            return "Too many observed (" + LeafTransaction.size(observed) + ") by " + StringUtil.toString(mutable) + "." + StringUtil.toString(observer);
-        }));
-        this.observer = observer;
-        this.observed = observed;
-        this.universeTransaction = universeTransaction;
+    protected ConsistencyError(Object object, Feature feature, String message) {
+        super(message);
+        this.object = object;
+        this.feature = feature;
     }
 
-    @Override
-    public String getMessage() {
-        String observedMap = universeTransaction.preState().get(() -> {
-            return observed.map(String::valueOf).collect(Collectors.joining("\n  "));
-        });
-        return getSimpleMessage() + ":\n  " + observedMap;
+    protected ConsistencyError(Object object, Feature feature, Throwable t) {
+        super(t);
+        this.object = object;
+        this.feature = feature;
     }
 
-    public String getSimpleMessage() {
-        return super.getMessage();
+    public Object getObject() {
+        return object;
     }
 
-    public int getNrOfObserved() {
-        return LeafTransaction.size(observed);
+    public Feature getFeature() {
+        return feature;
     }
 
-    public Observer<?> getObserver() {
-        return observer;
-    }
-
-    @SuppressWarnings("rawtypes")
-    public DefaultMap<Observed, Set<Mutable>> getObserved() {
-        return observed;
-    }
 }

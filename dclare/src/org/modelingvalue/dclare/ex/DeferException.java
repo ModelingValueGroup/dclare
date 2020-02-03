@@ -13,12 +13,10 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class NonDeterministicException extends ConsistencyError {
-    private static final long serialVersionUID = 7857822332170335179L;
+public final class DeferException extends RuntimeException {
 
-    public NonDeterministicException(Object object, Getable<?, ?> getable, String message) {
-        super(object, getable, message);
-    }
+    private static final long serialVersionUID = -4289705377708158959L;
+
 }

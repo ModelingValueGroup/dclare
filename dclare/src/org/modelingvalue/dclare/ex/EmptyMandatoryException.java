@@ -13,32 +13,16 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-@SuppressWarnings("serial")
-public abstract class ConsistencyError extends RuntimeException {
+import org.modelingvalue.dclare.*;
 
-    private final Object  object;
-    private final Feature feature;
+public final class EmptyMandatoryException extends ConsistencyError {
 
-    protected ConsistencyError(Object object, Feature feature, String message) {
-        super(message);
-        this.object = object;
-        this.feature = feature;
-    }
+    private static final long serialVersionUID = -6687018038130352922L;
 
-    protected ConsistencyError(Object object, Feature feature, Throwable t) {
-        super(t);
-        this.object = object;
-        this.feature = feature;
-    }
-
-    public Object getObject() {
-        return object;
-    }
-
-    public Feature getFeature() {
-        return feature;
+    public EmptyMandatoryException(Object object, Setable<?, ?> setable) {
+        super(object, setable, "Empty mandatory property '" + setable + "' of object '" + object + "'");
     }
 
 }

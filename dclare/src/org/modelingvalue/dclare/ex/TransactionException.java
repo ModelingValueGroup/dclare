@@ -13,10 +13,13 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
+
+import org.modelingvalue.dclare.*;
 
 import java.util.*;
 
+@SuppressWarnings("unused")
 public final class TransactionException extends RuntimeException {
 
     private static final long serialVersionUID = 4787416569147173605L;
@@ -43,8 +46,8 @@ public final class TransactionException extends RuntimeException {
 
     private int reduceStackLength(StackTraceElement[] outer, StackTraceElement[] inner) {
         for (int i = 0; i < inner.length; i++) {
-            for (int o = 0; o < outer.length; o++) {
-                if (inner[i].equals(outer[o])) {
+            for (StackTraceElement stackTraceElement : outer) {
+                if (inner[i].equals(stackTraceElement)) {
                     return i + 2;
                 }
             }

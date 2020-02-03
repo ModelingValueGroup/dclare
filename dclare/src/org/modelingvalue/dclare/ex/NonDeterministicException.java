@@ -13,14 +13,14 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class EmptyMandatoryException extends ConsistencyError {
+import org.modelingvalue.dclare.*;
 
-    private static final long serialVersionUID = -6687018038130352922L;
+public final class NonDeterministicException extends ConsistencyError {
+    private static final long serialVersionUID = 7857822332170335179L;
 
-    public EmptyMandatoryException(Object object, Setable<?, ?> setable) {
-        super(object, setable, "Empty mandatory property '" + setable + "' of object '" + object + "'");
+    public NonDeterministicException(Object object, Getable<?, ?> getable, String message) {
+        super(object, getable, message);
     }
-
 }

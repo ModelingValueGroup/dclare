@@ -19,6 +19,7 @@ import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.ContextThread.*;
 import org.modelingvalue.dclare.NonCheckingObserver.*;
+import org.modelingvalue.dclare.ex.*;
 
 import java.util.concurrent.*;
 import java.util.function.*;
@@ -65,7 +66,7 @@ public class UniverseTransaction extends MutableTransaction {
         return new UniverseTransaction(id, pool, start, MAX_IN_IN_QUEUE, MAX_TOTAL_NR_OF_CHANGES, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY, null);
     }
 
-    public static UniverseTransaction of(Universe id, ContextPool pool, State start, int maxInInQueue, Consumer <UniverseTransaction> cycle) {
+    public static UniverseTransaction of(Universe id, ContextPool pool, State start, int maxInInQueue, Consumer<UniverseTransaction> cycle) {
         return new UniverseTransaction(id, pool, start, maxInInQueue, MAX_TOTAL_NR_OF_CHANGES, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY, cycle);
     }
 
@@ -73,76 +74,61 @@ public class UniverseTransaction extends MutableTransaction {
         return new UniverseTransaction(id, pool, start, maxInInQueue, MAX_TOTAL_NR_OF_CHANGES, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY, null);
     }
 
-    public static final Setable <Universe, Boolean>                 STOPPED      = Setable.of("stopped", false);
-    public static final Setable <Universe, Set <Action <Universe>>> POST_ACTIONS = Setable.of("postActions", Set.of());
+    private static final Setable<Universe, Boolean>               STOPPED      = Setable.of("stopped", false);
+    private static final Setable<Universe, Set<Action<Universe>>> POST_ACTIONS = Setable.of("postActions", Set.of());
 
-    protected final Concurrent <ReusableTransaction <Action <?>, ActionTransaction>>                   actionTransactions;
-    protected final Concurrent <ReusableTransaction <Observer <?>, ObserverTransaction>>               observerTransactions;
-    protected final Concurrent <ReusableTransaction <Mutable, MutableTransaction>>                     mutableTransactions;
-    protected final Concurrent <ReusableTransaction <ReadOnly, ReadOnlyTransaction>>                   readOnlys;
-    protected final Concurrent <ReusableTransaction <NonCheckingObserver <?>, NonCheckingTransaction>> nonCheckingTransactions;
+    protected final Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
 
-    private final   Action <Universe>                 cycle;
-    private final   Action <Universe>                 dummy;
-    private final   Action <Universe>                 stop;
-    private final   Action <Universe>                 backward;
-    private final   Action <Universe>                 forward;
-    private final   Action <Universe>                 clearOrphans;
-    protected final BlockingQueue <Action <Universe>> inQueue;
-    private final   BlockingQueue <State>             resultQueue;
-    private final   State                             emptyState = new State(this, State.EMPTY_OBJECTS_MAP);
-    //REVIEW: why copy the constants over to instance vars while they will never ever be different from the constants?
-    private final   int                               maxTotalNrOfChanges;
-    private final   int                               maxNrOfChanges;
-    private final   int                               maxNrOfObserved;
-    private final   int                               maxNrOfObservers;
-    protected final ReadOnly                          runOnState = new ReadOnly(this, Direction.forward, Priority.postDepth);
+    private final   Action<Universe>                cycle;
+    private final   Action<Universe>                dummy                = Action.of("$dummy");
+    private final   Action<Universe>                stop                 = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final   Action<Universe>                backward             = Action.of("$backward");
+    private final   Action<Universe>                forward              = Action.of("$forward");
+    private final   Action<Universe>                clearOrphans         = Action.of("$clearOrphans", this::clearOrphans);
+    protected final BlockingQueue<Action<Universe>> inQueue;
+    private final   BlockingQueue<State>            resultQueue          = new LinkedBlockingQueue<>(1);
+    private final   State                           emptyState           = new State(this, State.EMPTY_OBJECTS_MAP);
+    protected final ReadOnly                        runOnState           = new ReadOnly(this, Direction.forward, Priority.postDepth);
+    private final   UniverseStatistics              universeStatistics;
+    private         List<Action<Universe>>          timeTravelingActions = List.of(backward, forward);
+    //
+    private         List<State>                     history              = List.of();
+    private         List<State>                     future               = List.of();
+    private         State                           preState;
+    private         State                           state;
+    protected final ConstantState                   constantState        = new ConstantState();
+    private         boolean                         killed;
+    private         boolean                         timeTraveling;
+    private         Throwable                       error;
 
-    private   List <State>      history       = List.of();
-    private   List <State>      future        = List.of();
-    private   State             preState;
-    private   State             state;
-    protected ConstantState     constantState = new ConstantState();
-    protected Action <Universe> leaf;
-    private   long              runCount;
-    private   int               changes;
-    private   boolean           debug;
-    private   boolean           killed;
-    private   Throwable         error;
-
-    protected UniverseTransaction(Universe universe, ContextPool pool, State start, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory, Consumer <UniverseTransaction> cycle) {
+    protected UniverseTransaction(Universe universe, ContextPool pool, State start, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory, Consumer<UniverseTransaction> cycle) {
         super(null);
-        this.maxTotalNrOfChanges = maxTotalNrOfChanges;
-        this.maxNrOfChanges = maxNrOfChanges;
-        this.maxNrOfObserved = maxNrOfObserved;
-        this.maxNrOfObservers = maxNrOfObservers;
-        this.actionTransactions = Concurrent.of(() -> new ReusableTransaction <>(this));
-        this.observerTransactions = Concurrent.of(() -> new ReusableTransaction <>(this));
-        this.mutableTransactions = Concurrent.of(() -> new ReusableTransaction <>(this));
-        this.readOnlys = Concurrent.of(() -> new ReusableTransaction<>(this));
-        this.nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
-        this.inQueue = new LinkedBlockingQueue<>(maxInInQueue);
-        this.resultQueue = new LinkedBlockingQueue<>(1);
-        this.stop = Action.of("$stop", o -> STOPPED.set(universe(), true));
-        this.dummy = Action.of("$dummy", o -> {
-        });
-        this.backward = Action.of("$backward", o -> {
-        });
-        this.forward = Action.of("$forward", o -> {
-        });
         this.cycle = cycle != null ? Action.of("$cycle", o -> cycle.accept(this)) : null;
-        this.clearOrphans = Action.of("$clearOrphans", this::clearOrphans);
+        this.inQueue = new LinkedBlockingQueue<>(maxInInQueue);
+        this.universeStatistics = new UniverseStatistics(this, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
         start(universe, null);
-        pool.execute(() -> {
-            state = start != null ? start.clone(this) : emptyState;
-            while (!killed) {
+        pool.execute(() -> mainLoop(start));
+        init();
+    }
+
+    protected void addTimeTravelingAction(Action<Universe> action) {
+        timeTravelingActions = timeTravelingActions.add(action);
+    }
+
+    private void mainLoop(State start) {
+        state = start != null ? start.clone(this) : emptyState;
+        while (!killed) {
+            try {
+                Action<Universe> leaf = take();
+                universeStatistics.setDebugging(false);
+                preState = state;
                 TraceTimer.traceBegin("root");
                 try {
-                    changes = 0;
-                    debug = false;
-                    runCount++;
-                    preState = state;
-                    leaf = take();
+                    timeTraveling = timeTravelingActions.contains(leaf);
                     start(leaf);
                     if (leaf == backward) {
                         if (history.size() > 3) {
@@ -159,11 +145,11 @@ public class UniverseTransaction extends MutableTransaction {
                     } else if (leaf != dummy) {
                         history = history.append(state);
                         future = List.of();
-                        if (history.size() > maxNrOfHistory) {
+                        if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
                         state = state.get(() -> post(run(trigger(pre(state), universe(), leaf, leaf.initDirection()))));
-                        if (isDebugging()) {
+                        if (stats().debugging()) {
                             handleTooManyChanges(state);
                         }
                     }
@@ -173,7 +159,8 @@ public class UniverseTransaction extends MutableTransaction {
                     if (!killed && inQueue.isEmpty()) {
                         if (isStopped(state)) {
                             break;
-                        } else if (this.cycle != null) {
+                        }
+                        if (this.cycle != null) {
                             put(this.cycle);
                         }
                     }
@@ -181,16 +168,17 @@ public class UniverseTransaction extends MutableTransaction {
                     handleException(t);
                 } finally {
                     end(leaf);
+                    universeStatistics.completeRun();
                     TraceTimer.traceEnd("root");
                 }
+            } catch (Throwable t) {
+                handleException(t);
             }
-            stop();
-            history = history.append(state);
-            constantState.stop();
-            universe.incrementUniverseTransactionCount();
-            end(state);
-        });
-        init();
+        }
+        stop();
+        history = history.append(state);
+        constantState.stop();
+        end(state);
     }
 
     protected void handleException(Throwable t) {
@@ -198,6 +186,13 @@ public class UniverseTransaction extends MutableTransaction {
             error = t;
         }
         kill();
+    }
+
+    public void throwIfError() {
+        Throwable e = error;
+        if (e != null) {
+            throw new Error(e);
+        }
     }
 
     protected void init() {
@@ -241,7 +236,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected <O extends Mutable> State trigger(State state, Set<Action<Universe>> actions, Direction direction) {
         //REVIEW: direction is always 'forward' here
-        for (Action<Universe> action : actions) {
+        for (Action<Universe> action: actions) {
             state = trigger(state, universe(), action, direction);
         }
         return state;
@@ -249,13 +244,15 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void handleTooManyChanges(State state) {
+        //noinspection ConstantConditions
         ObserverTrace trace = state//
                 .filter(o -> o instanceof Mutable, s -> s.id instanceof Pair && ((Pair) s.id).a() instanceof Observer && ((Pair) s.id).b().equals("TRACES"))//
-                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set <ObserverTrace>) e2.getValue()).sorted().findFirst().orElse(null)))//
-                //REVIEW: a can be null and trigger an NPE
+                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElse(null)))//
+                //REVIEW: 'a' can be null and trigger an NPE
                 .min((a, b) -> Integer.compare(b.done().size(), a.done().size()))//
                 .orElse(null);
-        //REVIEW: trace can be null and trigger an NPE inside the TooManyChangesException creator
+        //REVIEW: 'trace' can be null and trigger an NPE inside the TooManyChangesException creator
+        //noinspection ConstantConditions
         throw new TooManyChangesException(state, trace, trace.done().size());
     }
 
@@ -276,18 +273,18 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State           st = tx.state();
-        Map <Object, Map <Setable, Pair <Object, Object>>> changed //
+        Map<Object, Map<Setable, Pair<Object, Object>>> changed //
                 = preState()//
                 .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, s -> true)//
                 .toMap(Function.identity());
-        //REVIEW: is this ok? 2x same code line? please explain.
+        //REVIEW: is this ok? 2x same code line? if yes: please explain.
         changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
         changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
     protected void clear(LeafTransaction tx, Mutable orphan) {
         tx.clear(orphan);
-        for (Mutable child : orphan.dChildren()) {
+        for (Mutable child: orphan.dChildren()) {
             clear(tx, child);
         }
     }
@@ -348,7 +345,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public void addDiffHandler(String id, TriConsumer<State, State, Boolean> diffHandler) {
-        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action. <Universe>of(id, o -> {
+        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action.<Universe>of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
             diffHandler.accept(tx.universeTransaction().preState(), tx.state(), true);
         }, Priority.postDepth));
@@ -356,7 +353,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler);
-        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action. <Universe>of(id, o -> {
+        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action.<Universe>of(id, o -> {
             LeafTransaction tx            = ActionTransaction.getCurrent();
             State           pre           = tx.state();
             boolean         timeTraveling = tx.universeTransaction().isTimeTraveling();
@@ -391,31 +388,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected boolean isTimeTraveling() {
-        return leaf == backward || leaf == forward;
-    }
-
-    public int maxTotalNrOfChanges() {
-        return maxTotalNrOfChanges;
-    }
-
-    public int maxNrOfChanges() {
-        return maxNrOfChanges;
-    }
-
-    public int maxNrOfObserved() {
-        return maxNrOfObserved;
-    }
-
-    public int maxNrOfObservers() {
-        return maxNrOfObservers;
-    }
-
-    public boolean isDebugging() {
-        return debug;
-    }
-
-    public void setDebugging() {
-        debug = true;
+        return timeTraveling;
     }
 
     public boolean isKilled() {
@@ -431,25 +404,8 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public long runCount() {
-        return runCount;
-    }
-
-    public int countTotalChanges() {
-        if (changes > maxTotalNrOfChanges) {
-            synchronized (this) {
-                return changes++;
-            }
-        } else {
-            return changes++;
-        }
-    }
-
-    public int totalChanges() {
-        if (error != null) {
-            throw new Error(error);
-        }
-        return changes;
+    public UniverseStatistics stats() {
+        return universeStatistics;
     }
 
     public void start(Action<Universe> action) {
