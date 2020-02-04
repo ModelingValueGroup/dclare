@@ -73,17 +73,15 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Observed(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, def, containment, opposite, scope, null, checkConsistency);
-        //REVIEW: why is the 'changed' not passed to the super()? if passed, the 'changed' can be private final
-        this.changed = (l, o, p, n) -> {
+        super(id, def, containment, opposite, scope, (l, o, p, n) -> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
             }
             for (int ia = 0; ia < 2; ia++) {
                 DefaultMap<Observer, Set<Mutable>> obsSet = l.get(o, observers[ia]);
                 observers[ia].observed.checkTooManyObservers(l, o, obsSet);
-                for (Entry<Observer, Set<Mutable>> e : obsSet) {
-                    for (Mutable m : e.getValue()) {
+                for (Entry<Observer, Set<Mutable>> e: obsSet) {
+                    for (Mutable m: e.getValue()) {
                         Mutable mutable = m.resolve((Mutable) o);
                         if (!l.cls().equals(e.getKey()) || !l.parent().mutable().equals(mutable)) {
                             l.trigger(mutable, e.getKey(), Direction.values()[ia]);
@@ -91,7 +89,7 @@ public class Observed<O, T> extends Setable<O, T> {
                     }
                 }
             }
-        };
+        }, checkConsistency);
         this.observers = observers;
         for (int ia = 0; ia < 2; ia++) {
             observers[ia].observed = this;
