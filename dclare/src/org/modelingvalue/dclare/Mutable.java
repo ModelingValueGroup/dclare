@@ -86,9 +86,6 @@ public interface Mutable extends TransactionClass {
         D_OBSERVERS_RULE.deObserve(this);
         D_PUSHING_CONSTANTS_RULE.deObserve(this);
         D_OBSERVERS.setDefault(this);
-        for (Direction dir : Direction.values()) {
-            dir.depth.set(dParent(), Set::remove, this);
-        }
     }
 
     MutableClass dClass();
@@ -120,6 +117,16 @@ public interface Mutable extends TransactionClass {
     @Override
     default MutableTransaction newTransaction(UniverseTransaction universeTransaction) {
         return new MutableTransaction(universeTransaction);
+    }
+
+    @Override
+    default State run(State state, MutableTransaction parent) {
+        Pair<Mutable, Setable<Mutable, ?>> pair = state.get(this, D_PARENT_CONTAINING);
+        if (pair != null && parent.mutable().equals(pair.a())) {
+            return TransactionClass.super.run(state, parent);
+        } else {
+            return state;
+        }
     }
 
     default Mutable resolve(Mutable self) {
