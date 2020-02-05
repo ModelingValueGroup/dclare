@@ -49,7 +49,7 @@ jobs:
         run:  |
           . <(java -jar buildTools.jar)
           set -x
-          getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "aaaa" "bbbb" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
+          getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
 
       - name: "build"
         run:  ant
