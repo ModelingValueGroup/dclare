@@ -48,7 +48,7 @@ jobs:
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar buildTools.jar)
-          getAllDependencies ${{ secrets.GITHUB_TOKEN }}
+          getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
 
       - name: "build"
         run:  ant
