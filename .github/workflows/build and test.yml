@@ -49,8 +49,6 @@ jobs:
         run:  |
           . <(java -jar buildTools.jar)
           getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
-          ls -l lib
-          tar tf lib/immutable-collections.jar
 
       - name: "build"
         run:  ant
