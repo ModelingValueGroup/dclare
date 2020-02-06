@@ -95,6 +95,16 @@ jobs:
           name: dclare-testresults.jar
           path: out/artifacts/dclare-testresults.jar
 
+      - name: "publish jars on S3"
+        uses: ModelingValueGroup/sync-s3-action@master
+        with:
+          access_key: "${{ secrets.SCALEWAY_ACCESS_KEY }}"
+          secret_key: "${{ secrets.SCALEWAY_SECRET_KEY }}"
+          bucket: "mvg-artifacts"
+          cmd: "put"
+          local_dir: "out/artifacts"
+          s3_dir_branched: "/"
+
       - name: "if master: publish maven-artifacts (jar/pom/sources/javadoc)"
         uses: ModelingValueGroup/upload-maven-package-action@master
         if: github.ref == 'refs/heads/master'
