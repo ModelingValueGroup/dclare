@@ -15,10 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -77,9 +80,7 @@ public class Observed<O, T> extends Setable<O, T> {
                 changed.accept(l, o, p, n);
             }
             for (int ia = 0; ia < 2; ia++) {
-                DefaultMap<Observer, Set<Mutable>> obsSet = l.get(o, observers[ia]);
-                observers[ia].observed.checkTooManyObservers(l, o, obsSet);
-                for (Entry<Observer, Set<Mutable>> e : obsSet) {
+                for (Entry<Observer, Set<Mutable>> e : l.get(o, observers[ia])) {
                     for (Mutable m : e.getValue()) {
                         Mutable mutable = m.resolve((Mutable) o);
                         if (!l.cls().equals(e.getKey()) || !l.parent().mutable().equals(mutable)) {
@@ -120,7 +121,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     public int getNrOfObservers(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        int             nr              = 0;
+        int nr = 0;
         for (int ia = 0; ia < 2; ia++) {
             nr += leafTransaction.get(object, observers[ia]).size();
         }
@@ -130,8 +131,8 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     public static final class Observers<O, T> extends Setable<O, DefaultMap<Observer, Set<Mutable>>> {
 
-        private       Observed<O, T> observed;
-        private final Direction      direction;
+        private Observed<O, T>  observed;
+        private final Direction direction;
 
         public static <C, V> Observers<C, V> of(Object id, Direction direction) {
             return new Observers<C, V>(id, direction);
