@@ -15,19 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Internable;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.collections.util.TraceTimer;
+import java.util.function.*;
 
 public class Setable<O, T> extends Getable<O, T> {
 

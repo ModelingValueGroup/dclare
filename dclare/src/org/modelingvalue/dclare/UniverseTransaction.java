@@ -15,22 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.ContextThread.*;
+import org.modelingvalue.dclare.NonCheckingObserver.*;
+import org.modelingvalue.dclare.ex.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.collections.util.TriConsumer;
-import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
+import java.util.concurrent.*;
+import java.util.function.*;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {

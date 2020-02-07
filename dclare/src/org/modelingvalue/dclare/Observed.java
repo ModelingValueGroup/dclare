@@ -15,13 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Supplier;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
+import java.util.function.*;
+
+import static org.modelingvalue.dclare.Direction.*;
 
 public class Observed<O, T> extends Setable<O, T> {
 
