@@ -100,7 +100,7 @@ public class UniverseTransaction extends MutableTransaction {
     private         List<State>                     future               = List.of();
     private         State                           preState;
     private         State                           state;
-    protected final ConstantState                   constantState        = new ConstantState();
+    protected final ConstantState                   constantState        = new ConstantState(t->handleException(t));
     private         boolean                         killed;
     private         boolean                         timeTraveling;
     private         Throwable                       error;
@@ -235,7 +235,6 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected <O extends Mutable> State trigger(State state, Set<Action<Universe>> actions, Direction direction) {
-        //REVIEW: direction is always 'forward' here
         for (Action<Universe> action: actions) {
             state = trigger(state, universe(), action, direction);
         }
@@ -244,15 +243,12 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void handleTooManyChanges(State state) {
-        //noinspection ConstantConditions
         ObserverTrace trace = state//
                 .filter(o -> o instanceof Mutable, s -> s.id instanceof Pair && ((Pair) s.id).a() instanceof Observer && ((Pair) s.id).b().equals("TRACES"))//
-                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElse(null)))//
-                //REVIEW: 'a' can be null and trigger an NPE
+                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue())
+                        .sorted().findFirst().orElseThrow()))//
                 .min((a, b) -> Integer.compare(b.done().size(), a.done().size()))//
-                .orElse(null);
-        //REVIEW: 'trace' can be null and trigger an NPE inside the TooManyChangesException creator
-        //noinspection ConstantConditions
+                .orElseThrow();
         throw new TooManyChangesException(state, trace, trace.done().size());
     }
 
@@ -273,11 +269,11 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State           st = tx.state();
+        //TODO: see DCL-150
         Map<Object, Map<Setable, Pair<Object, Object>>> changed //
                 = preState()//
                 .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, s -> true)//
                 .toMap(Function.identity());
-        //REVIEW: is this ok? 2x same code line? if yes: please explain.
         changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
         changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
     }

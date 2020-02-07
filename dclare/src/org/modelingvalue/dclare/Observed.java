@@ -21,6 +21,8 @@ import org.modelingvalue.dclare.ex.*;
 
 import java.util.function.*;
 
+import static org.modelingvalue.dclare.Direction.*;
+
 @SuppressWarnings("unused")
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -28,27 +30,27 @@ public class Observed<O, T> extends Setable<O, T> {
     protected static final DefaultMap<Observed, Set<Mutable>> OBSERVED_MAP = DefaultMap.of(k -> Set.of());
 
     public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new Observed <>(id, def, false, null, null, null, true);
+        return new Observed<>(id, def, false, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new Observed <>(id, def, containment, null, null, null, true);
+        return new Observed<>(id, def, containment, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Observed <>(id, def, false, null, null, changed, true);
+        return new Observed<>(id, def, false, null, null, changed, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new Observed <>(id, def, containment, null, null, null, checkConsistency);
+        return new Observed<>(id, def, containment, null, null, null, checkConsistency);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Observed <>(id, def, false, opposite, null, null, true);
+        return new Observed<>(id, def, false, opposite, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed <>(id, def, false, opposite, scope, null, checkConsistency);
+        return new Observed<>(id, def, false, opposite, scope, null, checkConsistency);
     }
 
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
@@ -59,16 +61,17 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("unchecked")
     protected Observed(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        this(id, def, containment, opposite, scope, observers(id), changed, checkConsistency);
+        this(id, def, containment, opposite, scope, newObservers(id), changed, checkConsistency);
     }
 
     @SuppressWarnings("rawtypes")
-    private static Observers[] observers(Object id) {
-        Observers[] observers = new Observers[2];
-        for (int ia = 0; ia < 2; ia++) {
-            observers[ia] = Observers.of(id, Direction.values()[ia]);
-        }
-        return observers;
+    private static Observers[] newObservers(Object id) {
+        assert forward.nr == 0;
+        assert backward.nr == 1;
+        return new Observers[]{
+                new Observers<>(id, forward),
+                new Observers<>(id, backward),
+        };
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -77,23 +80,22 @@ public class Observed<O, T> extends Setable<O, T> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
             }
-            for (int ia = 0; ia < 2; ia++) {
-                DefaultMap<Observer, Set<Mutable>> obsSet = l.get(o, observers[ia]);
-                observers[ia].observed.checkTooManyObservers(l, o, obsSet);
+            for (Direction dir: Direction.forwardAndBackward()) {
+                DefaultMap<Observer, Set<Mutable>> obsSet = l.get(o, observers[dir.nr]);
+                observers[dir.nr].observed.checkTooManyObservers(l, o, obsSet);
                 for (Entry<Observer, Set<Mutable>> e: obsSet) {
                     for (Mutable m: e.getValue()) {
                         Mutable mutable = m.resolve((Mutable) o);
                         if (!l.cls().equals(e.getKey()) || !l.parent().mutable().equals(mutable)) {
-                            l.trigger(mutable, e.getKey(), Direction.values()[ia]);
+                            l.trigger(mutable, e.getKey(), Direction.values()[dir.nr]);
                         }
                     }
                 }
             }
         }, checkConsistency);
         this.observers = observers;
-        for (int ia = 0; ia < 2; ia++) {
-            observers[ia].observed = this;
-        }
+        observers[forward.nr].observed = this;
+        observers[backward.nr].observed = this;
     }
 
     @SuppressWarnings("rawtypes")
@@ -121,26 +123,18 @@ public class Observed<O, T> extends Setable<O, T> {
 
     public int getNrOfObservers(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        int             nr              = 0;
-        for (int ia = 0; ia < 2; ia++) {
-            nr += leafTransaction.get(object, observers[ia]).size();
-        }
-        return nr;
+        return leafTransaction.get(object, observers[forward.nr]).size() + leafTransaction.get(object, observers[backward.nr]).size();
     }
 
     @SuppressWarnings("rawtypes")
     public static final class Observers<O, T> extends Setable<O, DefaultMap<Observer, Set<Mutable>>> {
 
-        private       Observed<O, T> observed;
+        private       Observed<O, T> observed; // can not be made final because it has to be set after construction
         private final Direction      direction;
 
-        public static <C, V> Observers<C, V> of(Object id, Direction direction) {
-            return new Observers <>(id, direction);
-        }
-
         private Observers(Object id, Direction direction) {
-            //REVIEW: why is the 'changed' not passed to the super()? if passed, the 'changed' can be private final
             super(Pair.of(id, direction), Observer.OBSERVER_MAP, false, null, null, null, false);
+            // changed can not be passed as arg above because it references 'observed'
             changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx, o, a);
             this.direction = direction;
         }

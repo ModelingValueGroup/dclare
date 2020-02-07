@@ -43,6 +43,10 @@ public enum Direction implements Internable {
         this.nr = nr;
     }
 
+    public static Direction[] forwardAndBackward() {
+        return new Direction[]{forward, backward};
+    }
+
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
         private final Priority priority;
 

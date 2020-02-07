@@ -28,22 +28,24 @@ import java.util.function.*;
 
 @SuppressWarnings("rawtypes")
 public class ConstantState {
-
     private static final Context<Boolean>                            WEAK    = Context.of(false);
-
     private static final Object                                      NULL    = new Object() {
-                                                                                 @Override
-                                                                                 public String toString() {
-                                                                                     return "null";
-                                                                                 }
-                                                                             };
-
+        @Override
+        public String toString() {
+            return "null";
+        }
+    };
     private static final AtomicReferenceFieldUpdater<Constants, Map> UPDATOR = AtomicReferenceFieldUpdater.newUpdater(Constants.class, Map.class, "constants");
 
-    private static final class ConstantDepthOverflowException extends RuntimeException {
-        private static final long            serialVersionUID = -6980064786088373917L;
+    private final ReferenceQueue<Object>                           queue = new ReferenceQueue<>();
+    private final AtomicReference<QualifiedSet<Object, Constants>> state = new AtomicReference<>(QualifiedSet.of(Constants::object));
+    private final Thread                                           remover;
+    private       boolean                                          stopRequested;
 
-        private List<Pair<Object, Constant>> list             = List.of();
+    private static final class ConstantDepthOverflowException extends RuntimeException {
+        private static final long serialVersionUID = -6980064786088373917L;
+
+        private List<Pair<Object, Constant>> list = List.of();
 
         public ConstantDepthOverflowException(Object object, Constant lazy) {
             addLazy(object, lazy);
@@ -88,8 +90,8 @@ public class ConstantState {
         }
 
         public volatile Map<Constant<O, ?>, Object> constants;
-        private final int                           hash;
-        private final Reference<O>                  ref;
+        private final   int                         hash;
+        private final   Reference<O>                ref;
 
         public Constants(O object, boolean weak, ReferenceQueue<? super O> queue) {
             ref = weak ? new WeakRef(object, queue) : new SoftRef(object, queue);
@@ -106,7 +108,7 @@ public class ConstantState {
         @SuppressWarnings("unchecked")
         public <V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
             Map<Constant<O, ?>, Object> prev = constants;
-            V ist = (V) prev.get(constant);
+            V                           ist  = (V) prev.get(constant);
             if (ist == null) {
                 if (constant.deriver() == null) {
                     throw new Error("Constant " + constant + " is not set and not derived");
@@ -118,18 +120,14 @@ public class ConstantState {
             return ist == NULL ? null : ist;
         }
 
-        @SuppressWarnings("unchecked")
-        public <V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-            //REVIEW: parameters 'leafTransaction' and 'object' are never used, why are they there
-            Map<Constant<O, ?>, Object> prev = constants;
-            V ist = (V) prev.get(constant);
-            return ist != null;
+        public <V> boolean isSet(Constant<O, V> constant) {
+            return constants.get(constant) != null;
         }
 
         @SuppressWarnings("unchecked")
         public <V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
-            V ist = (V) prev.get(constant);
+            V                           ist  = (V) prev.get(constant);
             if (ist == null) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
@@ -142,8 +140,8 @@ public class ConstantState {
         @SuppressWarnings("unchecked")
         public <V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
             Map<Constant<O, ?>, Object> prev = constants;
-            V ist = (V) prev.get(constant);
-            V soll = function.apply(ist, element);
+            V                           ist  = (V) prev.get(constant);
+            V                           soll = function.apply(ist, element);
             if (ist == null) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
@@ -170,7 +168,7 @@ public class ConstantState {
 
         @SuppressWarnings("unchecked")
         private <V> V set(LeafTransaction tx, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
-            V ist;
+            V                           ist;
             Map<Constant<O, ?>, Object> next = prev.put(constant, soll);
             while (!UPDATOR.compareAndSet(this, prev, next)) {
                 prev = constants;
@@ -195,7 +193,7 @@ public class ConstantState {
                         boolean weak = WEAK.get();
                         WEAK.set(true);
                         try {
-                            for (Pair<Object, Constant> lazy : list) {
+                            for (Pair<Object, Constant> lazy: list) {
                                 if (constant.equals(lazy.b()) && object.equals(lazy.a())) {
                                     Pair<Object, Constant> me = Pair.of(object, constant);
                                     throw new NonDeterministicException(object, constant, "Circular constant definition: " + list.sublist(list.lastIndexOf(me), list.size()).add(me));
@@ -221,25 +219,24 @@ public class ConstantState {
         }
     }
 
-    private final ReferenceQueue<Object>                           queue = new ReferenceQueue<>();
-    private final AtomicReference<QualifiedSet<Object, Constants>> state = new AtomicReference<>(QualifiedSet.of(Constants::object));
-    private final Thread                                           remover;
-
-    public ConstantState() {
+    public ConstantState(Consumer<Throwable> errorHandler) {
         remover = new Thread(() -> {
-            try {
-                while (true) {
+            while (!stopRequested) {
+                try {
                     removeConstants(((Ref<?>) queue.remove()).constants());
+                } catch (InterruptedException e) {
+                    if (!stopRequested) {
+                        errorHandler.accept(new Error("unexpected exception in ConstantState.remover Thread", e));
+                    }
                 }
-            } catch (InterruptedException e) {
-                //REVIEW: empty catch block needs at least a comment
             }
-        });
+        }, "ConstantState.remover");
         remover.setDaemon(true);
         remover.start();
     }
 
     public void stop() {
+        stopRequested = true;
         remover.interrupt();
     }
 
@@ -248,7 +245,7 @@ public class ConstantState {
     }
 
     public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object).isSet(leafTransaction, object, constant);
+        return getConstants(leafTransaction, object).isSet(constant);
     }
 
     public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
@@ -261,13 +258,13 @@ public class ConstantState {
 
     @SuppressWarnings("unchecked")
     private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object) {
-        QualifiedSet<Object, Constants> prev = state.get();
-        Constants constants = prev.get(object);
+        QualifiedSet<Object, Constants> prev      = state.get();
+        Constants                       constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants <>(object, WEAK.get(), queue);
+            constants = new Constants<>(object, WEAK.get(), queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
-            Constants<O> now;
+            Constants<O>                    now;
             while (!state.compareAndSet(prev, next)) {
                 prev = state.get();
                 now = prev.get(object);
@@ -282,8 +279,8 @@ public class ConstantState {
     }
 
     private void removeConstants(Constants constants) {
-        QualifiedSet<Object, Constants> prev = state.get();
-        Object object = constants.object();
+        QualifiedSet<Object, Constants> prev   = state.get();
+        Object                          object = constants.object();
         constants = prev.get(object);
         if (constants != null) {
             QualifiedSet<Object, Constants> next = prev.removeKey(object);
