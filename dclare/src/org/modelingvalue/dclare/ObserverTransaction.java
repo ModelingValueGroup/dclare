@@ -15,21 +15,23 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.Observer.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.dclare.Observer.Observerds;
 
 public class ObserverTransaction extends ActionTransaction {
 
-    public static final Context<Boolean> OBSERVE = Context.of(true);
+    public static final Context<Boolean>                         OBSERVE = Context.of(true);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted  = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted  = Concurrent.of();
 
-    private boolean changed;
+    private boolean                                              changed;
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -78,17 +80,16 @@ public class ObserverTransaction extends ActionTransaction {
             changed = false;
             getted.clear();
             setted.clear();
-            TraceTimer.traceEnd("observer");
         }
     }
 
     @SuppressWarnings("rawtypes")
     private void observe(Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
         gets = gets.removeAll(sets, Set::removeAll);
-        Mutable                            mutable   = parent().mutable();
-        Observerds[]                       observeds = observer.observeds();
-        DefaultMap<Observed, Set<Mutable>> oldGets   = observeds[Direction.forward.nr].set(mutable, gets);
-        DefaultMap<Observed, Set<Mutable>> oldSets   = observeds[Direction.backward.nr].set(mutable, sets);
+        Mutable mutable = parent().mutable();
+        Observerds[] observeds = observer.observeds();
+        DefaultMap<Observed, Set<Mutable>> oldGets = observeds[Direction.forward.nr].set(mutable, gets);
+        DefaultMap<Observed, Set<Mutable>> oldSets = observeds[Direction.backward.nr].set(mutable, sets);
         if (oldGets.isEmpty() && oldSets.isEmpty() && !(sets.isEmpty() && gets.isEmpty())) {
             observer.instances++;
         } else if (!(oldGets.isEmpty() && oldSets.isEmpty()) && sets.isEmpty() && gets.isEmpty()) {
@@ -107,8 +108,8 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected void checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
         UniverseTransaction universeTransaction = universeTransaction();
-        Observer<?>         observer            = observer();
-        Mutable             mutable             = parent().mutable();
+        Observer<?> observer = observer();
+        Mutable mutable = parent().mutable();
         if (universeTransaction.stats().debugging()) {
             State post = result();
             init(post);

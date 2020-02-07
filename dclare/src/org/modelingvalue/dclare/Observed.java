@@ -15,15 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
 
-import static org.modelingvalue.dclare.Direction.*;
-
-@SuppressWarnings("unused")
 public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
@@ -81,10 +80,8 @@ public class Observed<O, T> extends Setable<O, T> {
                 changed.accept(l, o, p, n);
             }
             for (Direction dir: Direction.forwardAndBackward()) {
-                DefaultMap<Observer, Set<Mutable>> obsSet = l.get(o, observers[dir.nr]);
-                observers[dir.nr].observed.checkTooManyObservers(l, o, obsSet);
-                for (Entry<Observer, Set<Mutable>> e: obsSet) {
-                    for (Mutable m: e.getValue()) {
+                for (Entry<Observer, Set<Mutable>> e : l.get(o, observers[dir.nr])) {
+                    for (Mutable m : e.getValue()) {
                         Mutable mutable = m.resolve((Mutable) o);
                         if (!l.cls().equals(e.getKey()) || !l.parent().mutable().equals(mutable)) {
                             l.trigger(mutable, e.getKey(), Direction.values()[dir.nr]);

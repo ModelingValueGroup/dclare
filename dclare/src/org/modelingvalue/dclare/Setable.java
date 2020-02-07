@@ -15,11 +15,19 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.util.TraceTimer;
 
 public class Setable<O, T> extends Getable<O, T> {
 
@@ -78,21 +86,29 @@ public class Setable<O, T> extends Getable<O, T> {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void deduplicate(Entry e1, DefaultMap<?, ?> map2) {
-        Object v1 = e1.getValue();
-        if (v1 instanceof DefaultMap) {
-            for (Entry e3 : (DefaultMap<?, ?>) v1) {
-                deduplicate(e3, map2);
-            }
-        } else {
-            for (Entry e2 : map2) {
-                Object v2 = e2.getValue();
-                if (v2 instanceof DefaultMap) {
-                    deduplicate(e1, (DefaultMap) v2);
-                } else {
-                    e1.setValueIfEqual(v2);
+        TraceTimer.traceBegin("deduplicate");
+        try {
+            Object v1 = e1.getValue();
+            if (v1 instanceof DefaultMap) {
+                if (((DefaultMap<?, ?>) v1).size() < 100) {
+                    for (Entry e3 : (DefaultMap<?, ?>) v1) {
+                        deduplicate(e3, map2);
+                    }
+                }
+            } else if (map2.size() < 100) {
+                for (Entry e2 : map2) {
+                    Object v2 = e2.getValue();
+                    if (v2 instanceof DefaultMap) {
+                        deduplicate(e1, (DefaultMap) v2);
+                    } else {
+                        e1.setValueIfEqual(v2);
+                    }
                 }
             }
+        } finally {
+            TraceTimer.traceEnd("deduplicate");
         }
+
     }
 
     @Override
