@@ -10,6 +10,9 @@ jobs:
       - name: "checkout"
         uses: actions/checkout@v1
 
+      - name: "prepare ant"
+        run:  set
+
       - name: "attach git head"
         run: git checkout "${GITHUB_REF#refs/heads/}"
 
@@ -45,7 +48,7 @@ jobs:
           . <(java -jar buildTools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
-      - name: "download dependencies (as mentioned in pom) "
+      - name: "download dependencies (as mentioned in project.sh) "
         run:  |
           . <(java -jar buildTools.jar)
           getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
