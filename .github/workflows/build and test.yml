@@ -1,6 +1,6 @@
 name: build and test
 
-on: [push]
+on: [push, repository_dispatch]
 
 jobs:
   build-and-test:
@@ -9,9 +9,6 @@ jobs:
     steps:
       - name: "checkout"
         uses: actions/checkout@v1
-
-      - name: "prepare ant"
-        run:  set
 
       - name: "attach git head"
         run: git checkout "${GITHUB_REF#refs/heads/}"
