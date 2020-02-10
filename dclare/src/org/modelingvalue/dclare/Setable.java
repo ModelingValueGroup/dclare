@@ -15,30 +15,40 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.OutOfScopeException;
+import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
-    public static <C, V> Setable <C, V> of(Object id, V def) {
-        return new Setable <>(id, def, false, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def) {
+        return new Setable<>(id, def, false, null, null, null, true);
     }
 
-    public static <C, V> Setable <C, V> of(Object id, V def, QuadConsumer <LeafTransaction, C, V, V> changed) {
-        return new Setable <>(id, def, false, null, null, changed, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
+        return new Setable<>(id, def, false, null, null, changed, true);
     }
 
-    public static <C, V> Setable <C, V> of(Object id, V def, Supplier <Setable <?, ?>> opposite) {
-        return new Setable <>(id, def, false, opposite, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
+        return new Setable<>(id, def, false, opposite, null, null, true);
     }
 
-    public static <C, V> Setable <C, V> of(Object id, V def, boolean containment) {
-        return new Setable <>(id, def, containment, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
+        return new Setable<>(id, def, containment, null, null, null, true);
     }
 
     protected QuadConsumer<LeafTransaction, O, T, T>  changed;
@@ -166,7 +176,6 @@ public class Setable<O, T> extends Getable<O, T> {
         }
     }
 
-    @SuppressWarnings("UnusedReturnValue")
     public T setDefault(O object) {
         return currentLeaf(object).set(object, this, getDefault());
     }
