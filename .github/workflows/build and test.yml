@@ -111,3 +111,4 @@ jobs:
         with:
           file: "out/artifacts/dclare.jar"
           token: "${{ secrets.GITHUB_TOKEN }}"
+
