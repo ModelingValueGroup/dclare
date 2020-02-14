@@ -26,9 +26,9 @@ public class UniverseStatistics {
     private final int                 maxNrOfHistory;
     //
     private       boolean             debugging;
-    private       int                 numChangesInRun;
+    private       int                 totalChanges;
     private       long                runCount;
-    private       long                numChangesEver;
+    private       long                totalChangesEver;
 
 
     UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
@@ -42,9 +42,9 @@ public class UniverseStatistics {
     }
 
     void completeRun() {
-        int n = numChangesInRun;
-        numChangesInRun = 0;
-        numChangesEver += n;
+        int n = totalChanges;
+        totalChanges = 0;
+        totalChangesEver += n;
         runCount++;
     }
 
@@ -85,31 +85,31 @@ public class UniverseStatistics {
     }
 
     public int bumpAndGetTotalChanges() {
-        if (numChangesInRun > maxTotalNrOfChanges) {
+        if (totalChanges > maxTotalNrOfChanges) {
             synchronized (tx) {
-                return numChangesInRun++;
+                return totalChanges++;
             }
         } else {
-            return numChangesInRun++;
+            return totalChanges++;
         }
     }
 
     public int totalChanges() {
         tx.throwIfError();
-        return numChangesInRun;
+        return totalChanges;
     }
 
     public long totalChangesEver() {
         tx.throwIfError();
-        return numChangesEver;
+        return totalChangesEver;
     }
 
     @Override
     public String toString() {
         return "UniverseStats:\n" +
-                " debugging       = " + debugging + "\n" +
-                " runCount        = " + runCount + "\n" +
-                " numChangesEver  = " + numChangesEver + "\n" +
-                " numChangesInRun = " + numChangesInRun;
+                "  debugging         = " + debugging + "\n" +
+                "  runCount          = " + runCount + "\n" +
+                "  totalChanges      = " + totalChanges + "\n" +
+                "  totalChangesEver  = " + totalChangesEver;
     }
 }
