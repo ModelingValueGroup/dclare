@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+
 @SuppressWarnings("unused")
 public class UniverseStatistics {
     private final UniverseTransaction tx;
@@ -31,7 +33,7 @@ public class UniverseStatistics {
     private       long                totalChangesEver;
 
 
-    UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
+    public UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         this.tx = tx;
         this.maxInInQueue = maxInInQueue;
         this.maxTotalNrOfChanges = maxTotalNrOfChanges;
@@ -39,6 +41,20 @@ public class UniverseStatistics {
         this.maxNrOfObserved = maxNrOfObserved;
         this.maxNrOfObservers = maxNrOfObservers;
         this.maxNrOfHistory = maxNrOfHistory;
+    }
+
+    public UniverseStatistics(UniverseStatistics o) {
+        this.tx = o.tx;
+        this.maxInInQueue = o.maxInInQueue;
+        this.maxTotalNrOfChanges = o.maxTotalNrOfChanges;
+        this.maxNrOfChanges = o.maxNrOfChanges;
+        this.maxNrOfObserved = o.maxNrOfObserved;
+        this.maxNrOfObservers = o.maxNrOfObservers;
+        this.maxNrOfHistory = o.maxNrOfHistory;
+        this.debugging = o.debugging;
+        this.totalChanges = o.totalChanges;
+        this.runCount = o.runCount;
+        this.totalChangesEver = o.totalChangesEver;
     }
 
     void completeRun() {
@@ -111,5 +127,31 @@ public class UniverseStatistics {
                 "  runCount          = " + runCount + "\n" +
                 "  totalChanges      = " + totalChanges + "\n" +
                 "  totalChangesEver  = " + totalChangesEver;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UniverseStatistics that = (UniverseStatistics) o;
+        return maxInInQueue == that.maxInInQueue &&
+                maxTotalNrOfChanges == that.maxTotalNrOfChanges &&
+                maxNrOfChanges == that.maxNrOfChanges &&
+                maxNrOfObserved == that.maxNrOfObserved &&
+                maxNrOfObservers == that.maxNrOfObservers &&
+                maxNrOfHistory == that.maxNrOfHistory &&
+                debugging == that.debugging &&
+                totalChanges == that.totalChanges &&
+                runCount == that.runCount &&
+                totalChangesEver == that.totalChangesEver;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, totalChangesEver);
     }
 }
