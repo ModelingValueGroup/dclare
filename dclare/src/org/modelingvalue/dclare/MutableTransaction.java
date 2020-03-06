@@ -261,7 +261,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             state = state.set(object, direction.priorities[action.priority().nr], Set::add, action);
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
-        while (parent != null && (Direction.backward == direction || !mutable().equals(object))) {
+        while (parent != null && !mutable().equals(object)) {
             state = state.set(parent, direction.depth, Set::add, object);
             object = parent;
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
