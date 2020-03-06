@@ -15,15 +15,19 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.Direction.*;
-import org.modelingvalue.dclare.Observed.*;
-import org.modelingvalue.dclare.ex.*;
-
-import java.util.*;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Direction.Queued;
+import org.modelingvalue.dclare.Observed.Observers;
+import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
@@ -62,6 +66,22 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return mt != null;
     }
 
+    private boolean forwardQueuedOnAncestor(State state) {
+        for (MutableTransaction parent = parent(); parent != null; parent = parent.parent()) {
+            if (!state.get(parent.mutable(), Direction.forward.depth).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean backwardQueued(State state) {
+        Mutable mutable = mutable();
+        return !state.get(mutable, Direction.backward.depth).isEmpty() || //
+                !state.get(mutable, Direction.backward.postDepth).isEmpty() || //
+                !state.get(mutable, Direction.backward.preDepth).isEmpty();
+    }
+
     @Override
     protected State run(State state) {
         TraceTimer.traceBegin("compound");
@@ -71,17 +91,20 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             if (this == universeTransaction()) {
                 sa[0] = schedule(mutable, sa[0], Direction.forward);
             }
-            int     i          = 0;
+            int i = 0;
             boolean sequential = false;
             while (!universeTransaction().isKilled() && i < 3) {
                 sa[0] = sa[0].set(mutable, Direction.scheduled.sequence[i], Set.of(), ts);
                 if (ts[0].isEmpty()) {
-                    if (++i == 3 && this == universeTransaction()) {
-                        State sb = schedule(mutable, sa[0], Direction.backward);
-                        if (sb != sa[0]) {
-                            sa[0] = sb;
-                            universeTransaction().startOpposite();
+                    if (++i == 3 && backwardQueued(sa[0])) {
+                        if (forwardQueuedOnAncestor(sa[0])) {
+                            sa[0] = sa[0].set(parent().mutable(), Direction.backward.depth, Set::add, mutable());
+                        } else {
+                            sa[0] = schedule(mutable, sa[0], Direction.backward);
                             i = 0;
+                            if (this == universeTransaction()) {
+                                universeTransaction().startOpposite();
+                            }
                         }
                     }
                 } else {
@@ -94,15 +117,14 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         }
                     } else {
                         try {
-                            sa[0] = sa[0].get(() -> merge(sa[0], ts[0].random().reduce(sa, (s, t) -> {
-                                State[] r = s.clone();
-                                r[0] = t.run(s[0], this);
-                                return r;
-                            }, (a, b) -> {
-                                State[] r = Arrays.copyOf(a, a.length + b.length);
-                                System.arraycopy(b, 0, r, a.length, b.length);
-                                return r;
-                            })));
+                            sa[0] = sa[0].get(() -> merge(sa[0], ts[0].random().reduce(sa, //
+                                    (s, t) -> new State[]{t.run(s[0], this)}, //
+                                    (a, b) -> {
+                                        State[] r = new State[a.length + b.length];
+                                        System.arraycopy(a, 0, r, 0, a.length);
+                                        System.arraycopy(b, 0, r, a.length, b.length);
+                                        return r;
+                                    })));
                         } catch (NotMergeableException nme) {
                             sequential = true;
                             for (TransactionClass t : ts[0].random()) {
@@ -180,12 +202,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @Override
     public void handleChange(Object o, DefaultMap<Setable, Object> ps, Entry<Setable, Object> p, DefaultMap<Setable, Object>[] psbs) {
         if (p.getKey() instanceof Observers) {
-            Observers<?, ?>                    os        = (Observers) p.getKey();
+            Observers<?, ?> os = (Observers) p.getKey();
             DefaultMap<Observer, Set<Mutable>> observers = (DefaultMap) p.getValue();
             observers = observers.removeAll(State.get(ps, os), Set::removeAll);
             if (!observers.isEmpty()) {
                 Observed<?, ?> observedProp = os.observed();
-                Object         baseValue    = State.get(ps, observedProp);
+                Object baseValue = State.get(ps, observedProp);
                 for (DefaultMap<Setable, Object> psb : psbs) {
                     Object branchValue = State.get(psb, observedProp);
                     if (!Objects.equals(branchValue, baseValue)) {

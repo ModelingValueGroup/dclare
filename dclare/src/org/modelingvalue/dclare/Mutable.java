@@ -19,7 +19,7 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.dclare.ex.DeferException;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -33,14 +33,12 @@ public interface Mutable extends TransactionClass {
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
-                                                                                   };                                                                                                                         //
+                                                                                   };                                                                                                                                                       //
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) ->
-                                                                                       Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,                                                         //
-                                                                                               added -> added.trigger(obj),                                                                                   //
-                                                                                               removed -> removed.deObserve(obj))
-                                                                                   );
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,                             //
+            added -> added.trigger(obj),                                                                                                                                                                                                    //
+            removed -> removed.deObserve(obj)));
 
     Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()), Priority.preDepth);
 
@@ -59,7 +57,7 @@ public interface Mutable extends TransactionClass {
 
     @SuppressWarnings("unchecked")
     default <C> C dAncestor(Class<C> cls) {
-        Mutable parent = dParent();
+        Mutable parent = this;
         while (parent != null && !cls.isInstance(parent)) {
             parent = parent.dParent();
         }
