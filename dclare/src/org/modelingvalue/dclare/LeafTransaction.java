@@ -15,10 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.function.BiFunction;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -76,7 +78,7 @@ public abstract class LeafTransaction extends Transaction {
         Mutable object = mutable;
         set(object, direction.priorities[action.priority().nr], Set::add, action);
         Mutable container = dParent(object);
-        while (container != null && (Direction.backward == direction || !parent().ancestorEqualsMutable(object))) {
+        while (container != null && !parent().ancestorEqualsMutable(object)) {
             set(container, direction.depth, Set::add, object);
             object = container;
             container = dParent(object);
