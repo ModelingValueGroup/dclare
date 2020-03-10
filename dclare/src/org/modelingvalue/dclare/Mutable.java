@@ -33,17 +33,17 @@ public interface Mutable extends TransactionClass {
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
-                                                                                   };                                                                                                                                                       //
+                                                                                   };                                                                                                                                    //
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,                             //
-            added -> added.trigger(obj),                                                                                                                                                                                                    //
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //
+            added -> added.trigger(obj),                                                                                                                                                                                 //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()), Priority.preDepth);
+    Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEach(c -> c.get(m)), Priority.preDepth);
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEach(c -> c.get(m)));
 
     default Mutable dParent() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);

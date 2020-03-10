@@ -13,20 +13,9 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public enum Priority {
+public final class BackwardException extends RuntimeException {
 
-    preDepth(0),
-
-    postDepth(1),
-
-    depth(2);
-
-    public final int nr;
-
-    Priority(int nr) {
-        this.nr = nr;
-    }
-
+    private static final long serialVersionUID = -6162999228919679069L;
 }

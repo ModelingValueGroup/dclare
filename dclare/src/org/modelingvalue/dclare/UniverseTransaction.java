@@ -101,7 +101,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
     private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward, Priority.postDepth);
+    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
     private final UniverseStatistics                                                                universeStatistics;
     private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
     //
@@ -305,10 +305,6 @@ public class UniverseTransaction extends MutableTransaction {
         put(Action.of(id, o -> action.run()));
     }
 
-    public void put(Object id, Runnable action, Priority priority) {
-        put(Action.of(id, o -> action.run(), priority));
-    }
-
     protected void put(Action<Universe> action) {
         if (!killed) {
             try {
@@ -418,10 +414,10 @@ public class UniverseTransaction extends MutableTransaction {
     public void end(Action<Universe> action) {
     }
 
-    public void startPriority(Priority prio) {
+    public void startPriority(boolean depth) {
     }
 
-    public void endPriority(Priority prio) {
+    public void endPriority(boolean depth) {
     }
 
     public void startOpposite() {

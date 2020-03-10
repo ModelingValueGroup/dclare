@@ -54,6 +54,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
+    @Override
     public final Mutable mutable() {
         return (Mutable) cls();
     }
@@ -68,7 +69,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private boolean hasQueuedOnAncestor(State state, Direction dir) {
         for (MutableTransaction parent = parent(); parent != null; parent = parent.parent()) {
-            if (parent.hasQueued(state, dir)) {
+            if (parent.hasQueued(state, dir) || parent.hasQueued(state, Direction.scheduled)) {
                 return true;
             }
         }
@@ -78,7 +79,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private boolean hasQueued(State state, Direction dir) {
         Mutable mutable = mutable();
         return !state.get(mutable, dir.depth).isEmpty() || //
-                !state.get(mutable, dir.postDepth).isEmpty() || //
                 !state.get(mutable, dir.preDepth).isEmpty();
     }
 
@@ -93,10 +93,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
             int i = 0;
             boolean sequential = false;
-            while (!universeTransaction().isKilled() && i < 3) {
+            while (!universeTransaction().isKilled() && i < 2) {
                 sa[0] = sa[0].set(mutable, Direction.scheduled.sequence[i], Set.of(), ts);
                 if (ts[0].isEmpty()) {
-                    if (++i == 3 && hasQueued(sa[0], Direction.backward)) {
+                    if (++i == 2 && hasQueued(sa[0], Direction.backward)) {
                         if (hasQueuedOnAncestor(sa[0], Direction.forward)) {
                             sa[0] = sa[0].set(parent().mutable(), Direction.backward.depth, Set::add, mutable());
                         } else {
@@ -109,7 +109,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     }
                 } else {
                     if (this == universeTransaction()) {
-                        universeTransaction().startPriority(Direction.scheduled.sequence[i].priority());
+                        universeTransaction().startPriority(Direction.scheduled.sequence[i].depth());
                     }
                     if (sequential) {
                         for (TransactionClass t : ts[0].random()) {
@@ -133,7 +133,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         }
                     }
                     if (this == universeTransaction()) {
-                        universeTransaction().endPriority(Direction.scheduled.sequence[i].priority());
+                        universeTransaction().endPriority(Direction.scheduled.sequence[i].depth());
                     }
                     sa[0] = schedule(mutable, sa[0], Direction.forward);
                     i = 0;
@@ -157,8 +157,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         state = state.set(mutable, Direction.scheduled.preDepth, Set::addAll, ls[0]);
         state = state.set(mutable, direction.depth, Set.of(), cs);
         state = state.set(mutable, Direction.scheduled.depth, Set::addAll, cs[0]);
-        state = state.set(mutable, direction.postDepth, Set.of(), ls);
-        state = state.set(mutable, Direction.scheduled.postDepth, Set::addAll, ls[0]);
         Set<Mutable> csc = cs[0];
         for (Mutable r : csc) {
             state = schedule(r, state, direction);
@@ -219,7 +217,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
         } else if (p.getKey() instanceof Queued) {
             Queued<Mutable> ds = (Queued) p.getKey();
-            if (ds.priority() == Priority.depth && ds.direction() != Direction.scheduled) {
+            if (ds.depth() && ds.direction() != Direction.scheduled) {
                 Set<Mutable> depth = (Set<Mutable>) p.getValue();
                 depth = depth.removeAll(State.get(ps, ds));
                 if (!depth.isEmpty()) {
@@ -258,7 +256,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     protected <O extends Mutable> State trigger(State state, O mutable, Action<O> action, Direction direction) {
         Mutable object = mutable;
         if (action != null) {
-            state = state.set(object, direction.priorities[action.priority().nr], Set::add, action);
+            state = state.set(object, direction.preDepth, Set::add, action);
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         while (parent != null && !mutable().equals(object)) {

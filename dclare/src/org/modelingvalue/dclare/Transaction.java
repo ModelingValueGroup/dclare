@@ -15,15 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import java.util.ConcurrentModificationException;
 
-import java.util.*;
+import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Transaction {
 
     private final UniverseTransaction universeTransaction;
-    private       TransactionClass    cls;
-    private       MutableTransaction  parent;
+    private TransactionClass          cls;
+    private MutableTransaction        parent;
 
     protected Transaction(UniverseTransaction universeTransaction) {
         this.universeTransaction = universeTransaction;
@@ -70,5 +70,7 @@ public abstract class Transaction {
         cls = null;
         parent = null;
     }
+
+    public abstract Mutable mutable();
 
 }

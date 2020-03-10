@@ -47,6 +47,22 @@ public abstract class LeafTransaction extends Transaction {
         CURRENT.set(t);
     }
 
+    public static int depth() {
+        int i = 0;
+        for (Transaction t = CURRENT.get().parent().parent(); t != null; t = t.parent()) {
+            i++;
+        }
+        return i;
+    }
+
+    public static String indent(String indent) {
+        StringBuffer i = new StringBuffer();
+        for (Transaction t = CURRENT.get().parent().parent(); t != null; t = t.parent()) {
+            i.append(indent);
+        }
+        return i.toString();
+    }
+
     public abstract State state();
 
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
@@ -76,7 +92,7 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O extends Mutable> void trigger(O mutable, Action<O> action, Direction direction) {
         Mutable object = mutable;
-        set(object, direction.priorities[action.priority().nr], Set::add, action);
+        set(object, direction.preDepth, Set::add, action);
         Mutable container = dParent(object);
         while (container != null && !parent().ancestorEqualsMutable(object)) {
             set(container, direction.depth, Set::add, object);
@@ -91,6 +107,11 @@ public abstract class LeafTransaction extends Transaction {
 
     public void runNonObserving(Runnable action) {
         action.run();
+    }
+
+    @Override
+    public final Mutable mutable() {
+        return parent().mutable();
     }
 
     public abstract ActionInstance actionInstance();

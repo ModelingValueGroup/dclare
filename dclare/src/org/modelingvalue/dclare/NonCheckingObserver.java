@@ -15,18 +15,19 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
+import java.util.function.Consumer;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Set;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new NonCheckingObserver <>(id, action, initDirection, priority);
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new NonCheckingObserver<>(id, action, initDirection);
     }
 
-    private NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection, Priority priority) {
-        super(id, action, initDirection, priority);
+    private NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, action, initDirection);
     }
 
     @Override

@@ -15,8 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
 
 public enum Direction implements Internable {
 
@@ -28,18 +29,14 @@ public enum Direction implements Internable {
 
     public final Queued<Action<?>>          preDepth;
     public final Queued<Mutable>            depth;
-    public final Queued<Action<?>>          postDepth;
     public final int                        nr;
-    public final Queued<Action<?>>[]        priorities;
     public final Queued<TransactionClass>[] sequence;
 
     @SuppressWarnings("unchecked")
     Direction(int nr) {
-        preDepth = new Queued<>(Priority.preDepth);
-        depth = new Queued<>(Priority.depth);
-        postDepth = new Queued<>(Priority.postDepth);
-        priorities = new Queued[]{preDepth, postDepth};
-        sequence = new Queued[]{preDepth, depth, postDepth};
+        preDepth = new Queued<>(false);
+        depth = new Queued<>(true);
+        sequence = new Queued[]{preDepth, depth};
         this.nr = nr;
     }
 
@@ -48,24 +45,24 @@ public enum Direction implements Internable {
     }
 
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
-        private final Priority priority;
+        private final boolean depth;
 
-        private Queued(Priority priority) {
-            super(Pair.of(Direction.this, priority), Set.of(), false, null, null, null, false);
-            this.priority = priority;
+        private Queued(boolean depth) {
+            super(Pair.of(Direction.this, depth), Set.of(), false, null, null, null, false);
+            this.depth = depth;
         }
 
         public Direction direction() {
             return Direction.this;
         }
 
-        public Priority priority() {
-            return priority;
-        }
-
         @Override
         public String toString() {
             return getClass().getSimpleName() + super.toString().substring(4);
+        }
+
+        public boolean depth() {
+            return depth;
         }
     }
 

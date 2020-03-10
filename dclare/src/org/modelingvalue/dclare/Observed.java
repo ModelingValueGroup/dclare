@@ -15,13 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
-
-import java.util.function.*;
-
 import static org.modelingvalue.dclare.Direction.*;
+
+import java.util.function.Supplier;
+
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.ex.TooManyObserversException;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -67,10 +70,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private static Observers[] newObservers(Object id) {
         assert forward.nr == 0;
         assert backward.nr == 1;
-        return new Observers[]{
-                new Observers<>(id, forward),
-                new Observers<>(id, backward),
-        };
+        return new Observers[]{new Observers<>(id, forward), new Observers<>(id, backward),};
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -79,12 +79,14 @@ public class Observed<O, T> extends Setable<O, T> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
             }
-            for (Direction dir: Direction.forwardAndBackward()) {
+            Mutable source = l.mutable();
+            for (Direction dir : Direction.forwardAndBackward()) {
                 for (Entry<Observer, Set<Mutable>> e : l.get(o, observers[dir.nr])) {
+                    Observer observer = e.getKey();
                     for (Mutable m : e.getValue()) {
-                        Mutable mutable = m.resolve((Mutable) o);
-                        if (!l.cls().equals(e.getKey()) || !l.parent().mutable().equals(mutable)) {
-                            l.trigger(mutable, e.getKey(), Direction.values()[dir.nr]);
+                        Mutable target = m.resolve((Mutable) o);
+                        if (!l.cls().equals(observer) || !source.equals(target)) {
+                            l.trigger(target, observer, dir);
                         }
                     }
                 }
@@ -126,8 +128,8 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     public static final class Observers<O, T> extends Setable<O, DefaultMap<Observer, Set<Mutable>>> {
 
-        private       Observed<O, T> observed; // can not be made final because it has to be set after construction
-        private final Direction      direction;
+        private Observed<O, T>  observed; // can not be made final because it has to be set after construction
+        private final Direction direction;
 
         private Observers(Object id, Direction direction) {
             super(Pair.of(id, direction), Observer.OBSERVER_MAP, false, null, null, null, false);

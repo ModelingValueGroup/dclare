@@ -15,31 +15,27 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.Consumer;
 
 public class Action<O extends Mutable> extends Leaf {
 
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
-        }, Direction.forward, Priority.postDepth);
+        }, Direction.forward);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action, Direction.forward, Priority.postDepth);
+        return new Action<>(id, action, Direction.forward);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Priority priority) {
-        return new Action<>(id, action, Direction.forward, priority);
-    }
-
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new Action<>(id, action, initDirection, priority);
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new Action<>(id, action, initDirection);
     }
 
     private final Consumer<O> action;
 
-    protected Action(Object id, Consumer<O> action, Direction initDirection, Priority priority) {
-        super(id, initDirection, priority);
+    protected Action(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, initDirection);
         this.action = action;
     }
 

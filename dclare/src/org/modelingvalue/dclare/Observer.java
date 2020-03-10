@@ -15,11 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.Direction.*;
+import java.util.function.Consumer;
 
-import java.util.function.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
 
 public class Observer<O extends Mutable> extends Action<O> implements Feature, Internable {
 
@@ -27,30 +30,26 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
-        return new Observer <>(id, action, Direction.forward, Priority.postDepth);
+        return new Observer<>(id, action, Direction.forward);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority priority) {
-        return new Observer <>(id, action, Direction.forward, priority);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new Observer <>(id, action, initDirection, priority);
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new Observer<>(id, action, initDirection);
     }
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;
 
-    private final Observerds[] observeds;
+    private final Observerds[]                        observeds;
 
-    protected     long                          runCount     = -1;
-    protected     int                           instances;
-    protected     int                           changes;
-    protected     boolean                       stopped;
+    protected long                                    runCount     = -1;
+    protected int                                     instances;
+    protected int                                     changes;
+    protected boolean                                 stopped;
     @SuppressWarnings("rawtypes")
-    private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observer, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    protected Observer(Object id, Consumer<O> action, Direction initDirection, Priority priority) {
-        super(id, action, initDirection, priority);
+    protected Observer(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, action, initDirection);
         this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
         observeds = new Observerds[2];
         for (int ia = 0; ia < 2; ia++) {
@@ -87,9 +86,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
             observeds[ia].setDefault(mutable);
         }
         for (Direction dir : Direction.values()) {
-            for (Queued<Action<?>> set : dir.priorities) {
-                set.setDefault(mutable);
-            }
+            dir.preDepth.setDefault(mutable);
+            dir.depth.setDefault(mutable);
         }
     }
 
@@ -115,7 +113,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
             super(Pair.of(observer, direction), Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
-                    Setable.<Set<Mutable>, Mutable>diff(pre.get(observed), post.get(observed), a -> {
+                    Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
                         Mutable o = a.resolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));
                     }, r -> {
