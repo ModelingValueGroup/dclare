@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.BiFunction;
+
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -54,7 +56,7 @@ public class ObserverTransaction extends ActionTransaction {
         return "observer";
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings("unchecked")
     @Override
     protected void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
@@ -71,24 +73,15 @@ public class ObserverTransaction extends ActionTransaction {
                 getted.init(Observed.OBSERVED_MAP);
                 setted.init(Observed.OBSERVED_MAP);
                 super.run(pre, universeTransaction);
-                DefaultMap<Observed, Set<Mutable>> gets = getted.result();
-                DefaultMap<Observed, Set<Mutable>> sets = setted.result();
-                if (changed) {
-                    checkTooManyChanges(pre, sets, gets);
-                }
-                observe(observer, sets, gets);
+                observe(pre, observer, setted.result(), getted.result());
             }
         } catch (DeferException de) {
-            clear();
-            init(pre);
-            observe(observer, setted.result(), getted.result());
+            observe(pre, observer, setted.result(), getted.result());
         } catch (BackwardException be) {
-            clear();
-            init(pre);
             trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
-            observe(observer, setted.result(), getted.result());
+            observe(pre, observer, setted.result(), getted.result());
         } catch (StopObserverException soe) {
-            observe(observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
+            observe(pre, observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
         } finally {
             changed = false;
             getted.clear();
@@ -97,7 +90,10 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("rawtypes")
-    private void observe(Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
+    private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
+        if (changed) {
+            checkTooManyChanges(pre, sets, gets);
+        }
         gets = gets.removeAll(sets, Set::removeAll);
         Mutable mutable = mutable();
         Observerds[] observeds = observer.observeds();
@@ -126,10 +122,8 @@ public class ObserverTransaction extends ActionTransaction {
         if (TRACE_OBSERVERS) {
             State result = result();
             init(result);
-            System.err.println("TRACE_OBSERVERS:" + indent("    ") + mutable + "." + observer() + " " + //
-                    sets.reduce("", (r1, e) -> r1 + " " + e.getValue().reduce("", (r2, m) -> //
-                    (m != Mutable.THIS ? m + "." : "") + e.getKey() + "=" + result.get(m.resolve(mutable), e.getKey()), //
-                            (a, b) -> a + " " + b), (a, b) -> a + " " + b));
+            System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
+                    + toString(gets, mutable, (m, o) -> pre.get(m, o)) + " " + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
         }
         if (universeTransaction.stats().debugging()) {
             State post = result();
@@ -159,6 +153,13 @@ public class ObserverTransaction extends ActionTransaction {
                 hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static String toString(DefaultMap<Observed, Set<Mutable>> sets, Mutable self, BiFunction<Mutable, Observed, Object> value) {
+        return sets.reduce("", (r1, e) -> (r1.isEmpty() ? "" : r1 + " ") + e.getValue().reduce("", (r2, m) -> //
+        (m != Mutable.THIS ? m + "." : "") + e.getKey() + "=" + value.apply(m.resolve(self), e.getKey()), //
+                (a, b) -> a + " " + b), (a, b) -> a + " " + b);
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {

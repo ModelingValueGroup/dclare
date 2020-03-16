@@ -80,7 +80,7 @@ public class Observed<O, T> extends Setable<O, T> {
                 changed.accept(l, o, p, n);
             }
             Mutable source = l.mutable();
-            for (Direction dir : Direction.forwardAndBackward()) {
+            for (Direction dir : Direction.FORWARD_BACKWARD) {
                 for (Entry<Observer, Set<Mutable>> e : l.get(o, observers[dir.nr])) {
                     Observer observer = e.getKey();
                     for (Mutable m : e.getValue()) {
@@ -98,9 +98,9 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     @SuppressWarnings("rawtypes")
-    protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (tx.universeTransaction().stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
-            throw new TooManyObserversException(object, this, observers, tx.universeTransaction());
+    protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+        if (utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
+            throw new TooManyObserversException(object, this, observers, utx);
         }
     }
 
@@ -134,7 +134,7 @@ public class Observed<O, T> extends Setable<O, T> {
         private Observers(Object id, Direction direction) {
             super(Pair.of(id, direction), Observer.OBSERVER_MAP, false, null, null, null, false);
             // changed can not be passed as arg above because it references 'observed'
-            changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx, o, a);
+            changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx.universeTransaction(), o, a);
             this.direction = direction;
         }
 

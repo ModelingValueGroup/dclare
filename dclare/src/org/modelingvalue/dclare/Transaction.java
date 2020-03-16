@@ -71,6 +71,22 @@ public abstract class Transaction {
         parent = null;
     }
 
+    public int depth() {
+        int i = 0;
+        for (Transaction t = parent(); t != null; t = t.parent()) {
+            i++;
+        }
+        return i;
+    }
+
+    public String indent(String indent) {
+        StringBuffer i = new StringBuffer();
+        for (Transaction t = parent(); t != null; t = t.parent()) {
+            i.append(indent);
+        }
+        return i.toString();
+    }
+
     public abstract Mutable mutable();
 
 }

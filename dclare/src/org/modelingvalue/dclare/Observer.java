@@ -53,7 +53,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
         this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
         observeds = new Observerds[2];
         for (int ia = 0; ia < 2; ia++) {
-            observeds[ia] = Observerds.of(this, Direction.values()[ia]);
+            observeds[ia] = Observerds.of(this, Direction.FORWARD_BACKWARD[ia]);
         }
     }
 
@@ -86,8 +86,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature, I
             observeds[ia].setDefault(mutable);
         }
         for (Direction dir : Direction.values()) {
-            dir.preDepth.setDefault(mutable);
-            dir.depth.setDefault(mutable);
+            dir.actions.setDefault(mutable);
+            dir.children.setDefault(mutable);
         }
     }
 

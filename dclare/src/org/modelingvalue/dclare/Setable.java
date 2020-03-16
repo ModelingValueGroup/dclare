@@ -148,14 +148,14 @@ public class Setable<O, T> extends Getable<O, T> {
                     added.dActivate();
                 } else {
                     for (Direction dir : Direction.values()) {
-                        dir.depth.set((Mutable) object, Set::add, added);
+                        dir.children.set((Mutable) object, Set::add, added);
                     }
                 }
             }, removed -> {
                 if (!MOVING.get()) {
                     removed.dDeactivate();
                     for (Direction dir : Direction.values()) {
-                        dir.depth.set((Mutable) object, Set::remove, removed);
+                        dir.children.set((Mutable) object, Set::remove, removed);
                     }
                     Mutable.D_PARENT_CONTAINING.set(removed, null);
                 }

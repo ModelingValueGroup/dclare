@@ -36,12 +36,14 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
 
-    public static final int MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
-    public static final int MAX_TOTAL_NR_OF_CHANGES = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", 10000);
-    public static final int MAX_NR_OF_CHANGES       = Integer.getInteger("MAX_NR_OF_CHANGES", 200);
-    public static final int MAX_NR_OF_OBSERVED      = Integer.getInteger("MAX_NR_OF_OBSERVED", 1000);
-    public static final int MAX_NR_OF_OBSERVERS     = Integer.getInteger("MAX_NR_OF_OBSERVERS", 1000);
-    public static final int MAX_NR_OF_HISTORY       = Integer.getInteger("MAX_NR_OF_HISTORY", 64) + 3;
+    private static final boolean TRACE_UNIVERSE          = Boolean.getBoolean("TRACE_UNIVERSE");
+
+    public static final int      MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
+    public static final int      MAX_TOTAL_NR_OF_CHANGES = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", 10000);
+    public static final int      MAX_NR_OF_CHANGES       = Integer.getInteger("MAX_NR_OF_CHANGES", 200);
+    public static final int      MAX_NR_OF_OBSERVED      = Integer.getInteger("MAX_NR_OF_OBSERVED", 1000);
+    public static final int      MAX_NR_OF_OBSERVERS     = Integer.getInteger("MAX_NR_OF_OBSERVERS", 1000);
+    public static final int      MAX_NR_OF_HISTORY       = Integer.getInteger("MAX_NR_OF_HISTORY", 64) + 3;
 
     public static UniverseTransaction of(Universe id, ContextPool pool, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         return new UniverseTransaction(id, pool, null, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, null);
@@ -135,6 +137,9 @@ public class UniverseTransaction extends MutableTransaction {
                 Action<Universe> leaf = take();
                 universeStatistics.setDebugging(false);
                 preState = state;
+                if (TRACE_UNIVERSE) {
+                    System.err.println("DCLARE: START UNIVERSE " + this);
+                }
                 TraceTimer.traceBegin("root");
                 try {
                     timeTraveling = timeTravelingActions.contains(leaf);
@@ -182,6 +187,9 @@ public class UniverseTransaction extends MutableTransaction {
                 }
             } catch (Throwable t) {
                 handleException(t);
+            }
+            if (TRACE_UNIVERSE) {
+                System.err.println("DCLARE: STOP UNIVERSE " + this);
             }
         }
         stop();
@@ -414,12 +422,4 @@ public class UniverseTransaction extends MutableTransaction {
     public void end(Action<Universe> action) {
     }
 
-    public void startPriority(boolean depth) {
-    }
-
-    public void endPriority(boolean depth) {
-    }
-
-    public void startOpposite() {
-    }
 }

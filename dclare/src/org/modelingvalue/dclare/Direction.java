@@ -27,33 +27,39 @@ public enum Direction implements Internable {
 
     scheduled(2);
 
-    public final Queued<Action<?>>          preDepth;
-    public final Queued<Mutable>            depth;
-    public final int                        nr;
-    public final Queued<TransactionClass>[] sequence;
+    public static final Direction[] FORWARD_SCHEDULED = new Direction[]{Direction.forward, Direction.scheduled};
 
-    @SuppressWarnings("unchecked")
+    public static final Direction[] FORWARD_BACKWARD  = new Direction[]{Direction.forward, Direction.backward};
+
+    public final Queued<Action<?>>  actions;
+    public final Queued<Mutable>    children;
+    public final int                nr;
+
     Direction(int nr) {
-        preDepth = new Queued<>(false);
-        depth = new Queued<>(true);
-        sequence = new Queued[]{preDepth, depth};
+        actions = new Queued<>(true);
+        children = new Queued<>(false);
         this.nr = nr;
     }
 
-    public static Direction[] forwardAndBackward() {
-        return new Direction[]{forward, backward};
-    }
-
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
-        private final boolean depth;
 
-        private Queued(boolean depth) {
-            super(Pair.of(Direction.this, depth), Set.of(), false, null, null, null, false);
-            this.depth = depth;
+        private final boolean actions;
+
+        private Queued(boolean actions) {
+            super(Pair.of(Direction.this, actions), Set.of(), false, null, null, null, false);
+            this.actions = actions;
         }
 
         public Direction direction() {
             return Direction.this;
+        }
+
+        public boolean actions() {
+            return actions;
+        }
+
+        public boolean children() {
+            return !actions;
         }
 
         @Override
@@ -61,9 +67,6 @@ public enum Direction implements Internable {
             return getClass().getSimpleName() + super.toString().substring(4);
         }
 
-        public boolean depth() {
-            return depth;
-        }
     }
 
 }

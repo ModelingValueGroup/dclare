@@ -31,7 +31,7 @@ public interface Mutable extends TransactionClass {
     Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, false, null, null, null, true) {
                                                                                        @SuppressWarnings("rawtypes")
                                                                                        @Override
-                                                                                       protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+                                                                                       protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
                                                                                    };                                                                                                                                    //
 
