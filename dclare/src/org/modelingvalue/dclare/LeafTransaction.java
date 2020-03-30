@@ -25,7 +25,7 @@ import org.modelingvalue.collections.util.Context;
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
 
-    protected static final Context<LeafTransaction> CURRENT = Context.of();
+    private static final Context<LeafTransaction> CURRENT = Context.of();
 
     protected LeafTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -39,12 +39,12 @@ public abstract class LeafTransaction extends Transaction {
         return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
     }
 
-    public static LeafTransaction getCurrent() {
+    public static final LeafTransaction getCurrent() {
         return CURRENT.get();
     }
 
-    public static void setCurrent(LeafTransaction t) {
-        CURRENT.set(t);
+    public static final Context<LeafTransaction> getContext() {
+        return CURRENT;
     }
 
     public abstract State state();

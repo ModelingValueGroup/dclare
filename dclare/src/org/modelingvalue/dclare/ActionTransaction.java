@@ -51,7 +51,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         TraceTimer.traceBegin(traceId());
         init(state);
         try {
-            CURRENT.run(this, () -> run(state, universeTransaction()));
+            LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
             return result();
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));

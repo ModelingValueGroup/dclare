@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
@@ -38,7 +39,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     public <R> R get(Supplier<R> action, State state) {
         this.state = state;
         try {
-            return CURRENT.get(this, action);
+            return LeafTransaction.getContext().get(this, action);
         } finally {
             this.state = null;
         }
@@ -47,7 +48,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     public void run(Runnable action, State state) {
         this.state = state;
         try {
-            CURRENT.run(this, action);
+            LeafTransaction.getContext().run(this, action);
         } finally {
             this.state = null;
         }
@@ -59,17 +60,17 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public <O, T> T get(O object, Getable <O, T> property) {
+    public <O, T> T get(O object, Getable<O, T> property) {
         return state.get(object, property);
     }
 
     @Override
-    public <O, T> T current(O object, Getable <O, T> property) {
+    public <O, T> T current(O object, Getable<O, T> property) {
         return get(object, property);
     }
 
     @Override
-    protected <O, T> void changed(O object, Setable <O, T> property, T preValue, T postValue) {
+    protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         if (property instanceof Constant) {
             if (property.isHandlingChange()) {
                 universeTransaction().put(new Object(), () -> super.changed(object, property, preValue, postValue));
@@ -80,12 +81,12 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public <O, T, E> T set(O object, Setable <O, T> property, BiFunction <T, E, T> function, E element) {
+    public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public <O, T> T set(O object, Setable <O, T> property, T post) {
+    public <O, T> T set(O object, Setable<O, T> property, T post) {
         throw new UnsupportedOperationException();
     }
 
