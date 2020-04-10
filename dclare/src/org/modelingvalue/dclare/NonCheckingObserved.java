@@ -25,19 +25,19 @@ import org.modelingvalue.collections.util.QuadConsumer;
 public class NonCheckingObserved<O, T> extends Observed<O, T> {
 
     public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new NonCheckingObserved<>(id, def, false, null, null, null, true);
+        return new NonCheckingObserved<>(id, def, false, null, null, null);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new NonCheckingObserved<>(id, def, false, null, null, changed, true);
+        return new NonCheckingObserved<>(id, def, false, null, null, changed);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new NonCheckingObserved<>(id, def, false, opposite, null, null, true);
+        return new NonCheckingObserved<>(id, def, false, opposite, null, null);
     }
 
-    protected NonCheckingObserved(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, def, containment, opposite, scope, changed, checkConsistency);
+    protected NonCheckingObserved(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed) {
+        super(id, def, containment, opposite, scope, changed, false);
     }
 
     @SuppressWarnings("rawtypes")
