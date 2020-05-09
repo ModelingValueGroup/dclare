@@ -135,7 +135,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         if (TRACE_MUTABLE) {
-            System.err.println("DCLARE: " + indent("    ") + mutable + " " + (queued.actions() ? "actions" : "children") + " " + todo);
+            System.err.println("DCLARE: " + indent("    ") + mutable + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
         if (sequential) {
             for (TransactionClass t : todo.random()) {

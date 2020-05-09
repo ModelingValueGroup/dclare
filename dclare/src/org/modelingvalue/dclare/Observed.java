@@ -15,15 +15,19 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Direction.*;
+import static org.modelingvalue.dclare.Direction.backward;
+import static org.modelingvalue.dclare.Direction.forward;
 
 import java.util.function.Supplier;
 
+import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.ex.DeferException;
+import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.TooManyObserversException;
 
 public class Observed<O, T> extends Setable<O, T> {
@@ -32,38 +36,63 @@ public class Observed<O, T> extends Setable<O, T> {
     protected static final DefaultMap<Observed, Set<Mutable>> OBSERVED_MAP = DefaultMap.of(k -> Set.of());
 
     public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new Observed<>(id, def, false, null, null, null, true);
+        return new Observed<>(id, false, def, false, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new Observed<>(id, def, containment, null, null, null, true);
+        return new Observed<>(id, false, def, containment, null, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Observed<>(id, def, false, null, null, changed, true);
+        return new Observed<>(id, false, def, false, null, null, changed, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new Observed<>(id, def, containment, null, null, null, checkConsistency);
+        return new Observed<>(id, false, def, containment, null, null, null, checkConsistency);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Observed<>(id, def, false, opposite, null, null, true);
+        return new Observed<>(id, false, def, false, opposite, null, null, true);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed<>(id, def, false, opposite, scope, null, checkConsistency);
+        return new Observed<>(id, false, def, false, opposite, scope, null, checkConsistency);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def) {
+        return new Observed<>(id, mandatory, def, false, null, null, null, true);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment) {
+        return new Observed<>(id, mandatory, def, containment, null, null, null, true);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment, boolean checkConsistency) {
+        return new Observed<>(id, mandatory, def, containment, null, null, null, checkConsistency);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
+        return new Observed<>(id, mandatory, def, false, null, null, changed, true);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite) {
+        return new Observed<>(id, mandatory, def, false, opposite, null, null, true);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
+        return new Observed<>(id, mandatory, def, false, opposite, scope, null, checkConsistency);
     }
 
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
+    private boolean                                   mandatory;
     private final Observers<O, T>[]                   observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     @SuppressWarnings("unchecked")
-    protected Observed(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        this(id, def, containment, opposite, scope, newObservers(id), changed, checkConsistency);
+    protected Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+        this(id, mandatory, def, containment, opposite, scope, newObservers(id), changed, checkConsistency);
     }
 
     @SuppressWarnings("rawtypes")
@@ -74,7 +103,7 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Observed(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    private Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, def, containment, opposite, scope, (l, o, p, n) -> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
@@ -92,6 +121,7 @@ public class Observed<O, T> extends Setable<O, T> {
                 }
             }
         }, checkConsistency);
+        this.mandatory = mandatory;
         this.observers = observers;
         observers[forward.nr].observed = this;
         observers[backward.nr].observed = this;
@@ -110,6 +140,10 @@ public class Observed<O, T> extends Setable<O, T> {
 
     public Observers<O, T>[] observers() {
         return observers;
+    }
+
+    public boolean mandatory() {
+        return mandatory;
     }
 
     public Setable<Object, Set<ObserverTrace>> readers() {
@@ -156,6 +190,57 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     protected Entry<Observed, Set<Mutable>> entry(Mutable object, Mutable self) {
         return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
+    }
+
+    @Override
+    public T get(O object) {
+        T result = super.get(object);
+        if (isEmpty(result)) {
+            return handleEmptyGet(result);
+        } else {
+            return result;
+        }
+    }
+
+    @Override
+    public T pre(O object) {
+        T result = super.pre(object);
+        if (isEmpty(result)) {
+            return get(object);
+        } else {
+            return result;
+        }
+    }
+
+    @Override
+    public boolean checkConsistency() {
+        return checkConsistency && (mandatory || super.checkConsistency());
+    }
+
+    @Override
+    public void checkConsistency(State state, O object, T post) {
+        if (super.checkConsistency()) {
+            super.checkConsistency(state, object, post);
+        }
+        if (checkConsistency && isEmpty(post)) {
+            handleEmptyCheck(object, post);
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected boolean isEmpty(T result) {
+        return mandatory && (result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty()));
+    }
+
+    protected T handleEmptyGet(T result) {
+        if (LeafTransaction.getCurrent() instanceof ObserverTransaction) {
+            throw new DeferException();
+        }
+        return result;
+    }
+
+    protected void handleEmptyCheck(O object, T value) {
+        throw new EmptyMandatoryException(object, this);
     }
 
 }

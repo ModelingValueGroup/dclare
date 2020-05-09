@@ -15,9 +15,16 @@
 
 package org.modelingvalue.dclare.test;
 
-import static java.math.BigInteger.*;
-import static org.junit.Assert.*;
-import static org.modelingvalue.dclare.UniverseTransaction.*;
+import static java.math.BigInteger.ONE;
+import static java.math.BigInteger.ZERO;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_IN_IN_QUEUE;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_CHANGES;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_HISTORY;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_OBSERVED;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_OBSERVERS;
 
 import java.math.BigInteger;
 
@@ -26,7 +33,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.dclare.Constant;
-import org.modelingvalue.dclare.MandatoryObserved;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
@@ -269,7 +275,7 @@ public class DclareTests {
     @Test
     public void emptyMandatoryTest() {
         Observed<DUniverse, DObject> child = Observed.of("child", null, true);
-        Observed<DUniverse, String> mand = MandatoryObserved.of("mandatory", null);
+        Observed<DUniverse, String> mand = Observed.of("mandatory", true, null);
         DUniverse universe = DUniverse.of("universe", DClass.of("Universe", child));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
         DClass dClass = DClass.of("Object", mand);
