@@ -15,24 +15,21 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.Consumer;
 
+@SuppressWarnings("unused")
 public class NonInternableObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action) {
-        return new NonInternableObserver<M>(id, action, Direction.forward, Priority.postDepth);
+        return new NonInternableObserver<>(id, action, Direction.forward);
     }
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Priority priority) {
-        return new NonInternableObserver<M>(id, action, Direction.forward, priority);
+    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new NonInternableObserver<>(id, action, initDirection);
     }
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Direction initDirection, Priority priority) {
-        return new NonInternableObserver<M>(id, action, initDirection, priority);
-    }
-
-    protected NonInternableObserver(Object id, Consumer<O> action, Direction initDirection, Priority priority) {
-        super(id, action, initDirection, priority);
+    protected NonInternableObserver(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, action, initDirection);
     }
 
     @Override

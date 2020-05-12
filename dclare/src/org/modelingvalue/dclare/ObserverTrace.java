@@ -20,6 +20,7 @@ import org.modelingvalue.collections.util.*;
 
 import java.util.function.*;
 
+@SuppressWarnings("unused")
 public class ObserverTrace implements Comparable<ObserverTrace> {
 
     private final Mutable                                   mutable;
@@ -46,11 +47,11 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         }
         Set<ObserverTrace> done = previous != null ? previous.done : Set.of();
         Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.toMap(e -> {
-            ObservedInstance   observedInstance = e.getKey();
-            Set<ObserverTrace> writers          = observedInstance.observed().writers().get(observedInstance.mutable());
+            ObservedInstance observedInstance = e.getKey();
+            Set<ObserverTrace> writers = observedInstance.observed().writers().get(observedInstance.mutable());
             return Entry.of(observedInstance, writers.removeAll(done).remove(this));
         });
-        Set<ObserverTrace> back     = backTrace.flatMap(Entry::getValue).toSet();
+        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).toSet();
         Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
         backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
         if (backTrace.anyMatch(e -> e.getValue().anyMatch(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)))) {
@@ -103,16 +104,10 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     }
 
     @SuppressWarnings("unchecked")
-    public String trace(String prefix, String message, int length) {
-        String[] result = new String[]{message};
-        trace(prefix, (c, r) -> {
-            result[0] += c + "run: " + r.mutable() + "." + r.observer() + " nr: " + r.nrOfChanges;
-        }, (c, r, s) -> {
-            result[0] += c + "read: " + s.mutable() + "." + s.observed() + "=" + r.read.get(s);
-        }, (c, w, s) -> {
-            result[0] += c + "  write: " + s.mutable() + "." + s.observed() + "=" + w.written.get(s);
-        }, p -> p + "  ", new Set[]{Set.of()}, length);
-        return result[0];
+    public String trace(String prefix, int length) {
+        StringBuilder sb = new StringBuilder();
+        trace(prefix, (c, r) -> sb.append(c).append("run: ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges), (c, r, s) -> sb.append(c).append("read: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(r.read.get(s)), (c, w, s) -> sb.append(c).append("  write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)), p -> p + "  ", new Set[]{Set.of()}, length);
+        return sb.toString();
     }
 
     @SuppressWarnings("unchecked")

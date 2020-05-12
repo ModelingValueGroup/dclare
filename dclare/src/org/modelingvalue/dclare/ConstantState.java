@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
@@ -30,20 +31,23 @@ import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.ex.NonDeterministicException;
 
 @SuppressWarnings("rawtypes")
 public class ConstantState {
-
     private static final Context<Boolean>                            WEAK    = Context.of(false);
-
     private static final Object                                      NULL    = new Object() {
                                                                                  @Override
                                                                                  public String toString() {
                                                                                      return "null";
                                                                                  }
                                                                              };
-
     private static final AtomicReferenceFieldUpdater<Constants, Map> UPDATOR = AtomicReferenceFieldUpdater.newUpdater(Constants.class, Map.class, "constants");
+
+    private final ReferenceQueue<Object>                             queue   = new ReferenceQueue<>();
+    private final AtomicReference<QualifiedSet<Object, Constants>>   state   = new AtomicReference<>(QualifiedSet.of(Constants::object));
+    private final Thread                                             remover;
+    private boolean                                                  stopRequested;
 
     private static final class ConstantDepthOverflowException extends RuntimeException {
         private static final long            serialVersionUID = -6980064786088373917L;
@@ -64,7 +68,7 @@ public class ConstantState {
         }
     }
 
-    private static interface Ref<O> {
+    private interface Ref<O> {
         Constants<O> constants();
     }
 
@@ -123,11 +127,8 @@ public class ConstantState {
             return ist == NULL ? null : ist;
         }
 
-        @SuppressWarnings("unchecked")
-        public <V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-            Map<Constant<O, ?>, Object> prev = constants;
-            V ist = (V) prev.get(constant);
-            return ist != null;
+        public <V> boolean isSet(Constant<O, V> constant) {
+            return constants.get(constant) != null;
         }
 
         @SuppressWarnings("unchecked")
@@ -225,24 +226,24 @@ public class ConstantState {
         }
     }
 
-    private final ReferenceQueue<Object>                           queue = new ReferenceQueue<>();
-    private final AtomicReference<QualifiedSet<Object, Constants>> state = new AtomicReference<>(QualifiedSet.of(cs -> cs.object()));
-    private final Thread                                           remover;
-
-    public ConstantState() {
+    public ConstantState(Consumer<Throwable> errorHandler) {
         remover = new Thread(() -> {
-            try {
-                while (true) {
+            while (!stopRequested) {
+                try {
                     removeConstants(((Ref<?>) queue.remove()).constants());
+                } catch (InterruptedException e) {
+                    if (!stopRequested) {
+                        errorHandler.accept(new Error("unexpected exception in ConstantState.remover Thread", e));
+                    }
                 }
-            } catch (InterruptedException e) {
             }
-        });
+        }, "ConstantState.remover");
         remover.setDaemon(true);
         remover.start();
     }
 
     public void stop() {
+        stopRequested = true;
         remover.interrupt();
     }
 
@@ -251,7 +252,7 @@ public class ConstantState {
     }
 
     public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object).isSet(leafTransaction, object, constant);
+        return getConstants(leafTransaction, object).isSet(constant);
     }
 
     public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
@@ -268,7 +269,7 @@ public class ConstantState {
         Constants constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants<O>(object, WEAK.get(), queue);
+            constants = new Constants<>(object, WEAK.get(), queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {

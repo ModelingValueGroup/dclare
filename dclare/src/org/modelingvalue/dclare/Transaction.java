@@ -15,15 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import java.util.ConcurrentModificationException;
 
-import java.util.*;
+import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Transaction {
 
     private final UniverseTransaction universeTransaction;
-    private       TransactionClass    cls;
-    private       MutableTransaction  parent;
+    private TransactionClass          cls;
+    private MutableTransaction        parent;
 
     protected Transaction(UniverseTransaction universeTransaction) {
         this.universeTransaction = universeTransaction;
@@ -70,5 +70,23 @@ public abstract class Transaction {
         cls = null;
         parent = null;
     }
+
+    public int depth() {
+        int i = 0;
+        for (Transaction t = parent(); t != null; t = t.parent()) {
+            i++;
+        }
+        return i;
+    }
+
+    public String indent(String indent) {
+        StringBuffer i = new StringBuffer();
+        for (Transaction t = parent(); t != null; t = t.parent()) {
+            i.append(indent);
+        }
+        return i.toString();
+    }
+
+    public abstract Mutable mutable();
 
 }

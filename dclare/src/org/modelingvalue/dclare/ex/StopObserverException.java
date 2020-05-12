@@ -13,14 +13,19 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class ThrowableError extends ConsistencyError {
+@SuppressWarnings("unused")
+public final class StopObserverException extends RuntimeException {
 
-    private static final long serialVersionUID = -4723221087879478090L;
+    private static final long serialVersionUID = 2616181071425492626L;
 
-    public ThrowableError(Object object, Feature feature, Throwable t) {
-        super(object, feature, t);
+    public StopObserverException(String mess) {
+        super(mess);
+    }
+
+    public StopObserverException(Throwable t) {
+        super(t);
     }
 
 }

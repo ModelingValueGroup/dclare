@@ -15,14 +15,17 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.function.BiFunction;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
 
+@SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
 
-    protected static final Context<LeafTransaction> CURRENT = Context.of();
+    private static final Context<LeafTransaction> CURRENT = Context.of();
 
     protected LeafTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -32,16 +35,16 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
-    protected static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + e.getValue().size(), (a, b) -> a + b);
+    public static int size(DefaultMap<?, Set<Mutable>> map) {
+        return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
     }
 
-    public static LeafTransaction getCurrent() {
+    public static final LeafTransaction getCurrent() {
         return CURRENT.get();
     }
 
-    public static void setCurrent(LeafTransaction t) {
-        CURRENT.set(t);
+    public static final Context<LeafTransaction> getContext() {
+        return CURRENT;
     }
 
     public abstract State state();
@@ -73,13 +76,21 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O extends Mutable> void trigger(O mutable, Action<O> action, Direction direction) {
         Mutable object = mutable;
-        set(object, direction.priorities[action.priority().nr], Set::add, action);
+        set(object, direction.actions, Set::add, action);
         Mutable container = dParent(object);
-        while (container != null && (Direction.backward == direction || !parent().ancestorEqualsMutable(object))) {
-            set(container, direction.depth, Set::add, object);
+        while (container != null && !ancestorEqualsMutable(object)) {
+            set(container, direction.children, Set::add, object);
             object = container;
             container = dParent(object);
         }
+    }
+
+    private boolean ancestorEqualsMutable(Mutable object) {
+        MutableTransaction mt = parent();
+        while (mt != null && !mt.mutable().equals(object)) {
+            mt = mt.parent();
+        }
+        return mt != null;
     }
 
     protected Mutable dParent(Mutable object) {
@@ -88,6 +99,11 @@ public abstract class LeafTransaction extends Transaction {
 
     public void runNonObserving(Runnable action) {
         action.run();
+    }
+
+    @Override
+    public final Mutable mutable() {
+        return parent().mutable();
     }
 
     public abstract ActionInstance actionInstance();

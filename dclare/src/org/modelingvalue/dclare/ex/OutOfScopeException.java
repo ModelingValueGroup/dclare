@@ -13,46 +13,31 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
 import org.modelingvalue.collections.*;
+import org.modelingvalue.dclare.*;
 
-import java.util.stream.*;
+@SuppressWarnings("unused")
+public final class OutOfScopeException extends ConsistencyError {
 
-@SuppressWarnings("rawtypes")
-public final class TooManyObserversException extends ConsistencyError {
+    private static final long serialVersionUID = -6687018038130352922L;
 
-    private static final long serialVersionUID = -1059588522731393631L;
+    private final Object value;
+    private final Set<?> scope;
 
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
-
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, universeTransaction.preState().get(() -> {
-            return "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed;
-        }));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
+    public OutOfScopeException(Object object, Setable<?, ?> setable, Object value, Set<?> scope) {
+        super(object, setable, "The value '" + value + "' of '" + setable + "' of object '" + object + "' is out of scope '" + scope + "'");
+        this.value = value;
+        this.scope = scope;
     }
 
-    @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> {
-            return observers.map(String::valueOf).collect(Collectors.joining("\n  "));
-        });
-        return getSimpleMessage() + ":\n" + observersMap;
+    public Object getValue() {
+        return value;
     }
 
-    public String getSimpleMessage() {
-        return super.getMessage();
-    }
-
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
-    }
-
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
+    public Set<?> getScope() {
+        return scope;
     }
 
 }

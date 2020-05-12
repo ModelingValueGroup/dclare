@@ -15,18 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Leaf implements TransactionClass {
 
     private final Object    id;
     private final Direction initDirection;
-    private final Priority  priority;
 
-    protected Leaf(Object id, Direction initDirection, Priority priority) {
+    protected Leaf(Object id, Direction initDirection) {
         this.id = id;
         this.initDirection = initDirection;
-        this.priority = priority;
     }
 
     @Override
@@ -58,10 +56,6 @@ public abstract class Leaf implements TransactionClass {
 
     protected Direction initDirection() {
         return initDirection;
-    }
-
-    protected Priority priority() {
-        return priority;
     }
 
 }

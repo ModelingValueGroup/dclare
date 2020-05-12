@@ -13,29 +13,52 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
 import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
-public final class OutOfScopeException extends ConsistencyError {
+import java.util.stream.*;
 
-    private static final long serialVersionUID = -6687018038130352922L;
+@SuppressWarnings("unused")
+public final class TooManyObservedException extends ConsistencyError {
 
-    private final Object value;
-    private final Set<?> scope;
+    private static final long serialVersionUID = 2091236807252565002L;
 
-    public OutOfScopeException(Object object, Setable<?, ?> setable, Object value, Set<?> scope) {
-        super(object, setable, "The value '" + value + "' of '" + setable + "' of object '" + object + "' is out of scope '" + scope + "'");
-        this.value = value;
-        this.scope = scope;
+    private final Observer<?>                        observer;
+    @SuppressWarnings("rawtypes")
+    private final DefaultMap<Observed, Set<Mutable>> observed;
+    private final UniverseTransaction                universeTransaction;
+
+    @SuppressWarnings("rawtypes")
+    public TooManyObservedException(Mutable mutable, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observed, UniverseTransaction universeTransaction) {
+        super(mutable, observer, universeTransaction.preState().get(() -> "Too many observed (" + LeafTransaction.size(observed) + ") by " + StringUtil.toString(mutable) + "." + StringUtil.toString(observer)));
+        this.observer = observer;
+        this.observed = observed;
+        this.universeTransaction = universeTransaction;
     }
 
-    public Object getValue() {
-        return value;
+    @Override
+    public String getMessage() {
+        String observedMap = universeTransaction.preState().get(() -> observed.map(String::valueOf).collect(Collectors.joining("\n  ")));
+        return getSimpleMessage() + ":\n  " + observedMap;
     }
 
-    public Set<?> getScope() {
-        return scope;
+    public String getSimpleMessage() {
+        return super.getMessage();
     }
 
+    public int getNrOfObserved() {
+        return LeafTransaction.size(observed);
+    }
+
+    public Observer<?> getObserver() {
+        return observer;
+    }
+
+    @SuppressWarnings("rawtypes")
+    public DefaultMap<Observed, Set<Mutable>> getObserved() {
+        return observed;
+    }
 }

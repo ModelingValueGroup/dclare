@@ -15,16 +15,23 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.ConcurrentModificationException;
+import java.util.Objects;
+import java.util.function.BiFunction;
 
-import java.util.*;
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
 
     private final Setted setted = new Setted();
-    private       State  preState;
+    private State        preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -36,7 +43,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("unchecked")
     protected void run(State pre, UniverseTransaction universeTransaction) {
-        ((Action<Mutable>) action()).run(parent().mutable());
+        ((Action<Mutable>) action()).run(mutable());
     }
 
     @Override
@@ -44,10 +51,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         TraceTimer.traceBegin(traceId());
         init(state);
         try {
-            CURRENT.run(this, () -> run(state, universeTransaction()));
+            LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
             return result();
         } catch (Throwable t) {
-            universeTransaction().handleException(new TransactionException(parent().mutable(), new TransactionException(action(), t)));
+            universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
         } finally {
             clear();
@@ -99,7 +106,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T   pre    = state().get(object, property);
+        T pre = state().get(object, property);
         T[] oldNew = (T[]) new Object[2];
         if (setted.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
@@ -149,7 +156,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     public ActionInstance actionInstance() {
-        return ActionInstance.of(parent().mutable(), action());
+        return ActionInstance.of(mutable(), action());
     }
 
 }

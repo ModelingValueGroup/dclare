@@ -18,9 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.util.*;
 
 public interface Universe extends Mutable, Internable {
-
     default void init() {
         dActivate();
     }
-
 }

@@ -13,43 +13,9 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class TooManyChangesException extends ConsistencyError {
+public final class BackwardException extends RuntimeException {
 
-    private static final long serialVersionUID = 7857822332170335179L;
-
-    private final State         state;
-    private final int           nrOfChanges;
-    private final ObserverTrace last;
-
-    public TooManyChangesException(State state, ObserverTrace last, int nrOfChanges) {
-        super(last.mutable(), last.observer(), "Too many changes " + nrOfChanges);
-        this.state = state;
-        this.last = last;
-        this.nrOfChanges = nrOfChanges;
-    }
-
-    @Override
-    public String getMessage() {
-        String message = "" + nrOfChanges;
-        return state.get(() -> last.trace("\n  ", message, state.universeTransaction().maxNrOfChanges()));
-    }
-
-    public State getState() {
-        return state;
-    }
-
-    public Observer<?> getObserver() {
-        return last.observer();
-    }
-
-    public ObserverTrace getLast() {
-        return last;
-    }
-
-    public int getNrOfChanges() {
-        return nrOfChanges;
-    }
-
+    private static final long serialVersionUID = -6162999228919679069L;
 }

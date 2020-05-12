@@ -15,20 +15,33 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.Observer.*;
+import java.util.function.BiFunction;
+
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.dclare.Observer.Observerds;
+import org.modelingvalue.dclare.ex.BackwardException;
+import org.modelingvalue.dclare.ex.DeferException;
+import org.modelingvalue.dclare.ex.NonDeterministicException;
+import org.modelingvalue.dclare.ex.StopObserverException;
+import org.modelingvalue.dclare.ex.TooManyChangesException;
+import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
 
-    public static final Context<Boolean> OBSERVE = Context.of(true);
+    private static final boolean                                 TRACE_OBSERVERS = Boolean.getBoolean("TRACE_OBSERVERS");
+
+    public static final Context<Boolean>                         OBSERVE         = Context.of(true);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted          = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
 
-    private boolean changed;
+    private boolean                                              changed;
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -43,50 +56,49 @@ public class ObserverTransaction extends ActionTransaction {
         return "observer";
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings("unchecked")
     @Override
     protected void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
         try {
-            long rootCount = universeTransaction.runCount();
+            // check if the universe is still in the same transaction, if not: reset my state
+            long rootCount = universeTransaction.stats().runCount();
             if (observer.runCount != rootCount) {
                 observer.runCount = rootCount;
                 observer.changes = 0;
                 observer.stopped = false;
             }
-            if (observer.stopped || universeTransaction.isKilled()) {
-                return;
+            // check if we should do the work...
+            if (!observer.stopped && !universeTransaction.isKilled()) {
+                getted.init(Observed.OBSERVED_MAP);
+                setted.init(Observed.OBSERVED_MAP);
+                super.run(pre, universeTransaction);
+                observe(pre, observer, setted.result(), getted.result());
             }
-            getted.init(Observed.OBSERVED_MAP);
-            setted.init(Observed.OBSERVED_MAP);
-            super.run(pre, universeTransaction);
-            DefaultMap<Observed, Set<Mutable>> gets = getted.result();
-            DefaultMap<Observed, Set<Mutable>> sets = setted.result();
-            if (changed) {
-                checkTooManyChanges(pre, sets, gets);
-            }
-            observe(observer, sets, gets);
-        } catch (DeferException soe) {
-            clear();
-            init(pre);
-            observe(observer, setted.result(), getted.result());
+        } catch (DeferException de) {
+            observe(pre, observer, setted.result(), getted.result());
+        } catch (BackwardException be) {
+            trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
+            observe(pre, observer, setted.result(), getted.result());
         } catch (StopObserverException soe) {
-            observe(observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
+            observe(pre, observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
         } finally {
             changed = false;
             getted.clear();
             setted.clear();
-            TraceTimer.traceEnd("observer");
         }
     }
 
     @SuppressWarnings("rawtypes")
-    private void observe(Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
+    private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
+        if (changed) {
+            checkTooManyChanges(pre, sets, gets);
+        }
         gets = gets.removeAll(sets, Set::removeAll);
-        Mutable                            mutable   = parent().mutable();
-        Observerds[]                       observeds = observer.observeds();
-        DefaultMap<Observed, Set<Mutable>> oldGets   = observeds[Direction.forward.nr].set(mutable, gets);
-        DefaultMap<Observed, Set<Mutable>> oldSets   = observeds[Direction.backward.nr].set(mutable, sets);
+        Mutable mutable = mutable();
+        Observerds[] observeds = observer.observeds();
+        DefaultMap<Observed, Set<Mutable>> oldGets = observeds[Direction.forward.nr].set(mutable, gets);
+        DefaultMap<Observed, Set<Mutable>> oldSets = observeds[Direction.backward.nr].set(mutable, sets);
         if (oldGets.isEmpty() && oldSets.isEmpty() && !(sets.isEmpty() && gets.isEmpty())) {
             observer.instances++;
         } else if (!(oldGets.isEmpty() && oldSets.isEmpty()) && sets.isEmpty() && gets.isEmpty()) {
@@ -97,51 +109,64 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
-        if (universeTransaction().maxNrOfObserved() < size(gets) + size(sets)) {
-            throw new TooManyObservedException(parent().mutable(), observer(), gets.addAll(sets, Set::addAll), universeTransaction());
+        if (universeTransaction().stats().maxNrOfObserved() < size(gets) + size(sets)) {
+            throw new TooManyObservedException(mutable(), observer(), gets.addAll(sets, Set::addAll), universeTransaction());
         }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected void checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
         UniverseTransaction universeTransaction = universeTransaction();
-        Observer<?>         observer            = observer();
-        Mutable             mutable             = parent().mutable();
-        if (universeTransaction.isDebugging()) {
+        Observer<?> observer = observer();
+        Mutable mutable = mutable();
+        if (TRACE_OBSERVERS) {
+            State result = result();
+            init(result);
+            System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
+                    + toString(gets, mutable, (m, o) -> pre.get(m, o)) + " " + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
+        }
+        if (universeTransaction.stats().debugging()) {
             State post = result();
             init(post);
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
-                    gets.addAll(sets, Set::addAll).flatMap(e -> e.getValue().map(m -> {
+                    gets.addAll(sets, Set::addAll).filter(e -> !(e.getKey() instanceof NonCheckingObserved)).flatMap(e -> e.getValue().map(m -> {
                         m = m.resolve(mutable);
                         return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
                     })).toMap(e -> e), //
-                    sets.flatMap(e -> e.getValue().map(m -> {
+                    sets.filter(e -> !(e.getKey() instanceof NonCheckingObserved)).flatMap(e -> e.getValue().map(m -> {
                         m = m.resolve(mutable);
                         return Entry.of(ObservedInstance.of(m, e.getKey()), post.get(m, e.getKey()));
                     })).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
         }
-        int totalChanges       = universeTransaction.countTotalChanges();
+        int totalChanges = universeTransaction.stats().bumpAndGetTotalChanges();
         int changesPerInstance = observer.countChangesPerInstance();
-        if (changesPerInstance > universeTransaction.maxNrOfChanges()) {
-            universeTransaction.setDebugging();
-            if (changesPerInstance > universeTransaction.maxNrOfChanges() * 2) {
+        if (changesPerInstance > universeTransaction.stats().maxNrOfChanges()) {
+            universeTransaction.stats().setDebugging(true);
+            if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() * 2) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
             }
-        } else if (totalChanges > universeTransaction.maxTotalNrOfChanges()) {
-            universeTransaction.setDebugging();
-            if (totalChanges > universeTransaction.maxTotalNrOfChanges() + universeTransaction.maxNrOfChanges()) {
+        } else if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges()) {
+            universeTransaction.stats().setDebugging(true);
+            if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges() + universeTransaction.stats().maxNrOfChanges()) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static String toString(DefaultMap<Observed, Set<Mutable>> sets, Mutable self, BiFunction<Mutable, Observed, Object> value) {
+        return sets.reduce("", (r1, e) -> (r1.isEmpty() ? "" : r1 + " ") + e.getValue().reduce("", (r2, m) -> //
+        (m != Mutable.THIS ? m + "." : "") + e.getKey() + "=" + value.apply(m.resolve(self), e.getKey()), //
+                (a, b) -> a + " " + b), (a, b) -> a + " " + b);
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
         State result = result();
         init(result);
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
-        if (last != null && last.done().size() >= (changes > universeTransaction.maxTotalNrOfChanges() ? 1 : universeTransaction.maxNrOfChanges())) {
+        if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
             observer.stopped = true;
@@ -180,7 +205,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T> void observe(O object, Getable<O, T> property, boolean set) {
         if (object instanceof Mutable && property instanceof Observed && getted.isInitialized() && OBSERVE.get()) {
-            (set ? setted : getted).change(o -> o.add(((Observed) property).entry((Mutable) object, parent().mutable()), Set::addAll));
+            (set ? setted : getted).change(o -> o.add(((Observed) property).entry((Mutable) object, mutable()), Set::addAll));
         }
     }
 
@@ -204,7 +229,7 @@ public class ObserverTransaction extends ActionTransaction {
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
         runNonObserving(() -> super.changed(object, setable, preValue, postValue));
         if (object instanceof Mutable && setable instanceof Observed && getted.isInitialized() && OBSERVE.get() && countChanges((Observed) setable)) {
-            trigger(parent().mutable(), (Observer<Mutable>) observer(), Direction.backward);
+            trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
         }
     }
 

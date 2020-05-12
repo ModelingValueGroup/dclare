@@ -15,24 +15,32 @@
 
 package org.modelingvalue.dclare;
 
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
-import java.io.*;
-import java.util.*;
-import java.util.function.*;
-
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
     private static final long serialVersionUID = -3468784705870374732L;
 
-    public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(s -> s.getDefault());
+    public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
     public static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
 
-    private static final Comparator<Entry> COMPARATOR = (a, b) -> StringUtil.toString(a.getKey()).compareTo(StringUtil.toString(b.getKey()));
+    private static final Comparator<Entry> COMPARATOR = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
     private final UniverseTransaction                             universeTransaction;
@@ -66,7 +74,7 @@ public class State implements Serializable {
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {
         DefaultMap<Setable, Object> props = getProperties(object);
-        DefaultMap<Setable, Object> set   = setProperties(props, property, value);
+        DefaultMap<Setable, Object> set = setProperties(props, property, value);
         return set != props ? set(object, set) : this;
     }
 
@@ -91,9 +99,9 @@ public class State implements Serializable {
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        DefaultMap<Setable, Object> props   = getProperties(object);
-        T                           preVal  = get(props, property);
-        T                           postVal = function.apply(preVal, element);
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal, element);
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 
@@ -139,10 +147,10 @@ public class State implements Serializable {
         }
         DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.merge((o, ps, pss, pl) -> {
             DefaultMap<Setable, Object> props = ps.merge((p, v, vs, vl) -> {
+                Object r = v;
                 if (v instanceof Mergeable) {
-                    return ((Mergeable) v).merge(vs, (int) vl);
+                    r = ((Mergeable) v).merge(vs, (int) vl);
                 } else {
-                    Object r = v;
                     for (int i = 0; i < vl; i++) {
                         if (vs[i] != null && !vs[i].equals(v)) {
                             if (!Objects.equals(r, v)) {
@@ -156,8 +164,8 @@ public class State implements Serializable {
                             }
                         }
                     }
-                    return r;
                 }
+                return r;
             }, pss, pl);
             if (changeHandler != null) {
                 for (Entry<Setable, Object> p : props) {
@@ -183,21 +191,17 @@ public class State implements Serializable {
     }
 
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return get(() -> {
-            return "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
+        return get(() -> "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
                             "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
                             (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), (a2, b2) -> a2 + b2) + "}", //
-                    (a1, b1) -> a1 + b1) + "}";
-        });
+                (a1, b1) -> a1 + b1) + "}");
     }
 
     public Map<Setable, Integer> count() {
         return get(() -> map.toValues().flatMap(m -> m).reduce(Map.of(), (m, e) -> {
             Integer cnt = m.get(e.getKey());
             return m.put(e.getKey(), cnt == null ? 1 : cnt + 1);
-        }, (a, b) -> {
-            return a.addAll(b, (x, y) -> x + y);
-        }));
+        }, (a, b) -> a.addAll(b, Integer::sum)));
     }
 
     public <R> R get(Supplier<R> supplier) {
@@ -256,7 +260,7 @@ public class State implements Serializable {
     public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return get(() -> diff(other, objectFilter, setableFilter).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
                 " {" + e1.getValue().reduce("", (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + //
-                valueDiffString(e2.getValue().a(), e2.getValue().b()), (a2, b2) -> a2 + b2) + "}", (a1, b1) -> a1 + b1));
+                        valueDiffString(e2.getValue().a(), e2.getValue().b()), (a2, b2) -> a2 + b2) + "}", (a1, b1) -> a1 + b1));
     }
 
     public String diffString(State other) {

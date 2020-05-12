@@ -15,32 +15,46 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.QuadConsumer;
 
+@SuppressWarnings("unused")
 public class NonCheckingObserved<O, T> extends Observed<O, T> {
 
     public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new NonCheckingObserved<C, V>(id, def, false, null, null, null, true);
+        return new NonCheckingObserved<>(id, false, def, false, null, null, null);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new NonCheckingObserved<C, V>(id, def, false, null, null, changed, true);
+        return new NonCheckingObserved<>(id, false, def, false, null, null, changed);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new NonCheckingObserved<C, V>(id, def, false, opposite, null, null, true);
+        return new NonCheckingObserved<>(id, false, def, false, opposite, null, null);
     }
 
-    protected NonCheckingObserved(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, def, containment, opposite, scope, changed, checkConsistency);
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def) {
+        return new NonCheckingObserved<>(id, mandatory, def, false, null, null, null);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
+        return new NonCheckingObserved<>(id, mandatory, def, false, null, null, changed);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite) {
+        return new NonCheckingObserved<>(id, mandatory, def, false, opposite, null, null);
+    }
+
+    protected NonCheckingObserved(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed) {
+        super(id, mandatory, def, containment, opposite, scope, changed, false);
     }
 
     @SuppressWarnings("rawtypes")
     @Override
-    protected void checkTooManyObservers(LeafTransaction tx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+    protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
     }
 
 }

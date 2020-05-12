@@ -1,6 +1,6 @@
 name: build and test
 
-on: [push]
+on: [push, repository_dispatch]
 
 jobs:
   build-and-test:
@@ -35,33 +35,40 @@ jobs:
 
       - name: "(re)generate some files"
         run:  |
-          . <(java -jar buildTools.jar)
+          . <(java -jar ~/buildTools.jar)
           generateAll
           correctEols
           correctHeaders header
 
       - name: "push changes back to github"
         run:  |
-          . <(java -jar buildTools.jar)
+          . <(java -jar ~/buildTools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
-      - name: "download dependencies (as mentioned in pom)"
+      - name: "download dependencies (as mentioned in project.sh) "
         run:  |
-          . <(java -jar buildTools.jar)
-          getAllDependencies ${{ secrets.GITHUB_TOKEN }}
+          . <(java -jar ~/buildTools.jar)
+          getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
 
       - name: "build"
         run:  ant
 
       - name: "test"
-        run:  ant test
+        run:  |
+          if ! ant test; then
+            for i in TEST-*.xml; do
+              echo "=============== $i"
+              sed "s/^/>> /" $i
+            done
+            exit 42
+          fi
 
       - name: "generate javadoc"
         run:  ant javadoc
 
       - name: "push changes back to github"
         run:  |
-          . <(java -jar buildTools.jar)
+          . <(java -jar ~/buildTools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
       - name: "publish action-artifact jar"
@@ -88,9 +95,22 @@ jobs:
           name: dclare-testresults.jar
           path: out/artifacts/dclare-testresults.jar
 
+      - name: "publish jars on S3"
+        uses: ModelingValueGroup/sync-s3-action@master
+        with:
+          token          : "${{ secrets.GITHUB_TOKEN }}"
+          access_key     : "${{ secrets.SCALEWAY_ACCESS_KEY }}"
+          secret_key     : "${{ secrets.SCALEWAY_SECRET_KEY }}"
+          trigger_token  : "${{ secrets.RETRIGGER_TOKEN }}"
+          bucket         : "mvg-artifacts"
+          cmd            : "put"
+          local_dir      : "out/artifacts"
+          s3_dir_branched: "/"
+
       - name: "if master: publish maven-artifacts (jar/pom/sources/javadoc)"
         uses: ModelingValueGroup/upload-maven-package-action@master
         if: github.ref == 'refs/heads/master'
         with:
           file: "out/artifacts/dclare.jar"
           token: "${{ secrets.GITHUB_TOKEN }}"
+

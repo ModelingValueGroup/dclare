@@ -13,12 +13,45 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class NonDeterministicException extends ConsistencyError {
-    private static final long serialVersionUID = 7857822332170335179L;
+import org.modelingvalue.dclare.*;
 
-    public NonDeterministicException(Object object, Getable<?, ?> getable, String message) {
-        super(object, getable, message);
+@SuppressWarnings("unused")
+public final class TooManyChangesException extends ConsistencyError {
+
+    private static final long   serialVersionUID = 7857822332170335179L;
+
+    private final State         state;
+    private final int           nrOfChanges;
+    private final ObserverTrace last;
+
+    public TooManyChangesException(State state, ObserverTrace last, int nrOfChanges) {
+        super(last.mutable(), last.observer(), "Too many changes " + nrOfChanges);
+        this.state = state;
+        this.last = last;
+        this.nrOfChanges = nrOfChanges;
     }
+
+    @Override
+    public String getMessage() {
+        return super.getMessage() + state.get(() -> last.trace("\n  ", state.universeTransaction().stats().maxNrOfChanges()));
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public Observer<?> getObserver() {
+        return last.observer();
+    }
+
+    public ObserverTrace getLast() {
+        return last;
+    }
+
+    public int getNrOfChanges() {
+        return nrOfChanges;
+    }
+
 }

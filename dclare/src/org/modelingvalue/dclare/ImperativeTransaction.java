@@ -30,15 +30,15 @@ public class ImperativeTransaction extends LeafTransaction {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler);
     }
 
-    private static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0l);
+    private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0L);
 
-    private final Consumer<Runnable>                    scheduler;
-
+    private final Consumer<Runnable>                          scheduler;
+    //
     @SuppressWarnings("rawtypes")
-    private Set<Pair<Object, Setable>>                  setted;
-    private State                                       pre;
-    private State                                       state;
-    private TriConsumer<State, State, Boolean>          diffHandler;
+    private Set<Pair<Object, Setable>>                        setted;
+    private State                                             pre;
+    private State                                             state;
+    private final TriConsumer<State, State, Boolean>          diffHandler;
 
     protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler) {
         super(universeTransaction);
@@ -48,9 +48,8 @@ public class ImperativeTransaction extends LeafTransaction {
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = r -> scheduler.accept(() -> {
-            LeafTransaction.setCurrent(this);
             try {
-                r.run();
+                LeafTransaction.getContext().run(this, r);
             } catch (Throwable t) {
                 universeTransaction.handleException(t);
             }
@@ -61,9 +60,6 @@ public class ImperativeTransaction extends LeafTransaction {
     public void stop() {
         if (isOpen()) {
             super.stop();
-            if (LeafTransaction.getCurrent() == this) {
-                LeafTransaction.setCurrent(null);
-            }
         }
     }
 
@@ -85,7 +81,7 @@ public class ImperativeTransaction extends LeafTransaction {
     private void extern2intern() {
         if (pre != state) {
             State finalPre = pre;
-            CHANGE_NR.set(this, (n, i) -> n + i, 1);
+            CHANGE_NR.set(this, (BiFunction<Long, Integer, Long>) Long::sum, 1);
             State finalState = state;
             pre = finalState;
             universeTransaction().put(Pair.of(this, "$toDClare"), () -> {

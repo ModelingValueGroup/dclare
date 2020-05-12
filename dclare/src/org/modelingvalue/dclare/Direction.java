@@ -15,8 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
 
 public enum Direction implements Internable {
 
@@ -26,43 +27,46 @@ public enum Direction implements Internable {
 
     scheduled(2);
 
-    public final Queued<Action<?>>          preDepth;
-    public final Queued<Mutable>            depth;
-    public final Queued<Action<?>>          postDepth;
-    public final int                        nr;
-    public final Queued<Action<?>>[]        priorities;
-    public final Queued<TransactionClass>[] sequence;
+    public static final Direction[] FORWARD_SCHEDULED = new Direction[]{Direction.forward, Direction.scheduled};
 
-    @SuppressWarnings("unchecked")
-    private Direction(int nr) {
-        preDepth = new Queued<>(Priority.preDepth);
-        depth = new Queued<>(Priority.depth);
-        postDepth = new Queued<>(Priority.postDepth);
-        priorities = new Queued[]{preDepth, postDepth};
-        sequence = new Queued[]{preDepth, depth, postDepth};
+    public static final Direction[] FORWARD_BACKWARD  = new Direction[]{Direction.forward, Direction.backward};
+
+    public final Queued<Action<?>>  actions;
+    public final Queued<Mutable>    children;
+    public final int                nr;
+
+    Direction(int nr) {
+        actions = new Queued<>(true);
+        children = new Queued<>(false);
         this.nr = nr;
     }
 
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
-        private final Priority priority;
 
-        private Queued(Priority priority) {
-            super(Pair.of(Direction.this, priority), Set.of(), false, null, null, null, false);
-            this.priority = priority;
+        private final boolean actions;
+
+        private Queued(boolean actions) {
+            super(Pair.of(Direction.this, actions), Set.of(), false, null, null, null, false);
+            this.actions = actions;
         }
 
         public Direction direction() {
             return Direction.this;
         }
 
-        public Priority priority() {
-            return priority;
+        public boolean actions() {
+            return actions;
+        }
+
+        public boolean children() {
+            return !actions;
         }
 
         @Override
         public String toString() {
             return getClass().getSimpleName() + super.toString().substring(4);
         }
+
     }
 
 }

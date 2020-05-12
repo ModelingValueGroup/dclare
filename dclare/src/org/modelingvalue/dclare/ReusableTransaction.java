@@ -23,7 +23,7 @@ public class ReusableTransaction<C extends TransactionClass, T extends Transacti
 
     @SuppressWarnings("unchecked")
     public ReusableTransaction(UniverseTransaction universeTransaction) {
-        super(universeTransaction, (c, u) -> (T) c.newTransaction(u), (t, c, p) -> t.start(c, p), t -> t.stop(), t -> t.isOpen());
+        super(universeTransaction, (c, u) -> (T) c.newTransaction(u), Transaction::start, Transaction::stop, Transaction::isOpen);
     }
 
 }

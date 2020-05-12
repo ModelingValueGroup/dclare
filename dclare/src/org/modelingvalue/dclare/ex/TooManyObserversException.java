@@ -13,18 +13,43 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public final class StopObserverException extends RuntimeException {
+import org.modelingvalue.collections.*;
+import org.modelingvalue.dclare.*;
 
-    private static final long serialVersionUID = 2616181071425492626L;
+import java.util.stream.*;
 
-    public StopObserverException(String mess) {
-        super(mess);
+@SuppressWarnings({"rawtypes", "unused"})
+public final class TooManyObserversException extends ConsistencyError {
+
+    private static final long serialVersionUID = -1059588522731393631L;
+
+    private final DefaultMap<Observer, Set<Mutable>> observers;
+    private final UniverseTransaction                universeTransaction;
+
+    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
+        super(object, observed, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
+        this.observers = observers;
+        this.universeTransaction = universeTransaction;
     }
 
-    public StopObserverException(Throwable t) {
-        super(t);
+    @Override
+    public String getMessage() {
+        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
+        return getSimpleMessage() + ":\n" + observersMap;
+    }
+
+    public String getSimpleMessage() {
+        return super.getMessage();
+    }
+
+    public int getNrOfObservers() {
+        return LeafTransaction.size(observers);
+    }
+
+    public DefaultMap<Observer, Set<Mutable>> getObservers() {
+        return observers;
     }
 
 }

@@ -27,25 +27,28 @@ import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.OutOfScopeException;
+import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def) {
-        return new Setable<C, V>(id, def, false, null, null, null, true);
+        return new Setable<>(id, def, false, null, null, null, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Setable<C, V>(id, def, false, null, null, changed, true);
+        return new Setable<>(id, def, false, null, null, changed, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Setable<C, V>(id, def, false, opposite, null, null, true);
+        return new Setable<>(id, def, false, opposite, null, null, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
-        return new Setable<C, V>(id, def, containment, null, null, null, true);
+        return new Setable<>(id, def, containment, null, null, null, true);
     }
 
     protected QuadConsumer<LeafTransaction, O, T, T>  changed;
@@ -85,21 +88,29 @@ public class Setable<O, T> extends Getable<O, T> {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void deduplicate(Entry e1, DefaultMap<?, ?> map2) {
-        Object v1 = e1.getValue();
-        if (v1 instanceof DefaultMap) {
-            for (Entry e3 : (DefaultMap<?, ?>) v1) {
-                deduplicate(e3, map2);
-            }
-        } else {
-            for (Entry e2 : map2) {
-                Object v2 = e2.getValue();
-                if (v2 instanceof DefaultMap) {
-                    deduplicate(e1, (DefaultMap) v2);
-                } else {
-                    e1.setValueIfEqual(v2);
+        TraceTimer.traceBegin("deduplicate");
+        try {
+            Object v1 = e1.getValue();
+            if (v1 instanceof DefaultMap) {
+                if (((DefaultMap<?, ?>) v1).size() < 100) {
+                    for (Entry e3 : (DefaultMap<?, ?>) v1) {
+                        deduplicate(e3, map2);
+                    }
+                }
+            } else if (map2.size() < 100) {
+                for (Entry e2 : map2) {
+                    Object v2 = e2.getValue();
+                    if (v2 instanceof DefaultMap) {
+                        deduplicate(e1, (DefaultMap) v2);
+                    } else {
+                        e1.setValueIfEqual(v2);
+                    }
                 }
             }
+        } finally {
+            TraceTimer.traceEnd("deduplicate");
         }
+
     }
 
     @Override
@@ -137,25 +148,23 @@ public class Setable<O, T> extends Getable<O, T> {
                     added.dActivate();
                 } else {
                     for (Direction dir : Direction.values()) {
-                        dir.depth.set((Mutable) object, Set::add, added);
+                        dir.children.set((Mutable) object, Set::add, added);
                     }
                 }
             }, removed -> {
                 if (!MOVING.get()) {
                     removed.dDeactivate();
                     for (Direction dir : Direction.values()) {
-                        dir.depth.set((Mutable) object, Set::remove, removed);
+                        dir.children.set((Mutable) object, Set::remove, removed);
                     }
                     Mutable.D_PARENT_CONTAINING.set(removed, null);
                 }
             });
         } else if (opposite != null) {
             Setable<Object, ?> opp = (Setable<Object, ?>) opposite.get();
-            Setable.<T, Object> diff(preValue, postValue, added -> {
-                opp.add(added, object);
-            }, removed -> {
-                opp.remove(removed, object);
-            });
+            Setable.diff(preValue, postValue, //
+                    added -> opp.add(added, object), //
+                    removed -> opp.remove(removed, object));
         } else if (this != Mutable.D_PARENT_CONTAINING && !isReference) {
             Object v = postValue;
             if (v instanceof ContainingCollection) {

@@ -13,20 +13,17 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.ex;
 
-public enum Priority {
+import org.modelingvalue.dclare.*;
 
-    preDepth(0),
+@SuppressWarnings("unused")
+public final class ThrowableError extends ConsistencyError {
 
-    postDepth(1),
+    private static final long serialVersionUID = -4723221087879478090L;
 
-    depth(2);
-
-    public final int nr;
-
-    private Priority(int nr) {
-        this.nr = nr;
+    public ThrowableError(Object object, Feature feature, Throwable t) {
+        super(object, feature, t);
     }
 
 }
