@@ -21,10 +21,9 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 
-public class Observer<O extends Mutable> extends Action<O> implements Feature, Internable {
+public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
