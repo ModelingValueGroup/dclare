@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
@@ -113,14 +114,14 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
+        public <V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
-                if (constant.deriver() == null) {
+                if (deriver == null) {
                     throw new Error("Constant " + constant + " is not set and not derived");
                 } else {
-                    V soll = derive(leafTransaction, object, constant);
+                    V soll = derive(leafTransaction, object, constant, deriver);
                     ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
                 }
             }
@@ -192,7 +193,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings({"unchecked", "resource"})
-        private <V> V derive(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
+        private <V> V derive(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
             List<Pair<Object, Constant>> list = List.of();
             while (true) {
                 try {
@@ -211,7 +212,7 @@ public class ConstantState {
                             WEAK.set(weak);
                         }
                     }
-                    return Constant.DERIVED.get(constant, () -> constant.deriver().apply(object));
+                    return Constant.DERIVED.get(constant, () -> deriver.apply(object));
                 } catch (StackOverflowError soe) {
                     throw new ConstantDepthOverflowException(object, constant);
                 } catch (ConstantDepthOverflowException lce) {
@@ -248,7 +249,11 @@ public class ConstantState {
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object).get(leafTransaction, object, constant);
+        return getConstants(leafTransaction, object).get(leafTransaction, object, constant, constant.deriver());
+    }
+
+    public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        return getConstants(leafTransaction, object).get(leafTransaction, object, constant, deriver);
     }
 
     public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {

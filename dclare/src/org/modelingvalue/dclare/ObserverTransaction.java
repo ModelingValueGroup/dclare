@@ -47,7 +47,7 @@ public class ObserverTransaction extends ActionTransaction {
         super(universeTransaction);
     }
 
-    public final Observer<?> observer() {
+    public Observer<?> observer() {
         return (Observer<?>) action();
     }
 
