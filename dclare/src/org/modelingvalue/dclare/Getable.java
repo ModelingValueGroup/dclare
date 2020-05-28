@@ -15,11 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.StringUtil;
 
 @SuppressWarnings("unused")
-public abstract class Getable<O, T> implements Feature, Internable {
+public abstract class Getable<O, T> implements Feature {
 
     protected final Object id;
     protected final T      def;

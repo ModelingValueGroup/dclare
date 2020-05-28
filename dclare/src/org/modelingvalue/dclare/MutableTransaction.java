@@ -62,17 +62,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return (Mutable) cls();
     }
 
-    private boolean hasQueuedOnAncestor(Direction[] directions) {
-        for (MutableTransaction parent = parent(); parent != null; parent = parent.parent()) {
-            for (Direction dir : directions) {
-                if (parent.hasQueued(state[0], dir)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     private boolean hasQueued(State state, Direction dir) {
         return !state.get(mutable, dir.actions).isEmpty() || !state.get(mutable, dir.children).isEmpty();
     }
@@ -105,7 +94,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     if (!children[0].isEmpty()) {
                         run(children[0], Direction.scheduled.children);
                     } else if (hasQueued(state[0], Direction.backward)) {
-                        if (hasQueuedOnAncestor(Direction.values())) {
+                        if (this != universeTransaction()) {
                             state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
                             break;
                         } else {
