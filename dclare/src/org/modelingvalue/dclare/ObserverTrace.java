@@ -15,10 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
-import java.util.function.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings("unused")
 public class ObserverTrace implements Comparable<ObserverTrace> {
@@ -106,7 +109,10 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     @SuppressWarnings("unchecked")
     public String trace(String prefix, int length) {
         StringBuilder sb = new StringBuilder();
-        trace(prefix, (c, r) -> sb.append(c).append("run: ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges), (c, r, s) -> sb.append(c).append("read: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(r.read.get(s)), (c, w, s) -> sb.append(c).append("  write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)), p -> p + "  ", new Set[]{Set.of()}, length);
+        trace(prefix,
+                (c, r   ) -> sb.append(c).append("run  : ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges),
+                (c, r, s) -> sb.append(c).append("read : ").append(s.mutable()).append(".").append(s.observed()).append("=").append(r.read.get(s)),
+                (c, w, s) -> sb.append(c).append("write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)), p -> p + "  ", new Set[]{Set.of()}, length);
         return sb.toString();
     }
 
