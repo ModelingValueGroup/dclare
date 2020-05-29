@@ -13,21 +13,12 @@
 ##     Arjan Kok, Carel Bast                                                                                           ~
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#===================================================================
-# general syntax:
-#  group               artifact                version     ext flags
-#===================================================================
-# flags:
-#       j = jar
-#       d = javadoc
-#       s = sources
-#       t = test
-#===================================================================
+version="1.2.2"
 artifacts=(
-  "org.modelingvalue   dclare                  1.2.1       jar jds"
+  "org.modelingvalue   dclare                  $version    jar jds"
 )
 dependencies=(
-  "org.modelingvalue   immutable-collections   1.2.1       jar jds-"
+  "org.modelingvalue   immutable-collections   1.2.2       jar jds-"
 
   "junit               junit                   4.12        jar jdst"
   "org.hamcrest        hamcrest-core           1.3         jar jdst"
