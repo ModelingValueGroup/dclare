@@ -13,12 +13,12 @@
 ##     Arjan Kok, Carel Bast                                                                                           ~
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-version="1.2.2"
+version="1.2.3"
 artifacts=(
   "org.modelingvalue   dclare                  $version    jar jds"
 )
 dependencies=(
-  "org.modelingvalue   immutable-collections   1.2.2       jar jds-"
+  "org.modelingvalue   immutable-collections   1.2.3       jar jds-"
 
   "junit               junit                   4.12        jar jdst"
   "org.hamcrest        hamcrest-core           1.3         jar jdst"
