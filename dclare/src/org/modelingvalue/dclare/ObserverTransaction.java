@@ -24,7 +24,7 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.dclare.Observer.Observerds;
 import org.modelingvalue.dclare.ex.BackwardException;
-import org.modelingvalue.dclare.ex.DeferException;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.StopObserverException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -73,15 +73,19 @@ public class ObserverTransaction extends ActionTransaction {
                 getted.init(Observed.OBSERVED_MAP);
                 setted.init(Observed.OBSERVED_MAP);
                 super.run(pre, universeTransaction);
+                observer.exception.set(mutable(), null);
                 observe(pre, observer, setted.result(), getted.result());
             }
-        } catch (DeferException de) {
-            observe(pre, observer, setted.result(), getted.result());
         } catch (BackwardException be) {
             trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
             observe(pre, observer, setted.result(), getted.result());
         } catch (StopObserverException soe) {
             observe(pre, observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
+        } catch (ConsistencyError ce) {
+            throw ce;
+        } catch (Throwable t) {
+            observer.exception.set(mutable(), t);
+            observe(pre, observer, setted.result(), getted.result());
         } finally {
             changed = false;
             getted.clear();

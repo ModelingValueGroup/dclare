@@ -19,7 +19,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.DeferException;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -60,9 +59,6 @@ public interface Mutable extends TransactionClass {
         Mutable parent = this;
         while (parent != null && !cls.isInstance(parent)) {
             parent = parent.dParent();
-        }
-        if (parent == null) {
-            throw new DeferException();
         }
         return (C) parent;
     }

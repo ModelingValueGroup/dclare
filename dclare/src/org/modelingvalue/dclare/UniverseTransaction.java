@@ -20,6 +20,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
@@ -100,6 +101,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                  backward                = Action.of("$backward");
     private final Action<Universe>                                                                  forward                 = Action.of("$forward");
     private final Action<Universe>                                                                  clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
+    private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
     private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
@@ -112,6 +114,7 @@ public class UniverseTransaction extends MutableTransaction {
     private State                                                                                   preState;
     private State                                                                                   state;
     protected final ConstantState                                                                   constantState           = new ConstantState(t -> handleException(t));
+    protected boolean                                                                               initialized;
     private boolean                                                                                 killed;
     private boolean                                                                                 timeTraveling;
     private Throwable                                                                               error;
@@ -213,22 +216,17 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void init() {
-        put("$init", () -> {
-            addDiffHandler("$checkConsistency", (pre, post, last) -> {
-                if (!killed && last) {
-                    checkConsistency(pre, post);
-                }
-            });
-            universe().init();
-        });
+        put("$init", () -> universe().init());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected void checkConsistency(State pre, State post) {
+    protected void checkConsistency(Universe universe) {
         LeafTransaction lt = LeafTransaction.getCurrent();
-        pre.diff(post, o -> o instanceof Mutable).forEach(e0 -> {
+        State post = lt.state();
+        preState.diff(post, o -> o instanceof Mutable).forEach(e0 -> {
             if (e0.getKey() instanceof Universe || e0.getValue().b().get(Mutable.D_PARENT_CONTAINING) != null) {
-                ((Mutable) e0.getKey()).dClass().dSetables().filter(Setable::checkConsistency).forEach(s -> {
+                MutableClass dClass = ((Mutable) e0.getKey()).dClass();
+                Collection.concat(dClass.dSetables().filter(Setable::checkConsistency), dClass.dObservers().map(Observer::exception)).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, e0.getKey(), (Constant) s)) {
                         //noinspection RedundantCast
                         ((Setable) s).checkConsistency(post, e0.getKey(), s instanceof Constant ? constantState.get(lt, e0.getKey(), (Constant) s) : e0.getValue().b().get(s));
@@ -302,7 +300,12 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected State post(State pre) {
-        return run(trigger(pre, universe(), clearOrphans, Direction.backward));
+        if (initialized) {
+            pre = run(trigger(pre, universe(), clearOrphans, Direction.backward));
+            return run(trigger(pre, universe(), checkConsistency, Direction.backward));
+        } else {
+            return pre;
+        }
     }
 
     public boolean isStopped(State state) {
