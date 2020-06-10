@@ -288,8 +288,8 @@ public class UniverseTransaction extends MutableTransaction {
                 = preState()//
                         .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, s -> true)//
                         .toMap(Function.identity());
-        changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
-        changed.forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
+        changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
+        changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
     protected void clear(LeafTransaction tx, Mutable orphan) {

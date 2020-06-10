@@ -42,7 +42,7 @@ public interface Mutable extends TransactionClass {
     Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEach(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Mutable dParent() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);

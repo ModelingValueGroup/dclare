@@ -277,7 +277,7 @@ public class State implements Serializable {
     }
 
     public void forEach(TriConsumer<Object, Setable, Object> consumer) {
-        map.forEach(e0 -> e0.getValue().forEach(e1 -> consumer.accept(e0.getKey(), e1.getKey(), e1.getValue())));
+        map.forEachOrdered(e0 -> e0.getValue().forEachOrdered(e1 -> consumer.accept(e0.getKey(), e1.getKey(), e1.getValue())));
     }
 
     @Override

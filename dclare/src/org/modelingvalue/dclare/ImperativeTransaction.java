@@ -86,7 +86,7 @@ public class ImperativeTransaction extends LeafTransaction {
             pre = finalState;
             universeTransaction().put(Pair.of(this, "$toDClare"), () -> {
                 try {
-                    finalPre.diff(finalState, o -> true, s -> true).forEach(s -> {
+                    finalPre.diff(finalState, o -> true, s -> true).forEachOrdered(s -> {
                         Object o = s.getKey();
                         for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
                             d.getKey().set(o, d.getValue().b());
