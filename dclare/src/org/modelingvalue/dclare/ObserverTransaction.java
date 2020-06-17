@@ -60,6 +60,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
+        Throwable throwable = null;
         try {
             // check if the universe is still in the same transaction, if not: reset my state
             long rootCount = universeTransaction.stats().runCount();
@@ -73,7 +74,6 @@ public class ObserverTransaction extends ActionTransaction {
                 getted.init(Observed.OBSERVED_MAP);
                 setted.init(Observed.OBSERVED_MAP);
                 super.run(pre, universeTransaction);
-                observer.exception.set(mutable(), null);
                 observe(pre, observer, setted.result(), getted.result());
             }
         } catch (BackwardException be) {
@@ -84,9 +84,10 @@ public class ObserverTransaction extends ActionTransaction {
         } catch (ConsistencyError ce) {
             throw ce;
         } catch (Throwable t) {
-            observer.exception.set(mutable(), t);
+            throwable = t;
             observe(pre, observer, setted.result(), getted.result());
         } finally {
+            observer.exception.set(mutable(), throwable);
             changed = false;
             getted.clear();
             setted.clear();

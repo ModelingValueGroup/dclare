@@ -165,7 +165,8 @@ public class UniverseTransaction extends MutableTransaction {
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
-                        state = state.get(() -> post(run(trigger(pre(state), universe(), leaf, leaf.initDirection()))));
+                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, leaf.initDirection())));
+                        state = state.get(() -> post(state));
                         if (stats().debugging()) {
                             handleTooManyChanges(state);
                         }
