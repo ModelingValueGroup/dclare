@@ -15,17 +15,17 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings("unused")
 public final class ReferencedOrphanException extends ConsistencyError {
 
     private static final long serialVersionUID = -6687018038130352922L;
 
-    private final Object referenced;
+    private final Object      referenced;
 
     public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
-        super(object, setable, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
+        super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
         this.referenced = referenced;
     }
 

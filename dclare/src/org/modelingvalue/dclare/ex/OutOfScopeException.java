@@ -15,19 +15,19 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings("unused")
 public final class OutOfScopeException extends ConsistencyError {
 
     private static final long serialVersionUID = -6687018038130352922L;
 
-    private final Object value;
-    private final Set<?> scope;
+    private final Object      value;
+    private final Set<?>      scope;
 
     public OutOfScopeException(Object object, Setable<?, ?> setable, Object value, Set<?> scope) {
-        super(object, setable, "The value '" + value + "' of '" + setable + "' of object '" + object + "' is out of scope '" + scope + "'");
+        super(object, setable, 6, "The value '" + value + "' of '" + setable + "' of object '" + object + "' is out of scope '" + scope + "'");
         this.value = value;
         this.scope = scope;
     }

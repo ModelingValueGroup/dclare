@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
 import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
@@ -22,7 +23,7 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.TransactionException;
+import org.modelingvalue.dclare.ex.ThrowableError;
 
 public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
@@ -138,7 +139,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     }
 
     @SuppressWarnings("rawtypes")
-    public static final class ExceptionSetable extends Setable<Mutable, Throwable> {
+    public static final class ExceptionSetable extends Setable<Mutable, Pair<Instant, Throwable>> {
 
         public static ExceptionSetable of(Observer observer) {
             return new ExceptionSetable(observer);
@@ -166,9 +167,9 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         }
 
         @Override
-        public void checkConsistency(State state, Mutable o, Throwable t) {
-            if (t != null) {
-                throw new TransactionException(o, new TransactionException(observer, t));
+        public void checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
+            if (p != null) {
+                throw new ThrowableError(o, observer, p.a(), p.b());
             }
         }
     }

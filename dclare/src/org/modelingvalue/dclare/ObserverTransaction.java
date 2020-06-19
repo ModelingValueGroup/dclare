@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
 import java.util.function.BiFunction;
 
 import org.modelingvalue.collections.DefaultMap;
@@ -22,6 +23,7 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Observer.Observerds;
 import org.modelingvalue.dclare.ex.BackwardException;
 import org.modelingvalue.dclare.ex.ConsistencyError;
@@ -32,14 +34,15 @@ import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
 
-    private static final boolean                                 TRACE_OBSERVERS = Boolean.getBoolean("TRACE_OBSERVERS");
+    private static final boolean                                 TRACE_OBSERVERS  = Boolean.getBoolean("TRACE_OBSERVERS");
 
-    public static final Context<Boolean>                         OBSERVE         = Context.of(true);
+    public static final Context<Boolean>                         OBSERVE          = Context.of(true);
+    private static final Context<Boolean>                        EMTPTY_MANDATORY = Context.of(false);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted          = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted           = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted           = Concurrent.of();
 
     private boolean                                              changed;
 
@@ -60,37 +63,41 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
-        Throwable throwable = null;
-        try {
-            // check if the universe is still in the same transaction, if not: reset my state
-            long rootCount = universeTransaction.stats().runCount();
-            if (observer.runCount != rootCount) {
-                observer.runCount = rootCount;
-                observer.changes = 0;
-                observer.stopped = false;
-            }
-            // check if we should do the work...
-            if (!observer.stopped && !universeTransaction.isKilled()) {
+        Pair<Instant, Throwable> throwable = null;
+        // check if the universe is still in the same transaction, if not: reset my state
+        long rootCount = universeTransaction.stats().runCount();
+        if (observer.runCount != rootCount) {
+            observer.runCount = rootCount;
+            observer.changes = 0;
+            observer.stopped = false;
+        }
+        // check if we should do the work...
+        if (!observer.stopped && !universeTransaction.isKilled()) {
+            getted.init(Observed.OBSERVED_MAP);
+            setted.init(Observed.OBSERVED_MAP);
+            try {
+                super.run(pre, universeTransaction);
+            } catch (BackwardException be) {
+                trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
+            } catch (StopObserverException soe) {
+                getted.clear();
+                setted.clear();
                 getted.init(Observed.OBSERVED_MAP);
                 setted.init(Observed.OBSERVED_MAP);
-                super.run(pre, universeTransaction);
+            } catch (ConsistencyError ce) {
+                throw ce;
+            } catch (NullPointerException npe) {
+                if (!EMTPTY_MANDATORY.get()) {
+                    throwable = Pair.of(Instant.now(), npe);
+                }
+            } catch (Throwable t) {
+                throwable = Pair.of(Instant.now(), t);
+            } finally {
+                EMTPTY_MANDATORY.set(false);
                 observe(pre, observer, setted.result(), getted.result());
+                observer.exception.set(mutable(), throwable);
+                changed = false;
             }
-        } catch (BackwardException be) {
-            trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
-            observe(pre, observer, setted.result(), getted.result());
-        } catch (StopObserverException soe) {
-            observe(pre, observer, Observed.OBSERVED_MAP, Observed.OBSERVED_MAP);
-        } catch (ConsistencyError ce) {
-            throw ce;
-        } catch (Throwable t) {
-            throwable = t;
-            observe(pre, observer, setted.result(), getted.result());
-        } finally {
-            observer.exception.set(mutable(), throwable);
-            changed = false;
-            getted.clear();
-            setted.clear();
         }
     }
 
@@ -186,24 +193,38 @@ public class ObserverTransaction extends ActionTransaction {
         return !old;
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         if (property instanceof Observed && Constant.DERIVED.get() != null && ObserverTransaction.OBSERVE.get()) {
             throw new NonDeterministicException(object, property, "Reading observed '" + property + "' while initializing constant '" + Constant.DERIVED.get() + "'");
         }
         observe(object, property, false);
-        return super.get(object, property);
+        T result = super.get(object, property);
+        if (result == null && property instanceof Observed && ((Observed) property).mandatory() && !((Observed) property).checkConsistency) {
+            EMTPTY_MANDATORY.set(true);
+        }
+        return result;
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public <O, T> T pre(O object, Getable<O, T> property) {
         observe(object, property, false);
-        return super.pre(object, property);
+        T result = super.pre(object, property);
+        if (result == null && property instanceof Observed && ((Observed) property).mandatory()) {
+            result = super.get(object, property);
+        }
+        return result;
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T value) {
         observe(object, property, true);
+        if (value == null && property instanceof Observed && ((Observed) property).mandatory() && ((Observed) property).checkConsistency) {
+            throw new NullPointerException(property.toString());
+        }
         return super.set(object, property, value);
     }
 

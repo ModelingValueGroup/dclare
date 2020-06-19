@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -32,6 +33,7 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.collections.util.TriConsumer;
 import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
@@ -107,8 +109,9 @@ public class UniverseTransaction extends MutableTransaction {
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
     private final UniverseStatistics                                                                universeStatistics;
+    private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
+
     private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
-    //
     private List<State>                                                                             history                 = List.of();
     private List<State>                                                                             future                  = List.of();
     private State                                                                                   preState;
@@ -230,13 +233,21 @@ public class UniverseTransaction extends MutableTransaction {
                 Collection.concat(dClass.dSetables().filter(Setable::checkConsistency), dClass.dObservers().map(Observer::exception)).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, e0.getKey(), (Constant) s)) {
                         //noinspection RedundantCast
-                        ((Setable) s).checkConsistency(post, e0.getKey(), s instanceof Constant ? constantState.get(lt, e0.getKey(), (Constant) s) : e0.getValue().b().get(s));
+                        try {
+                            ((Setable) s).checkConsistency(post, e0.getKey(), s instanceof Constant ? constantState.get(lt, e0.getKey(), (Constant) s) : e0.getValue().b().get(s));
+                        } catch (ConsistencyError e) {
+                            consistencyError.updateAndGet(p -> p == null ? e : e.compareTo(p) < 0 ? e : p);
+                        }
                     }
                 });
             } else {
                 checkOrphanState(e0);
             }
         });
+        ConsistencyError error = consistencyError.getAndSet(null);
+        if (error != null) {
+            throw error;
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -363,8 +374,8 @@ public class UniverseTransaction extends MutableTransaction {
         }));
     }
 
-    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler);
+    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
         ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action.<Universe> of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
             State pre = tx.state();

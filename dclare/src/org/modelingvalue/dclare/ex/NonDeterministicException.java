@@ -15,12 +15,12 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Getable;
 
 public final class NonDeterministicException extends ConsistencyError {
     private static final long serialVersionUID = 7857822332170335179L;
 
     public NonDeterministicException(Object object, Getable<?, ?> getable, String message) {
-        super(object, getable, message);
+        super(object, getable, 10, message);
     }
 }

@@ -75,7 +75,7 @@ public class Setable<O, T> extends Getable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected Entry<Setable, Object> entry(T value, DefaultMap<Setable, Object> properties) {
-        if (Internable.isInternable(value)) {
+        if (value != null && Internable.isInternable(value)) {
             return internal.get(value);
         } else {
             Entry<Setable, Object> entry = Entry.of(this, value);

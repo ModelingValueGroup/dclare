@@ -26,8 +26,8 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler);
+    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0L);
@@ -40,14 +40,21 @@ public class ImperativeTransaction extends LeafTransaction {
     private State                                             state;
     private final TriConsumer<State, State, Boolean>          diffHandler;
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler) {
+    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
         this.setted = Set.of();
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
-        this.scheduler = r -> scheduler.accept(() -> {
+        this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
+            LeafTransaction.getContext().set(this);
+            try {
+                r.run();
+            } catch (Throwable t) {
+                universeTransaction.handleException(t);
+            }
+        }) : r -> scheduler.accept(() -> {
             try {
                 LeafTransaction.getContext().run(this, r);
             } catch (Throwable t) {

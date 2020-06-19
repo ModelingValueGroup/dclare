@@ -15,14 +15,14 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Setable;
 
 public final class EmptyMandatoryException extends ConsistencyError {
 
     private static final long serialVersionUID = -6687018038130352922L;
 
     public EmptyMandatoryException(Object object, Setable<?, ?> setable) {
-        super(object, setable, "Empty mandatory property '" + setable + "' of object '" + object + "'");
+        super(object, setable, 8, "Empty mandatory property '" + setable + "' of object '" + object + "'");
     }
 
 }

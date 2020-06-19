@@ -15,7 +15,9 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.ObserverTrace;
+import org.modelingvalue.dclare.State;
 
 @SuppressWarnings("unused")
 public final class TooManyChangesException extends ConsistencyError {
@@ -27,7 +29,7 @@ public final class TooManyChangesException extends ConsistencyError {
     private final ObserverTrace last;
 
     public TooManyChangesException(State state, ObserverTrace last, int nrOfChanges) {
-        super(last.mutable(), last.observer(), "Too many changes " + nrOfChanges);
+        super(last.mutable(), last.observer(), 2, "Too many changes " + nrOfChanges);
         this.state = state;
         this.last = last;
         this.nrOfChanges = nrOfChanges;
