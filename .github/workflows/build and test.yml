@@ -25,6 +25,7 @@ jobs:
         uses: ModelingValueGroup/buildTools@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          trace: true
 
       - name: "prepare ant"
         run:  |
