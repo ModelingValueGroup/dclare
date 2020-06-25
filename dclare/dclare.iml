@@ -8,8 +8,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" scope="TEST" name="gen: hamcrest-core" level="project" />
     <orderEntry type="library" name="gen: immutable-collections" level="project" />
     <orderEntry type="library" scope="TEST" name="gen: junit" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: hamcrest-all" level="project" />
   </component>
 </module>
