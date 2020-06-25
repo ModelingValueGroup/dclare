@@ -3,15 +3,15 @@
 <!--          change  project.sh  instead                         -->
 <!--==============================================================-->
 <component name="libraryTable">
-  <library name="gen: hamcrest-core">
+  <library name="gen: hamcrest">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest.jar!/" />
     </CLASSES>
     <JAVADOC>
-      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest-javadoc.jar!/" />
     </JAVADOC>
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/hamcrest-core-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/hamcrest-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
