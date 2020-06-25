@@ -15,12 +15,14 @@
 
 package org.modelingvalue.dclare.test;
 
+import static org.hamcrest.number.IsCloseTo.*;
 import static org.junit.Assert.*;
 import static org.modelingvalue.dclare.UniverseTransaction.*;
 import static org.modelingvalue.dclare.test.Shared.*;
 
 import java.math.BigInteger;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Observed;
@@ -69,16 +71,11 @@ public class DclareTests {
                 children.set(universe, Set::add, DObject.of(io, dClass));
             }
         });
-        State result = universeTransaction.waitForEnd();
-        long  ms     = (result.get(universe, currentTime) - begin);
-        assertTrue(997 < ms);
-        assertTrue(ms < 1003);
+        State  result = universeTransaction.waitForEnd();
+        double sec    = (result.get(universe, currentTime) - begin) / 1000.0;
 
-        printState(universeTransaction, result);
-        if (PRINT_STATE) {
-            System.err.println(ms + " s");
-            System.err.println("********************************************************************");
-        }
+        printState(universeTransaction, result, sec + " s");
+        MatcherAssert.assertThat(sec, closeTo(1.0, 0.1));
     }
 
     @Test

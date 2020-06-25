@@ -22,9 +22,9 @@ import org.modelingvalue.dclare.UniverseTransaction;
 
 public class Shared {
     public static final ContextPool THE_POOL    = ContextThread.createPool();
-    public static final boolean     PRINT_STATE = false;
+    public static       boolean     PRINT_STATE = false;
 
-    public static void printState(UniverseTransaction universeTransaction, State result) {
+    public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
         if (PRINT_STATE) {
             int num = result == null ? -1 : result.getObjects(DObject.class).size();
 
@@ -36,6 +36,12 @@ public class Shared {
                 if (num < 100) {
                     System.err.println("**** end-state *****************************************************");
                     System.err.println(result);
+                }
+            }
+            if (extraLines.length>0) {
+                System.err.println("********************************************************************");
+                for (String line : extraLines) {
+                    System.err.println(line);
                 }
             }
             System.err.println("********************************************************************");
