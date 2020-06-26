@@ -197,7 +197,8 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         if (property instanceof Observed && Constant.DERIVED.get() != null && ObserverTransaction.OBSERVE.get()) {
-            throw new NonDeterministicException(object, property, "Reading observed '" + property + "' while initializing constant '" + Constant.DERIVED.get() + "'");
+            throw new NonDeterministicException(Constant.DERIVED.get().a(), Constant.DERIVED.get().b(), "Reading observed '" + object + "." + property + //
+                    "' while initializing constant '" + Constant.DERIVED.get().a() + "." + Constant.DERIVED.get().b() + "'");
         }
         observe(object, property, false);
         T result = super.get(object, property);
