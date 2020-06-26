@@ -21,5 +21,4 @@ dependencies=(
   "org.modelingvalue   immutable-collections   1.3.0       jar jds-"
 
   "junit               junit                   4.13        jar jdst"
-  "org.hamcrest        hamcrest-all            1.3         jar jdst"
 )
