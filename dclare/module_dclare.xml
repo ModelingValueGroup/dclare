@@ -13,24 +13,40 @@
   <path id="dclare.module.production.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
+    <path refid="library.gen:_junit-jupiter-api.classpath"/>
+    <path refid="library.gen:_junit-platform-commons.classpath"/>
+    <path refid="library.gen:_junit-platform-launcher.classpath"/>
+    <path refid="library.gen:_opentest4j.classpath"/>
+    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <path id="dclare.runtime.production.module.classpath">
     <pathelement location="${dclare.output.dir}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
+    <path refid="library.gen:_junit-jupiter-api.classpath"/>
+    <path refid="library.gen:_junit-platform-commons.classpath"/>
+    <path refid="library.gen:_junit-platform-launcher.classpath"/>
+    <path refid="library.gen:_opentest4j.classpath"/>
+    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <path id="dclare.module.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <pathelement location="${dclare.output.dir}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
-    <path refid="library.gen:_junit.classpath"/>
-    <path refid="library.gen:_hamcrest-all.classpath"/>
+    <path refid="library.gen:_junit-jupiter-api.classpath"/>
+    <path refid="library.gen:_junit-platform-commons.classpath"/>
+    <path refid="library.gen:_junit-platform-launcher.classpath"/>
+    <path refid="library.gen:_opentest4j.classpath"/>
+    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <path id="dclare.runtime.module.classpath">
     <pathelement location="${dclare.testoutput.dir}"/>
     <pathelement location="${dclare.output.dir}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
-    <path refid="library.gen:_junit.classpath"/>
-    <path refid="library.gen:_hamcrest-all.classpath"/>
+    <path refid="library.gen:_junit-jupiter-api.classpath"/>
+    <path refid="library.gen:_junit-platform-commons.classpath"/>
+    <path refid="library.gen:_junit-platform-launcher.classpath"/>
+    <path refid="library.gen:_opentest4j.classpath"/>
+    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <patternset id="excluded.from.module.dclare">
     <patternset refid="ignored.files"/>
@@ -86,17 +102,17 @@
     <delete dir="${dclare.testoutput.dir}"/>
   </target>
   <target name="test.module.dclare">
-    <junit haltonfailure="on" logfailedtests="on" fork="on" forkmode="once">
-      <!-- fork="on" forkmode="perTest" threads="8" -->
+    <junitlauncher haltOnFailure="true" printSummary="true">
       <classpath refid="dclare.runtime.module.classpath"/>
-      <batchtest todir=".">
+      <testclasses outputdir=".">
         <fileset dir="${dclare.testoutput.dir}">
           <include name="**/*Test.*"/>
           <include name="**/*Tests.*"/>
         </fileset>
-        <formatter type="xml"/>
-      </batchtest>
-    </junit>
+        <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
+        <listener type="legacy-plain" sendSysOut="true"/>
+      </testclasses>
+    </junitlauncher>
   </target>
   <target name="testresults.module.dclare" depends="test.module.dclare">
     <mkdir dir="${basedir}/out/artifacts"/>

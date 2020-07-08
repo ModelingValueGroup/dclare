@@ -9,7 +9,12 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="gen: immutable-collections" level="project" />
-    <orderEntry type="library" scope="TEST" name="gen: junit" level="project" />
-    <orderEntry type="library" scope="TEST" name="gen: hamcrest-all" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-jupiter-api" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-platform-commons" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-platform-launcher" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: opentest4j" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: apiguardian-api" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-jupiter-engine" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-platform-engine" level="project" />
   </component>
 </module>
