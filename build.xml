@@ -138,8 +138,14 @@
   <path id="library.gen:_junit-jupiter-api.classpath">
     <pathelement location="${basedir}/lib/junit-jupiter-api.jar"/>
   </path>
+  <path id="library.gen:_junit-jupiter-engine.classpath">
+    <pathelement location="${basedir}/lib/junit-jupiter-engine.jar"/>
+  </path>
   <path id="library.gen:_junit-platform-commons.classpath">
     <pathelement location="${basedir}/lib/junit-platform-commons.jar"/>
+  </path>
+  <path id="library.gen:_junit-platform-engine.classpath">
+    <pathelement location="${basedir}/lib/junit-platform-engine.jar"/>
   </path>
   <path id="library.gen:_junit-platform-launcher.classpath">
     <pathelement location="${basedir}/lib/junit-platform-launcher.jar"/>

@@ -13,20 +13,10 @@
   <path id="dclare.module.production.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
-    <path refid="library.gen:_junit-jupiter-api.classpath"/>
-    <path refid="library.gen:_junit-platform-commons.classpath"/>
-    <path refid="library.gen:_junit-platform-launcher.classpath"/>
-    <path refid="library.gen:_opentest4j.classpath"/>
-    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <path id="dclare.runtime.production.module.classpath">
     <pathelement location="${dclare.output.dir}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
-    <path refid="library.gen:_junit-jupiter-api.classpath"/>
-    <path refid="library.gen:_junit-platform-commons.classpath"/>
-    <path refid="library.gen:_junit-platform-launcher.classpath"/>
-    <path refid="library.gen:_opentest4j.classpath"/>
-    <path refid="library.gen:_apiguardian-api.classpath"/>
   </path>
   <path id="dclare.module.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
@@ -37,6 +27,8 @@
     <path refid="library.gen:_junit-platform-launcher.classpath"/>
     <path refid="library.gen:_opentest4j.classpath"/>
     <path refid="library.gen:_apiguardian-api.classpath"/>
+    <path refid="library.gen:_junit-jupiter-engine.classpath"/>
+    <path refid="library.gen:_junit-platform-engine.classpath"/>
   </path>
   <path id="dclare.runtime.module.classpath">
     <pathelement location="${dclare.testoutput.dir}"/>
@@ -47,6 +39,8 @@
     <path refid="library.gen:_junit-platform-launcher.classpath"/>
     <path refid="library.gen:_opentest4j.classpath"/>
     <path refid="library.gen:_apiguardian-api.classpath"/>
+    <path refid="library.gen:_junit-jupiter-engine.classpath"/>
+    <path refid="library.gen:_junit-platform-engine.classpath"/>
   </path>
   <patternset id="excluded.from.module.dclare">
     <patternset refid="ignored.files"/>
