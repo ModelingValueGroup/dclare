@@ -55,7 +55,7 @@ jobs:
 
       - name: "test"
         run:  |
-          if ! ant test; then
+          if ! ant -d test; then
             for i in TEST-*.xml; do
               echo "=============== $i"
               sed "s/^/>> /" $i
