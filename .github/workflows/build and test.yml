@@ -4,7 +4,7 @@ on: [push, repository_dispatch]
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: "checkout"
@@ -25,7 +25,6 @@ jobs:
         uses: ModelingValueGroup/buildTools@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          trace: true
 
       - name: "prepare ant"
         run:  |
