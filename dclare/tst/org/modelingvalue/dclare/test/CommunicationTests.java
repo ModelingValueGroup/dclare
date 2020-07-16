@@ -15,8 +15,10 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.test.Shared.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.modelingvalue.dclare.test.Shared.THE_POOL;
+import static org.modelingvalue.dclare.test.Shared.printState;
 
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.dclare.Observed;
@@ -26,6 +28,7 @@ import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 
 public class CommunicationTests {
+
     @Test
     public void source2target() {
         final boolean IS_IMPLEMENTED = false;
@@ -45,11 +48,27 @@ public class CommunicationTests {
         UniverseTransaction txB = UniverseTransaction.of(b.universe, THE_POOL);
 
         if (IS_IMPLEMENTED) {
-            // TODO: connect a <=> b
+            txA.put("syn A", () -> {
+                txA.addImperative("sync a", (pre, post, last) -> {
+                    txB.put("to B", () -> {
+                        delta(pre, post);
+                    });
+                }, r -> THE_POOL.execute(r), false);
+            });
+            txB.put("syn B", () -> {
+                txB.addImperative("sync b", (pre, post, last) -> {
+                    txA.put("to A", () -> {
+                        delta(pre, post);
+                    });
+                }, r -> THE_POOL.execute(r), false);
+            });
         }
 
         txA.put("stepA1", a.getRule1());
         txB.put("stepB1", b.getRule1());
+
+        // txA.waitForIdle();
+        // txB.waitForIdle();
 
         txA.put("stepA2", a.getRule2());
         // not on txB !!
@@ -70,14 +89,24 @@ public class CommunicationTests {
         assertEquals(IS_IMPLEMENTED ? setValueA : initialSourceValueB, (int) resultB.get(b.object, b.target));
     }
 
+    @SuppressWarnings("unchecked")
+    private void delta(State pre, State post) {
+        pre.diff(post, o -> o instanceof DObject, s -> s.id().equals("source") || s.id().equals("target")).forEach(e -> {
+            DObject obj = (DObject) e.getKey();
+            e.getValue().forEach(sv -> {
+                sv.getKey().set(obj, sv.getValue().b());
+            });
+        });
+    }
+
     private static class TestEnvironment {
-        final         Observed<DUniverse, DObject> child;
-        final         Observed<DObject, Integer>   source;
-        final         Setable<DObject, Integer>    target;
-        final         DClass                       dClass;
-        final         DObject                      object;
-        final         DUniverse                    universe;
-        private final Integer                      targetValue;
+        final Observed<DUniverse, DObject> child;
+        final Observed<DObject, Integer>   source;
+        final Setable<DObject, Integer>    target;
+        final DClass                       dClass;
+        final DObject                      object;
+        final DUniverse                    universe;
+        private final Integer              targetValue;
 
         TestEnvironment(String name, int initialSourceValue, int initialTargetValue) {
             this(name, initialSourceValue, initialTargetValue, null);
