@@ -46,7 +46,7 @@ public enum Direction implements Internable {
         private final boolean actions;
 
         private Queued(boolean actions) {
-            super(Pair.of(Direction.this, actions), Set.of(), false, null, null, null, false);
+            super(Pair.of(Direction.this, actions), Set.of(), false, null, null, null, null, false);
             this.actions = actions;
         }
 

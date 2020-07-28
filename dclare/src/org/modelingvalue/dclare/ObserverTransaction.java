@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.time.Instant;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -248,7 +249,15 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             super.runNonObserving(action);
         }
+    }
 
+    @Override
+    public <T> T getNonObserving(Supplier<T> action) {
+        if (getted.isInitialized()) {
+            return OBSERVE.get(false, action);
+        } else {
+            return super.getNonObserving(action);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

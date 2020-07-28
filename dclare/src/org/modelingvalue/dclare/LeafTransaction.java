@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -99,6 +100,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public void runNonObserving(Runnable action) {
         action.run();
+    }
+
+    public <T> T getNonObserving(Supplier<T> action) {
+        return action.get();
     }
 
     @Override

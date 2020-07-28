@@ -27,6 +27,7 @@ import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.util.QuadFunction;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
@@ -36,34 +37,36 @@ public class Setable<O, T> extends Getable<O, T> {
     private static final Context<Boolean> MOVING = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def) {
-        return new Setable<>(id, def, false, null, null, null, true);
+        return new Setable<>(id, def, false, null, null, null, null, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Setable<>(id, def, false, null, null, changed, true);
+        return new Setable<>(id, def, false, null, null, null, changed, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Setable<>(id, def, false, opposite, null, null, true);
+        return new Setable<>(id, def, false, opposite, null, null, null, true);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
-        return new Setable<>(id, def, containment, null, null, null, true);
+        return new Setable<>(id, def, containment, null, null, null, null, true);
     }
 
-    protected QuadConsumer<LeafTransaction, O, T, T>  changed;
-    protected final boolean                           containment;
-    private final Supplier<Setable<?, ?>>             opposite;
-    private final Supplier<Setable<O, Set<?>>>        scope;
+    protected final QuadFunction<LeafTransaction, O, T, T, T> preChange;
+    protected QuadConsumer<LeafTransaction, O, T, T>          changed;
+    protected final boolean                                   containment;
+    private final Supplier<Setable<?, ?>>                     opposite;
+    private final Supplier<Setable<O, Set<?>>>                scope;
     @SuppressWarnings("rawtypes")
-    private final Constant<T, Entry<Setable, Object>> internal;
-    protected final boolean                           checkConsistency;
-    private boolean                                   isReference;
+    private final Constant<T, Entry<Setable, Object>>         internal;
+    protected final boolean                                   checkConsistency;
+    private boolean                                           isReference;
 
-    protected Setable(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    protected Setable(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadFunction<LeafTransaction, O, T, T, T> preChange, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, def);
         this.checkConsistency = checkConsistency;
         this.containment = containment;
+        this.preChange = preChange;
         this.changed = changed;
         this.opposite = opposite;
         this.scope = scope;
@@ -130,6 +133,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected final boolean isHandlingChange() {
         return changed != null || containment || opposite != null;
+    }
+
+    protected final T preChange(LeafTransaction tx, O object, T preValue, T postValue) {
+        return preChange != null ? preChange.apply(tx, object, preValue, postValue) : postValue;
     }
 
     @SuppressWarnings("unchecked")
