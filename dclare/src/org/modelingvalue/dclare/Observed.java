@@ -26,7 +26,7 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.collections.util.QuadFunction;
+import org.modelingvalue.collections.util.TriFunction;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.TooManyObserversException;
 
@@ -91,7 +91,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     @SuppressWarnings("unchecked")
-    protected Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadFunction<LeafTransaction, O, T, T, T> preChange, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    protected Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, TriFunction<O, T, T, T> preChange, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         this(id, mandatory, def, containment, opposite, scope, newObservers(id), preChange, changed, checkConsistency);
     }
 
@@ -103,7 +103,7 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, QuadFunction<LeafTransaction, O, T, T, T> preChange, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    private Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T>[] observers, TriFunction<O, T, T, T> preChange, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, def, containment, opposite, scope, preChange, (l, o, p, n) -> {
             if (changed != null) {
                 changed.accept(l, o, p, n);

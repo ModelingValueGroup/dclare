@@ -35,15 +35,15 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
-    private static final long serialVersionUID = -3468784705870374732L;
+    private static final long                                           serialVersionUID   = -3468784705870374732L;
 
     public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
     public static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
 
-    private static final Comparator<Entry> COMPARATOR = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
-    private final UniverseTransaction                             universeTransaction;
+    private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
+    private final UniverseTransaction                                   universeTransaction;
 
     State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
@@ -150,6 +150,13 @@ public class State implements Serializable {
                 Object r = v;
                 if (v instanceof Mergeable) {
                     r = ((Mergeable) v).merge(vs, (int) vl);
+                    if (p.preChange != null) {
+                        for (int i = 0; i < vl; i++) {
+                            if (!Objects.equals(vs[i], r)) {
+                                r = p.preChange(o, vs[i], r);
+                            }
+                        }
+                    }
                 } else {
                     for (int i = 0; i < vl; i++) {
                         if (vs[i] != null && !vs[i].equals(v)) {
@@ -192,8 +199,8 @@ public class State implements Serializable {
 
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return get(() -> "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
-                            "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
-                            (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), (a2, b2) -> a2 + b2) + "}", //
+                "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
+                        (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), (a2, b2) -> a2 + b2) + "}", //
                 (a1, b1) -> a1 + b1) + "}");
     }
 
