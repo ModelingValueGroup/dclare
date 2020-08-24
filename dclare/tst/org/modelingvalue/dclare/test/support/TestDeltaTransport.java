@@ -24,12 +24,22 @@ public class TestDeltaTransport extends DeltaTransport {
 
     @SuppressWarnings("BusyWait")
     public static void busyWaitForIdle(TestDeltaTransport... transports) {
-        while (Arrays.stream(transports).anyMatch(TestDeltaTransport::isBusy)) {
+        long t0 = System.currentTimeMillis();
+        while (Arrays.stream(transports).anyMatch(TestDeltaTransport::isBusy) && System.currentTimeMillis() < t0 + 20_000) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
                 fail(e);
             }
+        }
+        if (Arrays.stream(transports).anyMatch(TestDeltaTransport::isBusy)) {
+            traceLog("this test did not get idle in time:");
+            for (TestDeltaTransport t : transports) {
+                System.err.println(" - " + t.transportThread.getName() + ".transportThread: busy=" + ((TestTransportThread) t.transportThread).isBusy());
+                System.err.println(" - " + t.transportThread.getName() + ".producer       : busy=" + ((TestDeltaAdaptor) t.producer).isBusy());
+                System.err.println(" - " + t.transportThread.getName() + ".consumer       : busy=" + ((TestDeltaAdaptor) t.consumer).isBusy());
+            }
+            fail();
         }
     }
 

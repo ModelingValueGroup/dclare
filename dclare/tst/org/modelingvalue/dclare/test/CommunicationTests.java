@@ -17,12 +17,14 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
-import static org.modelingvalue.dclare.test.support.Shared.*;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.RepeatedTest;
+import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.ImperativeTransaction;
@@ -39,13 +41,16 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings({"rawtypes"})
 public class CommunicationTests {
-    @RepeatedTest(5)
+    @RepeatedTest(5) // TODO disabled because 2 universes need at least
     public void source2target() {
+        ContextPool poolA = ContextThread.createPool(2);
+        //ContextPool poolB = ContextThread.createPool(1);
+
         TestEnvironment a = new TestEnvironment();
         TestEnvironment b = new TestEnvironment();
 
-        UniverseTransaction txA = UniverseTransaction.of(a.universe, THE_POOL);
-        UniverseTransaction txB = UniverseTransaction.of(b.universe, THE_POOL);
+        UniverseTransaction txA = UniverseTransaction.of(a.universe, poolA);
+        UniverseTransaction txB = UniverseTransaction.of(b.universe, poolA);
 
         Predicate<Object>  objectFilter  = o -> o instanceof TestObject;
         Predicate<Setable> setableFilter = s -> s.id().toString().startsWith("#");
@@ -86,6 +91,10 @@ public class CommunicationTests {
         txB.stop();
         txA.waitForEnd();
         txB.waitForEnd();
+        poolA.shutdownNow();
+        //poolB.shutdownNow();
+        assertDoesNotThrow(() -> poolA.awaitTermination(1, TimeUnit.SECONDS));
+        //assertDoesNotThrow(() -> poolB.awaitTermination(1, TimeUnit.SECONDS));
         traceLog("cleanup done");
         TraceTimer.dumpAll();
     }
