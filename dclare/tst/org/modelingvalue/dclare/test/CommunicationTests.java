@@ -15,121 +15,99 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.modelingvalue.dclare.test.Shared.THE_POOL;
-import static org.modelingvalue.dclare.test.Shared.printState;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.dclare.test.support.Shared.*;
 
-import org.junit.jupiter.api.Test;
+import java.util.function.Predicate;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.RepeatedTest;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Constant;
+import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.test.support.TestClass;
+import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
+import org.modelingvalue.dclare.test.support.TestDeltaTransport;
+import org.modelingvalue.dclare.test.support.TestObject;
+import org.modelingvalue.dclare.test.support.TestUniverse;
 
+@SuppressWarnings({"rawtypes"})
 public class CommunicationTests {
-
-    @Test
+    @RepeatedTest(5)
     public void source2target() {
-        final boolean IS_IMPLEMENTED = false;
-
-        final int initialSourceValueA = 100;
-        final int initialSourceValueB = 200;
-
-        final int initialTargetValueA = 300;
-        final int initialTargetValueB = 400;
-
-        final int setValueA = 900;
-
-        TestEnvironment a = new TestEnvironment("A", initialSourceValueA, initialTargetValueA, setValueA);
-        TestEnvironment b = new TestEnvironment("B", initialSourceValueB, initialTargetValueB);
+        TestEnvironment a = new TestEnvironment();
+        TestEnvironment b = new TestEnvironment();
 
         UniverseTransaction txA = UniverseTransaction.of(a.universe, THE_POOL);
         UniverseTransaction txB = UniverseTransaction.of(b.universe, THE_POOL);
 
-        if (IS_IMPLEMENTED) {
-            txA.put("syn A", () -> {
-                txA.addImperative("sync a", (pre, post, last) -> {
-                    txB.put("to B", () -> {
-                        delta(pre, post);
-                    });
-                }, r -> THE_POOL.execute(r), false);
-            });
-            txB.put("syn B", () -> {
-                txB.addImperative("sync b", (pre, post, last) -> {
-                    txA.put("to A", () -> {
-                        delta(pre, post);
-                    });
-                }, r -> THE_POOL.execute(r), false);
-            });
-        }
+        Predicate<Object>  objectFilter  = o -> o instanceof TestObject;
+        Predicate<Setable> setableFilter = s -> s.id().toString().startsWith("#");
 
-        txA.put("stepA1", a.getRule1());
-        txB.put("stepB1", b.getRule1());
+        TestDeltaAdaptor   adaptorA = new TestDeltaAdaptor("a", txA, objectFilter, setableFilter);
+        TestDeltaAdaptor   adaptorB = new TestDeltaAdaptor("b", txB, objectFilter, setableFilter);
+        TestDeltaTransport a2b      = new TestDeltaTransport("a->b", adaptorA, adaptorB, 100);
+        TestDeltaTransport b2a      = new TestDeltaTransport("b->a", adaptorB, adaptorA, 100);
 
-        // txA.waitForIdle();
-        // txB.waitForIdle();
 
-        txA.put("stepA2", a.getRule2());
-        // not on txB !!
+        final int NEW_VALUE = 900;
+        traceLog("MAIN: setting value in universe A");
+        txA.put("set new value in universe A", () -> TestEnvironment.source.set(a.object, NEW_VALUE));
 
+        traceLog("MAIN: wait for idle");
+        TestDeltaTransport.busyWaitForIdle(a2b, b2a);
+        traceLog("MAIN: IDLE detected");
+        TraceTimer.dumpAll();
+
+        State resultA = ImperativeTransaction.clean(txA.currentState());
+        State resultB = ImperativeTransaction.clean(txB.currentState());
+
+        //        Shared.printState(txA, resultA);
+        //        Shared.printState(txB, resultB);
+        //        System.err.println("====== diff = " + resultA.diffString(resultB));
+
+        traceLog("checking...");
+        assertEquals(NEW_VALUE, (int) resultA.get(a.object, TestEnvironment.source));
+        assertEquals(NEW_VALUE, (int) resultA.get(a.object, TestEnvironment.target));
+        assertEquals(NEW_VALUE, (int) resultB.get(b.object, TestEnvironment.source));
+        assertEquals(NEW_VALUE, (int) resultB.get(b.object, TestEnvironment.target));
+
+        assertEquals(resultA, resultB);
+
+        traceLog("cleanup...");
+        TestDeltaTransport.stopAllDeltaTransports(a2b, b2a);
         txA.stop();
         txB.stop();
-
-        State resultA = txA.waitForEnd();
-        State resultB = txB.waitForEnd();
-
-        printState(txA, resultA);
-        printState(txB, resultB);
-
-        assertEquals(setValueA, (int) resultA.get(a.object, a.source));
-        assertEquals(setValueA, (int) resultA.get(a.object, a.target));
-
-        assertEquals(IS_IMPLEMENTED ? setValueA : initialSourceValueB, (int) resultB.get(b.object, b.source));
-        assertEquals(IS_IMPLEMENTED ? setValueA : initialSourceValueB, (int) resultB.get(b.object, b.target));
+        txA.waitForEnd();
+        txB.waitForEnd();
+        traceLog("cleanup done");
+        TraceTimer.dumpAll();
     }
 
-    @SuppressWarnings("unchecked")
-    private void delta(State pre, State post) {
-        pre.diff(post, o -> o instanceof DObject, s -> s.id().equals("source") || s.id().equals("target")).forEach(e -> {
-            DObject obj = (DObject) e.getKey();
-            e.getValue().forEach(sv -> {
-                sv.getKey().set(obj, sv.getValue().b());
-            });
-        });
+    @AfterEach
+    public void after() {
+        TraceTimer.dumpAll();
     }
 
     private static class TestEnvironment {
-        final Observed<DUniverse, DObject> child;
-        final Observed<DObject, Integer>   source;
-        final Setable<DObject, Integer>    target;
-        final DClass                       dClass;
-        final DObject                      object;
-        final DUniverse                    universe;
-        private final Integer              targetValue;
+        final static Observed<TestObject, Integer> source = Observed.of("#source", 100);
+        final static Observed<TestObject, Integer> target = Observed.of("#target", 200);
+        final static TestClass                     clazz  = TestClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
 
-        TestEnvironment(String name, int initialSourceValue, int initialTargetValue) {
-            this(name, initialSourceValue, initialTargetValue, null);
-        }
+        final TestObject                         object;
+        final Constant<TestUniverse, TestObject> child;
+        final TestUniverse                       universe;
 
-        TestEnvironment(String name, int initialSourceValue, int initialTargetValue, Integer targetValue) {
-            this.targetValue = targetValue;
-
-            child = Observed.of("child", null, true);
-            source = Observed.of("source", initialSourceValue);
-            target = Setable.of("target", initialTargetValue);
-            dClass = DClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
-            object = DObject.of("object", dClass);
-            universe = DUniverse.of("test-env-" + name, DClass.of("Universe", child));
-        }
-
-        Runnable getRule1() {
-            return () -> child.set(universe, object);
-        }
-
-        Runnable getRule2() {
-            assertNotEquals(targetValue, null);
-            return () -> source.set(object, targetValue);
+        TestEnvironment() {
+            object = TestObject.of("object", clazz);
+            child = Constant.of("child", true, u -> object);
+            universe = TestUniverse.of("test-universe", TestClass.of("Universe", child));
         }
     }
 }

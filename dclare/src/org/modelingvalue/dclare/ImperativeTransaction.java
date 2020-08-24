@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.State.*;
+
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -30,7 +32,7 @@ public class ImperativeTransaction extends LeafTransaction {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
-    private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("CHANGE_NR", 0L);
+    private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
     //
@@ -93,7 +95,7 @@ public class ImperativeTransaction extends LeafTransaction {
             pre = finalState;
             universeTransaction().put(Pair.of(this, "$toDClare"), () -> {
                 try {
-                    finalPre.diff(finalState, o -> true, s -> true).forEachOrdered(s -> {
+                    finalPre.diff(finalState, ALL_OBJECTS, ALL_SETTABLES).forEachOrdered(s -> {
                         Object o = s.getKey();
                         for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
                             d.getKey().set(o, d.getValue().b());
@@ -175,4 +177,10 @@ public class ImperativeTransaction extends LeafTransaction {
         throw new UnsupportedOperationException();
     }
 
+    public static State clean(State state) {
+        for (ImperativeTransaction itx : state.getObjects(ImperativeTransaction.class)) {
+            state = state.set(itx, CHANGE_NR, CHANGE_NR.getDefault());
+        }
+        return state;
+    }
 }
