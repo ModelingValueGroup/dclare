@@ -116,7 +116,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
         @SuppressWarnings("unchecked")
         private Observerds(Observer observer, Direction direction) {
-            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, false, null, null, null, (tx, mutable, pre, post) -> {
+            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
@@ -148,7 +148,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, false, null, null, null, null, false);
+            super(Pair.of(observer, "exception"), null, false, null, null, null, false);
             this.observer = observer;
         }
 

@@ -119,7 +119,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 }
             }
             return po;
-        }, property.preChange(object, pre, post), oldNew))) {
+        }, post, oldNew))) {
             changed(object, property, oldNew[0], oldNew[1]);
         }
         return pre;

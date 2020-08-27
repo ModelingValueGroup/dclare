@@ -70,7 +70,7 @@ public class Constant<O, T> extends Setable<O, T> {
     private final Function<O, T> deriver;
 
     protected Constant(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, def, containment, opposite, scope, null, changed, checkConsistency);
+        super(id, def, containment, opposite, scope, changed, checkConsistency);
         this.deriver = deriver;
     }
 

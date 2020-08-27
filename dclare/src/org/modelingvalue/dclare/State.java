@@ -150,13 +150,6 @@ public class State implements Serializable {
                 Object r = v;
                 if (v instanceof Mergeable) {
                     r = ((Mergeable) v).merge(vs, (int) vl);
-                    if (p.preChange != null) {
-                        for (int i = 0; i < vl; i++) {
-                            if (!Objects.equals(vs[i], r)) {
-                                r = p.preChange(o, vs[i], r);
-                            }
-                        }
-                    }
                 } else {
                     for (int i = 0; i < vl; i++) {
                         if (vs[i] != null && !vs[i].equals(v)) {
@@ -265,7 +258,11 @@ public class State implements Serializable {
     }
 
     public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return get(() -> diff(other, objectFilter, setableFilter).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
+        return diffString(diff(other, objectFilter, setableFilter));
+    }
+
+    public String diffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
+        return get(() -> diff.reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
                 " {" + e1.getValue().reduce("", (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + //
                         valueDiffString(e2.getValue().a(), e2.getValue().b()), (a2, b2) -> a2 + b2) + "}", (a1, b1) -> a1 + b1));
     }
@@ -289,7 +286,7 @@ public class State implements Serializable {
 
     @Override
     public int hashCode() {
-        return universeTransaction.hashCode() + map.hashCode();
+        return universeTransaction.universe().hashCode() + map.hashCode();
     }
 
     @Override
@@ -298,7 +295,7 @@ public class State implements Serializable {
             return true;
         } else if (!(obj instanceof State)) {
             return false;
-        } else if (!universeTransaction.equals(((State) obj).universeTransaction)) {
+        } else if (!universeTransaction.universe().equals(((State) obj).universeTransaction.universe())) {
             return false;
         } else {
             return Objects.equals(map, ((State) obj).map);

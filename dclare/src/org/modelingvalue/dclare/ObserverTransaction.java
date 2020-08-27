@@ -225,7 +225,7 @@ public class ObserverTransaction extends ActionTransaction {
     public <O, T> T set(O object, Setable<O, T> property, T value) {
         observe(object, property, true);
         if (value == null && property instanceof Observed && ((Observed) property).mandatory() && ((Observed) property).checkConsistency) {
-            throw new NullPointerException(property.toString());
+            throw new NullPointerException();
         }
         return super.set(object, property, value);
     }

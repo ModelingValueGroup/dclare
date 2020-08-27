@@ -53,7 +53,7 @@ public class NonCheckingObserved<O, T> extends Observed<O, T> {
     }
 
     protected NonCheckingObserved(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed) {
-        super(id, mandatory, def, containment, opposite, scope, null, changed, false);
+        super(id, mandatory, def, containment, opposite, scope, changed, false);
     }
 
     @SuppressWarnings("rawtypes")
