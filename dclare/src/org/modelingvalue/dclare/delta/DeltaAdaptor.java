@@ -37,7 +37,7 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
         this.tx = tx;
         adaptorThread = makeThread(name);
         adaptorThread.start();
-        tx.put(name, () -> tx.addImperative("sync", (pre, post, last) -> {
+        tx.addImperative("sync-" + name, (pre, post, last) -> {
             Delta delta = new Delta(pre.diff(post, objectFilter, setableFilter));
             if (!delta.isEmpty()) {
                 traceLog("^^^DeltaAdaptor %s: new delta to queue (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
@@ -49,7 +49,7 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
             } else {
                 traceLog("^^^DeltaAdaptor %s: new delta IGNORED  (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
             }
-        }, adaptorThread, true));
+        }, adaptorThread, true);
     }
 
     protected AdaptorThread makeThread(String name) {

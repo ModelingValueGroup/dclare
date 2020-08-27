@@ -91,7 +91,6 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private static final Setable<Universe, Boolean>                                                      STOPPED                 = Setable.of("stopped", false);
-    private static final Setable<Universe, Set<Action<Universe>>>                                        POST_ACTIONS            = Setable.of("postActions", Set.of());
     //
     protected final      Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final      Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
@@ -114,6 +113,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final        AtomicReference<ConsistencyError>                                               consistencyError        = new AtomicReference<>(null);
     //
     private              List<Action<Universe>>                                                          timeTravelingActions    = List.of(backward, forward);
+    private              List<Action<Universe>>                                                          postActions             = List.of();
     private              List<State>                                                                     history                 = List.of();
     private              List<State>                                                                     future                  = List.of();
     private              State                                                                           preState;
@@ -180,7 +180,7 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                     }
                     if (!killed) {
-                        state = state.get(() -> run(trigger(state, state.get(universe(), POST_ACTIONS))));
+                        state = state.get(() -> run(triggerPostActions(state, postActions)));
                     }
                     if (!killed && inQueue.isEmpty()) {
                         if (isStopped(state)) {
@@ -277,7 +277,7 @@ public class UniverseTransaction extends MutableTransaction {
         return (Universe) mutable();
     }
 
-    private <O extends Mutable> State trigger(State state, Set<Action<Universe>> actions) {
+    private <O extends Mutable> State triggerPostActions(State state, List<Action<Universe>> actions) {
         for (Action<Universe> action : actions) {
             state = trigger(state, universe(), action, action.initDirection());
         }
@@ -384,20 +384,26 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public void addDiffHandler(String id, TriConsumer<State, State, Boolean> diffHandler) {
-        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action.<Universe> of(id, o -> {
+        Action<Universe> action = Action.of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
             diffHandler.accept(tx.universeTransaction().preState(), tx.state(), true);
-        }));
+        });
+        synchronized (this) {
+            postActions = postActions.add(action);
+        }
     }
 
     public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
-        ActionTransaction.getCurrent().set(universe(), POST_ACTIONS, Set::add, Action.<Universe> of(id, o -> {
-            LeafTransaction tx = ActionTransaction.getCurrent();
-            State pre = tx.state();
-            boolean timeTraveling = tx.universeTransaction().isTimeTraveling();
+        Action<Universe> action = Action.of(id, o -> {
+            LeafTransaction tx            = ActionTransaction.getCurrent();
+            State           pre           = tx.state();
+            boolean         timeTraveling = tx.universeTransaction().isTimeTraveling();
             n.schedule(() -> n.commit(pre, timeTraveling));
-        }));
+        });
+        synchronized (this) {
+            postActions = postActions.add(action);
+        }
         return n;
     }
 
