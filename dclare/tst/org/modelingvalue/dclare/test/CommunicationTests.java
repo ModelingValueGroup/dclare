@@ -21,6 +21,7 @@ import static org.modelingvalue.collections.util.TraceTimer.*;
 import java.io.BufferedWriter;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ImperativeTransaction;
@@ -29,8 +30,8 @@ import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaTransport;
 
 public class CommunicationTests {
-    //@RepeatedTest(50)
-    @Test
+    @RepeatedTest(5)
+    //@Test
     public void universeSyncWithinOneJVM() {
         traceLog("MAIN: BEGIN");
         CommTestRig a = new CommTestRig("a");
