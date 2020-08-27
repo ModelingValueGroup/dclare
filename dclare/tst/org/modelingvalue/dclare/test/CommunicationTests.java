@@ -18,105 +18,72 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
+import java.io.BufferedWriter;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.RepeatedTest;
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.ImperativeTransaction;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
-import org.modelingvalue.dclare.test.support.TestClass;
-import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
+import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaTransport;
-import org.modelingvalue.dclare.test.support.TestObject;
-import org.modelingvalue.dclare.test.support.TestUniverse;
 
-@SuppressWarnings({"rawtypes"})
 public class CommunicationTests {
-    @RepeatedTest(5) // TODO disabled because 2 universes need at least
-    public void source2target() {
-        ContextPool poolA = ContextThread.createPool(2);
-        //ContextPool poolB = ContextThread.createPool(1);
+    //@RepeatedTest(50)
+    @Test
+    public void universeSyncWithinOneJVM() {
+        traceLog("MAIN: BEGIN");
+        CommTestRig a = new CommTestRig("a");
+        CommTestRig b = new CommTestRig("b");
 
-        TestEnvironment a = new TestEnvironment();
-        TestEnvironment b = new TestEnvironment();
+        new TestDeltaTransport("a->b", a.adaptor, b.adaptor, 100);
+        new TestDeltaTransport("b->a", b.adaptor, a.adaptor, 100);
 
-        UniverseTransaction txA = UniverseTransaction.of(a.universe, poolA);
-        UniverseTransaction txB = UniverseTransaction.of(b.universe, poolA);
+        TestDeltaTransport.busyWaitAllForIdle();
 
-        Predicate<Object>  objectFilter  = o -> o instanceof TestObject;
-        Predicate<Setable> setableFilter = s -> s.id().toString().startsWith("#");
+        for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
+            traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
+            a.tx.put("set new value in universe A", () -> CommTestRig.source.set(a.object, NEW_VALUE));
 
-        TestDeltaAdaptor   adaptorA = new TestDeltaAdaptor("a", txA, objectFilter, setableFilter);
-        TestDeltaAdaptor   adaptorB = new TestDeltaAdaptor("b", txB, objectFilter, setableFilter);
-        TestDeltaTransport a2b      = new TestDeltaTransport("a->b", adaptorA, adaptorB, 100);
-        TestDeltaTransport b2a      = new TestDeltaTransport("b->a", adaptorB, adaptorA, 100);
+            traceLog("MAIN: wait for idle");
+            TestDeltaTransport.busyWaitAllForIdle();
+            traceLog("MAIN: IDLE detected");
+            CommTestRig.assertNoUncaughts();
 
+            State stateA = ImperativeTransaction.clean(a.tx.currentState());
+            State stateB = ImperativeTransaction.clean(b.tx.currentState());
 
-        final int NEW_VALUE = 900;
-        traceLog("MAIN: setting value in universe A");
-        txA.put("set new value in universe A", () -> TestEnvironment.source.set(a.object, NEW_VALUE));
+            traceLog("checking for sync of %d...", NEW_VALUE);
+            //            traceLog("stateA=%s", stateA.asString());
+            //            traceLog("stateB=%s", stateB.asString());
+            traceLog("DIFF states = %s", stateA.get(() -> stateA.diffString(stateB)));
 
-        traceLog("MAIN: wait for idle");
-        TestDeltaTransport.busyWaitForIdle(a2b, b2a);
-        traceLog("MAIN: IDLE detected");
-        TraceTimer.dumpAll();
+            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.target));
 
-        State resultA = ImperativeTransaction.clean(txA.currentState());
-        State resultB = ImperativeTransaction.clean(txB.currentState());
+            CommTestRig.assertNoUncaughts();
+        }
+        traceLog("MAIN: END");
+    }
 
-        //        Shared.printState(txA, resultA);
-        //        Shared.printState(txB, resultB);
-        //        System.err.println("====== diff = " + resultA.diffString(resultB));
-
-        traceLog("checking...");
-        assertEquals(NEW_VALUE, (int) resultA.get(a.object, TestEnvironment.source));
-        assertEquals(NEW_VALUE, (int) resultA.get(a.object, TestEnvironment.target));
-        assertEquals(NEW_VALUE, (int) resultB.get(b.object, TestEnvironment.source));
-        assertEquals(NEW_VALUE, (int) resultB.get(b.object, TestEnvironment.target));
-
-        assertEquals(resultA, resultB);
-
-        traceLog("cleanup...");
-        TestDeltaTransport.stopAllDeltaTransports(a2b, b2a);
-        txA.stop();
-        txB.stop();
-        txA.waitForEnd();
-        txB.waitForEnd();
-        poolA.shutdownNow();
-        //poolB.shutdownNow();
-        assertDoesNotThrow(() -> poolA.awaitTermination(1, TimeUnit.SECONDS));
-        //assertDoesNotThrow(() -> poolB.awaitTermination(1, TimeUnit.SECONDS));
-        traceLog("cleanup done");
-        TraceTimer.dumpAll();
+    @Test
+    public void universeSyncBetweenJVMs() throws Throwable {
+        PeerTester     peer = new PeerTester(CommunicationPeer.class);
+        BufferedWriter out  = peer.getOut();
+        out.write("66\n");
+        peer.expectExit(66, 1000);
     }
 
     @AfterEach
     public void after() {
-        TraceTimer.dumpAll();
-    }
-
-    private static class TestEnvironment {
-        final static Observed<TestObject, Integer> source = Observed.of("#source", 100);
-        final static Observed<TestObject, Integer> target = Observed.of("#target", 200);
-        final static TestClass                     clazz  = TestClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
-
-        final TestObject                         object;
-        final Constant<TestUniverse, TestObject> child;
-        final TestUniverse                       universe;
-
-        TestEnvironment() {
-            object = TestObject.of("object", clazz);
-            child = Constant.of("child", true, u -> object);
-            universe = TestUniverse.of("test-universe", TestClass.of("Universe", child));
-        }
+        TraceTimer.dumpLogs();
+        traceLog("MAIN: cleanup...");
+        TestDeltaTransport.stopAllDeltaTransports();
+        CommTestRig.tearDownAll();
+        CommTestRig.assertNoUncaughts();
+        traceLog("MAIN: cleanup done");
+        TraceTimer.dumpLogs();
     }
 }

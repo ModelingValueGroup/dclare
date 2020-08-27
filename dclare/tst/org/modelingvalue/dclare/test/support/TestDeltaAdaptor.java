@@ -23,6 +23,7 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.delta.DeltaAdaptor;
 
+@SuppressWarnings("rawtypes")
 public class TestDeltaAdaptor extends DeltaAdaptor {
     public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         super(name, tx, objectFilter, setableFilter);
@@ -36,7 +37,24 @@ public class TestDeltaAdaptor extends DeltaAdaptor {
         return ((TestAdaptorThread) adaptorThread).isBusy() || !deltaQueue.isEmpty() || tx.isHandling() || tx.numInQueue() != 0;
     }
 
-    private class TestAdaptorThread extends AdaptorThread {
+    public String isBusyExplaining() {
+        StringBuilder b = new StringBuilder();
+        if (((TestAdaptorThread) adaptorThread).isBusy()) {
+            b.append(" adaptorThread busy");
+        }
+        if (!deltaQueue.isEmpty()) {
+            b.append(" deltaQueue not empty");
+        }
+        if (tx.isHandling()) {
+            b.append(" tx is handling");
+        }
+        if (tx.numInQueue() != 0) {
+            b.append(" tx queue not empty");
+        }
+        return b.toString();
+    }
+
+    private static class TestAdaptorThread extends AdaptorThread {
         private boolean busy;
 
         public TestAdaptorThread(String name) {

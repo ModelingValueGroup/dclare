@@ -15,13 +15,14 @@
 
 package org.modelingvalue.dclare.delta;
 
+import static org.modelingvalue.collections.util.TraceTimer.*;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
 import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
 
 @SuppressWarnings("rawtypes")
 public class Delta {
@@ -35,10 +36,11 @@ public class Delta {
         return changes.isEmpty();
     }
 
+    @SuppressWarnings("unchecked")
     public void apply() {
         forEach((prop, obj, oldValue, newValue) -> {
-            //noinspection unchecked
-            ((Setable<Object, Object>) prop).set(obj, newValue);
+            traceLog("APPLY delta: %s -> %s (value is %s)", oldValue, newValue, prop.get(obj));
+            prop.set(obj, newValue);
         });
     }
 
@@ -46,10 +48,5 @@ public class Delta {
         changes.forEach(e ->
                 e.getValue().forEach(sv ->
                         f.accept(sv.getKey(), e.getKey(), sv.getValue().a(), sv.getValue().b())));
-    }
-
-    @Override
-    public String toString() {
-        return State.deltaString(changes);
     }
 }

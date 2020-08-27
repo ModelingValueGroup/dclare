@@ -40,14 +40,14 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
         tx.put(name, () -> tx.addImperative("sync", (pre, post, last) -> {
             Delta delta = new Delta(pre.diff(post, objectFilter, setableFilter));
             if (!delta.isEmpty()) {
-                traceLog("+++DeltaAdaptor %s: new delta to queue (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
+                traceLog("^^^DeltaAdaptor %s: new delta to queue (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
                 try {
                     deltaQueue.put(delta);
                 } catch (InterruptedException e) {
                     throw new Error(e);
                 }
             } else {
-                traceLog("+++DeltaAdaptor %s: new delta IGNORED  (%s) (q=%d)%s", name, (last ? "LAST" : "not last"), deltaQueue.size(), delta);
+                traceLog("^^^DeltaAdaptor %s: new delta IGNORED  (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
             }
         }, adaptorThread, true));
     }
@@ -58,9 +58,9 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
 
     @Override
     public void accept(Delta delta) {
-        traceLog("+++DeltaAdaptor %s let thread exec the delta: %s", name, delta);
+        traceLog("^^^DeltaAdaptor %s let thread exec the delta", name);
         adaptorThread.accept(() -> {
-            traceLog("+++DeltaAdaptor %s EXEC delta: %s", name, delta);
+            traceLog("^^^DeltaAdaptor %s APPLY delta: %s", name, delta);
             delta.apply();
         });
     }
@@ -68,9 +68,9 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
     @Override
     public Delta get() {
         try {
-            traceLog("+++DeltaAdaptor %s wait for delta in queue...", name);
+            traceLog("^^^DeltaAdaptor %s wait for delta in queue...", name);
             Delta delta = deltaQueue.take();
-            traceLog("+++DeltaAdaptor %s new delta in queue: %s", name, delta);
+            traceLog("^^^DeltaAdaptor %s new delta in queue", name);
             return delta;
         } catch (InterruptedException e) {
             throw new Error(e);

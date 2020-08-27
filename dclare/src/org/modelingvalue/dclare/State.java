@@ -265,21 +265,21 @@ public class State implements Serializable {
     }
 
     public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return deltaString(get(() -> diff(other, objectFilter, setableFilter)));
+        return diffString(diff(other, objectFilter, setableFilter));
     }
 
-    public static String deltaString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> delta) {
-        return delta.reduce("",
-                (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey())
-                        + " {" + e1.getValue().reduce("",
-                        (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + valueDeltaString(e2.getValue().a(), e2.getValue().b()),
-                        CONCAT)
-                        + "}",
-                CONCAT);
+    public String diffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
+        return get(() -> diff.reduce(
+                "",
+                (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce(
+                        "",
+                        (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()),
+                        CONCAT) + "}",
+                CONCAT));
     }
 
     @SuppressWarnings("unchecked")
-    private static String valueDeltaString(Object a, Object b) {
+    private static String valueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
             return "\n          <+ " + ((Set) a).removeAll((Set) b) + "\n          +> " + ((Set) b).removeAll((Set) a);
         } else {

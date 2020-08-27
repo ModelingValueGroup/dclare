@@ -222,6 +222,10 @@ public class UniverseTransaction extends MutableTransaction {
         if (error == null) {
             error = t;
         }
+        if (TRACE_UNIVERSE) {
+            System.err.println("Exception in Universe:");
+            t.printStackTrace();
+        }
         kill();
     }
 

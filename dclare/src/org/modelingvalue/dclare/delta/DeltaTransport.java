@@ -17,10 +17,6 @@ package org.modelingvalue.dclare.delta;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DeltaTransport {
@@ -55,24 +51,6 @@ public class DeltaTransport {
         producer.join();
         consumer.join();
         transportThread.join_();
-    }
-
-    public static void stopAllDeltaTransports(DeltaTransport... transports) {
-        Arrays.stream(transports).forEach(DeltaTransport::stop);
-        Arrays.stream(transports).forEach(DeltaTransport::interrupt);
-        Arrays.stream(transports).forEach(DeltaTransport::join);
-
-        List<Throwable> problems = Arrays.stream(transports)
-                .flatMap(DeltaTransport::getThrowables)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        if (!problems.isEmpty()) {
-            if (problems.size() == 1) {
-                throw new Error(problems.get(0));
-            } else {
-                throw new MultiError("problems after stop of support threads", problems);
-            }
-        }
     }
 
     public Stream<Throwable> getThrowables() {
