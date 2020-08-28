@@ -13,27 +13,27 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test;
+package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.dclare.*;
+import java.util.function.Consumer;
 
-import java.util.function.*;
+import org.modelingvalue.dclare.Universe;
 
 @SuppressWarnings("unused")
-public class DUniverse extends DObject implements Universe {
-    public static DUniverse of(Object id, DClass dClass) {
-        return new DUniverse(id, u -> {
-        }, dClass);
+public class TestUniverse extends TestObject implements Universe {
+    public static TestUniverse of(Object id, TestClass clazz) {
+        return new TestUniverse(id, u -> {
+        }, clazz);
     }
 
-    public static DUniverse of(Object id, Consumer <Universe> init, DClass dClass) {
-        return new DUniverse(id, init, dClass);
+    public static TestUniverse of(Object id, Consumer<Universe> init, TestClass clazz) {
+        return new TestUniverse(id, init, clazz);
     }
 
-    private final Consumer <Universe> init;
+    private final Consumer<Universe> init;
 
-    protected DUniverse(Object id, Consumer <Universe> init, DClass dClass) {
-        super(id, dClass);
+    protected TestUniverse(Object id, Consumer<Universe> init, TestClass clazz) {
+        super(id, clazz);
         this.init = init;
     }
 

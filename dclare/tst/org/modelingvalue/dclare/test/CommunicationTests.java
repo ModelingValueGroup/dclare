@@ -16,120 +16,75 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.modelingvalue.dclare.test.Shared.THE_POOL;
-import static org.modelingvalue.dclare.test.Shared.printState;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
+import java.io.BufferedWriter;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.test.support.PeerTester;
+import org.modelingvalue.dclare.test.support.TestDeltaTransport;
 
 public class CommunicationTests {
+    @RepeatedTest(5)
+    //@Test
+    public void universeSyncWithinOneJVM() {
+        traceLog("MAIN: BEGIN");
+        CommTestRig a = new CommTestRig("a");
+        CommTestRig b = new CommTestRig("b");
+
+        new TestDeltaTransport("a->b", a.adaptor, b.adaptor, 100);
+        new TestDeltaTransport("b->a", b.adaptor, a.adaptor, 100);
+
+        TestDeltaTransport.busyWaitAllForIdle();
+
+        for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
+            traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
+            a.tx.put("set new value in universe A", () -> CommTestRig.source.set(a.object, NEW_VALUE));
+
+            traceLog("MAIN: wait for idle");
+            TestDeltaTransport.busyWaitAllForIdle();
+            traceLog("MAIN: IDLE detected");
+            CommTestRig.assertNoUncaughts();
+
+            State stateA = ImperativeTransaction.clean(a.tx.currentState());
+            State stateB = ImperativeTransaction.clean(b.tx.currentState());
+
+            traceLog("checking for sync of %d...", NEW_VALUE);
+            //            traceLog("stateA=%s", stateA.asString());
+            //            traceLog("stateB=%s", stateB.asString());
+            traceLog("DIFF states = %s", stateA.get(() -> stateA.diffString(stateB)));
+
+            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.target));
+
+            CommTestRig.assertNoUncaughts();
+        }
+        traceLog("MAIN: END");
+    }
 
     @Test
-    public void source2target() {
-        final boolean IS_IMPLEMENTED = false;
-
-        final int initialSourceValueA = 100;
-        final int initialSourceValueB = 200;
-
-        final int initialTargetValueA = 300;
-        final int initialTargetValueB = 400;
-
-        final int setValueA = 900;
-
-        TestEnvironment a = new TestEnvironment("A", initialSourceValueA, initialTargetValueA, setValueA);
-        TestEnvironment b = new TestEnvironment("B", initialSourceValueB, initialTargetValueB);
-
-        UniverseTransaction txA = UniverseTransaction.of(a.universe, THE_POOL);
-        UniverseTransaction txB = UniverseTransaction.of(b.universe, THE_POOL);
-
-        if (IS_IMPLEMENTED) {
-            txA.put("syn A", () -> {
-                txA.addImperative("sync a", (pre, post, last) -> {
-                    txB.put("to B", () -> {
-                        delta(pre, post);
-                    });
-                }, r -> THE_POOL.execute(r), false);
-            });
-            txB.put("syn B", () -> {
-                txB.addImperative("sync b", (pre, post, last) -> {
-                    txA.put("to A", () -> {
-                        delta(pre, post);
-                    });
-                }, r -> THE_POOL.execute(r), false);
-            });
-        }
-
-        txA.put("stepA1", a.getRule1());
-        txB.put("stepB1", b.getRule1());
-
-        // txA.waitForIdle();
-        // txB.waitForIdle();
-
-        txA.put("stepA2", a.getRule2());
-        // not on txB !!
-
-        txA.stop();
-        txB.stop();
-
-        State resultA = txA.waitForEnd();
-        State resultB = txB.waitForEnd();
-
-        printState(txA, resultA);
-        printState(txB, resultB);
-
-        assertEquals(setValueA, (int) resultA.get(a.object, a.source));
-        assertEquals(setValueA, (int) resultA.get(a.object, a.target));
-
-        assertEquals(IS_IMPLEMENTED ? setValueA : initialSourceValueB, (int) resultB.get(b.object, b.source));
-        assertEquals(IS_IMPLEMENTED ? setValueA : initialSourceValueB, (int) resultB.get(b.object, b.target));
+    public void universeSyncBetweenJVMs() throws Throwable {
+        PeerTester peer = new PeerTester(CommunicationPeer.class);
+        BufferedWriter out = peer.getOut();
+        out.write("66\n");
+        peer.expectExit(66, 1000);
     }
 
-    @SuppressWarnings("unchecked")
-    private void delta(State pre, State post) {
-        pre.diff(post, o -> o instanceof DObject, s -> s.id().equals("source") || s.id().equals("target")).forEach(e -> {
-            DObject obj = (DObject) e.getKey();
-            e.getValue().forEach(sv -> {
-                sv.getKey().set(obj, sv.getValue().b());
-            });
-        });
-    }
-
-    private static class TestEnvironment {
-        final Observed<DUniverse, DObject> child;
-        final Observed<DObject, Integer>   source;
-        final Setable<DObject, Integer>    target;
-        final DClass                       dClass;
-        final DObject                      object;
-        final DUniverse                    universe;
-        private final Integer              targetValue;
-
-        TestEnvironment(String name, int initialSourceValue, int initialTargetValue) {
-            this(name, initialSourceValue, initialTargetValue, null);
-        }
-
-        TestEnvironment(String name, int initialSourceValue, int initialTargetValue, Integer targetValue) {
-            this.targetValue = targetValue;
-
-            child = Observed.of("child", null, true);
-            source = Observed.of("source", initialSourceValue);
-            target = Setable.of("target", initialTargetValue);
-            dClass = DClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
-            object = DObject.of("object", dClass);
-            universe = DUniverse.of("test-env-" + name, DClass.of("Universe", child));
-        }
-
-        Runnable getRule1() {
-            return () -> child.set(universe, object);
-        }
-
-        Runnable getRule2() {
-            assertNotEquals(targetValue, null);
-            return () -> source.set(object, targetValue);
-        }
+    @AfterEach
+    public void after() {
+        TraceTimer.dumpLogs();
+        traceLog("MAIN: cleanup...");
+        TestDeltaTransport.stopAllDeltaTransports();
+        CommTestRig.tearDownAll();
+        CommTestRig.assertNoUncaughts();
+        traceLog("MAIN: cleanup done");
+        TraceTimer.dumpLogs();
     }
 }

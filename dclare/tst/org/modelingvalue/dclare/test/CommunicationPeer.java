@@ -15,43 +15,16 @@
 
 package org.modelingvalue.dclare.test;
 
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
-public class Shared {
-    public static final ContextPool THE_POOL    = ContextThread.createPool();
-    public static       boolean     PRINT_STATE = false;
+public class CommunicationPeer {
+    public static void main(String[] args) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+        String         line           = bufferedReader.readLine();
+        int            rt             = Integer.parseInt(line);
 
-    public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
-        if (PRINT_STATE) {
-            int num = result == null ? -1 : result.getObjects(DObject.class).size();
-
-            System.err.println("**** stats *********************************************************");
-            System.err.println(universeTransaction.stats());
-            if (0 <= num) {
-                System.err.println("**** num DObjects **************************************************");
-                System.err.println(num);
-                if (num < 100) {
-                    System.err.println("**** end-state *****************************************************");
-                    System.err.println(result);
-                }
-            }
-            if (extraLines.length>0) {
-                System.err.println("********************************************************************");
-                for (String line : extraLines) {
-                    System.err.println(line);
-                }
-            }
-            System.err.println("********************************************************************");
-        }
-    }
-
-    public static Throwable getCause(Throwable t) {
-        while (t.getCause() != null) {
-            t = t.getCause();
-        }
-        return t;
+        System.exit(rt);
     }
 }

@@ -13,45 +13,47 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test;
+package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings("unused")
-public class DClass implements MutableClass {
-
+public class TestClass implements MutableClass {
     @SafeVarargs
-    static DClass of(Object id, Observer<? extends DObject>... observers) {
-        return new DClass(id, Set.of(), Set.of(observers));
+    public static TestClass of(Object id, Observer<? extends TestObject>... observers) {
+        return new TestClass(id, Set.of(), Set.of(observers));
     }
 
     @SafeVarargs
-    static DClass of(Object id, Setable<? extends DObject, ?> setable, Observer<? extends DObject>... observers) {
-        return new DClass(id, Set.of(setable), Set.of(observers));
+    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable, Observer<? extends TestObject>... observers) {
+        return new TestClass(id, Set.of(setable), Set.of(observers));
     }
 
     @SafeVarargs
-    static DClass of(Object id, Setable<? extends DObject, ?> setable0, Setable<? extends DObject, ?> setable1, Observer<? extends DObject>... observers) {
-        return new DClass(id, Set.of(setable0, setable1), Set.of(observers));
+    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Observer<? extends TestObject>... observers) {
+        return new TestClass(id, Set.of(setable0, setable1), Set.of(observers));
     }
 
     @SafeVarargs
-    static DClass of(Object id, Setable <? extends DObject, ?> setable0, Setable <? extends DObject, ?> setable1, Setable <? extends DObject, ?> setable2, Observer <? extends DObject>... observers) {
-        return new DClass(id, Set.of(setable0, setable1, setable2), Set.of(observers));
+    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Setable<? extends TestObject, ?> setable2, Observer<? extends TestObject>... observers) {
+        return new TestClass(id, Set.of(setable0, setable1, setable2), Set.of(observers));
     }
 
     @SafeVarargs
-    static DClass of(Object id, Setable <? extends DObject, ?> setable0, Setable <? extends DObject, ?> setable1, Setable <? extends DObject, ?> setable2, Setable <? extends DObject, ?> setable3, Observer <? extends DObject>... observers) {
-        return new DClass(id, Set.of(setable0, setable1, setable2, setable3), Set.of(observers));
+    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Setable<? extends TestObject, ?> setable2, Setable<? extends TestObject, ?> setable3, Observer<? extends TestObject>... observers) {
+        return new TestClass(id, Set.of(setable0, setable1, setable2, setable3), Set.of(observers));
     }
 
     private final Object                         id;
     private final Set <? extends Observer <?>>   observers;
     private final Set <? extends Setable <?, ?>> setables;
 
-    protected DClass(Object id, Set <? extends Setable <?, ?>> setables, Set <? extends Observer <?>> observers) {
+    protected TestClass(Object id, Set<? extends Setable<?, ?>> setables, Set<? extends Observer<?>> observers) {
         this.id = id;
         this.setables = setables;
         this.observers = observers;
@@ -87,7 +89,7 @@ public class DClass implements MutableClass {
         } else if (getClass() != obj.getClass()) {
             return false;
         } else {
-            DClass c = (DClass) obj;
+            TestClass c = (TestClass) obj;
             return id.equals(c.id);
         }
     }
