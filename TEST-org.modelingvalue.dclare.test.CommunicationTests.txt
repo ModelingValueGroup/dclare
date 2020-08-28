@@ -1,3 +1,7 @@
 Testcase: org.modelingvalue.dclare.test.CommunicationTests
-Test: source2target() took 259 milli sec(s)
-Tests run: 1, Failures: 0, Skipped: 0, Aborted: 0, Time elapsed: 276 milli sec(s)
+Test: source2target()[1] took 389 milli sec(s)
+Test: source2target()[2] took 141 milli sec(s)
+Test: source2target()[3] took 133 milli sec(s)
+Test: source2target()[4] took 126 milli sec(s)
+Test: source2target()[5] took 120 milli sec(s)
+Tests run: 5, Failures: 0, Skipped: 0, Aborted: 0, Time elapsed: 942 milli sec(s)
