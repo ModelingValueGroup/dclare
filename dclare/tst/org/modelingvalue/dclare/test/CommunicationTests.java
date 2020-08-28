@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.test.support.CommTestRig;
 import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaTransport;
 
@@ -37,17 +38,17 @@ public class CommunicationTests {
         CommTestRig a = new CommTestRig("a");
         CommTestRig b = new CommTestRig("b");
 
-        new TestDeltaTransport("a->b", a.adaptor, b.adaptor, 100);
-        new TestDeltaTransport("b->a", b.adaptor, a.adaptor, 100);
+        CommTestRig.add(new TestDeltaTransport("a->b", a.adaptor, b.adaptor, 100));
+        CommTestRig.add(new TestDeltaTransport("b->a", b.adaptor, a.adaptor, 100));
 
-        TestDeltaTransport.busyWaitAllForIdle();
+        CommTestRig.busyWaitAllForIdle();
 
         for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
             traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
             a.tx.put("set new value in universe A", () -> CommTestRig.source.set(a.object, NEW_VALUE));
 
             traceLog("MAIN: wait for idle");
-            TestDeltaTransport.busyWaitAllForIdle();
+            CommTestRig.busyWaitAllForIdle();
             traceLog("MAIN: IDLE detected");
             CommTestRig.assertNoUncaughts();
 
@@ -81,7 +82,7 @@ public class CommunicationTests {
     public void after() {
         TraceTimer.dumpLogs();
         traceLog("MAIN: cleanup...");
-        TestDeltaTransport.stopAllDeltaTransports();
+        CommTestRig.stopAllDeltaTransports();
         CommTestRig.tearDownAll();
         CommTestRig.assertNoUncaughts();
         traceLog("MAIN: cleanup done");

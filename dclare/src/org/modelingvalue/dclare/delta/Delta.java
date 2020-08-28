@@ -17,6 +17,8 @@ package org.modelingvalue.dclare.delta;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
+import java.io.Serializable;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -25,7 +27,9 @@ import org.modelingvalue.collections.util.QuadConsumer;
 import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings("rawtypes")
-public class Delta {
+public class Delta implements Serializable {
+    static final long serialVersionUID = 6094717687064448915L;
+
     private final Map<Object, Map<Setable, Pair<Object, Object>>> changes;
 
     public Delta(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
