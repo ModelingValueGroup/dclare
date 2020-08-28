@@ -42,7 +42,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final Set<Mutable>[]                            children      = new Set[1];
     private final State[]                                   state         = new State[1];
 
-    private boolean                                         sequential;
     private Mutable                                         mutable;
 
     @SuppressWarnings("unchecked")
@@ -114,7 +113,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             return state[0];
         } finally {
             mutable = null;
-            sequential = false;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -126,25 +124,18 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         if (TRACE_MUTABLE) {
             System.err.println("DCLARE: " + indent("    ") + mutable + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
-        if (sequential) {
+        try {
+            state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
+                    (s, t) -> new State[]{t.run(s[0], this)}, //
+                    (a, b) -> {
+                        State[] r = new State[a.length + b.length];
+                        System.arraycopy(a, 0, r, 0, a.length);
+                        System.arraycopy(b, 0, r, a.length, b.length);
+                        return r;
+                    })));
+        } catch (NotMergeableException nme) {
             for (TransactionClass t : todo.random()) {
                 state[0] = t.run(state[0], this);
-            }
-        } else {
-            try {
-                state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
-                        (s, t) -> new State[]{t.run(s[0], this)}, //
-                        (a, b) -> {
-                            State[] r = new State[a.length + b.length];
-                            System.arraycopy(a, 0, r, 0, a.length);
-                            System.arraycopy(b, 0, r, a.length, b.length);
-                            return r;
-                        })));
-            } catch (NotMergeableException nme) {
-                sequential = true;
-                for (TransactionClass t : todo.random()) {
-                    state[0] = t.run(state[0], this);
-                }
             }
         }
         move(mutable, Direction.forward, Direction.scheduled);
