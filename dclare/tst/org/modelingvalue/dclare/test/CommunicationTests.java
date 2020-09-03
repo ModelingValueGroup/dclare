@@ -31,39 +31,39 @@ import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaTransport;
 
 public class CommunicationTests {
-    @RepeatedTest(5)
+    @RepeatedTest(50)
     //@Test
     public void universeSyncWithinOneJVM() {
         traceLog("MAIN: BEGIN");
         CommTestRig a = new CommTestRig("a");
         CommTestRig b = new CommTestRig("b");
 
-        CommTestRig.add(new TestDeltaTransport("a->b", a.adaptor, b.adaptor, 100));
-        CommTestRig.add(new TestDeltaTransport("b->a", b.adaptor, a.adaptor, 100));
+        CommTestRig.add(new TestDeltaTransport("a->b", a.getAdaptor(), b.getAdaptor(), 100));
+        CommTestRig.add(new TestDeltaTransport("b->a", b.getAdaptor(), a.getAdaptor(), 100));
 
         CommTestRig.busyWaitAllForIdle();
 
         for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
             traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
-            a.tx.put("set new value in universe A", () -> CommTestRig.source.set(a.object, NEW_VALUE));
+            a.getTx().put("set new value in universe A", () -> CommTestRig.source.set(a.getObject(), NEW_VALUE));
 
             traceLog("MAIN: wait for idle");
             CommTestRig.busyWaitAllForIdle();
             traceLog("MAIN: IDLE detected");
             CommTestRig.assertNoUncaughts();
 
-            State stateA = ImperativeTransaction.clean(a.tx.currentState());
-            State stateB = ImperativeTransaction.clean(b.tx.currentState());
+            State stateA = ImperativeTransaction.clean(a.getTx().currentState());
+            State stateB = ImperativeTransaction.clean(b.getTx().currentState());
 
             traceLog("checking for sync of %d...", NEW_VALUE);
             //            traceLog("stateA=%s", stateA.asString());
             //            traceLog("stateB=%s", stateB.asString());
             traceLog("DIFF states = %s", stateA.get(() -> stateA.diffString(stateB)));
 
-            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateA.get(a.object, CommTestRig.target));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.object, CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.getObject(), CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.getObject(), CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.getObject(), CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.getObject(), CommTestRig.target));
 
             CommTestRig.assertNoUncaughts();
         }

@@ -28,7 +28,8 @@ import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings("rawtypes")
 public class Delta implements Serializable {
-    static final long serialVersionUID = 6094717687064448915L;
+    static final         long    serialVersionUID = 6094717687064448915L;
+    private static final boolean TRACE_APPLIES    = false;
 
     private final Map<Object, Map<Setable, Pair<Object, Object>>> changes;
 
@@ -43,7 +44,20 @@ public class Delta implements Serializable {
     @SuppressWarnings("unchecked")
     public void apply() {
         forEach((prop, obj, oldValue, newValue) -> {
-            traceLog("APPLY delta: %s -> %s (value is %s)", oldValue, newValue, prop.get(obj));
+            if (TRACE_APPLIES) {
+                traceLog("APPLY delta\n"
+                                + "  obj      = %-50s (%s)\n"
+                                + "  prop     = %-50s (%s)\n"
+                                + "  currValue= %-50s (%s)\n"
+                                + "  oldValue = %-50s (%s)\n"
+                                + "  newValue = %-50s (%s)",
+                        obj, obj == null ? "" : obj.getClass().getName(),
+                        prop, prop.getClass().getName(),
+                        prop.get(obj), prop.getClass().getName(),
+                        oldValue, oldValue == null ? "" : oldValue.getClass().getName(),
+                        newValue, newValue == null ? "" : newValue.getClass().getName()
+                );
+            }
             prop.set(obj, newValue);
         });
     }

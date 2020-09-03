@@ -40,34 +40,50 @@ import org.modelingvalue.dclare.test.support.TestDeltaTransport.TestTransportThr
 @SuppressWarnings("rawtypes")
 public class CommTestRig {
     // TODO: need to fix the bug and emove this workaround:
-    private static final boolean                  BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
-    private static final ContextPool              BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
+    private static final boolean                            BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
+    private static final ContextPool                        BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
     //
-    private static final int                      IDLE_DETECT_TIMEOUT                               = 60_000;
-    private static final int                      IDLE_SAMPLES_FOR_DEFINATIVE_IDLE_CONCLUSION       = 10;
-    private static final List<CommTestRig>        ALL_RIGS                                          = new ArrayList<>();
-    private static final List<TestDeltaTransport> ALL_TRANSPORTS                                    = new ArrayList<>();
-
-    public final static Observed<TestObject, Integer> source            = Observed.of("#source", 100);
-    public final static Observed<TestObject, Integer> target            = Observed.of("#target", 200);
-    final static        TestClass                     clazz             = TestClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
-    final static        Predicate<Object>             objectFilter      = o -> o instanceof TestObject;
-    final static        Predicate<Setable>            setableFilter     = s -> s.id().toString().startsWith("#");
-    final static        List<Throwable>               uncaughtThowables = new ArrayList<>();
-    final static        List<Thread>                  uncaughtThreads   = new ArrayList<>();
-
-    final        ContextPool                        pool   = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL : newPool();
-    public final TestObject                         object = TestObject.of("object", clazz);
-    final        Constant<TestUniverse, TestObject> child  = Constant.of("child", true, u -> object);
-    final        TestUniverse                       universe;
-    public final UniverseTransaction                tx;
-    public final TestDeltaAdaptor                   adaptor;
+    private static final int                                IDLE_DETECT_TIMEOUT                               = 60_000;
+    private static final int                                IDLE_SAMPLES_FOR_DEFINATIVE_IDLE_CONCLUSION       = 10;
+    private static final List<CommTestRig>                  ALL_RIGS                                          = new ArrayList<>();
+    private static final List<TestDeltaTransport>           ALL_TRANSPORTS                                    = new ArrayList<>();
+    //
+    public final static  Observed<TestObject, Integer>      source                                            = Observed.of("#source", 100);
+    public final static  Observed<TestObject, Integer>      target                                            = Observed.of("#target", 200);
+    private final static TestClass                          clazz                                             = TestClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
+    private final static Predicate<Object>                  objectFilter                                      = o -> o instanceof TestObject;
+    private final static Predicate<Setable>                 setableFilter                                     = s -> s.id().toString().startsWith("#");
+    private final static List<Throwable>                    uncaughtThowables                                 = new ArrayList<>();
+    private final static List<Thread>                       uncaughtThreads                                   = new ArrayList<>();
+    //
+    private final        ContextPool                        pool                                              = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL : newPool();
+    private final        TestObject                         object                                            = TestObject.of("object", clazz);
+    private final        Constant<TestUniverse, TestObject> child                                             = Constant.of("child", true, u -> object);
+    private final        TestUniverse                       universe;
+    private final        UniverseTransaction                tx;
+    private              TestDeltaAdaptor                   adaptor;
 
     public CommTestRig(String name) {
         ALL_RIGS.add(this);
-        universe = TestUniverse.of("universe-" + name, TestClass.of("Universe", child));
+        universe = TestUniverse.of("universe-" + name,
+                u -> adaptor = new TestDeltaAdaptor(name, getTx(), objectFilter, setableFilter),
+                TestClass.of("Universe", child));
         tx = UniverseTransaction.of(universe, pool);
-        adaptor = new TestDeltaAdaptor(name, tx, objectFilter, setableFilter);
+    }
+
+    public TestObject getObject() {
+        return object;
+    }
+
+    public UniverseTransaction getTx() {
+        return tx;
+    }
+
+    public TestDeltaAdaptor getAdaptor() {
+        if (adaptor == null) {
+            busyWaitAllForIdle();
+        }
+        return adaptor;
     }
 
     public static void assertNoUncaughts() {
@@ -94,6 +110,7 @@ public class CommTestRig {
             });
         }
         ALL_RIGS.clear();
+        ALL_TRANSPORTS.clear();
     }
 
 
@@ -141,7 +158,7 @@ public class CommTestRig {
             for (int i = 0; i < IDLE_SAMPLES_FOR_DEFINATIVE_IDLE_CONCLUSION && !busy; i++) {
                 nap();
                 rethrowAny();
-                busy = ALL_TRANSPORTS.stream().anyMatch(TestDeltaTransport::isBusy);
+                busy = ALL_RIGS.stream().anyMatch(r -> r.adaptor == null) || ALL_TRANSPORTS.stream().anyMatch(TestDeltaTransport::isBusy);
             }
         } while (System.currentTimeMillis() < t0 + IDLE_DETECT_TIMEOUT && busy);
         traceLog("busyWait ended after %d ms", System.currentTimeMillis() - t0);
