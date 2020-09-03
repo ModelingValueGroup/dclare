@@ -31,7 +31,7 @@ import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaTransport;
 
 public class CommunicationTests {
-    @RepeatedTest(50)
+    @RepeatedTest(1)
     //@Test
     public void universeSyncWithinOneJVM() {
         traceLog("MAIN: BEGIN");
