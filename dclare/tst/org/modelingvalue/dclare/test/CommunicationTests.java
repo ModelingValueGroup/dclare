@@ -18,19 +18,21 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.io.BufferedWriter;
+import java.io.*;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.ImperativeTransaction;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.test.support.CommTestRig;
-import org.modelingvalue.dclare.test.support.PeerTester;
-import org.modelingvalue.dclare.test.support.TestDeltaTransport;
+import org.junit.jupiter.api.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.test.support.*;
 
 public class CommunicationTests {
+    static {
+        System.setProperty("TRACE_LOG", "true");
+        System.setProperty("PARALLELISM", "1");
+        System.err.println("~~~FORCED TRACE_LOG   = " + System.getProperty("TRACE_LOG"));
+        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
+    }
+
     @RepeatedTest(1)
     //@Test
     public void universeSyncWithinOneJVM() {
