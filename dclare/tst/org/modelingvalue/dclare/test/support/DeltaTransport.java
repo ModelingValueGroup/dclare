@@ -13,26 +13,28 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.delta;
+package org.modelingvalue.dclare.test.support;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.util.stream.Stream;
+import java.util.stream.*;
+
+import org.modelingvalue.dclare.sync.*;
 
 public class DeltaTransport {
     public final DeltaAdaptor    producer;
     public final DeltaAdaptor    consumer;
     public final TransportThread transportThread;
 
-    public DeltaTransport(String name, DeltaAdaptor producer, DeltaAdaptor consumer) {
+    public DeltaTransport(String name, DeltaAdaptor producer, DeltaAdaptor consumer, int simulatedNetworkDelay) {
         this.producer = producer;
         this.consumer = consumer;
-        transportThread = makeTransportThread(name);
+        transportThread = new TransportThread(name, simulatedNetworkDelay);
         transportThread.start();
     }
 
-    protected TransportThread makeTransportThread(String name) {
-        return new TransportThread(name);
+    boolean isBusy() {
+        return transportThread.isBusy() || producer.isBusy() || consumer.isBusy();
     }
 
     public void stop() {
@@ -58,11 +60,15 @@ public class DeltaTransport {
     }
 
     public class TransportThread extends Thread {
-        private boolean   stop;
-        private Throwable throwable;
+        private final int       simulatedNetworkDelay;
+        private       boolean   stop;
+        private       Throwable throwable;
+        private       boolean   busy = true;
 
-        public TransportThread(String name) {
+
+        public TransportThread(String name, int simulatedNetworkDelay) {
             super("transport-" + name);
+            this.simulatedNetworkDelay = simulatedNetworkDelay;
         }
 
         @Override
@@ -86,11 +92,22 @@ public class DeltaTransport {
             traceLog("***Transport    %s: STOP", getName());
         }
 
-        protected Delta next() {
-            return producer.get();
+        public boolean isBusy() {
+            return busy;
         }
 
-        protected void handle(Delta delta) throws InterruptedException {
+        protected String next() {
+            traceLog("***Transport    %s: wait for delta...", getName());
+            busy = false;
+            String delta = producer.get();
+            busy = true;
+            return delta;
+        }
+
+        protected void handle(String delta) throws InterruptedException {
+            traceLog("***Transport    %s: sleeping network delay...", getName());
+            Thread.sleep(simulatedNetworkDelay);
+            traceLog("***Transport    %s: sleep done, pass delta on (%d chars).", getName(), delta.length());
             consumer.accept(delta);
         }
 

@@ -40,14 +40,14 @@ public class CommunicationTests {
         CommTestRig a = new CommTestRig("a");
         CommTestRig b = new CommTestRig("b");
 
-        CommTestRig.add(new TestDeltaTransport("a->b", a.getAdaptor(), b.getAdaptor(), 100));
-        CommTestRig.add(new TestDeltaTransport("b->a", b.getAdaptor(), a.getAdaptor(), 100));
+        CommTestRig.add(new DeltaTransport("a->b", a.getAdaptor(), b.getAdaptor(), 100));
+        CommTestRig.add(new DeltaTransport("b->a", b.getAdaptor(), a.getAdaptor(), 100));
 
         CommTestRig.busyWaitAllForIdle();
 
         for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
             traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
-            a.getTx().put("set new value in universe A", () -> CommTestRig.source.set(a.getObject(), NEW_VALUE));
+            a.getTx().put("set new value in universe A", () -> CommTestRig.source.set(a.getXyzzy(), NEW_VALUE));
 
             traceLog("MAIN: wait for idle");
             CommTestRig.busyWaitAllForIdle();
@@ -62,10 +62,11 @@ public class CommunicationTests {
             //            traceLog("stateB=%s", stateB.asString());
             traceLog("DIFF states = %s", stateA.get(() -> stateA.diffString(stateB)));
 
-            assertEquals(NEW_VALUE, (int) stateA.get(a.getObject(), CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateA.get(a.getObject(), CommTestRig.target));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.getObject(), CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.getObject(), CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.getXyzzy(), CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateA.get(a.getXyzzy(), CommTestRig.target));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.getXyzzy(), CommTestRig.source));
+            assertEquals(NEW_VALUE, (int) stateB.get(b.getXyzzy(), CommTestRig.target));
+            assertEquals(NEW_VALUE, Integer.parseInt(stateB.get(b.getXyzzy(), CommTestRig.extra).id().toString()));
 
             CommTestRig.assertNoUncaughts();
         }

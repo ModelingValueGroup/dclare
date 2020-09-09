@@ -13,20 +13,15 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.delta;
+package org.modelingvalue.dclare.ex;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class MultiError extends Error {
-    private final List<Throwable> causes = new ArrayList<Throwable>();
+    private final List<Throwable> causes = new ArrayList<>();
 
     public MultiError(String message, List<Throwable> causes) {
         super(message, causes.isEmpty() ? null : causes.get(0));
-    }
-
-    public MultiError(List<Throwable> causes) {
-        this(null, causes);
     }
 
     public void add(Exception e) {

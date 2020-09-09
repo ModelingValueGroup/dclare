@@ -15,8 +15,8 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
 public class TestObject implements Mutable {
     private final Object    id;
@@ -42,12 +42,12 @@ public class TestObject implements Mutable {
 
     @Override
     public String toString() {
-        return clazz + "@" + StringUtil.toString(id);
+        return dClass() + "@" + StringUtil.toString(id());
     }
 
     @Override
     public int hashCode() {
-        return clazz.hashCode() ^ id.hashCode();
+        return dClass().hashCode() ^ id().hashCode();
     }
 
     @Override
@@ -60,8 +60,11 @@ public class TestObject implements Mutable {
             return false;
         } else {
             TestObject c = (TestObject) obj;
-            return id.equals(c.id) && clazz.equals(c.clazz);
+            return id().equals(c.id()) && dClass().equals(c.dClass());
         }
     }
 
+    public String serialize() {
+        return id.toString();
+    }
 }
