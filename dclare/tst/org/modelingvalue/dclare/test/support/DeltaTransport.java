@@ -19,14 +19,12 @@ import static org.modelingvalue.collections.util.TraceTimer.*;
 
 import java.util.stream.*;
 
-import org.modelingvalue.dclare.sync.*;
-
 public class DeltaTransport {
-    public final DeltaAdaptor    producer;
-    public final DeltaAdaptor    consumer;
-    public final TransportThread transportThread;
+    public final TestDeltaAdaptor producer;
+    public final TestDeltaAdaptor consumer;
+    public final TransportThread  transportThread;
 
-    public DeltaTransport(String name, DeltaAdaptor producer, DeltaAdaptor consumer, int simulatedNetworkDelay) {
+    public DeltaTransport(String name, TestDeltaAdaptor producer, TestDeltaAdaptor consumer, int simulatedNetworkDelay) {
         this.producer = producer;
         this.consumer = consumer;
         transportThread = new TransportThread(name, simulatedNetworkDelay);

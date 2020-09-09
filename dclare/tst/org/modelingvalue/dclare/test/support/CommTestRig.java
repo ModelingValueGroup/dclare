@@ -82,7 +82,7 @@ public class CommTestRig {
         return tx;
     }
 
-    public TestDeltaAdaptor getAdaptor() {
+    public TestDeltaAdaptor getTestAdaptor() {
         if (adaptor == null) {
             busyWaitAllForIdle();
         }

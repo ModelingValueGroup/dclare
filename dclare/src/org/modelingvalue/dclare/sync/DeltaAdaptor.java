@@ -26,28 +26,24 @@ import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings({"rawtypes"})
-public abstract class DeltaAdaptor implements Supplier<String>, Consumer<String>, SerializationHelper {
-    private final String                                                             name;
-    private final UniverseTransaction                                                tx;
-    private final Predicate<Object>                                                  objectFilter;
-    private final Predicate<Setable>                                                 setableFilter;
-    private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, String> deltaConverter;
-    private final AdaptorThread                                                      adaptorThread;
-    private final BlockingQueue<String>                                              deltaQueue = new ArrayBlockingQueue<>(10);
+public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, SerializationHelper {
+    private final String                                                        name;
+    private final UniverseTransaction                                           tx;
+    private final Predicate<Object>                                             objectFilter;
+    private final Predicate<Setable>                                            setableFilter;
+    private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, T> deltaConverter;
+    private final AdaptorThread                                                 adaptorThread;
+    private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
 
-    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
+    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
         this.name = name;
         this.tx = tx;
         this.objectFilter = objectFilter;
         this.setableFilter = setableFilter;
-        deltaConverter = getDeltaConverter();
+        deltaConverter = Converter.concat(new ConvertStringDelta(this), converter);
         adaptorThread = new AdaptorThread(name);
         adaptorThread.start();
         tx.addImperative("sync-" + name, this::queueDelta, adaptorThread, true);
-    }
-
-    protected Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, String> getDeltaConverter() {
-        return Converter.concat(new ConvertStringDelta(this), new ConvertJson());
     }
 
     public Map<Object, Map<Setable, Pair<Object, Object>>> makeDelta(State pre, State post, @SuppressWarnings("unused") boolean last) {
@@ -60,7 +56,7 @@ public abstract class DeltaAdaptor implements Supplier<String>, Consumer<String>
      * @param delta the delta to apply to our model
      */
     @Override
-    public void accept(String delta) {
+    public void accept(T delta) {
         traceLog("^^^DeltaAdaptor %s let thread exec the delta", name);
         adaptorThread.accept(() -> {
             traceLog("^^^DeltaAdaptor %s APPLY delta: %s", name, delta);
@@ -74,10 +70,10 @@ public abstract class DeltaAdaptor implements Supplier<String>, Consumer<String>
      * @return the delta that happened in our model
      */
     @Override
-    public String get() {
+    public T get() {
         try {
             traceLog("^^^DeltaAdaptor %s wait for delta in queue...", name);
-            String delta = deltaQueue.take();
+            T delta = deltaQueue.take();
             traceLog("^^^DeltaAdaptor %s new delta in queue", name);
             return delta;
         } catch (InterruptedException e) {
@@ -93,10 +89,11 @@ public abstract class DeltaAdaptor implements Supplier<String>, Consumer<String>
      * @param last indication if this is the last delta in a sequence
      */
     protected void queueDelta(State pre, State post, Boolean last) {
-        String delta = deltaConverter.convertForward(makeDelta(pre, post, last));
-        if (delta.isEmpty()) {
+        Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
+        if (map.isEmpty()) {
             traceLog("^^^DeltaAdaptor %s: new delta IGNORED  (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
         } else {
+            T delta = deltaConverter.convertForward(map);
             traceLog("^^^DeltaAdaptor %s: new delta to queue (%s) (q=%d) json=%s", name, (last ? "LAST" : "not last"), deltaQueue.size(), delta);
             try {
                 deltaQueue.put(delta);

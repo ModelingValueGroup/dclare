@@ -24,13 +24,14 @@ import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.*;
+import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings("rawtypes")
-public class TestDeltaAdaptor extends DeltaAdaptor {
+public class TestDeltaAdaptor extends DeltaAdaptor<String> {
     private static final boolean TRACE = true;
 
     public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        super(name, tx, objectFilter, setableFilter);
+        super(name, tx, objectFilter, setableFilter, new ConvertJson());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +43,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor {
 
     @Override
     public String serializeSetable(Setable value) {
-        return encodeWithLength(value.toString());
+        return value.toString();
     }
 
     @Override
@@ -53,8 +54,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor {
 
     @Override
     public Setable deserializeSetable(String s) {
-        String[] parts = decodeFromLength(s, 1);
-        return TestObserved.existing(parts[0]);
+        return TestObserved.existing(s);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -40,8 +40,8 @@ public class CommunicationTests {
         CommTestRig a = new CommTestRig("a");
         CommTestRig b = new CommTestRig("b");
 
-        CommTestRig.add(new DeltaTransport("a->b", a.getAdaptor(), b.getAdaptor(), 100));
-        CommTestRig.add(new DeltaTransport("b->a", b.getAdaptor(), a.getAdaptor(), 100));
+        CommTestRig.add(new DeltaTransport("a->b", a.getTestAdaptor(), b.getTestAdaptor(), 100));
+        CommTestRig.add(new DeltaTransport("b->a", b.getTestAdaptor(), a.getTestAdaptor(), 100));
 
         CommTestRig.busyWaitAllForIdle();
 
