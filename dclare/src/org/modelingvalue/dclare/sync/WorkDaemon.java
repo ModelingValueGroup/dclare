@@ -50,7 +50,7 @@ public abstract class WorkDaemon<WORK> extends Thread {
     }
 
     public boolean isBusy() {
-        return busy;
+        return busy && isAlive();
     }
 
     public Throwable getThrowable() {

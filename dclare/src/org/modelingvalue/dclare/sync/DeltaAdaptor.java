@@ -25,23 +25,29 @@ import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings({"rawtypes"})
 public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, SerializationHelper {
+    private final String                                                        name;
     private final UniverseTransaction                                           tx;
     private final boolean                                                       noDeltasOut;
     private final Predicate<Object>                                             objectFilter;
     private final Predicate<Setable>                                            setableFilter;
     private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, T> deltaConverter;
-    private final AdaptorDaemon                                                 adaptorThread;
+    private final AdaptorDaemon                                                 adaptorDaemon;
     private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
+        this.name = name;
         this.tx = tx;
         this.noDeltasOut = noDeltasOut;
         this.objectFilter = objectFilter;
         this.setableFilter = setableFilter;
         deltaConverter = Converter.concat(new ConvertStringDelta(this), converter);
-        adaptorThread = new AdaptorDaemon("adaptor-" + name);
-        adaptorThread.start();
-        tx.addImperative("sync-" + name, this::queueDelta, adaptorThread, true);
+        adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
+        adaptorDaemon.start();
+        tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, true);
+    }
+
+    public String getName() {
+        return name;
     }
 
     public Map<Object, Map<Setable, Pair<Object, Object>>> makeDelta(State pre, State post, @SuppressWarnings("unused") boolean last) {
@@ -55,7 +61,7 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
      */
     @Override
     public void accept(T delta) {
-        adaptorThread.accept(() -> applyAllDeltas(deltaConverter.convertBackward(delta)));
+        adaptorDaemon.accept(() -> applyAllDeltas(deltaConverter.convertBackward(delta)));
     }
 
     /**
@@ -104,35 +110,31 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public void forceStop() {
-        adaptorThread.forceStop();
-    }
-
-    public void join() {
-        adaptorThread.join_();
-    }
-
-    public Throwable getThrowable() {
-        return adaptorThread.getThrowable();
+    protected AdaptorDaemon getAdaptorDaemon() {
+        return adaptorDaemon;
     }
 
     public boolean isBusy() {
-        return adaptorThread.isBusy() || !deltaQueue.isEmpty() || tx.isHandling() || tx.numInQueue() != 0;
+        return adaptorDaemon.isBusy() || !deltaQueue.isEmpty() || (!tx.isStopped() && (tx.isHandling() || tx.numInQueue() != 0));
     }
 
     public boolean isBusy(StringBuilder explanation) {
         int l0 = explanation.length();
-        if (adaptorThread.isBusy()) {
+        if (adaptorDaemon.isBusy()) {
             explanation.append("adaptorThread busy, ");
         }
         if (!deltaQueue.isEmpty()) {
             explanation.append("deltaQueue not empty, ");
         }
-        if (tx.isHandling()) {
-            explanation.append("tx is handling, ");
-        }
-        if (tx.numInQueue() != 0) {
-            explanation.append("tx queue not empty, ");
+        if (tx.isStopped()) {
+            explanation.append("tx is stopped");
+        } else {
+            if (tx.isHandling()) {
+                explanation.append("tx is handling, ");
+            }
+            if (tx.numInQueue() != 0) {
+                explanation.append("tx queue not empty (").append(tx.numInQueue()).append(")");
+            }
         }
         return explanation.length() != l0;
     }

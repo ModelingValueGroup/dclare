@@ -29,7 +29,8 @@ public class CommunicationPeer {
 
     public static void main(String[] args) throws Throwable {
         System.err.println("starting...");
-        CommunicationModelMakerWithDeltaAdaptor mm = new CommunicationModelMakerWithDeltaAdaptor("mm", true);
+        ModelMaker       mmSlave        = new ModelMaker("mmSlave");
+        TestDeltaAdaptor mmSlaveAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmSlave, true);
 
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
         boolean        stop           = false;
@@ -45,13 +46,13 @@ public class CommunicationPeer {
                     System.out.println("." + line);
                     break;
                 case 'D':
-                    mm.getDeltaAdaptor().accept(line);
+                    mmSlaveAdaptor.accept(line);
                     break;
                 case 'S':
-                    check("source", Integer.parseInt(line), mm.getXyzzy_source());
+                    check("source", Integer.parseInt(line), mmSlave.getXyzzy_source());
                     break;
                 case 'T':
-                    check("target", Integer.parseInt(line), mm.getXyzzy_target());
+                    check("target", Integer.parseInt(line), mmSlave.getXyzzy_target());
                     break;
                 case 'Q':
                     stop = true;

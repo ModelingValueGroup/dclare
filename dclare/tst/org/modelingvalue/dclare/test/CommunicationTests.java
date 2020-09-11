@@ -16,12 +16,10 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
 import static org.modelingvalue.dclare.test.support.CommunicationHelper.*;
 
 import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.*;
 import org.modelingvalue.dclare.test.support.*;
 
@@ -33,47 +31,48 @@ public class CommunicationTests {
         //        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
     }
 
-    //@RepeatedTest(10)
+    //@RepeatedTest(50)
     @Test
     public void universeSyncWithinOneJVM() {
-        CommunicationModelMakerWithDeltaAdaptor a = new CommunicationModelMakerWithDeltaAdaptor("a", false);
-        CommunicationModelMakerWithDeltaAdaptor b = new CommunicationModelMakerWithDeltaAdaptor("b", false);
+        ModelMaker       a        = new ModelMaker("a");
+        TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a, false);
 
-        new DeltaTransport("a->b", a.getDeltaAdaptor(), b.getDeltaAdaptor(), 100);
-        new DeltaTransport("b->a", b.getDeltaAdaptor(), a.getDeltaAdaptor(), 100);
+        ModelMaker       b        = new ModelMaker("b");
+        TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b, false);
+
+        CommunicationHelper.hookupTransportDaemon("a->b", aAdaptor, bAdaptor);
+        CommunicationHelper.hookupTransportDaemon("b->a", bAdaptor, aAdaptor);
 
         busyWaitAllForIdle();
 
         for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
-            traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
+            System.err.println("===========================================================================");
+            System.err.printf("MAIN: setting value in universe A to %d\n", NEW_VALUE);
             a.setXyzzyDotSource(NEW_VALUE);
 
-            traceLog("MAIN: wait for idle");
             busyWaitAllForIdle();
-            traceLog("MAIN: IDLE detected");
-
-            State stateA = ImperativeTransaction.clean(a.getTx().currentState());
-            State stateB = ImperativeTransaction.clean(b.getTx().currentState());
 
             assertEquals(NEW_VALUE, a.getXyzzy_source());
             assertEquals(NEW_VALUE, a.getXyzzy_target());
             assertEquals(NEW_VALUE, b.getXyzzy_source());
             assertEquals(NEW_VALUE, b.getXyzzy_target());
-            assertEquals(NEW_VALUE, Integer.parseInt(stateB.get(b.getXyzzy(), CommunicationModelMaker.extra).id().toString()));
+            assertEquals(NEW_VALUE, Integer.parseInt(b.getXyzzy_extra().id().toString()));
 
             busyWaitAllForIdle();
         }
     }
 
+    //@RepeatedTest(50)
     @Test
     public void universeSyncBetweenJVMs() {
-        CommunicationModelMakerWithDeltaAdaptor x = new CommunicationModelMakerWithDeltaAdaptor("x", false);
+        ModelMaker       mmMaster        = new ModelMaker("mmMaster");
+        TestDeltaAdaptor mmMasterAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMaster, false);
 
         PeerTester peer = new PeerTester(CommunicationPeer.class);
         WorkDaemon<String> feeder = new WorkDaemon<>("peer-feeder") {
             @Override
             protected String waitForWork() {
-                return x.getDeltaAdaptor().get();
+                return mmMasterAdaptor.get();
             }
 
             @Override
@@ -84,28 +83,27 @@ public class CommunicationTests {
         CommunicationHelper.add(feeder);
         feeder.start();
 
-        busyWaitAllForIdle();//================================================
+        busyWaitAllForIdle();
         peer.tell("S100");
         peer.tell("T100");
         for (int i : new int[]{2020, 4711, 300000}) {
-            busyWaitAllForIdle();//================================================
-            x.setXyzzyDotSource(i);
-            busyWaitAllForIdle();//================================================
+            busyWaitAllForIdle();
+            mmMaster.setXyzzyDotSource(i);
+            busyWaitAllForIdle();
             peer.tell("S" + i);
             peer.tell("T" + i);
         }
-        busyWaitAllForIdle();//================================================
+        busyWaitAllForIdle();
 
         peer.tell("Q");
         assertEquals(0, peer.expectExit(2000));
     }
 
-
     @AfterEach
     public void after() {
         TraceTimer.dumpLogs();
         CommunicationHelper.tearDownAll();
-        CommunicationModelMaker.assertNoUncaughts();
+        ModelMaker.assertNoUncaughts();
         TraceTimer.dumpLogs();
     }
 }

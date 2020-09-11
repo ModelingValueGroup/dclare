@@ -26,7 +26,7 @@ import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"FieldCanBeLocal"})
-public class CommunicationModelMaker {
+public class ModelMaker {
     // TODO: need to fix the bug and remove this workaround:
     private static final boolean                          BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
     private static final ContextPool                      BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
@@ -54,12 +54,13 @@ public class CommunicationModelMaker {
     private final        TestUniverse                     universe;
     private final        UniverseTransaction              tx;
 
-    public CommunicationModelMaker(String name) {
+    public ModelMaker(String name) {
         this.name = name;
         universeClass = TestClass.of("Universe-" + name, plugConst);
         universe = TestUniverse.of("universe-" + name, universeClass);
         tx = UniverseTransaction.of(universe, pool);
 
+        CommunicationHelper.add(this);
         if (!BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
             CommunicationHelper.add(pool);
         }
@@ -69,16 +70,12 @@ public class CommunicationModelMaker {
         return name;
     }
 
-    public TestObject getXyzzy() {
-        return xyzzy;
-    }
-
     public UniverseTransaction getTx() {
         return tx;
     }
 
     private static ContextPool newPool() {
-        return ContextThread.createPool(2, CommunicationModelMaker::uncaughtException);
+        return ContextThread.createPool(2, ModelMaker::uncaughtException);
     }
 
     private static void uncaughtException(Thread thread, Throwable throwable) {
@@ -91,7 +88,7 @@ public class CommunicationModelMaker {
     }
 
     public void setXyzzyDotSource(int i) {
-        tx.put("set source to " + i, () -> CommunicationModelMaker.source.set(xyzzy, i));
+        tx.put("set source to " + i, () -> ModelMaker.source.set(xyzzy, i));
     }
 
     public int getXyzzy_source() {
@@ -100,5 +97,9 @@ public class CommunicationModelMaker {
 
     public int getXyzzy_target() {
         return tx.currentState().get(xyzzy, target);
+    }
+
+    public TestObject getXyzzy_extra() {
+        return tx.currentState().get(xyzzy, extra);
     }
 }

@@ -32,6 +32,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<String> {
 
     public TestDeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, ConvertJson converter) {
         super(name, tx, noDeltasOut, objectFilter, setableFilter, converter);
+        CommunicationHelper.add(getAdaptorDaemon());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////

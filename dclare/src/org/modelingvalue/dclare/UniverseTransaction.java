@@ -17,26 +17,15 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.State.*;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.collections.util.TriConsumer;
-import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.TooManyChangesException;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.ContextThread.*;
+import org.modelingvalue.dclare.NonCheckingObserver.*;
+import org.modelingvalue.dclare.ex.*;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
@@ -113,17 +102,18 @@ public class UniverseTransaction extends MutableTransaction {
     private final        AtomicReference<ConsistencyError>                                               consistencyError        = new AtomicReference<>(null);
     //
     private              List<Action<Universe>>                                                          timeTravelingActions    = List.of(backward, forward);
-    private              List<Action<Universe>>                                                          postActions             = List.of();
-    private              List<State>                                                                     history                 = List.of();
-    private              List<State>                                                                     future                  = List.of();
-    private              State                                                                           preState;
-    private              State                                                                           state;
-    protected final      ConstantState                                                                   constantState           = new ConstantState(this::handleException);
-    protected            boolean                                                                         initialized;
-    private              boolean                                                                         killed;
-    private              boolean                                                                         timeTraveling;
-    private              Throwable                                                                       error;
-    private              boolean                                                                         handling;
+    private         List<Action<Universe>> postActions             = List.of();
+    private         List<State>            history                 = List.of();
+    private         List<State>            future                  = List.of();
+    private         State                  preState;
+    private         State                  state;
+    protected final ConstantState          constantState           = new ConstantState(this::handleException);
+    protected       boolean                initialized;
+    private         boolean                killed;
+    private         boolean                timeTraveling;
+    private         Throwable              error;
+    private         boolean                handling;
+    private         boolean                stopped;
 
     protected UniverseTransaction(Universe universe, ContextPool pool, State start, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory, Consumer<UniverseTransaction> cycle) {
         super(null);
@@ -131,6 +121,8 @@ public class UniverseTransaction extends MutableTransaction {
         this.inQueue = new LinkedBlockingQueue<>(maxInInQueue);
         this.universeStatistics = new UniverseStatistics(this, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
         start(universe, null);
+        preState = emptyState;
+        state = start != null ? start.clone(this) : emptyState;
         pool.execute(() -> mainLoop(start));
         init();
     }
@@ -140,7 +132,6 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private void mainLoop(State start) {
-        state = start != null ? start.clone(this) : emptyState;
         while (!killed) {
             try {
                 handling = false;
@@ -208,6 +199,7 @@ public class UniverseTransaction extends MutableTransaction {
         history = history.append(state);
         constantState.stop();
         end(state);
+        stopped = true;
     }
 
     public int numInQueue() {
@@ -216,6 +208,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public boolean isHandling() {
         return handling;
+    }
+
+    public boolean isStopped() {
+        return stopped;
     }
 
     protected void handleException(Throwable t) {
