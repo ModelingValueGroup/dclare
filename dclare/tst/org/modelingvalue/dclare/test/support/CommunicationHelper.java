@@ -2,8 +2,11 @@ package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 import org.modelingvalue.collections.util.ContextThread.*;
 import org.modelingvalue.collections.util.*;
@@ -36,11 +39,10 @@ public class CommunicationHelper {
         ALL_POOLS.add(pool);
     }
 
-    public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm, boolean noDeltasOut) {
+    public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm) {
         TestDeltaAdaptor adaptor = new TestDeltaAdaptor(
                 mm.getName(),
                 mm.getTx(),
-                noDeltasOut,
                 o -> o instanceof TestObject,
                 s -> s.id().toString().startsWith("#"),
                 new ConvertJson()
@@ -140,5 +142,21 @@ public class CommunicationHelper {
         } catch (InterruptedException e) {
             fail(e);
         }
+    }
+
+    public static void interpreter(InputStream in, AtomicBoolean stop, Map<Character, BiConsumer<Character, String>> actions) throws IOException {
+        System.err.println("starting...");
+        BiConsumer<Character, String> defaultAction  = actions.get('*');
+        BufferedReader                bufferedReader = new BufferedReader(new InputStreamReader(in));
+        String                        line;
+        while (!stop.get() && (line = bufferedReader.readLine()) != null) {
+            busyWaitAllForIdle();
+            System.err.println("got line: " + line);
+            if (1 <= line.length()) {
+                char cmd = line.charAt(0);
+                actions.getOrDefault(cmd, defaultAction).accept(cmd, line.substring(1));
+            }
+        }
+        busyWaitAllForIdle();
     }
 }

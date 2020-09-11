@@ -30,8 +30,8 @@ import org.modelingvalue.dclare.sync.converter.*;
 public class TestDeltaAdaptor extends DeltaAdaptor<String> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, ConvertJson converter) {
-        super(name, tx, noDeltasOut, objectFilter, setableFilter, converter);
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, ConvertJson converter) {
+        super(name, tx, objectFilter, setableFilter, converter);
         CommunicationHelper.add(getAdaptorDaemon());
     }
 

@@ -18,9 +18,10 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.test.support.CommunicationHelper.*;
 
+import java.io.*;
+
 import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.sync.*;
 import org.modelingvalue.dclare.test.support.*;
 
 public class CommunicationTests {
@@ -35,10 +36,10 @@ public class CommunicationTests {
     @Test
     public void universeSyncWithinOneJVM() {
         ModelMaker       a        = new ModelMaker("a");
-        TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a, false);
+        TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a);
 
         ModelMaker       b        = new ModelMaker("b");
-        TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b, false);
+        TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b);
 
         CommunicationHelper.hookupTransportDaemon("a->b", aAdaptor, bAdaptor);
         CommunicationHelper.hookupTransportDaemon("b->a", bAdaptor, aAdaptor);
@@ -57,6 +58,8 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, b.getXyzzy_source());
             assertEquals(NEW_VALUE, b.getXyzzy_target());
             assertEquals(NEW_VALUE, Integer.parseInt(b.getXyzzy_extra().id().toString()));
+            assertEquals(200, a.getXyzzy_target2());
+            assertEquals(200, b.getXyzzy_target2());
 
             busyWaitAllForIdle();
         }
@@ -64,34 +67,43 @@ public class CommunicationTests {
 
     //@RepeatedTest(50)
     @Test
-    public void universeSyncBetweenJVMs() {
+    public void universeSyncBetweenJVMs() throws IOException {
         ModelMaker       mmMaster        = new ModelMaker("mmMaster");
-        TestDeltaAdaptor mmMasterAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMaster, false);
+        TestDeltaAdaptor mmMasterAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMaster);
 
-        PeerTester peer = new PeerTester(CommunicationPeer.class);
-        WorkDaemon<String> feeder = new WorkDaemon<>("peer-feeder") {
+        PeerTester peer = new PeerTester(CommunicationPeer.class) {
             @Override
             protected String waitForWork() {
                 return mmMasterAdaptor.get();
             }
 
             @Override
-            protected void execute(String delta) {
-                peer.tellNoSync("D" + delta);
+            protected void execute(String delta) { // delta master->slave
+                tellNoSync("D" + delta);
+            }
+
+            @Override
+            public void handleStdinLine(String line) { // delta slave->master
+                super.handleStdinLine(line);
+                if (line.startsWith("D")) {
+                    mmMasterAdaptor.accept(line.substring(1));
+                }
             }
         };
-        CommunicationHelper.add(feeder);
-        feeder.start();
 
         busyWaitAllForIdle();
         peer.tell("S100");
         peer.tell("T100");
-        for (int i : new int[]{2020, 4711, 300000}) {
+        int prev = 100;
+        for (int i : new int[]{42, 43, 44, 45}) {
             busyWaitAllForIdle();
             mmMaster.setXyzzyDotSource(i);
             busyWaitAllForIdle();
+            assertEquals(prev, mmMaster.getXyzzy_target2());
             peer.tell("S" + i);
             peer.tell("T" + i);
+            assertEquals(i, mmMaster.getXyzzy_target2());
+            prev = i;
         }
         busyWaitAllForIdle();
 

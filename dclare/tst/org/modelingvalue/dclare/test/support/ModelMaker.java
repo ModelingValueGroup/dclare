@@ -27,6 +27,7 @@ import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"FieldCanBeLocal"})
 public class ModelMaker {
+    public static        boolean                          weAreSlave                                        = false;
     // TODO: need to fix the bug and remove this workaround:
     private static final boolean                          BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
     private static final ContextPool                      BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
@@ -34,12 +35,14 @@ public class ModelMaker {
     //
     public static final  Observed<TestObject, Integer>    source                                            = TestObserved.of("#source", 100);
     public static final  Observed<TestObject, Integer>    target                                            = TestObserved.of("#target", 200);
+    public static final  Observed<TestObject, Integer>    target2                                           = TestObserved.of("#target2", 200);
     public static final  Observed<TestObject, TestObject> extra                                             = TestObserved.of("#extraRef", null, true);
     public static final  Observed<TestObject, String>     extraString                                       = TestObserved.of("#extra\n\"String", "default");
     //
     private static final TestClass                        extraClass                                        = TestClass.of("ExtraClass");
     private static final TestClass                        plughClass                                        = TestClass.of("PlughClass",
             Observer.of("source->target      ", o -> target.set(o, source.get(o))),
+            Observer.of("source->target2     ", o -> target2.set(o, weAreSlave ? source.get(o) : target2.get(o))),
             Observer.of("source->extraString ", o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")),
             Observer.of("source->extra       ", o -> extra.set(o, TestObject.of("" + source.get(o), extraClass))),
             Observer.of("target->extra.target", o -> target.set(extra.get(o), target.get(o)))
@@ -97,6 +100,10 @@ public class ModelMaker {
 
     public int getXyzzy_target() {
         return tx.currentState().get(xyzzy, target);
+    }
+
+    public int getXyzzy_target2() {
+        return tx.currentState().get(xyzzy, target2);
     }
 
     public TestObject getXyzzy_extra() {

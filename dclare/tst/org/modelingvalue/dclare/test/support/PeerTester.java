@@ -23,22 +23,25 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
-public class PeerTester {
-    private AtomicReference<String> lastLine = new AtomicReference<>("");
-    private Process                 process;
-    private Sucker                  inSucker;
-    private Sucker                  errSucker;
-    private BufferedWriter          out;
+import org.modelingvalue.dclare.sync.*;
 
-    public PeerTester(Class<?> mainClass) {
-        assertDoesNotThrow(() -> {
-            String         classPath = System.getProperty("java.class.path");
-            ProcessBuilder pb        = new ProcessBuilder("java", "-cp", classPath, mainClass.getName());
-            process = pb.start();
-            inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
-            errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
-            out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-        });
+public abstract class PeerTester extends WorkDaemon<String> {
+    private final AtomicReference<String> lastLine = new AtomicReference<>("");
+    private final Process                 process;
+    private final Sucker                  inSucker;
+    private final Sucker                  errSucker;
+    private final BufferedWriter          out;
+
+    public PeerTester(Class<?> mainClass) throws IOException {
+        super("PEER-" + mainClass.getName());
+        process = new ProcessBuilder("java", "-cp", System.getProperty("java.class.path"), mainClass.getName()).start();
+
+        inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
+        errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
+        out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+
+        CommunicationHelper.add(this);
+        start();
     }
 
     public void handleStdinLine(String line) {
@@ -57,7 +60,7 @@ public class PeerTester {
 
     public void tellNoSync(String line) {
         try {
-            System.err.println("TELL PEER   > " + line);
+            System.err.println("PEER-TELL   > " + line);
             out.write(line);
             out.newLine();
             out.flush();

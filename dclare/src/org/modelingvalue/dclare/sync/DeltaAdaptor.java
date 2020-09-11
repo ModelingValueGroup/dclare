@@ -27,17 +27,15 @@ import org.modelingvalue.dclare.sync.converter.*;
 public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, SerializationHelper {
     private final String                                                        name;
     private final UniverseTransaction                                           tx;
-    private final boolean                                                       noDeltasOut;
     private final Predicate<Object>                                             objectFilter;
     private final Predicate<Setable>                                            setableFilter;
     private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, T> deltaConverter;
     private final AdaptorDaemon                                                 adaptorDaemon;
     private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
 
-    public DeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
+    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
         this.name = name;
         this.tx = tx;
-        this.noDeltasOut = noDeltasOut;
         this.objectFilter = objectFilter;
         this.setableFilter = setableFilter;
         deltaConverter = Converter.concat(new ConvertStringDelta(this), converter);
@@ -86,14 +84,12 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
      * @param last indication if this is the last delta in a sequence
      */
     protected void queueDelta(State pre, State post, Boolean last) {
-        if (!noDeltasOut) {
-            Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
-            if (!map.isEmpty()) {
-                try {
-                    deltaQueue.put(deltaConverter.convertForward(map));
-                } catch (InterruptedException e) {
-                    throw new Error(e);
-                }
+        Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
+        if (!map.isEmpty()) {
+            try {
+                deltaQueue.put(deltaConverter.convertForward(map));
+            } catch (InterruptedException e) {
+                throw new Error(e);
             }
         }
     }
