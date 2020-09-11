@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare.sync;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
-
 import java.util.concurrent.*;
 import java.util.function.*;
 
@@ -27,21 +25,21 @@ import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings({"rawtypes"})
 public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, SerializationHelper {
-    private final String                                                        name;
     private final UniverseTransaction                                           tx;
+    private final boolean                                                       noDeltasOut;
     private final Predicate<Object>                                             objectFilter;
     private final Predicate<Setable>                                            setableFilter;
     private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, T> deltaConverter;
-    private final AdaptorThread                                                 adaptorThread;
+    private final AdaptorDaemon                                                 adaptorThread;
     private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
 
-    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
-        this.name = name;
+    public DeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
         this.tx = tx;
+        this.noDeltasOut = noDeltasOut;
         this.objectFilter = objectFilter;
         this.setableFilter = setableFilter;
         deltaConverter = Converter.concat(new ConvertStringDelta(this), converter);
-        adaptorThread = new AdaptorThread(name);
+        adaptorThread = new AdaptorDaemon("adaptor-" + name);
         adaptorThread.start();
         tx.addImperative("sync-" + name, this::queueDelta, adaptorThread, true);
     }
@@ -57,11 +55,7 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
      */
     @Override
     public void accept(T delta) {
-        traceLog("^^^DeltaAdaptor %s let thread exec the delta", name);
-        adaptorThread.accept(() -> {
-            traceLog("^^^DeltaAdaptor %s APPLY delta: %s", name, delta);
-            applyAllDeltas(deltaConverter.convertBackward(delta));
-        });
+        adaptorThread.accept(() -> applyAllDeltas(deltaConverter.convertBackward(delta)));
     }
 
     /**
@@ -72,10 +66,7 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
     @Override
     public T get() {
         try {
-            traceLog("^^^DeltaAdaptor %s wait for delta in queue...", name);
-            T delta = deltaQueue.take();
-            traceLog("^^^DeltaAdaptor %s new delta in queue", name);
-            return delta;
+            return deltaQueue.take();
         } catch (InterruptedException e) {
             throw new Error(e);
         }
@@ -89,16 +80,14 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
      * @param last indication if this is the last delta in a sequence
      */
     protected void queueDelta(State pre, State post, Boolean last) {
-        Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
-        if (map.isEmpty()) {
-            traceLog("^^^DeltaAdaptor %s: new delta IGNORED  (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
-        } else {
-            T delta = deltaConverter.convertForward(map);
-            traceLog("^^^DeltaAdaptor %s: new delta to queue (%s) (q=%d) json=%s", name, (last ? "LAST" : "not last"), deltaQueue.size(), delta);
-            try {
-                deltaQueue.put(delta);
-            } catch (InterruptedException e) {
-                throw new Error(e);
+        if (!noDeltasOut) {
+            Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
+            if (!map.isEmpty()) {
+                try {
+                    deltaQueue.put(deltaConverter.convertForward(map));
+                } catch (InterruptedException e) {
+                    throw new Error(e);
+                }
             }
         }
     }
@@ -115,12 +104,8 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public void stop() {
-        adaptorThread.stop = true;
-    }
-
-    public void interrupt() {
-        adaptorThread.interrupt();
+    public void forceStop() {
+        adaptorThread.forceStop();
     }
 
     public void join() {
@@ -152,74 +137,34 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
         return explanation.length() != l0;
     }
 
-    protected static class AdaptorThread extends Thread implements Consumer<Runnable> {
-        protected final BlockingQueue<Runnable> runnableQueue = new ArrayBlockingQueue<>(10);
-        private         boolean                 stop;
-        private         boolean                 busy;
-        private         Throwable               throwable;
+    protected static class AdaptorDaemon extends WorkDaemon<Runnable> implements Consumer<Runnable> {
+        private final BlockingQueue<Runnable> runnableQueue = new ArrayBlockingQueue<>(10);
 
-        public AdaptorThread(String name) {
-            super("adaptor-" + name);
+        public AdaptorDaemon(String name) {
+            super(name);
         }
 
         @Override
-        public void run() {
-            traceLog("***DeltaAdaptor %s: START", getName());
-            while (!stop) {
-                try {
-                    handle(next());
-                } catch (InterruptedException e) {
-                    if (!stop) {
-                        throwable = new Error("unexpected interrupt", e);
-                    }
-                } catch (Error e) {
-                    if (!(e.getCause() instanceof InterruptedException)) {
-                        throwable = new Error("unexpected interrupt", e);
-                    }
-                } catch (Throwable t) {
-                    throwable = new Error("unexpected throwable", t);
-                }
-            }
-            traceLog("***DeltaAdaptor %s: STOP", getName());
+        protected Runnable waitForWork() throws InterruptedException {
+            return runnableQueue.take();
+        }
+
+        @Override
+        protected void execute(Runnable r) {
+            r.run();
         }
 
         @Override
         public void accept(Runnable r) {
             try {
-                traceLog("***DeltaAdaptor %s: queue new Runnable", getName());
                 runnableQueue.put(r);
             } catch (InterruptedException e) {
                 throw new Error("unexpected interrupt", e);
             }
         }
 
-        protected Runnable next() throws InterruptedException {
-            traceLog("***DeltaAdaptor %s: wait for Runnable...", getName());
-            busy = false;
-            Runnable r = runnableQueue.take();
-            busy = true;
-            traceLog("***DeltaAdaptor %s: got Runnable...", getName());
-            return r;
-        }
-
-        protected void handle(Runnable r) {
-            r.run();
-        }
-
         public boolean isBusy() {
-            return !runnableQueue.isEmpty() || busy;
-        }
-
-        public void join_() {
-            try {
-                join();
-            } catch (InterruptedException e) {
-                throw new Error(e);
-            }
-        }
-
-        public Throwable getThrowable() {
-            return throwable;
+            return super.isBusy() || !runnableQueue.isEmpty();
         }
     }
 }

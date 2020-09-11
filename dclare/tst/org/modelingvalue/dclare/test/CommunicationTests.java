@@ -17,78 +17,95 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
-
-import java.io.*;
+import static org.modelingvalue.dclare.test.support.CommunicationHelper.*;
 
 import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.sync.*;
 import org.modelingvalue.dclare.test.support.*;
 
 public class CommunicationTests {
     static {
-        System.setProperty("TRACE_LOG", "true");
+        System.setProperty("TRACE_LOG", "false");
         System.setProperty("PARALLELISM", "1");
-        System.err.println("~~~FORCED TRACE_LOG   = " + System.getProperty("TRACE_LOG"));
-        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
+        //        System.err.println("~~~FORCED TRACE_LOG   = " + System.getProperty("TRACE_LOG"));
+        //        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
     }
 
-    @RepeatedTest(1)
-    //@Test
+    //@RepeatedTest(10)
+    @Test
     public void universeSyncWithinOneJVM() {
-        traceLog("MAIN: BEGIN");
-        CommTestRig a = new CommTestRig("a");
-        CommTestRig b = new CommTestRig("b");
+        CommunicationModelMakerWithDeltaAdaptor a = new CommunicationModelMakerWithDeltaAdaptor("a", false);
+        CommunicationModelMakerWithDeltaAdaptor b = new CommunicationModelMakerWithDeltaAdaptor("b", false);
 
-        CommTestRig.add(new DeltaTransport("a->b", a.getTestAdaptor(), b.getTestAdaptor(), 100));
-        CommTestRig.add(new DeltaTransport("b->a", b.getTestAdaptor(), a.getTestAdaptor(), 100));
+        new DeltaTransport("a->b", a.getDeltaAdaptor(), b.getDeltaAdaptor(), 100);
+        new DeltaTransport("b->a", b.getDeltaAdaptor(), a.getDeltaAdaptor(), 100);
 
-        CommTestRig.busyWaitAllForIdle();
+        busyWaitAllForIdle();
 
         for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
             traceLog("=========\nMAIN: setting value in universe A to %d", NEW_VALUE);
-            a.getTx().put("set new value in universe A", () -> CommTestRig.source.set(a.getXyzzy(), NEW_VALUE));
+            a.setXyzzyDotSource(NEW_VALUE);
 
             traceLog("MAIN: wait for idle");
-            CommTestRig.busyWaitAllForIdle();
+            busyWaitAllForIdle();
             traceLog("MAIN: IDLE detected");
-            CommTestRig.assertNoUncaughts();
 
             State stateA = ImperativeTransaction.clean(a.getTx().currentState());
             State stateB = ImperativeTransaction.clean(b.getTx().currentState());
 
-            traceLog("checking for sync of %d...", NEW_VALUE);
-            //            traceLog("stateA=%s", stateA.asString());
-            //            traceLog("stateB=%s", stateB.asString());
-            traceLog("DIFF states = %s", stateA.get(() -> stateA.diffString(stateB)));
+            assertEquals(NEW_VALUE, a.getXyzzy_source());
+            assertEquals(NEW_VALUE, a.getXyzzy_target());
+            assertEquals(NEW_VALUE, b.getXyzzy_source());
+            assertEquals(NEW_VALUE, b.getXyzzy_target());
+            assertEquals(NEW_VALUE, Integer.parseInt(stateB.get(b.getXyzzy(), CommunicationModelMaker.extra).id().toString()));
 
-            assertEquals(NEW_VALUE, (int) stateA.get(a.getXyzzy(), CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateA.get(a.getXyzzy(), CommTestRig.target));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.getXyzzy(), CommTestRig.source));
-            assertEquals(NEW_VALUE, (int) stateB.get(b.getXyzzy(), CommTestRig.target));
-            assertEquals(NEW_VALUE, Integer.parseInt(stateB.get(b.getXyzzy(), CommTestRig.extra).id().toString()));
-
-            CommTestRig.assertNoUncaughts();
+            busyWaitAllForIdle();
         }
-        traceLog("MAIN: END");
     }
 
     @Test
-    public void universeSyncBetweenJVMs() throws Throwable {
-        PeerTester     peer = new PeerTester(CommunicationPeer.class);
-        BufferedWriter out  = peer.getOut();
-        out.write("66\n");
-        peer.expectExit(66, 1000);
+    public void universeSyncBetweenJVMs() {
+        CommunicationModelMakerWithDeltaAdaptor x = new CommunicationModelMakerWithDeltaAdaptor("x", false);
+
+        PeerTester peer = new PeerTester(CommunicationPeer.class);
+        WorkDaemon<String> feeder = new WorkDaemon<>("peer-feeder") {
+            @Override
+            protected String waitForWork() {
+                return x.getDeltaAdaptor().get();
+            }
+
+            @Override
+            protected void execute(String delta) {
+                peer.tellNoSync("D" + delta);
+            }
+        };
+        CommunicationHelper.add(feeder);
+        feeder.start();
+
+        busyWaitAllForIdle();//================================================
+        peer.tell("S100");
+        peer.tell("T100");
+        for (int i : new int[]{2020, 4711, 300000}) {
+            busyWaitAllForIdle();//================================================
+            x.setXyzzyDotSource(i);
+            busyWaitAllForIdle();//================================================
+            peer.tell("S" + i);
+            peer.tell("T" + i);
+        }
+        busyWaitAllForIdle();//================================================
+
+        peer.tell("Q");
+        assertEquals(0, peer.expectExit(2000));
     }
+
 
     @AfterEach
     public void after() {
         TraceTimer.dumpLogs();
-        traceLog("MAIN: cleanup...");
-        CommTestRig.stopAllDeltaTransports();
-        CommTestRig.tearDownAll();
-        CommTestRig.assertNoUncaughts();
-        traceLog("MAIN: cleanup done");
+        CommunicationHelper.tearDownAll();
+        CommunicationModelMaker.assertNoUncaughts();
         TraceTimer.dumpLogs();
     }
 }

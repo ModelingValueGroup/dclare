@@ -19,106 +19,61 @@ import static org.modelingvalue.collections.util.TraceTimer.*;
 
 import java.util.stream.*;
 
+import org.modelingvalue.dclare.sync.*;
+
 public class DeltaTransport {
     public final TestDeltaAdaptor producer;
     public final TestDeltaAdaptor consumer;
-    public final TransportThread  transportThread;
+    public final TransportDaemon  transportDaemon;
 
     public DeltaTransport(String name, TestDeltaAdaptor producer, TestDeltaAdaptor consumer, int simulatedNetworkDelay) {
         this.producer = producer;
         this.consumer = consumer;
-        transportThread = new TransportThread(name, simulatedNetworkDelay);
-        transportThread.start();
+        transportDaemon = new TransportDaemon(name, simulatedNetworkDelay);
+        transportDaemon.start();
+        CommunicationHelper.add(this);
     }
 
     boolean isBusy() {
-        return transportThread.isBusy() || producer.isBusy() || consumer.isBusy();
+        return transportDaemon.isBusy() || producer.isBusy() || consumer.isBusy();
     }
 
-    public void stop() {
-        producer.stop();
-        consumer.stop();
-        transportThread.stop = true;
-    }
-
-    public void interrupt() {
-        producer.interrupt();
-        consumer.interrupt();
-        transportThread.interrupt();
+    public void forceStop() {
+        producer.forceStop();
+        consumer.forceStop();
+        transportDaemon.forceStop();
     }
 
     public void join() {
         producer.join();
         consumer.join();
-        transportThread.join_();
+        transportDaemon.join_();
     }
 
     public Stream<Throwable> getThrowables() {
-        return Stream.of(producer.getThrowable(), producer.getThrowable(), transportThread.getThrowable());
+        return Stream.of(producer.getThrowable(), consumer.getThrowable(), transportDaemon.getThrowable());
     }
 
-    public class TransportThread extends Thread {
-        private final int       simulatedNetworkDelay;
-        private       boolean   stop;
-        private       Throwable throwable;
-        private       boolean   busy = true;
+    public class TransportDaemon extends WorkDaemon<String> {
+        private final int simulatedNetworkDelay;
 
-
-        public TransportThread(String name, int simulatedNetworkDelay) {
+        public TransportDaemon(String name, int simulatedNetworkDelay) {
             super("transport-" + name);
             this.simulatedNetworkDelay = simulatedNetworkDelay;
         }
 
         @Override
-        public void run() {
-            traceLog("***Transport    %s: START", getName());
-            while (!stop) {
-                try {
-                    handle(next());
-                } catch (InterruptedException e) {
-                    if (!stop) {
-                        throwable = new Error("unexpected interrupt", e);
-                    }
-                } catch (Error e) {
-                    if (!(e.getCause() instanceof InterruptedException)) {
-                        throwable = new Error("unexpected interrupt", e);
-                    }
-                } catch (Throwable t) {
-                    throwable = new Error("unexpected throwable", t);
-                }
-            }
-            traceLog("***Transport    %s: STOP", getName());
+        protected String waitForWork() {
+            return producer.get();
         }
 
-        public boolean isBusy() {
-            return busy;
-        }
-
-        protected String next() {
-            traceLog("***Transport    %s: wait for delta...", getName());
-            busy = false;
-            String delta = producer.get();
-            busy = true;
-            return delta;
-        }
-
-        protected void handle(String delta) throws InterruptedException {
-            traceLog("***Transport    %s: sleeping network delay...", getName());
+        @Override
+        protected void execute(String w) throws InterruptedException {
+            traceLog("%s: sleeping network delay...", getName());
             Thread.sleep(simulatedNetworkDelay);
-            traceLog("***Transport    %s: sleep done, pass delta on (%d chars).", getName(), delta.length());
-            consumer.accept(delta);
+            traceLog("%s: sleep done, pass delta on (%d chars).", getName(), w.length());
+            consumer.accept(w);
         }
 
-        public void join_() {
-            try {
-                join();
-            } catch (InterruptedException e) {
-                throw new Error(e);
-            }
-        }
-
-        public Throwable getThrowable() {
-            return throwable;
-        }
     }
 }

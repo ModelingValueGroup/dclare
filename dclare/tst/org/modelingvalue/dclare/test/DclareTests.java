@@ -19,20 +19,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.UniverseTransaction.*;
 import static org.modelingvalue.dclare.test.support.Shared.*;
 
-import java.math.BigInteger;
+import java.math.*;
 
-import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
-import org.modelingvalue.dclare.ex.EmptyMandatoryException;
-import org.modelingvalue.dclare.ex.ReferencedOrphanException;
-import org.modelingvalue.dclare.test.support.TestClass;
-import org.modelingvalue.dclare.test.support.TestObject;
-import org.modelingvalue.dclare.test.support.TestUniverse;
+import org.junit.jupiter.api.*;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.dclare.test.support.*;
 
 public class DclareTests {
 

@@ -17,41 +17,103 @@ package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.concurrent.TimeUnit;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 public class PeerTester {
-    private Process        process;
-    private BufferedReader in;
-    private BufferedWriter out;
+    private AtomicReference<String> lastLine = new AtomicReference<>("");
+    private Process                 process;
+    private Sucker                  inSucker;
+    private Sucker                  errSucker;
+    private BufferedWriter          out;
 
-    public PeerTester(Class<?> peerClass) {
+    public PeerTester(Class<?> mainClass) {
         assertDoesNotThrow(() -> {
-            String         dirOrJar      = peerClass.getProtectionDomain().getCodeSource().getLocation().getFile();
-            String         peerClassName = peerClass.getName();
-            ProcessBuilder pb            = new ProcessBuilder("java", "-cp", dirOrJar, peerClassName);
+            String         classPath = System.getProperty("java.class.path");
+            ProcessBuilder pb        = new ProcessBuilder("java", "-cp", classPath, mainClass.getName());
             process = pb.start();
-            in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
+            errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
             out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
         });
     }
 
-    public void expectExit(int exitCode, long maxMs) {
+    public void handleStdinLine(String line) {
+        System.err.println("PEER-STDIN  < " + line);
+        lastLine.set(line);
+    }
+
+    public void handleStderrLine(String line) {
+        System.err.println("PEER-STDERR < " + line);
+    }
+
+    public void tell(String line) {
+        sync();
+        tellNoSync(line);
+    }
+
+    public void tellNoSync(String line) {
+        try {
+            System.err.println("TELL PEER   > " + line);
+            out.write(line);
+            out.newLine();
+            out.flush();
+        } catch (IOException e) {
+            throw new Error(e);
+        }
+    }
+
+    public void sync() {
+        String msg = ".............." + Integer.toString(Math.abs(new Random().nextInt()), 36) + "..............";
+        tellNoSync(msg);
+        long t0 = System.currentTimeMillis();
+        while (!lastLine.get().equals(msg)) {
+            assertDoesNotThrow(() -> Thread.sleep(10));
+            assertTrue(System.currentTimeMillis() < t0 + 2000);
+        }
+    }
+
+    public int expectExit(long maxMs) {
         assertDoesNotThrow(() -> {
             out.flush();
             assertTrue(process.waitFor(maxMs, TimeUnit.MILLISECONDS));
-            assertEquals(exitCode, process.exitValue());
+            Thread.sleep(10);
+            assertAll(
+                    () -> assertFalse(inSucker.isAlive()),
+                    () -> assertFalse(errSucker.isAlive()),
+                    () -> assertNull(inSucker.throwable),
+                    () -> assertNull(errSucker.throwable)
+            );
         });
+        return process.exitValue();
     }
 
-    public BufferedReader getIn() {
-        return in;
-    }
+    private static class Sucker extends Thread {
+        private final BufferedReader   reader;
+        private final Consumer<String> action;
+        private       Throwable        throwable;
 
-    public BufferedWriter getOut() {
-        return out;
+        public Sucker(String name, BufferedReader reader, Consumer<String> action) {
+            super("peerSucker-" + name);
+            this.reader = reader;
+            this.action = action;
+            setDaemon(true);
+            start();
+        }
+
+        @Override
+        public void run() {
+            try {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    action.accept(line);
+                }
+            } catch (IOException e) {
+                throwable = e;
+            }
+        }
     }
 }

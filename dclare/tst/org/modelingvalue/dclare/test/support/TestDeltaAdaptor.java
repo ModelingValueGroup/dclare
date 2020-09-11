@@ -28,10 +28,10 @@ import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings("rawtypes")
 public class TestDeltaAdaptor extends DeltaAdaptor<String> {
-    private static final boolean TRACE = true;
+    private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        super(name, tx, objectFilter, setableFilter, new ConvertJson());
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, boolean noDeltasOut, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, ConvertJson converter) {
+        super(name, tx, noDeltasOut, objectFilter, setableFilter, converter);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
