@@ -60,6 +60,8 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, Integer.parseInt(b.getXyzzy_extra().id().toString()));
             assertEquals(200, a.getXyzzy_target2());
             assertEquals(200, b.getXyzzy_target2());
+            assertEquals(NEW_VALUE, a.getXyzzy_aList().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_aList().size());
 
             busyWaitAllForIdle();
         }
@@ -92,16 +94,14 @@ public class CommunicationTests {
         };
 
         busyWaitAllForIdle();
-        peer.tell("S100");
-        peer.tell("T100");
+        peer.tell("C100");
         int prev = 100;
         for (int i : new int[]{42, 43, 44, 45}) {
             busyWaitAllForIdle();
             mmMaster.setXyzzyDotSource(i);
             busyWaitAllForIdle();
             assertEquals(prev, mmMaster.getXyzzy_target2());
-            peer.tell("S" + i);
-            peer.tell("T" + i);
+            peer.tell("C" + i);
             assertEquals(i, mmMaster.getXyzzy_target2());
             prev = i;
         }

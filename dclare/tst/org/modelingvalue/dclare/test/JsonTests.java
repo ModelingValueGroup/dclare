@@ -10,7 +10,7 @@ public class JsonTests {
     public void jsonTest() {
         ConvertJson conv = new ConvertJson();
 
-        Map<String, Map<String, String>> o0 =
+        Map<String, Map<String, Object>> o0 =
                 Map.of(
                         "john", Map.of(
                                 "111", "y1",
@@ -31,9 +31,9 @@ public class JsonTests {
                         )
                 );
 
-        Map<String, Map<String, String>> o2 = conv.convertBackward(conv.convertForward(o0));
-        Map<String, Map<String, String>> o4 = conv.convertBackward(conv.convertForward(o2));
-        Map<String, Map<String, String>> o6 = conv.convertBackward(conv.convertForward(o4));
+        Map<String, Map<String, Object>> o2 = conv.convertBackward(conv.convertForward(o0));
+        Map<String, Map<String, Object>> o4 = conv.convertBackward(conv.convertForward(o2));
+        Map<String, Map<String, Object>> o6 = conv.convertBackward(conv.convertForward(o4));
 
         Assertions.assertEquals(o0, o2);
         Assertions.assertEquals(o2, o4);

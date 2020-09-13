@@ -18,44 +18,48 @@ package org.modelingvalue.dclare.test.support;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.util.*;
+import java.util.stream.*;
 
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.ContextThread.*;
-import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"FieldCanBeLocal"})
 public class ModelMaker {
-    public static        boolean                          weAreSlave                                        = false;
     // TODO: need to fix the bug and remove this workaround:
-    private static final boolean                          BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
-    private static final ContextPool                      BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
-    private static final List<Pair<Thread, Throwable>>    uncaughts                                         = new ArrayList<>();
+    private static final boolean                       BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER          = true;
+    private static final ContextPool                   BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? newPool() : null;
+    private static       List<Pair<Thread, Throwable>> uncaughts                                         = List.of();
+    public static        boolean                       weAreSlave                                        = false;
+
+    public static final  Observed<TestObject, Integer>      source      = TestObserved.of("#source", 100);
+    public static final  Observed<TestObject, Integer>      target      = TestObserved.of("#target", 200);
+    public static final  Observed<TestObject, Integer>      target2     = TestObserved.of("#target2", 200);
+    public static final  Observed<TestObject, TestObject>   extra       = TestObserved.of("#extraRef", null, true);
+    public static final  Observed<TestObject, String>       extraString = TestObserved.of("#extra\n\"String", "default");
+    public static final  Observed<TestObject, List<String>> aList       = TestObserved.of("#aList", List.of());
+    public static final  Observed<TestObject, Set<String>>  aSet        = TestObserved.of("#aSet", Set.of());
     //
-    public static final  Observed<TestObject, Integer>    source                                            = TestObserved.of("#source", 100);
-    public static final  Observed<TestObject, Integer>    target                                            = TestObserved.of("#target", 200);
-    public static final  Observed<TestObject, Integer>    target2                                           = TestObserved.of("#target2", 200);
-    public static final  Observed<TestObject, TestObject> extra                                             = TestObserved.of("#extraRef", null, true);
-    public static final  Observed<TestObject, String>     extraString                                       = TestObserved.of("#extra\n\"String", "default");
-    //
-    private static final TestClass                        extraClass                                        = TestClass.of("ExtraClass");
-    private static final TestClass                        plughClass                                        = TestClass.of("PlughClass",
+    private static final TestClass                          extraClass  = TestClass.of("ExtraClass");
+    private static final TestClass                          plughClass  = TestClass.of("PlughClass",
             Observer.of("source->target      ", o -> target.set(o, source.get(o))),
             Observer.of("source->target2     ", o -> target2.set(o, weAreSlave ? source.get(o) : target2.get(o))),
             Observer.of("source->extraString ", o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")),
             Observer.of("source->extra       ", o -> extra.set(o, TestObject.of("" + source.get(o), extraClass))),
-            Observer.of("target->extra.target", o -> target.set(extra.get(o), target.get(o)))
+            Observer.of("target->extra.target", o -> target.set(extra.get(o), target.get(o))),
+            Observer.of("target->aList       ", o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList())),
+            Observer.of("target->aSet        ", o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Stream.of("&" + i, "@" + i * 2)).toSet()))
     );
     //
-    private final        TestObject                       xyzzy                                             = TestObject.of("xyzzy\n\"", plughClass);
-    private final        Constant<TestObject, TestObject> plugConst                                         = Constant.of("plugConst", true, u -> xyzzy);
-    private final        ContextPool                      pool                                              = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL : newPool();
+    private final        TestObject                         xyzzy       = TestObject.of("xyzzy\n\"", plughClass);
+    private final        Constant<TestObject, TestObject>   plugConst   = Constant.of("plugConst", true, u -> xyzzy);
+    private final        ContextPool                        pool        = BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER ? BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER_THE_POOL : newPool();
     //
-    private final        String                           name;
-    private final        TestClass                        universeClass;
-    private final        TestUniverse                     universe;
-    private final        UniverseTransaction              tx;
+    private final        String                             name;
+    private final        TestClass                          universeClass;
+    private final        TestUniverse                       universe;
+    private final        UniverseTransaction                tx;
 
     public ModelMaker(String name) {
         this.name = name;
@@ -83,11 +87,11 @@ public class ModelMaker {
 
     private static void uncaughtException(Thread thread, Throwable throwable) {
         traceLog("ALARM: uncaught exception in pool thread %s: %s", thread.getName(), throwable);
-        uncaughts.add(Pair.of(thread, throwable));
+        uncaughts = uncaughts.add(Pair.of(thread, throwable));
     }
 
     public static void assertNoUncaughts() {
-        assertAll("uncaught in pool", uncaughts.stream().map(u -> () -> fail("uncaught in " + u.a().getName(), u.b())));
+        assertAll("uncaught in pool", uncaughts.map(u -> () -> fail("uncaught in " + u.a().getName(), u.b())));
     }
 
     public void setXyzzyDotSource(int i) {
@@ -104,6 +108,14 @@ public class ModelMaker {
 
     public int getXyzzy_target2() {
         return tx.currentState().get(xyzzy, target2);
+    }
+
+    public List<String> getXyzzy_aList() {
+        return tx.currentState().get(xyzzy, aList);
+    }
+
+    public Set<String> getXyzzy_aSet() {
+        return tx.currentState().get(xyzzy, aSet);
     }
 
     public TestObject getXyzzy_extra() {

@@ -1,15 +1,20 @@
 package org.modelingvalue.dclare.sync.converter;
 
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.ex.*;
 import org.modelingvalue.dclare.sync.*;
 
 @SuppressWarnings("rawtypes")
-public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, java.util.Map<String, java.util.Map<String, String>>> {
+public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, java.util.Map<String, java.util.Map<String, Object>>> {
     private final SerializationHelper helper;
 
     public ConvertStringDelta(SerializationHelper helper) {
@@ -17,7 +22,7 @@ public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pa
     }
 
     @Override
-    public java.util.Map<String, java.util.Map<String, String>> convertForward(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
+    public java.util.Map<String, java.util.Map<String, Object>> convertForward(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
         return root
                 .map(e1 -> Entry.of(
                         helper.serializeMutable((Mutable) e1.getKey()),
@@ -32,7 +37,7 @@ public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pa
     }
 
     @Override
-    public Map<Object, Map<Setable, Pair<Object, Object>>> convertBackward(java.util.Map<String, java.util.Map<String, String>> root) {
+    public Map<Object, Map<Setable, Pair<Object, Object>>> convertBackward(java.util.Map<String, java.util.Map<String, Object>> root) {
         return Collection.of(root
                 .entrySet()
                 .stream()
@@ -50,7 +55,7 @@ public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pa
         ).toMap(e -> e);
     }
 
-    private String serializeValue(Object value) {
+    private Object serializeValue(Object value) {
         if (value == null) {
             return "null";
         }
@@ -84,38 +89,119 @@ public class ConvertStringDelta implements Converter<Map<Object, Map<Setable, Pa
         if (value instanceof Mutable) {
             return "m" + helper.serializeMutable((Mutable) value);
         }
+        if (value instanceof ContainingCollection) {
+            ContainingCollection<?> col = (ContainingCollection<?>) value;
+            java.util.List<Object>  l   = new ArrayList<>();
+            l.add(col.getClass().getName());
+            col.doSerialize(new Serializer() {
+                @Override
+                public void writeObject(Object o) {
+                    l.add(serializeValue(o));
+                }
+
+                @Override
+                public void writeInt(int i) {
+                    l.add(Integer.toString(i));
+                }
+            });
+            return l;
+        }
+        if (value instanceof Serializable) {
+            try {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutputStream    oos = new ObjectOutputStream(bos);
+                oos.writeObject(value);
+                oos.close();
+                byte[] bytes = bos.toByteArray();
+                String vv    = "z" + Base64.getEncoder().encodeToString(bytes);
+                System.err.println("TOMTOMTOM ser = " + vv.length());
+                return vv;
+            } catch (IOException e) {
+                throw new NotSerializableError("class=" + value.getClass().getName());
+            }
+        }
         throw new NotSerializableError("class=" + value.getClass().getName());
     }
 
-    private Object deserializeValue(String s) {
-        if (s == null || s.isEmpty() || s.equals("null")) {
+    private Object deserializeValue(Object s_l) {
+        if (s_l == null) {
             return null;
+        } else if (s_l instanceof String) {
+            String s = (String) s_l;
+
+            if (s.isEmpty() || s.equals("null")) {
+                return null;
+            }
+            char   pre  = s.charAt(0);
+            String rest = s.substring(1);
+            switch (pre) {
+            case 's':
+                return rest;
+            case 'B':
+                return Byte.parseByte(rest);
+            case 'C':
+                return rest.charAt(0);
+            case 'D':
+                return Double.parseDouble(rest);
+            case 'F':
+                return Float.parseFloat(rest);
+            case 'I':
+                return Integer.parseInt(rest);
+            case 'J':
+                return Long.parseLong(rest);
+            case 'S':
+                return Short.parseShort(rest);
+            case 'Z':
+                return Boolean.parseBoolean(rest);
+            case 'm':
+                return helper.deserializeMutable(rest);
+            case 'z':
+                try {
+                    ByteArrayInputStream bis = new ByteArrayInputStream(Base64.getDecoder().decode(rest.getBytes()));
+                    ObjectInputStream    ois = new ObjectInputStream(bis);
+                    Object               o   = ois.readObject();
+                    ois.close();
+                    return o;
+                } catch (IOException | ClassNotFoundException e) {
+                    throw new NotSerializableError("s=" + rest);
+                }
+            default:
+                throw new NotDeserializableError("s='" + s + "'");
+            }
+        } else if (s_l instanceof java.util.List) {
+            @SuppressWarnings("unchecked")
+            java.util.List<Object> l = (java.util.List<Object>) s_l;
+            ContainingCollection<Object> col = makeContColl((String) l.get(0));
+
+            AtomicInteger i = new AtomicInteger(1);
+            col.doDeserialize(new Deserializer() {
+                @Override
+                public Object readObject() {
+                    return deserializeValue(l.get(i.getAndIncrement()));
+                }
+
+                @Override
+                public int readInt() {
+                    return Integer.parseInt((String) l.get(i.getAndIncrement()));
+                }
+            });
+
+
+            return col;
+        } else {
+            throw new NotDeserializableError("s='" + s_l + "'");
         }
-        char   pre  = s.charAt(0);
-        String rest = s.substring(1);
-        switch (pre) {
-        case 's':
-            return rest;
-        case 'B':
-            return Byte.parseByte(rest);
-        case 'C':
-            return rest.charAt(0);
-        case 'D':
-            return Double.parseDouble(rest);
-        case 'F':
-            return Float.parseFloat(rest);
-        case 'I':
-            return Integer.parseInt(rest);
-        case 'J':
-            return Long.parseLong(rest);
-        case 'S':
-            return Short.parseShort(rest);
-        case 'Z':
-            return Boolean.parseBoolean(rest);
-        case 'm':
-            return helper.deserializeMutable(rest);
-        default:
-            throw new NotDeserializableError("s='" + s + "'");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ContainingCollection<Object> makeContColl(String s) {
+        try {
+            Class<? extends ContainingCollection>       clazz = (Class<? extends ContainingCollection>) getClass().getClassLoader().loadClass(s);
+            Constructor<? extends ContainingCollection> conzt = clazz.getDeclaredConstructor(Object.class);
+            conzt.setAccessible(true);
+            return (ContainingCollection<Object>) conzt.newInstance(new Object[]{null});
+        } catch (IllegalAccessException | ClassNotFoundException | NoSuchMethodException | InstantiationException | InvocationTargetException e) {
+            throw new NotDeserializableError("s='" + s + "'", e);
         }
     }
 }

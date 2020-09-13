@@ -4,16 +4,16 @@ import java.util.*;
 
 import org.json.simple.*;
 import org.json.simple.parser.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.util.*;
 
-public class ConvertJson implements Converter<Map<String, Map<String, String>>, String> {
+public class ConvertJson implements Converter<Map<String, Map<String, Object>>, String> {
     @Override
-    public String convertForward(Map<String, Map<String, String>> o) {
+    public String convertForward(Map<String, Map<String, Object>> o) {
         return JSONValue.toJSONString(o);
     }
 
     @Override
-    public Map<String, Map<String, String>> convertBackward(String s) {
+    public Map<String, Map<String, Object>> convertBackward(String s) {
         try {
             return throwOnIncompatibleStructure(new JSONParser().parse(s));
         } catch (ParseException e) {
@@ -21,7 +21,7 @@ public class ConvertJson implements Converter<Map<String, Map<String, String>>, 
         }
     }
 
-    private Map<String, Map<String, String>> throwOnIncompatibleStructure(Object o) {
+    private Map<String, Map<String, Object>> throwOnIncompatibleStructure(Object o) {
         if (o != null) {
             if (!(o instanceof Map<?, ?>)) {
                 throw new NotDeserializableError("root is not a Map but a " + o.getClass().getTypeName());
@@ -37,13 +37,13 @@ public class ConvertJson implements Converter<Map<String, Map<String, String>>, 
                     if (!(k1 instanceof String)) {
                         throw new NotDeserializableError("sub map key [" + k0 + "] is not a String: " + k1);
                     }
-                    if (!(v1 instanceof String)) {
+                    if (!(v1 instanceof String) && !(v1 instanceof java.util.List)) {
                         throw new NotDeserializableError("sub map value [" + k0 + "," + k1 + "] is not a String: " + v1);
                     }
                 });
             });
         }
         //noinspection unchecked
-        return (Map<String, Map<String, String>>) o;
+        return (Map<String, Map<String, Object>>) o;
     }
 }

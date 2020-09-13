@@ -52,8 +52,7 @@ public class CommunicationPeer {
         CommunicationHelper.interpreter(System.in, stop, Map.of(
                 '.', (c, line) -> System.out.println("." + line),
                 'D', (c, line) -> mmSlaveAdaptor.accept(line), // delta master->slave
-                'S', (c, line) -> check("source", line, mmSlave.getXyzzy_source()),
-                'T', (c, line) -> check("target", line, mmSlave.getXyzzy_target()),
+                'C', (c, line) -> check(line, mmSlave.getXyzzy_source(), mmSlave.getXyzzy_target(), mmSlave.getXyzzy_aList().size(), mmSlave.getXyzzy_aSet().size() / 2),
                 'Q', (c, line) -> stop.set(true),
                 '*', (c, line) -> exit(10, "ERROR: unknown command " + c + line)
         ));
@@ -63,11 +62,13 @@ public class CommunicationPeer {
         System.err.println("stopping...");
     }
 
-    private static void check(String name, String expectedInt, int value) {
+    private static void check(String expectedInt, int... values) {
         int expected = Integer.parseInt(expectedInt);
-        System.err.println("CHECK: " + name + " == " + value + " (expecting " + expected + ")");
-        if (value != expected) {
-            exit(1, "CHECK FAILED");
+        for (int value : values) {
+            System.err.println("CHECK: " + value + " (expecting " + expected + ")");
+            if (value != expected) {
+                exit(1, "CHECK FAILED");
+            }
         }
     }
 

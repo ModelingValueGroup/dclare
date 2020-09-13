@@ -33,7 +33,7 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
     private final AdaptorDaemon                                                 adaptorDaemon;
     private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
 
-    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, String>>, T> converter) {
+    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, Object>>, T> converter) {
         this.name = name;
         this.tx = tx;
         this.objectFilter = objectFilter;

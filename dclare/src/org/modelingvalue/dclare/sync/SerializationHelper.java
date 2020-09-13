@@ -14,14 +14,17 @@ public interface SerializationHelper {
 
     /////////////////////////////////////////////////////////////////////////////////
     static String encodeWithLength(String... ss) {
-        StringBuilder b = new StringBuilder();
+        return encodeWithLength(new StringBuilder(), ss).toString();
+    }
+
+    static StringBuilder encodeWithLength(StringBuilder b, String... ss) {
         for (String s : ss) {
             if (b.length() != 0) {
                 b.append(',');
             }
             b.append(s.length()).append(':').append(s);
         }
-        return b.toString();
+        return b;
     }
 
     static String[] decodeFromLength(String s, int num) {
