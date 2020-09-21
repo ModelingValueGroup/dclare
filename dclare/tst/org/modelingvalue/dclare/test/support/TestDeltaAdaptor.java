@@ -16,7 +16,6 @@
 package org.modelingvalue.dclare.test.support;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
-import static org.modelingvalue.dclare.sync.SerializationHelper.*;
 
 import java.util.function.*;
 
@@ -30,7 +29,7 @@ import org.modelingvalue.dclare.sync.converter.*;
 public class TestDeltaAdaptor extends DeltaAdaptor<String> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, ConvertJson converter) {
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, Object>>, String> converter) {
         super(name, tx, objectFilter, setableFilter, converter);
         CommunicationHelper.add(getAdaptorDaemon());
     }
@@ -39,7 +38,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<String> {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     public String serializeMutable(Mutable value) {
-        return encodeWithLength(((TestClass) value.dClass()).serializeClass(), ((TestObject) value).serialize());
+        return Util.encodeWithLength(((TestClass) value.dClass()).serializeClass(), ((TestObject) value).serialize());
     }
 
     @Override
@@ -49,7 +48,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<String> {
 
     @Override
     public Mutable deserializeMutable(String s) {
-        String[] parts = decodeFromLength(s, 2);
+        String[] parts = Util.decodeFromLength(s, 2);
         return TestObject.of(parts[1], TestClass.existing(parts[0]));
     }
 
@@ -66,6 +65,14 @@ public class TestDeltaAdaptor extends DeltaAdaptor<String> {
         super.queueDelta(pre, post, last);
     }
 
+    @Override
+    protected void applyOneDelta(Mutable mutable, Setable prop, Object value) {
+        traceApplyOneDiff(mutable, prop, value);
+        super.applyOneDelta(mutable, prop, value);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     private void traceDiffHandler(State pre, State post) {
         if (TRACE) {
             try {
@@ -87,12 +94,6 @@ public class TestDeltaAdaptor extends DeltaAdaptor<String> {
                 e.printStackTrace();
             }
         }
-    }
-
-    @Override
-    protected void applyOneDelta(Mutable mutable, Setable prop, Object value) {
-        traceApplyOneDiff(mutable, prop, value);
-        super.applyOneDelta(mutable, prop, value);
     }
 
     @SuppressWarnings("unchecked")

@@ -27,6 +27,4 @@ dependencies=(
   "org.junit.platform           junit-platform-launcher 1.6.2       jar jdst"
   "org.opentest4j               opentest4j              1.2.0       jar jdst"
   "org.apiguardian              apiguardian-api         1.1.0       jar jdst"
-
-  "com.googlecode.json-simple   json-simple             1.1.1       jar jdst"
 )

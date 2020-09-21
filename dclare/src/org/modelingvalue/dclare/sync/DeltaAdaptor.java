@@ -38,7 +38,7 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
         this.tx = tx;
         this.objectFilter = objectFilter;
         this.setableFilter = setableFilter;
-        deltaConverter = Converter.concat(new ConvertStringDelta(this), converter);
+        deltaConverter = Converter.concat(new ConvertDeltaToStringDelta(this), converter);
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
         tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, true);

@@ -21,13 +21,15 @@ import static org.modelingvalue.dclare.test.support.CommunicationHelper.*;
 import java.io.*;
 
 import org.junit.jupiter.api.*;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.test.support.*;
 
 public class CommunicationTests {
     static {
-        System.setProperty("TRACE_LOG", "false");
-        System.setProperty("PARALLELISM", "1");
+        //noinspection PointlessBooleanExpression
+        System.setProperty("TRACE_LOG", "" + (false || Boolean.getBoolean("TRACE_LOG")));
+        System.setProperty("PARALLELISM", System.getProperty("PARALLELISM", "1"));
         //        System.err.println("~~~FORCED TRACE_LOG   = " + System.getProperty("TRACE_LOG"));
         //        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
     }
@@ -35,10 +37,10 @@ public class CommunicationTests {
     //@RepeatedTest(50)
     @Test
     public void universeSyncWithinOneJVM() {
-        ModelMaker       a        = new ModelMaker("a");
+        ModelMaker       a        = new ModelMaker("a", false);
         TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a);
 
-        ModelMaker       b        = new ModelMaker("b");
+        ModelMaker       b        = new ModelMaker("b", true);
         TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b);
 
         CommunicationHelper.hookupTransportDaemon("a->b", aAdaptor, bAdaptor);
@@ -46,10 +48,11 @@ public class CommunicationTests {
 
         busyWaitAllForIdle();
 
-        for (int NEW_VALUE : new int[]{42, 43, 44, 45}) {
-            System.err.println("===========================================================================");
-            System.err.printf("MAIN: setting value in universe A to %d\n", NEW_VALUE);
-            a.setXyzzyDotSource(NEW_VALUE);
+        for (int NEW_VALUE : new int[]{3, 6, 9, 10}) {
+            busyWaitAllForIdle();
+
+            System.err.printf("universeSyncWithinOneJVM: setting value to %d\n", NEW_VALUE);
+            a.setXyzzy_source(NEW_VALUE);
 
             busyWaitAllForIdle();
 
@@ -58,52 +61,68 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, b.getXyzzy_source());
             assertEquals(NEW_VALUE, b.getXyzzy_target());
             assertEquals(NEW_VALUE, Integer.parseInt(b.getXyzzy_extra().id().toString()));
-            assertEquals(200, a.getXyzzy_target2());
-            assertEquals(200, b.getXyzzy_target2());
+            assertEquals(NEW_VALUE, a.getXyzzy_target2());
+            assertEquals(NEW_VALUE, b.getXyzzy_target2());
             assertEquals(NEW_VALUE, a.getXyzzy_aList().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aList().size());
-
-            busyWaitAllForIdle();
+            assertEquals(NEW_VALUE, a.getXyzzy_aSet().size() / 2);
+            assertEquals(NEW_VALUE, b.getXyzzy_aSet().size() / 2);
+            Map<String, String> yyyy = b.getXyzzy_aMap();
+            Map<String, String> xxx  = a.getXyzzy_aMap();
+            assertEquals(NEW_VALUE, xxx.size());
+            assertEquals(NEW_VALUE, yyyy.size());
+            assertEquals(NEW_VALUE, a.getXyzzy_aDefMap().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_aDefMap().size());
+            assertEquals(NEW_VALUE, a.getXyzzy_aQuaSet().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_aQuaSet().size());
+            assertEquals(NEW_VALUE, a.getXyzzy_aQuaDefSet().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_aQuaDefSet().size());
         }
+        busyWaitAllForIdle();
     }
 
     //@RepeatedTest(50)
     @Test
     public void universeSyncBetweenJVMs() throws IOException {
-        ModelMaker       mmMaster        = new ModelMaker("mmMaster");
-        TestDeltaAdaptor mmMasterAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMaster);
+        ModelMaker       mmMain        = new ModelMaker("mmMain", false);
+        TestDeltaAdaptor mmMainAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMain);
 
         PeerTester peer = new PeerTester(CommunicationPeer.class) {
             @Override
             protected String waitForWork() {
-                return mmMasterAdaptor.get();
+                return mmMainAdaptor.get();
             }
 
             @Override
-            protected void execute(String delta) { // delta master->slave
-                tellNoSync("D" + delta);
+            protected void execute(String delta) { // delta main->robot
+                tellAsync("D" + delta);
             }
 
             @Override
-            public void handleStdinLine(String line) { // delta slave->master
+            public void handleStdinLine(String line) { // delta robot->main
                 super.handleStdinLine(line);
                 if (line.startsWith("D")) {
-                    mmMasterAdaptor.accept(line.substring(1));
+                    mmMainAdaptor.accept(line.substring(1));
                 }
             }
         };
 
         busyWaitAllForIdle();
-        peer.tell("C100");
-        int prev = 100;
-        for (int i : new int[]{42, 43, 44, 45}) {
+        peer.tell("C" + ModelMaker.SOURCE_DEFAULT);
+        int prevTarget2Value = mmMain.getXyzzy_target2();
+        for (int NEW_VALUE : new int[]{3, 6, 9, 10}) {
             busyWaitAllForIdle();
-            mmMaster.setXyzzyDotSource(i);
+
+            System.err.printf("universeSyncBetweenJVMs: setting value to %d\n", NEW_VALUE);
+            assertEquals(prevTarget2Value, mmMain.getXyzzy_target2());
+            mmMain.setXyzzy_source(NEW_VALUE);
+
             busyWaitAllForIdle();
-            assertEquals(prev, mmMaster.getXyzzy_target2());
-            peer.tell("C" + i);
-            assertEquals(i, mmMaster.getXyzzy_target2());
-            prev = i;
+
+            peer.tell("C" + NEW_VALUE);
+            assertEquals(NEW_VALUE, mmMain.getXyzzy_target2());
+
+            prevTarget2Value = NEW_VALUE;
         }
         busyWaitAllForIdle();
 

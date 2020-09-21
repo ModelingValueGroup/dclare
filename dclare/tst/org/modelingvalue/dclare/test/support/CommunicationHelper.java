@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.collections.util.TraceTimer.*;
 
 import java.io.*;
 import java.util.*;
@@ -60,7 +61,7 @@ public class CommunicationHelper {
                 mm.getTx(),
                 o -> o instanceof TestObject,
                 s -> s.id().toString().startsWith("#"),
-                new ConvertJson()
+                new ConvertStringDeltaToJson()
         );
         add(adaptor);
         return adaptor;
@@ -98,14 +99,19 @@ public class CommunicationHelper {
         ALL_DAEMONS.forEach(WorkDaemon::join_);
         busyWaitAllForIdle();
         ALL_POOLS.forEach(pool -> {
-            pool.shutdownNow();
-            assertDoesNotThrow(() -> assertTrue(pool.awaitTermination(1, TimeUnit.SECONDS)));
+            if (!ModelMaker.BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
+                pool.shutdownNow();
+                assertDoesNotThrow(() -> assertTrue(pool.awaitTermination(1, TimeUnit.SECONDS)));
+            }
+            assertEquals(0, pool.getNumInOverflow(), "the contextFactory had to create overflow Threads as a fall back");
         });
 
         ALL_MODEL_MAKERS.clear();
         ALL_DELTA_ADAPTORS.clear();
         ALL_DAEMONS.clear();
-        ALL_POOLS.clear();
+        if (!ModelMaker.BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
+            ALL_POOLS.clear();
+        }
 
         rethrowAllDaemonProblems();
     }
@@ -160,13 +166,12 @@ public class CommunicationHelper {
     }
 
     public static void interpreter(InputStream in, AtomicBoolean stop, Map<Character, BiConsumer<Character, String>> actions) throws IOException {
-        System.err.println("starting...");
         BiConsumer<Character, String> defaultAction  = actions.get('*');
         BufferedReader                bufferedReader = new BufferedReader(new InputStreamReader(in));
         String                        line;
         while (!stop.get() && (line = bufferedReader.readLine()) != null) {
             busyWaitAllForIdle();
-            System.err.println("got line: " + line);
+            traceLog("got line: " + line);
             if (1 <= line.length()) {
                 char cmd = line.charAt(0);
                 actions.getOrDefault(cmd, defaultAction).accept(cmd, line.substring(1));

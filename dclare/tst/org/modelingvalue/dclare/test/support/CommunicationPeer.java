@@ -21,17 +21,20 @@ import java.util.concurrent.atomic.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.sync.*;
 
+@SuppressWarnings("PointlessBooleanExpression")
 public class CommunicationPeer {
     static {
-        System.setProperty("TRACE_LOG", "false");
-        System.setProperty("PARALLELISM", "1");
-        ModelMaker.weAreSlave = true;
+        System.setProperty("JSON_TRACE", "" + (false || Boolean.getBoolean("JSON_TRACE")));
+        System.setProperty("TRACE_LOG", "" + (false || Boolean.getBoolean("TRACE_LOG")));
+        System.setProperty("PARALLELISM", System.getProperty("PARALLELISM", "1"));
         //        System.err.println("~~~FORCED TRACE_LOG   = " + System.getProperty("TRACE_LOG"));
         //        System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
     }
 
     public static void main(String[] args) throws Throwable {
-        ModelMaker       mmSlave        = new ModelMaker("mmSlave");
+        System.err.println("peer started");
+
+        ModelMaker       mmSlave        = new ModelMaker("mmSlave", true);
         TestDeltaAdaptor mmSlaveAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmSlave);
 
         WorkDaemon<String> backFeeder = new WorkDaemon<>("backFeeder") {
@@ -41,7 +44,7 @@ public class CommunicationPeer {
             }
 
             @Override
-            protected void execute(String delta) { // delta slave->master
+            protected void execute(String delta) { // delta robot->main
                 System.out.println("D" + delta);
             }
         };
@@ -51,28 +54,37 @@ public class CommunicationPeer {
         AtomicBoolean stop = new AtomicBoolean();
         CommunicationHelper.interpreter(System.in, stop, Map.of(
                 '.', (c, line) -> System.out.println("." + line),
-                'D', (c, line) -> mmSlaveAdaptor.accept(line), // delta master->slave
-                'C', (c, line) -> check(line, mmSlave.getXyzzy_source(), mmSlave.getXyzzy_target(), mmSlave.getXyzzy_aList().size(), mmSlave.getXyzzy_aSet().size() / 2),
+                'D', (c, line) -> mmSlaveAdaptor.accept(line), // delta main->robot
+                'C', (c, line) -> check(line,
+                        mmSlave.getXyzzy_source(),
+                        mmSlave.getXyzzy_target(),
+                        mmSlave.getXyzzy_aList().size(),
+                        mmSlave.getXyzzy_aSet().size() / 2,
+                        mmSlave.getXyzzy_aMap().size(),
+                        mmSlave.getXyzzy_aDefMap().size(),
+                        mmSlave.getXyzzy_aQuaSet().size(),
+                        mmSlave.getXyzzy_aQuaDefSet().size()
+                ),
                 'Q', (c, line) -> stop.set(true),
                 '*', (c, line) -> exit(10, "ERROR: unknown command " + c + line)
         ));
 
         CommunicationHelper.tearDownAll();
+        System.err.println("peer stopped");
         TraceTimer.dumpLogs();
-        System.err.println("stopping...");
     }
 
     private static void check(String expectedInt, int... values) {
         int expected = Integer.parseInt(expectedInt);
         for (int value : values) {
-            System.err.println("CHECK: " + value + " (expecting " + expected + ")");
             if (value != expected) {
-                exit(1, "CHECK FAILED");
+                exit(1, "CHECK FAILED: expected " + expected + " (found " + value + ")");
             }
         }
     }
 
     private static void exit(int status, String msg) {
+        TraceTimer.dumpLogs();
         System.err.println(msg + "; immediate exit(" + status + ")");
         System.exit(status);
     }

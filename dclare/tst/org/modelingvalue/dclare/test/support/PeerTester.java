@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.collections.util.TraceTimer.*;
 
 import java.io.*;
 import java.util.*;
@@ -45,22 +46,23 @@ public abstract class PeerTester extends WorkDaemon<String> {
     }
 
     public void handleStdinLine(String line) {
-        System.err.println("PEER-STDIN  < " + line);
+        traceLog("PEER-STDIN  < " + line);
         lastLine.set(line);
     }
 
     public void handleStderrLine(String line) {
+        traceLog("PEER-STDERR < " + line);
         System.err.println("PEER-STDERR < " + line);
     }
 
     public void tell(String line) {
         sync();
-        tellNoSync(line);
+        tellAsync(line);
     }
 
-    public void tellNoSync(String line) {
+    public void tellAsync(String line) {
         try {
-            System.err.println("PEER-TELL   > " + line);
+            traceLog("PEER-TELL   > " + line);
             out.write(line);
             out.newLine();
             out.flush();
@@ -71,10 +73,11 @@ public abstract class PeerTester extends WorkDaemon<String> {
 
     public void sync() {
         String msg = ".............." + Integer.toString(Math.abs(new Random().nextInt()), 36) + "..............";
-        tellNoSync(msg);
+        tellAsync(msg);
         long t0 = System.currentTimeMillis();
         while (!lastLine.get().equals(msg)) {
             assertDoesNotThrow(() -> Thread.sleep(10));
+            assertTrue(process.isAlive(), "peer died permaturely");
             assertTrue(System.currentTimeMillis() < t0 + 2000);
         }
     }

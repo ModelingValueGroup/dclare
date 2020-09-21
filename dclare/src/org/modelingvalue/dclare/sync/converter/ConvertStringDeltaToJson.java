@@ -17,23 +17,27 @@ package org.modelingvalue.dclare.sync.converter;
 
 import java.util.*;
 
-import org.json.simple.*;
-import org.json.simple.parser.*;
 import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.sync.json.*;
 
-public class ConvertJson implements Converter<Map<String, Map<String, Object>>, String> {
+public class ConvertStringDeltaToJson implements Converter<Map<String, Map<String, Object>>, String> {
+    private static final boolean JSON_TRACE = Boolean.getBoolean("JSON_TRACE");
+
     @Override
     public String convertForward(Map<String, Map<String, Object>> o) {
-        return JSONValue.toJSONString(o);
+        String s = Json.toJson(throwOnIncompatibleStructure(o));
+        if (JSON_TRACE) {
+            System.err.println("SENDING JSON=\n" + Json.formatPretty(s));
+        }
+        return s;
     }
 
     @Override
     public Map<String, Map<String, Object>> convertBackward(String s) {
-        try {
-            return throwOnIncompatibleStructure(new JSONParser().parse(s));
-        } catch (ParseException e) {
-            throw new NotDeserializableError(e);
+        if (JSON_TRACE) {
+            System.err.println("RECEIVING JSON=\n" + Json.formatPretty(s));
         }
+        return throwOnIncompatibleStructure(Json.fromJson(s));
     }
 
     private Map<String, Map<String, Object>> throwOnIncompatibleStructure(Object o) {
