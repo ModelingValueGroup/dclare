@@ -13,24 +13,25 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test;
 
-import org.modelingvalue.dclare.Setable;
+import static java.math.BigInteger.*;
 
-@SuppressWarnings("unused")
-public final class ReferencedOrphanException extends ConsistencyError {
+import java.math.BigInteger;
 
-    private static final long serialVersionUID = -6687018038130352922L;
+import org.modelingvalue.dclare.Constant;
 
-    private final Object      referenced;
+public class Fibonacci {
+    static final BigInteger ONE = BigInteger.valueOf(1);
+    static final BigInteger TWO = BigInteger.valueOf(2);
 
-    public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
-        super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
-        this.referenced = referenced;
-    }
-
-    public Object getReferenced() {
-        return referenced;
-    }
-
+    static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
+        if (n.equals(ZERO) || n.equals(ONE)) {
+            return n;
+        } else {
+            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
+            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
+            return one.add(two);
+        }
+    });
 }

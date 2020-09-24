@@ -26,7 +26,6 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.ex.DeferException;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.TooManyObserversException;
 
@@ -193,26 +192,6 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     @Override
-    public T get(O object) {
-        T result = super.get(object);
-        if (isEmpty(result)) {
-            return handleEmptyGet(result);
-        } else {
-            return result;
-        }
-    }
-
-    @Override
-    public T pre(O object) {
-        T result = super.pre(object);
-        if (isEmpty(result)) {
-            return get(object);
-        } else {
-            return result;
-        }
-    }
-
-    @Override
     public boolean checkConsistency() {
         return checkConsistency && (mandatory || super.checkConsistency());
     }
@@ -230,13 +209,6 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     protected boolean isEmpty(T result) {
         return mandatory && (result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty()));
-    }
-
-    protected T handleEmptyGet(T result) {
-        if (LeafTransaction.getCurrent() instanceof ObserverTransaction) {
-            throw new DeferException();
-        }
-        return result;
     }
 
     protected void handleEmptyCheck(O object, T value) {

@@ -15,15 +15,29 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import java.time.Instant;
+
+import org.modelingvalue.dclare.Feature;
 
 @SuppressWarnings("unused")
 public final class ThrowableError extends ConsistencyError {
 
     private static final long serialVersionUID = -4723221087879478090L;
 
-    public ThrowableError(Object object, Feature feature, Throwable t) {
-        super(object, feature, t);
+    private final Instant     time;
+
+    public ThrowableError(Object object, Feature feature, Instant time, Throwable t) {
+        super(object, feature, -10, t);
+        this.time = time;
+    }
+
+    public Instant getTime() {
+        return time;
+    }
+
+    @Override
+    public int compareTo(ConsistencyError o) {
+        return o instanceof ThrowableError ? time.compareTo(((ThrowableError) o).time) : super.compareTo(o);
     }
 
 }

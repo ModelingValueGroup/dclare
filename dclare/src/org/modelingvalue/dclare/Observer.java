@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
 import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
@@ -22,6 +23,7 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.ThrowableError;
 
 public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
@@ -37,7 +39,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     }
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;
-
+    public final ExceptionSetable                     exception;
     private final Observerds[]                        observeds;
 
     protected long                                    runCount     = -1;
@@ -54,10 +56,15 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         for (int ia = 0; ia < 2; ia++) {
             observeds[ia] = Observerds.of(this, Direction.FORWARD_BACKWARD[ia]);
         }
+        exception = ExceptionSetable.of(this);
     }
 
     public Observerds[] observeds() {
         return observeds;
+    }
+
+    public ExceptionSetable exception() {
+        return exception;
     }
 
     public int countChangesPerInstance() {
@@ -129,6 +136,42 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
             return getClass().getSimpleName() + super.toString().substring(4);
         }
 
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static final class ExceptionSetable extends Setable<Mutable, Pair<Instant, Throwable>> {
+
+        public static ExceptionSetable of(Observer observer) {
+            return new ExceptionSetable(observer);
+        }
+
+        private final Observer observer;
+
+        private ExceptionSetable(Observer observer) {
+            super(Pair.of(observer, "exception"), null, false, null, null, null, false);
+            this.observer = observer;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + super.toString().substring(4);
+        }
+
+        @Override
+        public boolean checkConsistency() {
+            return true;
+        }
+
+        public Observer observer() {
+            return observer;
+        }
+
+        @Override
+        public void checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
+            if (p != null) {
+                throw new ThrowableError(o, observer, p.a(), p.b());
+            }
+        }
     }
 
     @SuppressWarnings("rawtypes")

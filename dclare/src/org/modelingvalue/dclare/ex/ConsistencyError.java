@@ -15,32 +15,44 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Feature;
 
 @SuppressWarnings({"serial", "unused"})
-public abstract class ConsistencyError extends RuntimeException {
+public abstract class ConsistencyError extends RuntimeException implements Comparable<ConsistencyError> {
 
     private final Object  object;
     private final Feature feature;
+    private final int     severity;
 
-    protected ConsistencyError(Object object, Feature feature, String message) {
+    protected ConsistencyError(Object object, Feature feature, int severity, String message) {
         super(message);
         this.object = object;
         this.feature = feature;
+        this.severity = severity;
     }
 
-    protected ConsistencyError(Object object, Feature feature, Throwable t) {
+    protected ConsistencyError(Object object, Feature feature, int severity, Throwable t) {
         super(t);
         this.object = object;
         this.feature = feature;
+        this.severity = severity;
     }
 
     public Object getObject() {
         return object;
     }
 
+    public int getSeverity() {
+        return severity;
+    }
+
     public Feature getFeature() {
         return feature;
+    }
+
+    @Override
+    public int compareTo(ConsistencyError o) {
+        return severity > o.severity ? -1 : severity < o.severity ? 1 : 0;
     }
 
 }

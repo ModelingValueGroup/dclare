@@ -13,27 +13,27 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test;
+package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Mutable;
 
-public class DObject implements Mutable {
-    private final Object id;
-    private final DClass dClass;
+public class TestObject implements Mutable {
+    private final Object    id;
+    private final TestClass clazz;
 
-    public static DObject of(Object id, DClass dClass) {
-        return new DObject(id, dClass);
+    public static TestObject of(Object id, TestClass clazz) {
+        return new TestObject(id, clazz);
     }
 
-    protected DObject(Object id, DClass dClass) {
+    protected TestObject(Object id, TestClass clazz) {
         this.id = id;
-        this.dClass = dClass;
+        this.clazz = clazz;
     }
 
     @Override
-    public DClass dClass() {
-        return dClass;
+    public TestClass dClass() {
+        return clazz;
     }
 
     public Object id() {
@@ -42,12 +42,12 @@ public class DObject implements Mutable {
 
     @Override
     public String toString() {
-        return dClass + "@" + StringUtil.toString(id);
+        return clazz + "@" + StringUtil.toString(id);
     }
 
     @Override
     public int hashCode() {
-        return dClass.hashCode() ^ id.hashCode();
+        return clazz.hashCode() ^ id.hashCode();
     }
 
     @Override
@@ -59,8 +59,8 @@ public class DObject implements Mutable {
         } else if (getClass() != obj.getClass()) {
             return false;
         } else {
-            DObject c = (DObject) obj;
-            return id.equals(c.id) && dClass.equals(c.dClass);
+            TestObject c = (TestObject) obj;
+            return id.equals(c.id) && clazz.equals(c.clazz);
         }
     }
 

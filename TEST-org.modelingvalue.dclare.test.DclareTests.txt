@@ -1,0 +1,11 @@
+Testcase: org.modelingvalue.dclare.test.DclareTests
+Test: opposites() took 100 milli sec(s)
+Test: source2target() took 26 milli sec(s)
+Test: constants() took 2 sec(s)
+Test: emptyMandatoryTest() took 15 milli sec(s)
+Test: derivationChain() took 34 milli sec(s)
+Test: cycle1second() took 1 sec(s)
+Test: orphanReferenceTest() took 21 milli sec(s)
+Test: moveAndRemove() took 54 milli sec(s)
+Test: zuperBig() took 85 sec(s)
+Tests run: 9, Failures: 0, Skipped: 0, Aborted: 0, Time elapsed: 88 sec(s)

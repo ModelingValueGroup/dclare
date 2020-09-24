@@ -3,15 +3,15 @@
 <!--          change  project.sh  instead                         -->
 <!--==============================================================-->
 <component name="libraryTable">
-  <library name="gen: junit">
+  <library name="gen: apiguardian-api">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/junit.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/apiguardian-api.jar!/" />
     </CLASSES>
     <JAVADOC>
-      <root url="jar://$PROJECT_DIR$/lib/junit-javadoc.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/apiguardian-api-javadoc.jar!/" />
     </JAVADOC>
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/junit-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/apiguardian-api-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

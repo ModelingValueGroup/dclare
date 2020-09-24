@@ -23,12 +23,13 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
 
 @SuppressWarnings("unused")
 public class Constant<O, T> extends Setable<O, T> {
 
-    public static final Context<Constant<?, ?>> DERIVED = Context.of(null);
+    public static final Context<Pair<Object, Constant<?, ?>>> DERIVED = Context.of(null);
 
     public static <C, V> Constant<C, V> of(Object id, V def) {
         return new Constant<>(id, def, false, null, null, null, null, true);

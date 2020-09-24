@@ -4,8 +4,7 @@ on: [push, repository_dispatch]
 
 jobs:
   build-and-test:
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: "checkout"

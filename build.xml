@@ -32,11 +32,10 @@
     <include name="*.swc"/>
     <include name="*.apk"/>
     <include name="*.zip"/>
-    <include name="*.ane"/>
     <include name="*.egg"/>
+    <include name="*.ane"/>
     <include name="*.jar"/>
     <include name="*.ear"/>
-    <include name="*.klib"/>
   </patternset>
   <patternset id="compiler.resources">
     <include name="**/?*.properties"/>
@@ -130,14 +129,29 @@
   <property name="project.jdk.bin" value="${jdk.bin.11}"/>
   <property name="project.jdk.classpath" value="jdk.classpath.11"/>
   <!-- Project Libraries -->
-  <path id="library.gen:_hamcrest-core.classpath">
-    <pathelement location="${basedir}/lib/hamcrest-core.jar"/>
+  <path id="library.gen:_apiguardian-api.classpath">
+    <pathelement location="${basedir}/lib/apiguardian-api.jar"/>
   </path>
   <path id="library.gen:_immutable-collections.classpath">
     <pathelement location="${basedir}/lib/immutable-collections.jar"/>
   </path>
-  <path id="library.gen:_junit.classpath">
-    <pathelement location="${basedir}/lib/junit.jar"/>
+  <path id="library.gen:_junit-jupiter-api.classpath">
+    <pathelement location="${basedir}/lib/junit-jupiter-api.jar"/>
+  </path>
+  <path id="library.gen:_junit-jupiter-engine.classpath">
+    <pathelement location="${basedir}/lib/junit-jupiter-engine.jar"/>
+  </path>
+  <path id="library.gen:_junit-platform-commons.classpath">
+    <pathelement location="${basedir}/lib/junit-platform-commons.jar"/>
+  </path>
+  <path id="library.gen:_junit-platform-engine.classpath">
+    <pathelement location="${basedir}/lib/junit-platform-engine.jar"/>
+  </path>
+  <path id="library.gen:_junit-platform-launcher.classpath">
+    <pathelement location="${basedir}/lib/junit-platform-launcher.jar"/>
+  </path>
+  <path id="library.gen:_opentest4j.classpath">
+    <pathelement location="${basedir}/lib/opentest4j.jar"/>
   </path>
   <!-- Modules -->
   <import file="${basedir}/dclare/module_dclare.xml"/>

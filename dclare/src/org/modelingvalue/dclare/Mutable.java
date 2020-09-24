@@ -19,7 +19,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.DeferException;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -43,7 +42,7 @@ public interface Mutable extends TransactionClass {
     Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEach(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Mutable dParent() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
@@ -60,9 +59,6 @@ public interface Mutable extends TransactionClass {
         Mutable parent = this;
         while (parent != null && !cls.isInstance(parent)) {
             parent = parent.dParent();
-        }
-        if (parent == null) {
-            throw new DeferException();
         }
         return (C) parent;
     }

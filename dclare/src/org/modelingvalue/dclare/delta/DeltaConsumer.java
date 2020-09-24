@@ -13,24 +13,9 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.delta;
 
-import org.modelingvalue.dclare.Setable;
+import java.util.function.Consumer;
 
-@SuppressWarnings("unused")
-public final class ReferencedOrphanException extends ConsistencyError {
-
-    private static final long serialVersionUID = -6687018038130352922L;
-
-    private final Object      referenced;
-
-    public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
-        super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
-        this.referenced = referenced;
-    }
-
-    public Object getReferenced() {
-        return referenced;
-    }
-
+public interface DeltaConsumer extends Consumer<Delta> {
 }

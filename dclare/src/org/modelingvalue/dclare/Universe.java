@@ -15,10 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Internable;
 
 public interface Universe extends Mutable, Internable {
     default void init() {
+        LeafTransaction.getCurrent().universeTransaction().initialized = true;
         dActivate();
     }
 }

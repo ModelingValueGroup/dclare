@@ -212,7 +212,7 @@ public class ConstantState {
                             WEAK.set(weak);
                         }
                     }
-                    return Constant.DERIVED.get(constant, () -> deriver.apply(object));
+                    return Constant.DERIVED.get(Pair.of(object, constant), () -> deriver.apply(object));
                 } catch (StackOverflowError soe) {
                     throw new ConstantDepthOverflowException(object, constant);
                 } catch (ConstantDepthOverflowException lce) {

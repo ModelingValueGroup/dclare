@@ -13,48 +13,46 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test.support;
 
-import java.util.stream.Collectors;
-
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 
-@SuppressWarnings({"rawtypes", "unused"})
-public final class TooManyObserversException extends ConsistencyError {
+public class Shared {
+    @SuppressWarnings("CanBeFinal")
+    public static       boolean     PRINT_STATE = true;
+    public static final ContextPool THE_POOL    = ContextThread.createPool();
 
-    private static final long                        serialVersionUID = -1059588522731393631L;
+    public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
+        if (PRINT_STATE) {
+            int num = result == null ? -1 : result.getObjects(TestObject.class).size();
 
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
-
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
+            System.err.println("**** stats *********************************************************");
+            System.err.println(universeTransaction.stats());
+            if (0 <= num) {
+                System.err.println("**** num DObjects **************************************************");
+                System.err.println(num);
+                if (num < 100) {
+                    System.err.println("**** end-state *****************************************************");
+                    System.err.println(result.asString());
+                }
+            }
+            if (extraLines.length>0) {
+                System.err.println("********************************************************************");
+                for (String line : extraLines) {
+                    System.err.println(line);
+                }
+            }
+            System.err.println("********************************************************************");
+        }
     }
 
-    @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
-        return getSimpleMessage() + ":\n" + observersMap;
+    public static Throwable getCause(Throwable t) {
+        while (t.getCause() != null) {
+            t = t.getCause();
+        }
+        return t;
     }
-
-    public String getSimpleMessage() {
-        return super.getMessage();
-    }
-
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
-    }
-
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
-    }
-
 }

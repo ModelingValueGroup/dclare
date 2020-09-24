@@ -13,10 +13,18 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test;
 
-public final class DeferException extends RuntimeException {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
-    private static final long serialVersionUID = -4289705377708158959L;
+public class CommunicationPeer {
+    public static void main(String[] args) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+        String         line           = bufferedReader.readLine();
+        int            rt             = Integer.parseInt(line);
 
+        System.exit(rt);
+    }
 }

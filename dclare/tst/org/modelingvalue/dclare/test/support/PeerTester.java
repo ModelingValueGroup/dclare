@@ -13,24 +13,45 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.dclare.Setable;
+import static org.junit.jupiter.api.Assertions.*;
 
-@SuppressWarnings("unused")
-public final class ReferencedOrphanException extends ConsistencyError {
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.concurrent.TimeUnit;
 
-    private static final long serialVersionUID = -6687018038130352922L;
+public class PeerTester {
+    private Process        process;
+    private BufferedReader in;
+    private BufferedWriter out;
 
-    private final Object      referenced;
-
-    public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
-        super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
-        this.referenced = referenced;
+    public PeerTester(Class<?> peerClass) {
+        assertDoesNotThrow(() -> {
+            String         dirOrJar      = peerClass.getProtectionDomain().getCodeSource().getLocation().getFile();
+            String         peerClassName = peerClass.getName();
+            ProcessBuilder pb            = new ProcessBuilder("java", "-cp", dirOrJar, peerClassName);
+            process = pb.start();
+            in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        });
     }
 
-    public Object getReferenced() {
-        return referenced;
+    public void expectExit(int exitCode, long maxMs) {
+        assertDoesNotThrow(() -> {
+            out.flush();
+            assertTrue(process.waitFor(maxMs, TimeUnit.MILLISECONDS));
+            assertEquals(exitCode, process.exitValue());
+        });
     }
 
+    public BufferedReader getIn() {
+        return in;
+    }
+
+    public BufferedWriter getOut() {
+        return out;
+    }
 }

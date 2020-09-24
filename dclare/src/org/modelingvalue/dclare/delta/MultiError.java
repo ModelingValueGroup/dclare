@@ -13,24 +13,27 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.delta;
 
-import org.modelingvalue.dclare.Setable;
+import java.util.ArrayList;
+import java.util.List;
 
-@SuppressWarnings("unused")
-public final class ReferencedOrphanException extends ConsistencyError {
+public class MultiError extends Error {
+    private final List<Throwable> causes = new ArrayList<Throwable>();
 
-    private static final long serialVersionUID = -6687018038130352922L;
-
-    private final Object      referenced;
-
-    public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
-        super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");
-        this.referenced = referenced;
+    public MultiError(String message, List<Throwable> causes) {
+        super(message, causes.isEmpty() ? null : causes.get(0));
     }
 
-    public Object getReferenced() {
-        return referenced;
+    public MultiError(List<Throwable> causes) {
+        this(null, causes);
     }
 
+    public void add(Exception e) {
+        causes.add(e);
+    }
+
+    public List<Throwable> getCauses() {
+        return causes;
+    }
 }
