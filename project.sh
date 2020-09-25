@@ -13,18 +13,18 @@
 ##     Arjan Kok, Carel Bast                                                                                           ~
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-version="1.3.0"
+version="1.4.0"
 artifacts=(
-  "org.modelingvalue            dclare                  $version    jar jds"
+  "org.modelingvalue   dclare                  $version    jar jds"
 )
 dependencies=(
-  "org.modelingvalue            immutable-collections   1.3.0       jar jds-"
+  "org.modelingvalue   immutable-collections   1.4.0       jar jds-"
 
-  "org.junit.jupiter            junit-jupiter-api       5.6.2       jar jdst"
-  "org.junit.jupiter            junit-jupiter-engine    5.6.2       jar jdst"
-  "org.junit.platform           junit-platform-commons  1.6.2       jar jdst"
-  "org.junit.platform           junit-platform-engine   1.6.2       jar jdst"
-  "org.junit.platform           junit-platform-launcher 1.6.2       jar jdst"
-  "org.opentest4j               opentest4j              1.2.0       jar jdst"
-  "org.apiguardian              apiguardian-api         1.1.0       jar jdst"
+  "org.junit.jupiter   junit-jupiter-api       5.6.2       jar jdst"
+  "org.junit.jupiter   junit-jupiter-engine    5.6.2       jar jdst"
+  "org.junit.platform  junit-platform-commons  1.6.2       jar jdst"
+  "org.junit.platform  junit-platform-engine   1.6.2       jar jdst"
+  "org.junit.platform  junit-platform-launcher 1.6.2       jar jdst"
+  "org.opentest4j      opentest4j              1.2.0       jar jdst"
+  "org.apiguardian     apiguardian-api         1.1.0       jar jdst"
 )
