@@ -15,15 +15,32 @@
 
 package org.modelingvalue.dclare.sync;
 
+import java.util.function.*;
+
 import org.modelingvalue.dclare.*;
 
-@SuppressWarnings("rawtypes")
-public interface SerializationHelper {
-    String serializeMutable(Mutable o);
+public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
+    /////////////////////////////////
+    Predicate<Mutable> mutableFilter();
 
-    String serializeSetable(Setable o);
+    Predicate<Setable<M, ?>> setableFilter();
 
-    Mutable deserializeMutable(String s);
+    /////////////////////////////////
+    String serializeClass(C clazz);
 
-    Setable deserializeSetable(String s);
+    String serializeSetable(S setable);
+
+    String serializeMutable(M mutable);
+
+    Object serializeValue(S setable, Object value);
+
+    /////////////////////////////////
+    C deserializeClass(String s);
+
+    S deserializeSetable(C clazz, String s);
+
+    M deserializeMutable(String s);
+
+    Object deserializeValue(S setable, Object s);
+    /////////////////////////////////
 }

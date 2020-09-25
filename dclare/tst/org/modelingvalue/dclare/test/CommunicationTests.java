@@ -21,7 +21,6 @@ import static org.modelingvalue.dclare.test.support.CommunicationHelper.*;
 import java.io.*;
 
 import org.junit.jupiter.api.*;
-import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.test.support.*;
 
@@ -63,20 +62,34 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, Integer.parseInt(b.getXyzzy_extra().id().toString()));
             assertEquals(NEW_VALUE, a.getXyzzy_target2());
             assertEquals(NEW_VALUE, b.getXyzzy_target2());
+
             assertEquals(NEW_VALUE, a.getXyzzy_aList().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aList().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aSet().size() / 2);
             assertEquals(NEW_VALUE, b.getXyzzy_aSet().size() / 2);
-            Map<String, String> yyyy = b.getXyzzy_aMap();
-            Map<String, String> xxx  = a.getXyzzy_aMap();
-            assertEquals(NEW_VALUE, xxx.size());
-            assertEquals(NEW_VALUE, yyyy.size());
+            assertEquals(NEW_VALUE, a.getXyzzy_extraSet().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_extraSet().size());
+            assertEquals(NEW_VALUE, a.getXyzzy_aMap().size());
+            assertEquals(NEW_VALUE, b.getXyzzy_aMap().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aDefMap().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aDefMap().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aQuaSet().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aQuaSet().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aQuaDefSet().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aQuaDefSet().size());
+
+            assertEquals("~1", a.getXyzzy_aList().get(1));
+            assertEquals("~1", b.getXyzzy_aList().get(1));
+            assertTrue(a.getXyzzy_aSet().contains("&1"));
+            assertTrue(b.getXyzzy_aSet().contains("&1"));
+            assertEquals("1!m!v!", a.getXyzzy_aMap().get("1!m!k!"));
+            assertEquals("1!m!v!", b.getXyzzy_aMap().get("1!m!k!"));
+            assertEquals("1!dm!v!", a.getXyzzy_aDefMap().get("1!dm!k!"));
+            assertEquals("1!dm!v!", b.getXyzzy_aDefMap().get("1!dm!k!"));
+            assertEquals("QS1", a.getXyzzy_aQuaSet().get("QS1"));
+            assertEquals("QS1", b.getXyzzy_aQuaSet().get("QS1"));
+            assertEquals("QDS1", a.getXyzzy_aQuaDefSet().get("QDS1"));
+            assertEquals("QDS1", b.getXyzzy_aQuaDefSet().get("QDS1"));
         }
         busyWaitAllForIdle();
     }
@@ -134,7 +147,7 @@ public class CommunicationTests {
     public void after() {
         TraceTimer.dumpLogs();
         CommunicationHelper.tearDownAll();
-        ModelMaker.assertNoUncaughts();
+        ModelMaker.assertNoUncaughtThrowables();
         TraceTimer.dumpLogs();
     }
 }

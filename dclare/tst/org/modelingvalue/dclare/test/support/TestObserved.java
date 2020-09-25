@@ -24,63 +24,36 @@ import org.modelingvalue.dclare.*;
 public class TestObserved<O, T> extends Observed<O, T> {
     private static Map<Object, TestObserved<?, ?>> staticObservedMap = Map.of();
 
+    private final BiFunction<TestObserved<O, T>, T, Object> serializeValue;
+    private final BiFunction<TestObserved<O, T>, Object, T> deserializeValue;
+
     @SuppressWarnings("unchecked")
     public static <C, V> TestObserved<C, V> existing(Object id) {
         return (TestObserved<C, V>) staticObservedMap.get(id);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new TestObserved<>(id, false, def, false, null, null, null, true);
+    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def) {
+        return new TestObserved<>(id, serializeValue, deserializeValue, false, def, false, null, null, null, true);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new TestObserved<>(id, false, def, containment, null, null, null, true);
+    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def, boolean containment) {
+        return new TestObserved<>(id, serializeValue, deserializeValue, false, def, containment, null, null, null, true);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new TestObserved<>(id, false, def, false, null, null, changed, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new TestObserved<>(id, false, def, containment, null, null, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new TestObserved<>(id, false, def, false, opposite, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new TestObserved<>(id, false, def, false, opposite, scope, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def) {
-        return new TestObserved<>(id, mandatory, def, false, null, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment) {
-        return new TestObserved<>(id, mandatory, def, containment, null, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment, boolean checkConsistency) {
-        return new TestObserved<>(id, mandatory, def, containment, null, null, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new TestObserved<>(id, mandatory, def, false, null, null, changed, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite) {
-        return new TestObserved<>(id, mandatory, def, false, opposite, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new TestObserved<>(id, mandatory, def, false, opposite, scope, null, checkConsistency);
-    }
-
-    protected TestObserved(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    protected TestObserved(Object id, BiFunction<TestObserved<O, T>, T, Object> serializeValue, BiFunction<TestObserved<O, T>, Object, T> deserializeValue, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
         super(id, mandatory, def, containment, opposite, scope, changed, checkConsistency);
+        this.serializeValue = serializeValue;
+        this.deserializeValue = deserializeValue;
         synchronized (TestObserved.class) {
             staticObservedMap = staticObservedMap.put(id, this);
         }
+    }
+
+    public BiFunction<TestObserved<O, T>, T, Object> getSerializeValue() {
+        return serializeValue;
+    }
+
+    public BiFunction<TestObserved<O, T>, Object, T> getDeserializeValue() {
+        return deserializeValue;
     }
 }

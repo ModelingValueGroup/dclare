@@ -1,30 +1,29 @@
 package org.modelingvalue.dclare.sync.json;
 
-import java.util.*;
-import java.util.Map.*;
-
 public class Json {
     public static String toJson(Object o) {
-        return new ToJsonDefault(o).toJson();
+        return new ToJson().toJson(o);
     }
 
     public static Object fromJson(String s) {
-        return new FromJsonDefault(s).fromJson();
+        return new FromJson().fromJson(s);
     }
 
-    public static String formatNoWhitespace(String json) {
-        return format(false, json, null);
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public static String terse(String json) {
+        return format(json, null, null);
     }
 
-    public static String formatPretty(String json) {
-        return formatPretty(json, "  ");
+    public static String pretty(String json) {
+        return pretty(json, "  ", "\n");
     }
 
-    public static String formatPretty(String json, String indentString) {
-        return format(true, formatNoWhitespace(json), indentString);
+    public static String pretty(String json, String indent, String eol) {
+        return format(terse(json), indent, eol);
     }
 
-    private static String format(boolean pretty, String json, String indentString) {
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private static String format(String json, String indentString, String eolString) {
         StringBuilder b         = new StringBuilder();
         int           indent    = 0;
         boolean       inQuote   = false;
@@ -54,22 +53,18 @@ public class Json {
                 case '{':
                 case '[':
                     b.append(c);
-                    if (pretty) {
-                        appendIndent(indentString, ++indent, b);
-                    }
+                    ++indent;
+                    appendIndent(b, indentString, eolString, indent);
                     break;
                 case '}':
                 case ']':
-                    if (pretty) {
-                        appendIndent(indentString, --indent, b);
-                    }
+                    --indent;
+                    appendIndent(b, indentString, eolString, indent);
                     b.append(c);
                     break;
                 case ',':
                     b.append(c);
-                    if (pretty) {
-                        appendIndent(indentString, indent, b);
-                    }
+                    appendIndent(b, indentString, eolString, indent);
                     break;
                 case ':':
                     b.append(": ");
@@ -87,63 +82,12 @@ public class Json {
         return b.toString();
     }
 
-    private static void appendIndent(String indentString, int indentLevel, StringBuilder b) {
-        b.append("\n").append(indentString.repeat(Math.max(0, indentLevel)));
-    }
-
-    private static class ToJsonDefault extends ToJson<Iterable<Object>, Map<Object, Object>> {
-        public ToJsonDefault(Object root) {
-            super(root);
+    private static void appendIndent(StringBuilder b, String indentString, String eolString, int indent) {
+        if (eolString != null) {
+            b.append(eolString);
         }
-
-        @Override
-        protected boolean isArrayType(Object o) {
-            return o instanceof Iterable;
-        }
-
-        @Override
-        protected boolean isMapType(Object o) {
-            return o instanceof Map;
-        }
-
-        @Override
-        protected Iterator<Entry<Object, Object>> getMapIterator(Map<Object, Object> o) {
-            return o.entrySet().stream().sorted(Comparator.comparing(e -> e.getKey().toString())).iterator();
-        }
-
-        @Override
-        protected Iterator<Object> getArrayIterator(Iterable<Object> o) {
-            return o.iterator();
-        }
-    }
-
-    private static class FromJsonDefault extends FromJson<Iterable<Object>, Map<String, Object>> {
-        public FromJsonDefault(String input) {
-            super(input);
-        }
-
-        @Override
-        protected HashMap<String, Object> makeMap() {
-            return new HashMap<>();
-        }
-
-        @Override
-        protected Iterable<Object> makeArray() {
-            return new ArrayList<>();
-        }
-
-        @Override
-        protected Map<String, Object> makeMapEntry(Map<String, Object> m, String key, Object value) {
-            m.put(key, value);
-            return m;
-        }
-
-        @Override
-        protected Iterable<Object> makeArrayEntry(Iterable<Object> l, Object o) {
-            ((List<Object>) l).add(o);
-            return l;
+        if (indentString != null) {
+            b.append(indentString.repeat(Math.max(0, indent)));
         }
     }
 }
-
-//0900 doorverbinden debiteurenbeheer

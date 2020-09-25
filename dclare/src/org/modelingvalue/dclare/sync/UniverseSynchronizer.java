@@ -5,11 +5,11 @@ import java.util.function.*;
 import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public interface UniverseSynchronizer<M extends Mutable, TRANSFER> {
+public interface UniverseSynchronizer<M extends Mutable> {
 
-    TRANSFER serializeDelta(State pre, State post);
+    String serializeDelta(State pre, State post);
 
-    void deserializeDelta(TRANSFER delta);
+    void deserializeDelta(String delta);
 
     /////////////////////////////////
     Predicate<Mutable> mutableFilter();
@@ -17,21 +17,21 @@ public interface UniverseSynchronizer<M extends Mutable, TRANSFER> {
     Predicate<Setable> setableFilter();
 
     /////////////////////////////////
-    TRANSFER serializeClass(MutableClass clazz);
+    String serializeClass(MutableClass clazz);
 
-    TRANSFER serializeSetable(Setable<M, ?> setable);
+    String serializeSetable(Setable<M, ?> setable);
 
-    TRANSFER serializeMutable(M mutable);
+    String serializeMutable(M mutable);
 
-    <V> TRANSFER serializeValue(Setable<M, V> setable, V value);
+    <V> String serializeValue(Setable<M, V> setable, V value);
 
     /////////////////////////////////
-    MutableClass deserializeClass(TRANSFER s);
+    MutableClass deserializeClass(String s);
 
-    Setable<M, ?> deserializeSetable(MutableClass clazz, TRANSFER s);
+    Setable<M, ?> deserializeSetable(MutableClass clazz, String s);
 
-    M deserializeMutable(MutableClass clazz, TRANSFER s);
+    M deserializeMutable(MutableClass clazz, String s);
 
-    <V> V deserializeValue(Setable<M, V> setable, TRANSFER s);
+    <V> V deserializeValue(Setable<M, V> setable, String s);
     /////////////////////////////////
 }

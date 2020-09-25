@@ -26,108 +26,9 @@ import java.util.*;
 import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.sync.converter.*;
 import org.modelingvalue.dclare.sync.json.*;
 
 public class JsonTests {
-    @Test
-    public void jsonMapTest() {
-        ConvertStringDeltaToJson conv = new ConvertStringDeltaToJson();
-
-        Map<String, Map<String, Object>> o0 =
-                Map.of(
-                        "john", Map.of(
-                                "111", Arrays.asList(-123e-4, 2L),
-                                "222", "aa"
-                        ),
-                        "paul", Map.of(
-                                "333", "10",
-                                "444", "10e-30",
-                                "555", "10.62"
-                        ),
-                        "george", Map.of(
-                                "666", "y6",
-                                "777", "y7",
-                                "888", "y8"
-                        ),
-                        "ringo", Map.of(
-                                "999", "y9"
-                        )
-                );
-
-        Map<String, Map<String, Object>> o2 = conv.convertBackward(conv.convertForward(o0));
-        Map<String, Map<String, Object>> o4 = conv.convertBackward(conv.convertForward(o2));
-        Map<String, Map<String, Object>> o6 = conv.convertBackward(conv.convertForward(o4));
-
-        Assertions.assertEquals(o0, o2);
-        Assertions.assertEquals(o2, o4);
-        Assertions.assertEquals(o4, o6);
-
-        //System.err.println("json= " + conv.convertForward(o0));
-    }
-
-    @Test
-    public void jsonQualifiedSetTest() {
-        SerializableFunction<O, String> qualifier = o -> o.k;
-        QualifiedSet<String, O>         qset1     = QualifiedSet.of(qualifier, O.of("aap"), O.of("aap"), O.of("noot"), O.of("mies"), O.of("teun"), O.of("jet"));
-        QualifiedSet<String, O>         qset2     = QualifiedSet.of(qualifier, O.of("aap"), O.of("aap"), O.of("noot"), O.of("mies"), O.of("teun"), O.of("jet"), O.of("jet"), O.of("jet"));
-
-        assertEquals(qset1, qset2);
-
-        ConvertObjectToStringOrList c = new ConvertObjectToStringOrList(null);
-        assertEquals(qset1, c.convertBackward(c.convertForward(qset1)));
-    }
-
-    private static class O {
-        final String k;
-        final String v;
-
-        private O(String a, String b) {
-            k = a;
-            v = b;
-        }
-
-        public static O of(String str) {
-            return new O("k" + str, str);
-        }
-
-        @Override
-        public String toString() {
-            return "O{k='" + k + "', v='" + v + "'}";
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            O oo = (O) o;
-            return Objects.equals(k, oo.k) &&
-                    Objects.equals(v, oo.v);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(k, v);
-        }
-
-        @SuppressWarnings("unused")
-        private void serialize(Serializer s) {
-            s.writeObject(k);
-            s.writeObject(v);
-        }
-
-        @SuppressWarnings("unused")
-        private static O deserialize(Deserializer s) {
-            String k = s.readObject();
-            String v = s.readObject();
-            return new O(k, v);
-        }
-    }
-
     @RepeatedTest(1)
     public void primitivesToJson() {
         assertThrows(IllegalArgumentException.class, () -> toJson(new Object()));
@@ -193,15 +94,15 @@ public class JsonTests {
     @RepeatedTest(1)
     public void prettyJson() {
         assertEquals("{\n  \"EUR\": 1.3,\n  \"SVC\": 13.67\n}",
-                Json.formatPretty(toJson(Map.of(Currency.getInstance("EUR"), 1.3, Currency.getInstance("SVC"), 13.67))));
+                Json.pretty(toJson(Map.of(Currency.getInstance("EUR"), 1.3, Currency.getInstance("SVC"), 13.67))));
         assertEquals("[\n  1,\n  2,\n  3,\n  [\n    1,\n    2,\n    3,\n    [\n      1,\n      2,\n      3\n    ]\n  ]\n]",
-                Json.formatPretty(toJson(getTestObject1())));
+                Json.pretty(toJson(getTestObject1())));
         assertEquals(
-                "[\n#1,\n#2,\n#3,\n#[\n##1,\n##2,\n##3,\n##[\n###1,\n###2,\n###3\n##]\n#]\n]",
-                Json.formatPretty(toJson(getTestObject1()), "#"));
+                "[^#1,^#2,^#3,^#[^##1,^##2,^##3,^##[^###1,^###2,^###3^##]^#]^]",
+                Json.pretty(toJson(getTestObject1()), "#", "^"));
         assertEquals(
-                Json.formatPretty(toJson(getTestObject1())),
-                Json.formatPretty(Json.formatPretty(Json.formatPretty(Json.formatPretty(toJson(getTestObject1())))))
+                Json.pretty(toJson(getTestObject1())),
+                Json.pretty(Json.pretty(Json.pretty(Json.pretty(toJson(getTestObject1())))))
         );
     }
 

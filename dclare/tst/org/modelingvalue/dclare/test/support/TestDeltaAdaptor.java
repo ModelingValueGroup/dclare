@@ -17,61 +17,31 @@ package org.modelingvalue.dclare.test.support;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
-import java.util.function.*;
-
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.*;
-import org.modelingvalue.dclare.sync.converter.*;
 
 @SuppressWarnings("rawtypes")
-public class TestDeltaAdaptor extends DeltaAdaptor<String> {
+public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, Object>>, String> converter) {
-        super(name, tx, objectFilter, setableFilter, converter);
+    public TestDeltaAdaptor(String name, UniverseTransaction tx) {
+        super(name, tx, ModelMaker.SERIALIZATION_HELPER);
         CommunicationHelper.add(getAdaptorDaemon());
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    @Override
-    public String serializeMutable(Mutable value) {
-        return Util.encodeWithLength(((TestClass) value.dClass()).serializeClass(), ((TestObject) value).serialize());
-    }
-
-    @Override
-    public String serializeSetable(Setable value) {
-        return value.toString();
-    }
-
-    @Override
-    public Mutable deserializeMutable(String s) {
-        String[] parts = Util.decodeFromLength(s, 2);
-        return TestObject.of(parts[1], TestClass.existing(parts[0]));
-    }
-
-    @Override
-    public Setable deserializeSetable(String s) {
-        return TestObserved.existing(s);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     protected void queueDelta(State pre, State post, Boolean last) {
         traceDiffHandler(pre, post);
         super.queueDelta(pre, post, last);
     }
 
-    @Override
-    protected void applyOneDelta(Mutable mutable, Setable prop, Object value) {
-        traceApplyOneDiff(mutable, prop, value);
-        super.applyOneDelta(mutable, prop, value);
+    protected void applyOneDelta(TestObject mutable, TestObserved<TestObject, Object> settable, Object value) {
+        traceApplyOneDiff(mutable, settable, value);
+        super.applyOneDelta(mutable, settable, value);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     private void traceDiffHandler(State pre, State post) {
         if (TRACE) {

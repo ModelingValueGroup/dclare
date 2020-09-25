@@ -3,43 +3,62 @@ package org.modelingvalue.dclare.sync.json;
 import java.util.*;
 import java.util.Map.*;
 
-public abstract class ToJson<ARRAY_TYPE, MAP_TYPE> {
+public class ToJson {
     private static final String NULL_STRING = "null";
 
     private final StringBuilder b = new StringBuilder();
+    private       int           level;
+    private       int           index;
 
-    public ToJson(Object root) {
+    public String toJson(Object root) {
+        b.setLength(0);
+        level = 0;
+        index = 0;
         jsonFromAny(root);
-    }
-
-    public String toJson() {
         return b.toString();
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    protected abstract boolean isArrayType(Object o);
+    public int getLevel() {
+        return level;
+    }
 
-    protected abstract boolean isMapType(Object o);
-
-    protected abstract Iterator<Object> getArrayIterator(ARRAY_TYPE o);
-
-    protected abstract Iterator<Entry<Object, Object>> getMapIterator(MAP_TYPE o);
-
-    protected Object replace(Object o) {
-        throw new IllegalArgumentException("can not render object of class " + o.getClass().getName());
+    public int getIndex() {
+        return index;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    private void jsonFromAny(Object o) {
+    protected Object filter(Object o) {
+        return o;
+    }
+
+    protected boolean isMapType(Object o) {
+        return o instanceof Map;
+    }
+
+    protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
+        //noinspection unchecked
+        return ((Map<Object, Object>) o).entrySet().stream().sorted(Comparator.comparing(e -> e.getKey().toString())).iterator();
+    }
+
+    protected boolean isArrayType(Object o) {
+        return o instanceof Iterable;
+    }
+
+    protected Iterator<Object> getArrayIterator(Object o) {
+        //noinspection unchecked
+        return ((Iterable<Object>) o).iterator();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    protected void jsonFromAny(Object o) {
+        o = filter(o);
         if (o == null) {
             b.append(NULL_STRING);
 
         } else if (isMapType(o)) {
-            //noinspection unchecked
-            jsonFromMap((MAP_TYPE) o);
+            jsonFromMap(o);
         } else if (isArrayType(o)) {
-            //noinspection unchecked
-            jsonFromArray((ARRAY_TYPE) o);
+            jsonFromArray(o);
 
         } else if (o instanceof String) {
             jsonFromString((String) o);
@@ -81,154 +100,234 @@ public abstract class ToJson<ARRAY_TYPE, MAP_TYPE> {
         } else if (o instanceof Object[]) {
             jsonFromObjectArray((Object[]) o);
         } else {
-            jsonFromAny(replace(o));
+            jsonFromUnknown(o);
         }
     }
 
-    private void jsonFromMap(MAP_TYPE o) {
+    protected void jsonFromUnknown(Object o) {
+        throw new IllegalArgumentException("can not render object of class " + o.getClass().getName());
+    }
+
+    protected void jsonFromMap(Object o) {
         b.append('{');
         Iterator<Entry<Object, Object>> it  = getMapIterator(o);
         String                          sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         while (it.hasNext()) {
             Entry<Object, Object> e = it.next();
             b.append(sep);
             sep = ",";
-            jsonFromString(Objects.requireNonNull(e.getKey(), "can not make json: a map contains a null key").toString());
+            jsonFromString(stringFromKey(e.getKey()));
             b.append(":");
             jsonFromAny(e.getValue());
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append('}');
     }
 
-    private void jsonFromArray(ARRAY_TYPE o) {
+    protected String stringFromKey(Object key) {
+        return Objects.requireNonNull(key, "can not make json: a map contains a null key").toString();
+    }
+
+    protected void jsonFromArray(Object o) {
         b.append('[');
         Iterator<Object> it  = getArrayIterator(o);
         String           sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         while (it.hasNext()) {
             b.append(sep);
             sep = ",";
             jsonFromAny(it.next());
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromByteArray(byte[] o) {
+    protected void jsonFromByteArray(byte[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (byte oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromBooleanArray(boolean[] o) {
+    protected void jsonFromBooleanArray(boolean[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (boolean oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromObjectArray(Object[] o) {
+    protected void jsonFromObjectArray(Object[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (Object oo : o) {
             b.append(sep);
             sep = ",";
             jsonFromAny(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromDoubleArray(double[] o) {
+    protected void jsonFromDoubleArray(double[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (double oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromFloatArray(float[] o) {
+    protected void jsonFromFloatArray(float[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (float oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromCharArray(char[] o) {
+    protected void jsonFromCharArray(char[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (char oo : o) {
             b.append(sep);
             sep = ",";
             jsonFromCharacter(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromLongArray(long[] o) {
+    protected void jsonFromLongArray(long[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (long oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromShortArray(short[] o) {
+    protected void jsonFromShortArray(short[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (short oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromIntArray(int[] o) {
+    protected void jsonFromIntArray(int[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (int oo : o) {
             b.append(sep);
             sep = ",";
             b.append(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromStringArray(String[] o) {
+    protected void jsonFromStringArray(String[] o) {
         b.append('[');
         String sep = "";
+        level++;
+        int savedIndex = index;
+        index = 0;
         for (String oo : o) {
             b.append(sep);
             sep = ",";
             jsonFromString(oo);
+            index++;
         }
+        index = savedIndex;
+        level--;
         b.append(']');
     }
 
-    private void jsonFromCharacter(char o) {
+    protected void jsonFromCharacter(char o) {
         b.append('"');
         appendStringCharacter(o);
         b.append('"');
     }
 
-    private void jsonFromString(String o) {
+    protected void jsonFromString(String o) {
         b.append('"');
         final int length = o.length();
         for (int i = 0; i < length; i++) {

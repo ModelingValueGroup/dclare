@@ -21,54 +21,51 @@ import java.util.function.*;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.converter.*;
+import org.modelingvalue.dclare.sync.json.*;
+import org.modelingvalue.dclare.sync.json.JsonIC.*;
 
-@SuppressWarnings({"rawtypes"})
-public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, SerializationHelper {
-    private final String                                                        name;
-    private final UniverseTransaction                                           tx;
-    private final Predicate<Object>                                             objectFilter;
-    private final Predicate<Setable>                                            setableFilter;
-    private final Converter<Map<Object, Map<Setable, Pair<Object, Object>>>, T> deltaConverter;
-    private final AdaptorDaemon                                                 adaptorDaemon;
-    private final BlockingQueue<T>                                              deltaQueue = new ArrayBlockingQueue<>(10);
+public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements Supplier<String>, Consumer<String> {
+    private final String                       name;
+    private final UniverseTransaction          tx;
+    private final SerializationHelper<C, M, S> helper;
+    private final AdaptorDaemon                adaptorDaemon;
+    private final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
-    public DeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter, Converter<java.util.Map<String, java.util.Map<String, Object>>, T> converter) {
+    public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
         this.name = name;
         this.tx = tx;
-        this.objectFilter = objectFilter;
-        this.setableFilter = setableFilter;
-        deltaConverter = Converter.concat(new ConvertDeltaToStringDelta(this), converter);
+        this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
         tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, true);
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Map<Object, Map<Setable, Pair<Object, Object>>> makeDelta(State pre, State post, @SuppressWarnings("unused") boolean last) {
-        return pre.diff(post, objectFilter, setableFilter).toMap(e -> e);
-    }
-
     /**
-     * Apply the given delta to our model
+     * When a delta is received from a remote party it can be given to the local model through this method.
+     * The delta will be queued and applied to the model async but in order of arrival.
      *
      * @param delta the delta to apply to our model
      */
     @Override
-    public void accept(T delta) {
-        adaptorDaemon.accept(() -> applyAllDeltas(deltaConverter.convertBackward(delta)));
+    public void accept(String delta) {
+        adaptorDaemon.accept(() ->
+        {
+            //System.err.println("RECEIVING:\n" + Json.pretty(delta));
+            new DeltaFromJson().fromJson(delta);
+        });
+    }
+
+    protected void applyOneDelta(M mutable, S settable, Object value) {
+        settable.set(mutable, value);
     }
 
     /**
-     * Retrieve the delta's that happen in our model
+     * Retrieve the delta's that happen in our model to send to a remote party.
      *
-     * @return the delta that happened in our model
+     * @return the next delta that happened in our model
      */
     @Override
-    public T get() {
+    public String get() {
         try {
             return deltaQueue.take();
         } catch (InterruptedException e) {
@@ -77,35 +74,37 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
     }
 
     /**
-     * Serialize the delta and queue it for retrieval.
+     * Serialize the delta coming from the local model and queue it for async retrieval through get().
      *
      * @param pre  the pre state
      * @param post the post state
      * @param last indication if this is the last delta in a sequence
      */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     protected void queueDelta(State pre, State post, Boolean last) {
-        Map<Object, Map<Setable, Pair<Object, Object>>> map = makeDelta(pre, post, last);
-        if (!map.isEmpty()) {
+        Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
+        if (!deltaMap.isEmpty()) {
             try {
-                deltaQueue.put(deltaConverter.convertForward(map));
+                String delta = new DeltaToJson().toJson(deltaMap);
+                System.err.println("SENDING:\n" + Json.pretty(delta));
+                deltaQueue.put(delta);
             } catch (InterruptedException e) {
                 throw new Error(e);
             }
         }
     }
 
-    public void applyAllDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> delta) {
-        delta.forEach((mutable, m) -> m.forEach((settable, pair) -> applyOneDelta((Mutable) mutable, settable, pair.b())));
-    }
-
-    @SuppressWarnings("unchecked")
-    protected void applyOneDelta(Mutable mutable, Setable prop, Object value) {
-        prop.set(mutable, value);
+    private Predicate<Object> getObjectFilter() {
+        return o -> o instanceof Mutable && helper.mutableFilter().test((Mutable) o);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public String getName() {
+        return name;
+    }
+
     protected AdaptorDaemon getAdaptorDaemon() {
         return adaptorDaemon;
     }
@@ -163,6 +162,111 @@ public abstract class DeltaAdaptor<T> implements Supplier<T>, Consumer<T>, Seria
 
         public boolean isBusy() {
             return super.isBusy() || !runnableQueue.isEmpty();
+        }
+    }
+
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
+    private class DeltaToJson extends ToJsonIC {
+        private M      currentMutable;
+        private S      currentSetable;
+        private Object currentOldValue;
+        private Object currentNewValue;
+
+        @Override
+        protected Object filter(Object o) {
+            if (getLevel() != 3) {
+                return o;
+            }
+            if (getIndex() == 0) {
+                currentOldValue = o;
+                return null;
+            }
+            if (getIndex() == 1) {
+                currentNewValue = o;
+                return helper.serializeValue(currentSetable, currentNewValue);
+            }
+            throw new Error("bad delta format");
+        }
+
+        @Override
+        protected String stringFromKey(Object keyObj) {
+            String key;
+            if (getLevel() == 1) {
+                if (!(keyObj instanceof Mutable)) {
+                    throw new Error("bad delta format");
+                }
+                //noinspection unchecked
+                currentMutable = (M) keyObj;
+                key = helper.serializeMutable(currentMutable);
+            } else if (getLevel() == 2) {
+                if (!(keyObj instanceof Setable)) {
+                    throw new Error("bad delta format");
+                }
+                //noinspection unchecked
+                currentSetable = (S) keyObj;
+                key = helper.serializeSetable(currentSetable);
+            } else {
+                key = super.stringFromKey(keyObj);
+            }
+            return key;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private class DeltaFromJson extends FromJsonIC {
+        private M      currentMutable;
+        private S      currentSetable;
+        private Object currentOldValue;
+        private Object currentNewValue;
+
+        @Override
+        protected Map<String, Object> makeMap() {
+            return getLevel() < 2 ? null : super.makeMap();
+        }
+
+        @Override
+        protected String makeMapKey(String key) {
+            switch (getLevel()) {
+            case 1:
+                currentMutable = helper.deserializeMutable(key);
+                break;
+            case 2:
+                //noinspection unchecked
+                currentSetable = helper.deserializeSetable((C) currentMutable.dClass(), key);
+                break;
+            }
+            return super.makeMapKey(key);
+        }
+
+        @Override
+        protected List<Object> makeArray() {
+            return getLevel() <= 2 ? null : super.makeArray();
+        }
+
+        @Override
+        protected List<Object> makeArrayEntry(List<Object> l, Object o) {
+            if (l != null) {
+                return super.makeArrayEntry(l, o);
+            }
+            switch (getIndex()) {
+            case 0:
+                //currentOldValue = helper.deserializeValue(currentSetable, o);
+                break;
+            case 1:
+                currentNewValue = helper.deserializeValue(currentSetable, o);
+                break;
+            }
+            return null;
+        }
+
+        @Override
+        protected Object closeArray(List<Object> l) {
+            if (l != null) {
+                return super.closeArray(l);
+            } else {
+                applyOneDelta(currentMutable, currentSetable, currentNewValue);
+                return null;
+            }
         }
     }
 }

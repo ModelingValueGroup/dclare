@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import static java.lang.management.ManagementFactory.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
@@ -27,10 +28,10 @@ import java.util.function.*;
 import org.modelingvalue.collections.util.ContextThread.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.sync.*;
-import org.modelingvalue.dclare.sync.converter.*;
 
 public class CommunicationHelper {
-    private static final int                    IDLE_DETECT_TIMEOUT                         = 5_000;
+    private static final boolean                WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
+    private static final int                    IDLE_DETECT_TIMEOUT                         = WE_ARE_DEBUGGED ? 24 * 60 * 60 * 1_000 : 5 * 1_000;
     private static final int                    IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION = 10;
     private static final int                    SIMULATED_NETWORK_DELAY                     = 100;
     //
@@ -56,13 +57,7 @@ public class CommunicationHelper {
     }
 
     public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm) {
-        TestDeltaAdaptor adaptor = new TestDeltaAdaptor(
-                mm.getName(),
-                mm.getTx(),
-                o -> o instanceof TestObject,
-                s -> s.id().toString().startsWith("#"),
-                new ConvertStringDeltaToJson()
-        );
+        TestDeltaAdaptor adaptor = new TestDeltaAdaptor(mm.getName(), mm.getTx());
         add(adaptor);
         return adaptor;
     }
@@ -151,10 +146,10 @@ public class CommunicationHelper {
                 System.err.printf(" - workDaemon %-16s: %s\n", wd.getName(), wd.isBusy() ? "BUSY" : "idle");
             }
             TraceTimer.dumpStacks();
-            ModelMaker.assertNoUncaughts();
+            ModelMaker.assertNoUncaughtThrowables();
             fail("the test did not get idle in time");
         }
-        ModelMaker.assertNoUncaughts();
+        ModelMaker.assertNoUncaughtThrowables();
     }
 
     private static void nap() {

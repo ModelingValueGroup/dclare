@@ -11,15 +11,15 @@ import org.modelingvalue.dclare.sync.json.*;
 public class JsonCustomTests {
     @RepeatedTest(1)
     public void counters() {
-        assertEquals("1,0,0,0,0,0,0", new MyFromJson("[]").fromJson());
-        assertEquals("3,2,3,3,4,0,0", new MyFromJson("[[],[],{\"a\":{\"b\":\"aa\"},\"c\":21}]").fromJson());
+        assertEquals("1,0,0,0,0,0,0", new CountingTesterFromJson().fromJson("[]"));
+        assertEquals("3,2,3,3,4,0,0", new CountingTesterFromJson().fromJson("[[],[],{\"a\":{\"b\":\"aa\"},\"c\":21}]"));
 
         String testData = readData("test.json");
         assertEquals(592 + 22, testData.replaceAll("[^\\[]", "").length());
         assertEquals(519 + 29, testData.replaceAll("[^{]", "").length());
         assertEquals(592 + 22, Json.toJson(Json.fromJson(testData)).replaceAll("[^\\[]", "").length());
         assertEquals(519 + 29, Json.toJson(Json.fromJson(testData)).replaceAll("[^{]", "").length());
-        assertEquals("592,519,1588,1331,1735,22,29", new MyFromJson(testData).fromJson());
+        assertEquals("592,519,1588,1331,1735,22,29", new CountingTesterFromJson().fromJson(testData));
     }
 
     public String readData(String name) {
@@ -31,7 +31,7 @@ public class JsonCustomTests {
         }
     }
 
-    private static class MyFromJson extends FromJson<Void, Void> {
+    private static class CountingTesterFromJson extends FromJsonBase<Void, Void> {
         private int numArrays;
         private int numMaps;
         private int numArrayEntries;
@@ -39,10 +39,6 @@ public class JsonCustomTests {
         private int numStrings;
         private int numBracketsString;
         private int numCurliesString;
-
-        public MyFromJson(String input) {
-            super(input);
-        }
 
         @Override
         protected Void makeMap() {
@@ -61,14 +57,14 @@ public class JsonCustomTests {
             numMapEntries++;
             countString(key);
             countString(value);
-            return m;
+            return null;
         }
 
         @Override
         protected Void makeArrayEntry(Void l, Object o) {
             numArrayEntries++;
             countString(o);
-            return l;
+            return null;
         }
 
         private void countString(Object v) {
