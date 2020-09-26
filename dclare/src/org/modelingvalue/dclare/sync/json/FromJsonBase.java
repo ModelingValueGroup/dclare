@@ -106,24 +106,24 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    private void next() {
+    protected void next() {
         next(1);
     }
 
-    private void next(int skip) {
+    protected void next(int skip) {
         i += skip;
         eof = inputLength <= i;
         current = eof ? EOF_CHAR : input.charAt(i);
     }
 
-    private Object parseElement() {
+    protected Object parseElement() {
         skipWS();
         Object o = parseValue();
         skipWS();
         return o;
     }
 
-    private Object parseValue() {
+    protected Object parseValue() {
         if (eof) {
             throw error();
         }
@@ -157,7 +157,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         throw error();
     }
 
-    private Object parseMap() {
+    protected Object parseMap() {
         MAP_TYPE m = makeMap();
         level++;
         int savedIndex = index;
@@ -195,7 +195,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         return closeMap(m);
     }
 
-    private Object parseArray() {
+    protected Object parseArray() {
         ARRAY_TYPE l = makeArray();
         level++;
         int savedIndex = index;
@@ -226,7 +226,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         return closeArray(l);
     }
 
-    private String parseString() {
+    protected String parseString() {
         StringBuilder b = new StringBuilder();
         next();
         while (true) {
@@ -278,7 +278,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         }
     }
 
-    private Object parseNumber() {
+    protected Object parseNumber() {
         int     start    = i;
         boolean isDouble = false;
         A:
@@ -329,7 +329,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         }
     }
 
-    private Object parseTrue() {
+    protected Object parseTrue() {
         if (!input.startsWith(TRUE_STRING, i)) {
             throw error();
         }
@@ -337,7 +337,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         return true;
     }
 
-    private Object parseFalse() {
+    protected Object parseFalse() {
         if (!input.startsWith(FALSE_STRING, i)) {
             throw error();
         }
@@ -345,7 +345,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         return false;
     }
 
-    private Object parseNull() {
+    protected Object parseNull() {
         if (!input.startsWith(NULL_STRING, i)) {
             throw error();
         }
@@ -353,7 +353,7 @@ public class FromJsonBase<ARRAY_TYPE, MAP_TYPE> {
         return null;
     }
 
-    private void skipWS() {
+    protected void skipWS() {
         int start = i;
         while (true) {
             switch (current) {

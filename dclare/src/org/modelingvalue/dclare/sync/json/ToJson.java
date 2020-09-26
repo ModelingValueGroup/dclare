@@ -120,7 +120,7 @@ public class ToJson {
     }
 
     protected void jsonFromUnknown(Object o) {
-        throw new IllegalArgumentException("can not render object of class " + o.getClass().getName());
+        throw new IllegalArgumentException("can not render object (" + o + ") of class " + o.getClass().getName());
     }
 
     protected void jsonFromMap(Object o) {

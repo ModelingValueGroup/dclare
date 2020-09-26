@@ -24,7 +24,7 @@ import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.json.*;
 import org.modelingvalue.dclare.sync.json.JsonIC.*;
 
-public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements Supplier<String>, Consumer<String> {
+public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements Supplier<String>, Consumer<String> {
     private final String                       name;
     private final UniverseTransaction          tx;
     private final SerializationHelper<C, M, S> helper;
@@ -50,8 +50,13 @@ public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S 
     public void accept(String delta) {
         adaptorDaemon.accept(() ->
         {
-            //System.err.println("RECEIVING:\n" + Json.pretty(delta));
-            new DeltaFromJson().fromJson(delta);
+            try {
+                //System.err.println("RECEIVING:\n" + Json.pretty(delta));
+                new DeltaFromJson().fromJson(delta);
+            } catch (Throwable e) {
+                //e.printStackTrace();//TOMTOMTOM
+                throw new Error(e);
+            }
         });
     }
 
@@ -89,6 +94,7 @@ public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S 
                 System.err.println("SENDING:\n" + Json.pretty(delta));
                 deltaQueue.put(delta);
             } catch (InterruptedException e) {
+                //e.printStackTrace();//TOMTOMTOM
                 throw new Error(e);
             }
         }
@@ -105,7 +111,7 @@ public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S 
         return name;
     }
 
-    protected AdaptorDaemon getAdaptorDaemon() {
+    public AdaptorDaemon getAdaptorDaemon() {
         return adaptorDaemon;
     }
 
@@ -175,7 +181,13 @@ public abstract class DeltaAdaptor<C extends MutableClass, M extends Mutable, S 
         @Override
         protected Object filter(Object o) {
             if (getLevel() != 3) {
-                return o;
+                if (o instanceof Mutable) {
+                    return helper.serializeMutable((M) o);
+                } else if (o instanceof Setable) {
+                    return helper.serializeSetable((S) o);
+                } else {
+                    return o;
+                }
             }
             if (getIndex() == 0) {
                 currentOldValue = o;

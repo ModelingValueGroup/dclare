@@ -46,6 +46,7 @@ public class CommunicationHelper {
 
     public static void add(TestDeltaAdaptor a) {
         ALL_DELTA_ADAPTORS.add(a);
+        add(a.getAdaptorDaemon());
     }
 
     public static void add(WorkDaemon<?> daemon) {
@@ -57,7 +58,7 @@ public class CommunicationHelper {
     }
 
     public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm) {
-        TestDeltaAdaptor adaptor = new TestDeltaAdaptor(mm.getName(), mm.getTx());
+        TestDeltaAdaptor adaptor = new TestDeltaAdaptor(mm.getName(), mm.getTx(), ModelMaker.SERIALIZATION_HELPER);
         add(adaptor);
         return adaptor;
     }

@@ -26,9 +26,8 @@ import org.modelingvalue.dclare.sync.*;
 public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx) {
-        super(name, tx, ModelMaker.SERIALIZATION_HELPER);
-        CommunicationHelper.add(getAdaptorDaemon());
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestClass, TestObject, TestObserved<TestObject, Object>> serializationHelper) {
+        super(name, tx, serializationHelper);
     }
 
     @Override
