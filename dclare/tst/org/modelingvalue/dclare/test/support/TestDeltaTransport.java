@@ -15,90 +15,36 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
 import org.modelingvalue.dclare.delta.Delta;
 import org.modelingvalue.dclare.delta.DeltaTransport;
-import org.modelingvalue.dclare.delta.MultiError;
 
 public class TestDeltaTransport extends DeltaTransport {
-    private static final List<TestDeltaTransport> ALL = new ArrayList<>();
+
+    private static final boolean WRITE_READ = Boolean.getBoolean("WRITE_READ");
 
     public TestDeltaTransport(String name, TestDeltaAdaptor producer, TestDeltaAdaptor consumer, int simulatedNetworkDelay) {
         super(name, producer, consumer);
-        ALL.add(this);
         ((TestTransportThread) transportThread).setSimulatedNetworkDelay(simulatedNetworkDelay);
     }
 
+    @Override
     protected TransportThread makeTransportThread(String name) {
         return new TestTransportThread(name);
     }
 
-    private boolean isBusy() {
+    boolean isBusy() {
         return ((TestTransportThread) transportThread).isBusy() || ((TestDeltaAdaptor) producer).isBusy() || ((TestDeltaAdaptor) consumer).isBusy();
-    }
-
-    public static void stopAllDeltaTransports() {
-        ALL.forEach(DeltaTransport::stop);
-        ALL.forEach(DeltaTransport::interrupt);
-        ALL.forEach(DeltaTransport::join);
-
-        List<Throwable> problems = ALL.stream()
-                .flatMap(DeltaTransport::getThrowables)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        ALL.clear();
-        if (!problems.isEmpty()) {
-            if (problems.size() == 1) {
-                throw new Error(problems.get(0));
-            } else {
-                throw new MultiError("problems after stop of support threads", problems);
-            }
-        }
-    }
-
-    public static void busyWaitAllForIdle() {
-        final int  TIMEOUT          = 60_000;
-        final int  MAX_SAMPLE_COUNT = 10;
-        final long t0               = System.currentTimeMillis();
-        boolean    busy;
-        do {
-            // probe isBusy() 10 times and 1 ms apart until we find a busy sample or conclude that we are idle
-            busy = false;
-            for (int i = 0; i < MAX_SAMPLE_COUNT && !busy; i++) {
-                nap();
-                busy = ALL.stream().anyMatch(TestDeltaTransport::isBusy);
-            }
-        } while (System.currentTimeMillis() < t0 + TIMEOUT && busy);
-        traceLog("busyWait ended after %d ms", System.currentTimeMillis() - t0);
-        if (busy) {
-            // darn,
-            System.err.println("this test did not get idle in time:");
-            for (TestDeltaTransport t : ALL) {
-                boolean ttBusy       = ((TestTransportThread) t.transportThread).isBusy();
-                String  producerBusy = ((TestDeltaAdaptor) t.producer).isBusyExplaining();
-                String  consumerBusy = ((TestDeltaAdaptor) t.consumer).isBusyExplaining();
-
-                System.err.printf(" - %s.transportThread: %s\n", t.transportThread.getName(), ttBusy ? "BUSY" : "idle");
-                System.err.printf(" - %s.producer       : %s%s\n", t.transportThread.getName(), !producerBusy.isEmpty() ? "BUSY" : "idle", producerBusy);
-                System.err.printf(" - %s.consumer       : %s%s\n", t.transportThread.getName(), !consumerBusy.isEmpty() ? "BUSY" : "idle", consumerBusy);
-            }
-            fail();
-        }
-    }
-
-    private static void nap() {
-        try {
-            Thread.sleep(1);
-        } catch (InterruptedException e) {
-            fail(e);
-        }
     }
 
     protected class TestTransportThread extends TransportThread {
@@ -109,13 +55,21 @@ public class TestDeltaTransport extends DeltaTransport {
             super(name);
         }
 
+        @Override
         protected void handle(Delta delta) throws InterruptedException {
             traceLog("***Transport    %s: sleeping network delay...", getName());
-            Thread.sleep(simulatedNetworkDelay);
+
+            if (WRITE_READ) {
+                byte[] bytes = writeObject(delta);
+                Thread.sleep(simulatedNetworkDelay);
+                delta = (Delta) readObject(bytes);
+            }
+
             traceLog("***Transport    %s: sleep done, pass delta on.", getName());
             super.handle(delta);
         }
 
+        @Override
         protected Delta next() {
             traceLog("***Transport    %s: wait for delta...", getName());
             busy = false;
@@ -131,6 +85,27 @@ public class TestDeltaTransport extends DeltaTransport {
 
         public void setSimulatedNetworkDelay(int simulatedNetworkDelay) {
             this.simulatedNetworkDelay = simulatedNetworkDelay;
+        }
+
+        private byte[] writeObject(Serializable s) {
+            try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                ObjectOutput out;
+                out = new ObjectOutputStream(bos);
+                out.writeObject(s);
+                out.flush();
+                return bos.toByteArray();
+            } catch (IOException ex) {
+                throw new Error(ex);
+            }
+        }
+
+        private Object readObject(byte[] bytes) {
+            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            try (ObjectInput in = new ObjectInputStream(bis)) {
+                return in.readObject();
+            } catch (ClassNotFoundException | IOException e) {
+                throw new Error(e);
+            }
         }
     }
 }

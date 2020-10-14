@@ -20,9 +20,9 @@ import static org.modelingvalue.collections.util.TraceTimer.*;
 import java.util.stream.Stream;
 
 public class DeltaTransport {
-    protected final DeltaAdaptor    producer;
-    protected final DeltaAdaptor    consumer;
-    protected final TransportThread transportThread;
+    public final DeltaAdaptor    producer;
+    public final DeltaAdaptor    consumer;
+    public final TransportThread transportThread;
 
     public DeltaTransport(String name, DeltaAdaptor producer, DeltaAdaptor consumer) {
         this.producer = producer;
@@ -57,7 +57,7 @@ public class DeltaTransport {
         return Stream.of(producer.getThrowable(), producer.getThrowable(), transportThread.getThrowable());
     }
 
-    protected class TransportThread extends Thread {
+    public class TransportThread extends Thread {
         private boolean   stop;
         private Throwable throwable;
 
