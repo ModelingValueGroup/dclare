@@ -19,7 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MultiError extends Error {
-    private final List<Throwable> causes = new ArrayList<Throwable>();
+
+    private static final long     serialVersionUID = -6787299347975175198L;
+
+    private final List<Throwable> causes           = new ArrayList<Throwable>();
 
     public MultiError(String message, List<Throwable> causes) {
         super(message, causes.isEmpty() ? null : causes.get(0));

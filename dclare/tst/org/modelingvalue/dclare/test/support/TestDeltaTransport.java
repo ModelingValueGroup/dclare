@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,11 +30,15 @@ import org.modelingvalue.dclare.delta.Delta;
 import org.modelingvalue.dclare.delta.DeltaTransport;
 
 public class TestDeltaTransport extends DeltaTransport {
+
+    public static final boolean PRINT_STATE = true;
+
     public TestDeltaTransport(String name, TestDeltaAdaptor producer, TestDeltaAdaptor consumer, int simulatedNetworkDelay) {
         super(name, producer, consumer);
         ((TestTransportThread) transportThread).setSimulatedNetworkDelay(simulatedNetworkDelay);
     }
 
+    @Override
     protected TransportThread makeTransportThread(String name) {
         return new TestTransportThread(name);
     }
@@ -51,17 +55,19 @@ public class TestDeltaTransport extends DeltaTransport {
             super(name);
         }
 
+        @Override
         protected void handle(Delta delta) throws InterruptedException {
             traceLog("***Transport    %s: sleeping network delay...", getName());
-
-            //            byte[] bytes = writeObject(delta);
-            //            Thread.sleep(simulatedNetworkDelay);
-            //            delta = (Delta) readObject(bytes);
-
+            if (PRINT_STATE) {
+                byte[] bytes = writeObject(delta);
+                Thread.sleep(simulatedNetworkDelay);
+                delta = (Delta) readObject(bytes);
+            }
             traceLog("***Transport    %s: sleep done, pass delta on.", getName());
             super.handle(delta);
         }
 
+        @Override
         protected Delta next() {
             traceLog("***Transport    %s: wait for delta...", getName());
             busy = false;

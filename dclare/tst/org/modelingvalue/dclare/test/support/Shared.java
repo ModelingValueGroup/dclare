@@ -21,8 +21,8 @@ import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 
 public class Shared {
-    @SuppressWarnings("CanBeFinal")
-    public static       boolean     PRINT_STATE = true;
+
+    public static final boolean     PRINT_STATE = true;
     public static final ContextPool THE_POOL    = ContextThread.createPool();
 
     public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
@@ -39,7 +39,7 @@ public class Shared {
                     System.err.println(result.asString());
                 }
             }
-            if (extraLines.length>0) {
+            if (extraLines.length > 0) {
                 System.err.println("********************************************************************");
                 for (String line : extraLines) {
                     System.err.println(line);
