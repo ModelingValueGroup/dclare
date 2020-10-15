@@ -28,6 +28,5 @@ hs_err_pid*
 /build.properties
 /lib
 /out
-/buildTools.sh
 /TEST-*.xml
 /header

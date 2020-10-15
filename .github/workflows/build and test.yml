@@ -21,14 +21,14 @@ jobs:
       - name: "get generic mvg-info"
         uses: ModelingValueGroup/generic-info@master
 
-      - name: "get buildTools"
-        uses: ModelingValueGroup/buildTools@master
+      - name: "get buildtools"
+        uses: ModelingValueGroup/buildtools@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "if master: fail if there is already a tag for this version"
         run:  |
-          . <(java -jar ~/buildTools.jar)
+          . <(java -jar ~/buildtools.jar)
           errorIfMasterAndVersionTagExists
 
       - name: "prepare ant"
@@ -40,19 +40,19 @@ jobs:
 
       - name: "(re)generate some files"
         run:  |
-          . <(java -jar ~/buildTools.jar)
+          . <(java -jar ~/buildtools.jar)
           generateAll
           correctEols
           correctHeaders header
 
       - name: "push changes back to github"
         run:  |
-          . <(java -jar ~/buildTools.jar)
+          . <(java -jar ~/buildtools.jar)
           pushBackToGithub "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com" "adjusted files [by github actions]"
 
       - name: "download dependencies (as mentioned in pom)"
         run:  |
-          . <(java -jar ~/buildTools.jar)
+          . <(java -jar ~/buildtools.jar)
           getAllDependencies "${{ secrets.GITHUB_TOKEN }}" "${{ secrets.SCALEWAY_ACCESS_KEY }}" "${{ secrets.SCALEWAY_SECRET_KEY }}"
 
       - name: "build"
@@ -73,7 +73,7 @@ jobs:
 
       - name: "if master: tag with version"
         run:  |
-          . <(java -jar ~/buildTools.jar)
+          . <(java -jar ~/buildtools.jar)
           setVersionTagIfMaster "${{ secrets.GITHUB_TOKEN }}" "automation@modelingvalue.com"
 
       - name: "publish action-artifact jar"
