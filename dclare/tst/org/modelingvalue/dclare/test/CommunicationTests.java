@@ -33,8 +33,8 @@ public class CommunicationTests {
         System.err.println("~~~FORCED PARALLELISM = " + System.getProperty("PARALLELISM"));
     }
 
+    @Disabled
     @RepeatedTest(1)
-    //@Test
     public void universeSyncWithinOneJVM() {
         traceLog("MAIN: BEGIN");
         CommTestRig a = new CommTestRig("a");
@@ -72,6 +72,7 @@ public class CommunicationTests {
         traceLog("MAIN: END");
     }
 
+    @Disabled
     @Test
     public void universeSyncBetweenJVMs() throws Throwable {
         PeerTester peer = new PeerTester(CommunicationPeer.class);
