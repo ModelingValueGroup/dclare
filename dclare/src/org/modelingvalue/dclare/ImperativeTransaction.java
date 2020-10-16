@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.State.*;
+import static org.modelingvalue.dclare.State.ALL_OBJECTS;
+import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -50,7 +51,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
-            LeafTransaction.getContext().set(this);
+            LeafTransaction.getContext().setOnThread(this);
             try {
                 r.run();
             } catch (Throwable t) {

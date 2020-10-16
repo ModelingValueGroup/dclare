@@ -35,15 +35,16 @@ import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
 
-    private static final boolean                                 TRACE_OBSERVERS  = Boolean.getBoolean("TRACE_OBSERVERS");
+    private static final boolean                                 TRACE_OBSERVERS = Boolean.getBoolean("TRACE_OBSERVERS");
 
-    public static final Context<Boolean>                         OBSERVE          = Context.of(true);
-    private static final Context<Boolean>                        EMTPTY_MANDATORY = Context.of(false);
+    public static final Context<Boolean>                         OBSERVE         = Context.of(true);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted          = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
+
+    private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
 
     private boolean                                              changed;
 
@@ -62,7 +63,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void run(State pre, UniverseTransaction universeTransaction) {
+    protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
         Pair<Instant, Throwable> throwable = null;
         // check if the universe is still in the same transaction, if not: reset my state
@@ -76,8 +77,9 @@ public class ObserverTransaction extends ActionTransaction {
         if (!observer.stopped && !universeTransaction.isKilled()) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
+            emptyMandatory.init(Set.of());
             try {
-                super.run(pre, universeTransaction);
+                doRun(pre, universeTransaction);
             } catch (BackwardException be) {
                 trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
             } catch (StopObserverException soe) {
@@ -88,18 +90,22 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (ConsistencyError ce) {
                 throw ce;
             } catch (NullPointerException npe) {
-                if (!EMTPTY_MANDATORY.get()) {
+                if (emptyMandatory.get().isEmpty()) {
                     throwable = Pair.of(Instant.now(), npe);
                 }
             } catch (Throwable t) {
                 throwable = Pair.of(Instant.now(), t);
             } finally {
-                EMTPTY_MANDATORY.set(false);
+                emptyMandatory.clear();
                 observe(pre, observer, setted.result(), getted.result());
                 observer.exception.set(mutable(), throwable);
                 changed = false;
             }
         }
+    }
+
+    protected void doRun(State pre, UniverseTransaction universeTransaction) {
+        super.run(pre, universeTransaction);
     }
 
     @SuppressWarnings("rawtypes")
@@ -182,6 +188,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
+            emptyMandatory.init(Set.of());
             observer.stopped = true;
             throw new TooManyChangesException(result, last, changes);
         }
@@ -204,7 +211,7 @@ public class ObserverTransaction extends ActionTransaction {
         observe(object, property, false);
         T result = super.get(object, property);
         if (result == null && property instanceof Observed && ((Observed) property).mandatory() && !((Observed) property).checkConsistency) {
-            EMTPTY_MANDATORY.set(true);
+            emptyMandatory.set(Set.of(true));
         }
         return result;
     }

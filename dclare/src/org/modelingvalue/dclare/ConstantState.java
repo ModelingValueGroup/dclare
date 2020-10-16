@@ -199,7 +199,7 @@ public class ConstantState {
                 try {
                     if (!list.isEmpty()) {
                         boolean weak = WEAK.get();
-                        WEAK.set(true);
+                        WEAK.setOnThread(true);
                         try {
                             for (Pair<Object, Constant> lazy : list) {
                                 if (constant.equals(lazy.b()) && object.equals(lazy.a())) {
@@ -209,7 +209,7 @@ public class ConstantState {
                                 ConstantState.this.get(leafTransaction, lazy.a(), lazy.b());
                             }
                         } finally {
-                            WEAK.set(weak);
+                            WEAK.setOnThread(weak);
                         }
                     }
                     return Constant.DERIVED.get(Pair.of(object, constant), () -> deriver.apply(object));

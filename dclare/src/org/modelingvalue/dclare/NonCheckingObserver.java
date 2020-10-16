@@ -26,7 +26,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         return new NonCheckingObserver<>(id, action, initDirection);
     }
 
-    private NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
+    protected NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
     }
 
@@ -47,7 +47,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
     public static class NonCheckingTransaction extends ObserverTransaction {
 
-        private NonCheckingTransaction(UniverseTransaction root) {
+        protected NonCheckingTransaction(UniverseTransaction root) {
             super(root);
         }
 

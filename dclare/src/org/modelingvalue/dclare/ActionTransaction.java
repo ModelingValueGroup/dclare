@@ -47,7 +47,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    protected State run(State state) {
+    protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
         init(state);
         try {
