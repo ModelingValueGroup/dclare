@@ -25,11 +25,11 @@ import org.modelingvalue.dclare.sync.json.*;
 import org.modelingvalue.dclare.sync.json.JsonIC.*;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements Supplier<String>, Consumer<String> {
-    private final String                       name;
-    private final UniverseTransaction          tx;
-    private final SerializationHelper<C, M, S> helper;
-    private final AdaptorDaemon                adaptorDaemon;
-    private final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
+    private   final String                       name;
+    private   final UniverseTransaction          tx;
+    protected final SerializationHelper<C, M, S> helper;
+    private   final AdaptorDaemon                adaptorDaemon;
+    protected final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
         this.name = name;
@@ -100,7 +100,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
     }
 
-    private Predicate<Object> getObjectFilter() {
+    protected Predicate<Object> getObjectFilter() {
         return o -> o instanceof Mutable && helper.mutableFilter().test((Mutable) o);
     }
 
@@ -172,7 +172,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private class DeltaToJson extends ToJsonIC {
+	public class DeltaToJson extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
@@ -180,6 +180,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
 
         @Override
         protected Object filter(Object o) {
+        	System.err.println("[filter] level: " + getLevel() + " index: " + getIndex() + "  o: " + o);
             if (getLevel() != 3) {
                 if (o instanceof Mutable) {
                     return helper.serializeMutable((M) o);
@@ -191,6 +192,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             }
             if (getIndex() == 0) {
                 currentOldValue = o;
+                System.err.println("filter returns null");
                 return null;
             }
             if (getIndex() == 1) {

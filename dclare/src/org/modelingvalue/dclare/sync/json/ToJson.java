@@ -133,7 +133,7 @@ public class ToJson {
         while (it.hasNext()) {
             Entry<Object, Object> e = it.next();
             b.append(sep);
-            sep = ",";
+            sep = ",";           
             jsonFromString(stringFromKey(e.getKey()));
             b.append(":");
             jsonFromAny(e.getValue());
