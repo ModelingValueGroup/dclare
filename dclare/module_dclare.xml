@@ -1,23 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="module_dclare" default="compile.module.dclare">
   <dirname property="module.dclare.basedir" file="${ant.file.module_dclare}"/>
+
   <property name="module.jdk.home.dclare" value="${project.jdk.home}"/>
   <property name="module.jdk.bin.dclare" value="${project.jdk.bin}"/>
   <property name="module.jdk.classpath.dclare" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.dclare" value="-encoding UTF-8 -source 11 -target 11 ${compiler.args}"/>
+
   <property name="dclare.output.dir" value="${module.dclare.basedir}/../out/production/dclare"/>
   <property name="dclare.testoutput.dir" value="${module.dclare.basedir}/../out/test/dclare"/>
+
   <path id="dclare.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
+
   <path id="dclare.module.production.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
   </path>
+
   <path id="dclare.runtime.production.module.classpath">
     <pathelement location="${dclare.output.dir}"/>
     <path refid="library.gen:_immutable-collections.classpath"/>
   </path>
+
   <path id="dclare.module.classpath">
     <path refid="${module.jdk.classpath.dclare}"/>
     <pathelement location="${dclare.output.dir}"/>
@@ -30,6 +37,7 @@
     <path refid="library.gen:_junit-jupiter-engine.classpath"/>
     <path refid="library.gen:_junit-platform-engine.classpath"/>
   </path>
+
   <path id="dclare.runtime.module.classpath">
     <pathelement location="${dclare.testoutput.dir}"/>
     <pathelement location="${dclare.output.dir}"/>
@@ -42,32 +50,42 @@
     <path refid="library.gen:_junit-jupiter-engine.classpath"/>
     <path refid="library.gen:_junit-platform-engine.classpath"/>
   </path>
+
+
   <patternset id="excluded.from.module.dclare">
     <patternset refid="ignored.files"/>
   </patternset>
+
   <patternset id="excluded.from.compilation.dclare">
     <patternset refid="excluded.from.module.dclare"/>
   </patternset>
+
   <path id="dclare.module.sourcepath">
     <dirset dir="${module.dclare.basedir}">
       <include name="src"/>
     </dirset>
   </path>
+
   <path id="dclare.module.test.sourcepath">
     <dirset dir="${module.dclare.basedir}">
       <include name="tst"/>
     </dirset>
   </path>
+
+
   <target name="compile.module.dclare" depends="compile.module.dclare.production,compile.module.dclare.tests" description="Compile module dclare"/>
+
   <target name="compile.module.dclare.production" description="Compile module dclare; production classes">
     <mkdir dir="${dclare.output.dir}"/>
-    <javac includeantruntime="false" destdir="${dclare.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
+    <javac destdir="${dclare.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
+           memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
       <compilerarg line="${compiler.args.dclare}"/>
       <bootclasspath refid="dclare.module.bootclasspath"/>
       <classpath refid="dclare.module.production.classpath"/>
       <src refid="dclare.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.dclare"/>
     </javac>
+
     <copy todir="${dclare.output.dir}">
       <fileset dir="${module.dclare.basedir}/src">
         <patternset refid="compiler.resources"/>
@@ -75,15 +93,18 @@
       </fileset>
     </copy>
   </target>
+
   <target name="compile.module.dclare.tests" depends="compile.module.dclare.production" description="compile module dclare; test classes" unless="skip.tests">
     <mkdir dir="${dclare.testoutput.dir}"/>
-    <javac includeantruntime="false" destdir="${dclare.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
+    <javac destdir="${dclare.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
+           memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.dclare}/javac">
       <compilerarg line="${compiler.args.dclare}"/>
       <bootclasspath refid="dclare.module.bootclasspath"/>
       <classpath refid="dclare.module.classpath"/>
       <src refid="dclare.module.test.sourcepath"/>
       <patternset refid="excluded.from.compilation.dclare"/>
     </javac>
+
     <copy todir="${dclare.testoutput.dir}">
       <fileset dir="${module.dclare.basedir}/tst">
         <patternset refid="compiler.resources"/>
@@ -91,37 +112,9 @@
       </fileset>
     </copy>
   </target>
+
   <target name="clean.module.dclare" description="cleanup module">
     <delete dir="${dclare.output.dir}"/>
     <delete dir="${dclare.testoutput.dir}"/>
-  </target>
-  <target name="test.module.dclare">
-    <junitlauncher haltOnFailure="true" printSummary="true">
-      <classpath refid="dclare.runtime.module.classpath"/>
-      <testclasses outputdir=".">
-        <fileset dir="${dclare.testoutput.dir}">
-          <include name="**/*Test.*"/>
-          <include name="**/*Tests.*"/>
-        </fileset>
-        <listener type="legacy-xml" sendSysOut="true" sendSysErr="true"/>
-        <listener type="legacy-plain" sendSysOut="true"/>
-      </testclasses>
-    </junitlauncher>
-  </target>
-  <target name="testresults.module.dclare" depends="test.module.dclare">
-    <mkdir dir="${basedir}/out/artifacts"/>
-    <jar destfile="${basedir}/out/artifacts/dclare-testresults.jar" filesetmanifest="skip">
-      <zipfileset file="${basedir}/TEST-*.xml"/>
-    </jar>
-  </target>
-  <target name="javadoc.module.dclare">
-    <property name="dclare.javadoc.dir" value="${basedir}/out/artifacts"/>
-    <property name="dclare.javadoc.tmp" value="${dclare.javadoc.dir}/tmp"/>
-    <property name="dclare.javadoc.jar" value="${dclare.javadoc.dir}/dclare-javadoc.jar"/>
-    <javadoc sourcepathref="dclare.module.sourcepath" destdir="${dclare.javadoc.tmp}" classpathref="dclare.module.classpath"/>
-    <jar destfile="${dclare.javadoc.jar}" filesetmanifest="skip">
-      <zipfileset dir="${dclare.javadoc.tmp}"/>
-    </jar>
-    <delete dir="${dclare.javadoc.tmp}"/>
   </target>
 </project>
