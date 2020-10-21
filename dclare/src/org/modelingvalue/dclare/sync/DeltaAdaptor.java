@@ -186,8 +186,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                     return helper.serializeMutable((M) o);
                 } else if (o instanceof Setable) {
                     return helper.serializeSetable((S) o);
-                } else {
-                    return o;
+                } else {                    
+                	return helper.serializeValue(currentSetable, o);
                 }
             }
             if (getIndex() == 0) {
