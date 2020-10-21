@@ -91,7 +91,7 @@ public class CommunicationHelper {
                 mm.getTx().waitForEnd();
             }
         });
-        ALL_DAEMONS.forEach(WorkDaemon::forceStop);
+        ALL_DAEMONS.forEach(WorkDaemon::interruptAndClose);
         ALL_DAEMONS.forEach(WorkDaemon::join_);
         busyWaitAllForIdle();
         ALL_POOLS.forEach(pool -> {

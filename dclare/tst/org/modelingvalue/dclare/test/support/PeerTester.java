@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
+import java.util.stream.*;
 
 import org.modelingvalue.dclare.sync.*;
 
@@ -35,7 +36,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
 
     public PeerTester(Class<?> mainClass) throws IOException {
         super("PEER-" + mainClass.getName());
-        process = new ProcessBuilder("java", "-cp", System.getProperty("java.class.path"), mainClass.getName()).start();
+        process = new ProcessBuilder("java", "-cp", getClassPath(), mainClass.getName()).start();
 
         inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
         errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
@@ -43,6 +44,20 @@ public abstract class PeerTester extends WorkDaemon<String> {
 
         CommunicationHelper.add(this);
         start();
+    }
+
+    public String getClassPath() {
+        List<String> cp = new ArrayList<>();
+
+        String classLoaderRender = getClass().getClassLoader().toString();
+        if (classLoaderRender.startsWith("AntClassLoader[")) {
+            // the AntClassLoader can have classpath elements that are not in the java.class.path property
+            // luckely it renders its classpath in a toString()!
+            String[] classPath = classLoaderRender.replaceAll("AntClassLoader\\[", "").replaceAll("]", "").split(":");
+            cp.addAll(Arrays.stream(classPath).collect(Collectors.toList()));
+        }
+        cp.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).collect(Collectors.toList()));
+        return String.join(":", cp);
     }
 
     public void handleStdinLine(String line) {

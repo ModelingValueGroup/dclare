@@ -17,8 +17,10 @@ package org.modelingvalue.dclare.sync;
 
 import static org.modelingvalue.collections.util.TraceTimer.*;
 
+import java.io.*;
+
 @SuppressWarnings("unused")
-public abstract class WorkDaemon<WORK> extends Thread {
+public abstract class WorkDaemon<WORK> extends Thread implements Closeable {
     private boolean   stop;
     private boolean   busy = true;
     private Throwable throwable;
@@ -33,7 +35,7 @@ public abstract class WorkDaemon<WORK> extends Thread {
     protected abstract void execute(WORK w) throws InterruptedException;
 
     public void run() {
-        traceLog("%s: START", getName());
+        traceLog("@%s: WorkDaemon BEGIN", getName());
         while (!stop) {
             try {
                 busy = false;
@@ -41,27 +43,39 @@ public abstract class WorkDaemon<WORK> extends Thread {
                 busy = true;
                 execute(w);
             } catch (InterruptedException e) {
+                traceLog("@%s: WorkDaemon InterruptedException (stop=%s)", getName(), stop);
                 if (!stop) {
                     throwable = new Error("unexpected interrupt", e);
                 }
             } catch (Error e) {
+                traceLog("@%s: WorkDaemon Error (stop=%s)", getName(), stop);
                 if (!(e.getCause() instanceof InterruptedException)) {
                     throwable = new Error("unexpected interrupt", e);
                 }
             } catch (Throwable t) {
+                traceLog("@%s: WorkDaemon Throwable (stop=%s)", getName(), stop);
                 throwable = new Error("unexpected throwable", t);
             }
         }
-        traceLog("%s: STOP", getName());
+        traceLog("@%s: WorkDaemon END", getName());
     }
 
-    public void requestStop() {
+    @Override
+    public void close() {
+        traceLog("@%s: WorkDaemon close: stop:=true", getName());
         stop = true;
     }
 
-    public void forceStop() {
-        requestStop();
+    public boolean needsToStop() {
+        return stop;
+    }
+
+    public void interruptAndClose() {
+        stop = true;
+        traceLog("@%s: WorkDaemon interrupting", getName());
         interrupt();
+        traceLog("@%s: WorkDaemon close", getName());
+        close();
     }
 
     public boolean isBusy() {

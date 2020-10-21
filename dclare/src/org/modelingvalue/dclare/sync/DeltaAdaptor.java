@@ -24,7 +24,7 @@ import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.json.*;
 import org.modelingvalue.dclare.sync.json.JsonIC.*;
 
-public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements Supplier<String>, Consumer<String> {
+public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private   final String                       name;
     private   final UniverseTransaction          tx;
     protected final SerializationHelper<C, M, S> helper;
@@ -51,10 +51,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         adaptorDaemon.accept(() ->
         {
             try {
-                //System.err.println("RECEIVING:\n" + Json.pretty(delta));
                 new DeltaFromJson().fromJson(delta);
             } catch (Throwable e) {
-                //e.printStackTrace();//TOMTOMTOM
                 throw new Error(e);
             }
         });
@@ -90,11 +88,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
-                String delta = new DeltaToJson().toJson(deltaMap);
-                System.err.println("SENDING:\n" + Json.pretty(delta));
-                deltaQueue.put(delta);
+                deltaQueue.put(new DeltaToJson().toJson(deltaMap));
             } catch (InterruptedException e) {
-                //e.printStackTrace();//TOMTOMTOM
                 throw new Error(e);
             }
         }
@@ -186,7 +181,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                     return helper.serializeMutable((M) o);
                 } else if (o instanceof Setable) {
                     return helper.serializeSetable((S) o);
-                } else {                    
+                } else {
                 	return helper.serializeValue(currentSetable, o);
                 }
             }

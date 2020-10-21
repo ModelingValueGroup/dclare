@@ -28,14 +28,14 @@
     <exclude name="**/rcs/**"/>
   </patternset>
   <patternset id="library.patterns">
+    <include name="*.apk"/>
+    <include name="*.egg"/>
+    <include name="*.zip"/>
     <include name="*.war"/>
     <include name="*.swc"/>
-    <include name="*.apk"/>
-    <include name="*.zip"/>
-    <include name="*.egg"/>
-    <include name="*.ane"/>
-    <include name="*.jar"/>
     <include name="*.ear"/>
+    <include name="*.jar"/>
+    <include name="*.ane"/>
   </patternset>
   <patternset id="compiler.resources">
     <include name="**/?*.properties"/>
@@ -48,6 +48,7 @@
     <include name="**/?*.dtd"/>
     <include name="**/?*.tld"/>
     <include name="**/?*.ftl"/>
+    <include name="**/?*.json"/>
   </patternset>
   <!-- JDK definitions -->
   <property name="jdk.bin.11" value="${jdk.home.11}/bin"/>
