@@ -46,14 +46,13 @@ jobs:
         run:  |
           . <(java -jar ~/buildtools.jar)
           getAllDependencies "${{secrets.SCALEWAY_ACCESS_KEY}}" "${{secrets.SCALEWAY_SECRET_KEY}}"
+          installJunitlauncher
 
       - name: "build"
         run:  ant
 
       - name: "test"
         run:  |
-          . <(java -jar ~/buildtools.jar)
-          installJunitlauncher
           if ! ant test; then
             for i in TEST-*.xml; do
               echo "=============== $i"
