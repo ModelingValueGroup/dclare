@@ -90,16 +90,11 @@ jobs:
           name: dclare-testresults.jar
           path: out/artifacts/dclare-testresults.jar
 
-      - name: "publish jars on S3"
-        uses: ModelingValueGroup/sync-s3-action@master
-        with:
-          access_key     : "${{secrets.SCALEWAY_ACCESS_KEY}}"
-          secret_key     : "${{secrets.SCALEWAY_SECRET_KEY}}"
-          trigger_token  : "${{secrets.RETRIGGER_TOKEN}}"
-          bucket         : "mvg-artifacts"
-          cmd            : "put"
-          local_dir      : "out/artifacts"
-          s3_dir_branched: "/"
+      - name: "if NOT master: saving snapshots for other projects on this branch"
+        if: github.ref != 'refs/heads/master'
+        run: |
+          . <(java -jar ~/buildtools.jar)
+          storeMyBranchSnapshots
 
       #=========== only if master: ==============================================================
       - name: "if master: tag with version"
