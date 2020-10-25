@@ -96,8 +96,8 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (Throwable t) {
                 throwable = Pair.of(Instant.now(), t);
             } finally {
-                emptyMandatory.clear();
                 observe(pre, observer, setted.result(), getted.result());
+                emptyMandatory.clear();
                 observer.exception.set(mutable(), throwable);
                 changed = false;
             }
