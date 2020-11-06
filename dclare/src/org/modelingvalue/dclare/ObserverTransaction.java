@@ -96,8 +96,8 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (Throwable t) {
                 throwable = Pair.of(Instant.now(), t);
             } finally {
-                observe(pre, observer, setted.result(), getted.result());
                 emptyMandatory.clear();
+                observe(pre, observer, setted.result(), getted.result());
                 observer.exception.set(mutable(), throwable);
                 changed = false;
             }
@@ -186,9 +186,6 @@ public class ObserverTransaction extends ActionTransaction {
         init(result);
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
-            getted.init(Observed.OBSERVED_MAP);
-            setted.init(Observed.OBSERVED_MAP);
-            emptyMandatory.init(Set.of());
             observer.stopped = true;
             throw new TooManyChangesException(result, last, changes);
         }
