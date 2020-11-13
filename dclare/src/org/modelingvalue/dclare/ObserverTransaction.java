@@ -96,8 +96,8 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (Throwable t) {
                 throwable = Pair.of(Instant.now(), t);
             } finally {
-                emptyMandatory.clear();
                 observe(pre, observer, setted.result(), getted.result());
+                emptyMandatory.clear();
                 observer.exception.set(mutable(), throwable);
                 changed = false;
             }
@@ -196,6 +196,12 @@ public class ObserverTransaction extends ActionTransaction {
         boolean old = changed;
         changed = true;
         return !old;
+    }
+
+    @Override
+    public <O, T> T current(O object, Getable<O, T> property) {
+        observe(object, property, false);
+        return super.get(object, property);
     }
 
     @SuppressWarnings("rawtypes")
