@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -63,8 +62,6 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    public abstract <O, T> T current(O object, Getable<O, T> property);
-
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
     }
@@ -73,13 +70,6 @@ public abstract class LeafTransaction extends Transaction {
     public <O> void clear(O object) {
         for (Entry<Setable, Object> e : state().getProperties(object)) {
             set(object, e.getKey(), e.getKey().getDefault());
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    public <O> void properties(O object, BiConsumer<Setable, Object> consumer) {
-        for (Entry<Setable, Object> e : state().getProperties(object)) {
-            consumer.accept(e.getKey(), e.getValue());
         }
     }
 

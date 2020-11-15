@@ -198,12 +198,6 @@ public class ObserverTransaction extends ActionTransaction {
         return !old;
     }
 
-    @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        observe(object, property, false);
-        return super.get(object, property);
-    }
-
     @SuppressWarnings("rawtypes")
     @Override
     public <O, T> T get(O object, Getable<O, T> property) {
