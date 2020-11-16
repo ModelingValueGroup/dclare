@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare.delta;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -27,7 +27,7 @@ import org.modelingvalue.dclare.UniverseTransaction;
 
 @SuppressWarnings({"rawtypes"})
 public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
-    private final   String               name;
+    private final String                 name;
     protected final UniverseTransaction  tx;
     protected final AdaptorThread        adaptorThread;
     protected final BlockingQueue<Delta> deltaQueue = new ArrayBlockingQueue<>(10);
@@ -37,7 +37,8 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
         this.tx = tx;
         adaptorThread = makeThread(name);
         adaptorThread.start();
-        tx.addImperative("sync-" + name, (pre, post, last) -> {
+        tx.addImperative("sync-" + name, pre -> {
+        }, (pre, post, last) -> {
             Delta delta = new Delta(pre.diff(post, objectFilter, setableFilter));
             if (!delta.isEmpty()) {
                 traceLog("^^^DeltaAdaptor %s: new delta to queue (%s) (q=%d)", name, (last ? "LAST" : "not last"), deltaQueue.size());
@@ -95,8 +96,8 @@ public class DeltaAdaptor implements DeltaSupplier, DeltaConsumer {
 
     protected static class AdaptorThread extends Thread implements Consumer<Runnable> {
         protected final BlockingQueue<Runnable> runnableQueue = new ArrayBlockingQueue<>(10);
-        private         boolean                 stop;
-        private         Throwable               throwable;
+        private boolean                         stop;
+        private Throwable                       throwable;
 
         public AdaptorThread(String name) {
             super("adaptor-" + name);
