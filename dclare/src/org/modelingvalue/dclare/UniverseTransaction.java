@@ -139,7 +139,7 @@ public class UniverseTransaction extends MutableTransaction {
         timeTravelingActions = timeTravelingActions.add(action);
     }
 
-    private void mainLoop(State start) {
+    protected void mainLoop(State start) {
         state = start != null ? start.clone(this) : emptyState;
         while (!killed) {
             try {

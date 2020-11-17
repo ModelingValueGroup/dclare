@@ -119,7 +119,7 @@ public class ConstantState {
             V ist = (V) prev.get(constant);
             if (ist == null) {
                 if (deriver == null) {
-                    throw new Error("Constant " + constant + " is not set and not derived");
+                    throw new NonDeterministicException(object, constant, "Constant " + constant + " is not set and not derived");
                 } else {
                     V soll = derive(leafTransaction, object, constant, deriver);
                     ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
