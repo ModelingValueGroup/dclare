@@ -46,9 +46,9 @@ jobs:
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar ~/buildtools.jar)
-          set -x
           getAllDependencies
           installJunitlauncher
+          find lib
 
       - name: "build"
         run:  ant
