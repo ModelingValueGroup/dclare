@@ -16,7 +16,7 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.sync.json.JsonIC.*;
+import static org.modelingvalue.dclare.sync.JsonForImmutableCollections.*;
 
 import java.util.*;
 
@@ -25,7 +25,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.*;
 
-public class JsonICTests {
+public class JsonForImmutableCollectionsTests {
     @RepeatedTest(1)
     public void listsToJson() {
         assertEquals("[]", toJson(List.of()));

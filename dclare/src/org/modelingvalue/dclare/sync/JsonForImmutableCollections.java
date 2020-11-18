@@ -13,7 +13,7 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.sync.json;
+package org.modelingvalue.dclare.sync;
 
 import java.util.AbstractMap.*;
 import java.util.*;
@@ -22,8 +22,9 @@ import java.util.stream.*;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.json.*;
 
-public class JsonIC extends Json {
+public class JsonForImmutableCollections extends Json {
     public static String toJson(Object o) {
         return new ToJsonIC().toJson(o);
     }

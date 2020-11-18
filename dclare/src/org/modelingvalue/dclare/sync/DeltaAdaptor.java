@@ -21,7 +21,7 @@ import java.util.function.*;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.json.JsonIC.*;
+import org.modelingvalue.dclare.sync.JsonForImmutableCollections.*;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                       name;
