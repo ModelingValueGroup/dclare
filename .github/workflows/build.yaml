@@ -48,7 +48,6 @@ jobs:
           . <(java -jar ~/buildtools.jar)
           getAllDependencies
           installJunitlauncher
-          find lib
 
       - name: "build"
         run:  ant
