@@ -27,17 +27,17 @@ import org.modelingvalue.collections.util.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
-    private static final long serialVersionUID = -3468784705870374732L;
+    private static final long                                           serialVersionUID   = -3468784705870374732L;
 
-    public static final  DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final  DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
-    public static final  Predicate<Object>                               ALL_OBJECTS        = __ -> true;
-    public static final  Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
-    public static final  BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
-    private static final Comparator<Entry>                               COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
+    public static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
+    public static final Predicate<Object>                               ALL_OBJECTS        = __ -> true;
+    public static final Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
+    public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
+    private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
-    private final UniverseTransaction                             universeTransaction;
+    private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
+    private final UniverseTransaction                                   universeTransaction;
 
     State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
@@ -186,7 +186,7 @@ public class State implements Serializable {
 
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return get(() -> "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
-                        "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
+                "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
                         (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), CONCAT) + "}", //
                 CONCAT) + "}");
     }
@@ -257,7 +257,7 @@ public class State implements Serializable {
     }
 
     public String diffString(State other) {
-        return diffString(other, ALL_OBJECTS, ALL_SETTABLES);
+        return diffString(diff(other));
     }
 
     public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
@@ -265,13 +265,8 @@ public class State implements Serializable {
     }
 
     public String diffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
-        return get(() -> diff.reduce(
-                "",
-                (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce(
-                        "",
-                        (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()),
-                        CONCAT) + "}",
-                CONCAT));
+        return get(() -> diff.reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce("", (s2, e2) -> s2 + "\n      " + //
+                StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT) + "}", CONCAT));
     }
 
     @SuppressWarnings("unchecked")
@@ -289,7 +284,7 @@ public class State implements Serializable {
 
     @Override
     public int hashCode() {
-        return universeTransaction.hashCode() + map.hashCode();
+        return universeTransaction.universe().hashCode() + map.hashCode();
     }
 
     @Override

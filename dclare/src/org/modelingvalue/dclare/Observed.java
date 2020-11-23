@@ -82,6 +82,10 @@ public class Observed<O, T> extends Setable<O, T> {
         return new Observed<>(id, mandatory, def, false, opposite, scope, null, checkConsistency);
     }
 
+    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
+        return new Observed<>(id, mandatory, def, containment, opposite, scope, null, checkConsistency);
+    }
+
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private boolean                                   mandatory;

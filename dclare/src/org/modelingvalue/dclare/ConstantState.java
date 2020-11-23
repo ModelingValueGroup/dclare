@@ -119,7 +119,7 @@ public class ConstantState {
             V ist = (V) prev.get(constant);
             if (ist == null) {
                 if (deriver == null) {
-                    throw new Error("Constant " + constant + " is not set and not derived");
+                    throw new NonDeterministicException(object, constant, "Constant " + constant + " is not set and not derived");
                 } else {
                     V soll = derive(leafTransaction, object, constant, deriver);
                     ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
@@ -199,7 +199,7 @@ public class ConstantState {
                 try {
                     if (!list.isEmpty()) {
                         boolean weak = WEAK.get();
-                        WEAK.set(true);
+                        WEAK.setOnThread(true);
                         try {
                             for (Pair<Object, Constant> lazy : list) {
                                 if (constant.equals(lazy.b()) && object.equals(lazy.a())) {
@@ -209,7 +209,7 @@ public class ConstantState {
                                 ConstantState.this.get(leafTransaction, lazy.a(), lazy.b());
                             }
                         } finally {
-                            WEAK.set(weak);
+                            WEAK.setOnThread(weak);
                         }
                     }
                     return Constant.DERIVED.get(Pair.of(object, constant), () -> deriver.apply(object));

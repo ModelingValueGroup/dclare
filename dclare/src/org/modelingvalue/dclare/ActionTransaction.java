@@ -47,7 +47,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    protected State run(State state) {
+    protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
         init(state);
         try {
@@ -91,11 +91,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         State result = setted.result();
         preState = null;
         return result;
-    }
-
-    @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        return setted.get().get(object, property);
     }
 
     @Override

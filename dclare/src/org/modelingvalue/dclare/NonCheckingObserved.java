@@ -28,6 +28,10 @@ public class NonCheckingObserved<O, T> extends Observed<O, T> {
         return new NonCheckingObserved<>(id, false, def, false, null, null, null);
     }
 
+    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
+        return new NonCheckingObserved<>(id, false, def, containment, null, null, null);
+    }
+
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
         return new NonCheckingObserved<>(id, false, def, false, null, null, changed);
     }

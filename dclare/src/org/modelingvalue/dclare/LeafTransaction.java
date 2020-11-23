@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -61,8 +62,6 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    public abstract <O, T> T current(O object, Getable<O, T> property);
-
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
     }
@@ -99,6 +98,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public void runNonObserving(Runnable action) {
         action.run();
+    }
+
+    public <T> T getNonObserving(Supplier<T> action) {
+        return action.get();
     }
 
     @Override

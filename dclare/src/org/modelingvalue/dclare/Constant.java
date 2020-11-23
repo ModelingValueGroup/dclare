@@ -67,6 +67,10 @@ public class Constant<O, T> extends Setable<O, T> {
         return new Constant<>(id, def, false, opposite, scope, deriver, null, checkConsistency);
     }
 
+    public static <C, V> Constant<C, V> of(Object id, V def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, Function<C, V> deriver, boolean checkConsistency) {
+        return new Constant<>(id, def, containment, opposite, scope, deriver, null, checkConsistency);
+    }
+
     private final Function<O, T> deriver;
 
     protected Constant(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {

@@ -184,6 +184,11 @@ public class Setable<O, T> extends Getable<O, T> {
         return currentLeaf(object).set(object, this, value);
     }
 
+    public T setNonObserving(O object, T value) {
+        LeafTransaction tx = currentLeaf(object);
+        return tx.getNonObserving(() -> tx.set(object, this, value));
+    }
+
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         return currentLeaf(object).set(object, this, function, element);
     }

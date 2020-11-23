@@ -79,27 +79,27 @@ public class UniverseTransaction extends MutableTransaction {
         return new UniverseTransaction(id, pool, start, maxInInQueue, MAX_TOTAL_NR_OF_CHANGES, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY, null);
     }
 
-    private static final Setable<Universe, Boolean>                                                      STOPPED                 = Setable.of("stopped", false);
+    private static final Setable<Universe, Boolean>                                                 STOPPED                 = Setable.of("stopped", false);
     //
-    protected final      Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final      Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final      Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final      Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final      Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
-    private final        Action<Universe>                                                                cycle;
-    private final        Action<Universe>                                                                dummy                   = Action.of("$dummy");
-    private final        Action<Universe>                                                                stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
-    private final        Action<Universe>                                                                backward                = Action.of("$backward");
-    private final        Action<Universe>                                                                forward                 = Action.of("$forward");
-    private final        Action<Universe>                                                                clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
-    private final        Action<Universe>                                                                checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
-    protected final      BlockingQueue<Action<Universe>>                                                 inQueue;
-    private final        BlockingQueue<State>                                                            resultQueue             = new LinkedBlockingQueue<>(1);
-    private final        State                                                                           emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final      ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
-    private final        UniverseStatistics                                                              universeStatistics;
-    private final        AtomicReference<ConsistencyError>                                               consistencyError        = new AtomicReference<>(null);
+    private final Action<Universe>                                                                  cycle;
+    private final Action<Universe>                                                                  dummy                   = Action.of("$dummy");
+    private final Action<Universe>                                                                  stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final Action<Universe>                                                                  backward                = Action.of("$backward");
+    private final Action<Universe>                                                                  forward                 = Action.of("$forward");
+    private final Action<Universe>                                                                  clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
+    private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
+    protected final BlockingQueue<Action<Universe>>                                                 inQueue;
+    private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
+    private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
+    private final UniverseStatistics                                                                universeStatistics;
+    private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
     //
     private              List<Action<Universe>>                                                          timeTravelingActions    = List.of(backward, forward);
     private         List<Action<Universe>> postActions             = List.of();
@@ -310,8 +310,8 @@ public class UniverseTransaction extends MutableTransaction {
         //TODO: see DCL-150
         Map<Object, Map<Setable, Pair<Object, Object>>> changed //
                 = preState()//
-                .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, ALL_SETTABLES)//
-                .toMap(Function.identity());
+                        .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, ALL_SETTABLES)//
+                        .toMap(Function.identity());
         changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
         changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
@@ -389,12 +389,12 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
+    public ImperativeTransaction addImperative(String id, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, firstHandler, diffHandler, keepTransaction);
         Action<Universe> action = Action.of(id, o -> {
-            LeafTransaction tx            = ActionTransaction.getCurrent();
-            State           pre           = tx.state();
-            boolean         timeTraveling = tx.universeTransaction().isTimeTraveling();
+            LeafTransaction tx = ActionTransaction.getCurrent();
+            State pre = tx.state();
+            boolean timeTraveling = tx.universeTransaction().isTimeTraveling();
             n.schedule(() -> n.commit(pre, timeTraveling));
         });
         synchronized (this) {

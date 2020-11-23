@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.State.*;
+import static org.modelingvalue.dclare.State.ALL_OBJECTS;
+import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -28,8 +29,8 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
+    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, firstHandler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
@@ -41,16 +42,18 @@ public class ImperativeTransaction extends LeafTransaction {
     private State                                             pre;
     private State                                             state;
     private final TriConsumer<State, State, Boolean>          diffHandler;
+    private final Consumer<State>                             firstHandler;
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
         this.setted = Set.of();
+        this.firstHandler = firstHandler;
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
-            LeafTransaction.getContext().set(this);
+            LeafTransaction.getContext().setOnThread(this);
             try {
                 r.run();
             } catch (Throwable t) {
@@ -152,15 +155,11 @@ public class ImperativeTransaction extends LeafTransaction {
         return oldNew[0];
     }
 
-    @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        return get(object, property);
-    }
-
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
             setted = setted.add(Pair.of(object, property));
             if (first) {
+                firstHandler.accept(pre);
                 universeTransaction().dummy();
             }
             changed(object, property, preValue, postValue);
