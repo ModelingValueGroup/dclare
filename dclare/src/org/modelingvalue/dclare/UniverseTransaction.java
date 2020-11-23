@@ -123,7 +123,7 @@ public class UniverseTransaction extends MutableTransaction {
         start(universe, null);
         preState = emptyState;
         state = start != null ? start.clone(this) : emptyState;
-        pool.execute(() -> mainLoop(start));
+        pool.execute(this::mainLoop);
         init();
     }
 
@@ -131,7 +131,7 @@ public class UniverseTransaction extends MutableTransaction {
         timeTravelingActions = timeTravelingActions.add(action);
     }
 
-    private void mainLoop(State start) {
+    private void mainLoop() {
         while (!killed) {
             try {
                 handling = false;

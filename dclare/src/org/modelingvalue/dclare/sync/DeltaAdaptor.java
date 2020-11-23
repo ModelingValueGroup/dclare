@@ -36,7 +36,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, true);
+        tx.addImperative("sync-" + name, pre -> {
+        }, this::queueDelta, adaptorDaemon, true);
     }
 
     /**
@@ -172,6 +173,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         private Object currentOldValue;
         private Object currentNewValue;
 
+        @SuppressWarnings("unchecked")
         @Override
         protected Object filter(Object o) {
             if (getLevel() != 3) {
