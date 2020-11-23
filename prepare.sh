@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 ##                                                                                                                     ~
@@ -13,19 +14,47 @@
 ##     Arjan Kok, Carel Bast                                                                                           ~
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-version="1.4.0"
-artifacts=(
-  "org.modelingvalue   dclare                  $version    jar jds"
-)
-dependencies=(
-  "org.modelingvalue   immutable-collections   1.4.0       jar jds-"
-  "org.modelingvalue   mvgjson                 1.1.2       jar jds-"
+set -ue
 
-  "org.junit.jupiter   junit-jupiter-api       5.6.2       jar jdst"
-  "org.junit.jupiter   junit-jupiter-engine    5.6.2       jar jdst"
-  "org.junit.platform  junit-platform-commons  1.6.2       jar jdst"
-  "org.junit.platform  junit-platform-engine   1.6.2       jar jdst"
-  "org.junit.platform  junit-platform-launcher 1.6.2       jar jdst"
-  "org.opentest4j      opentest4j              1.2.0       jar jdst"
-  "org.apiguardian     apiguardian-api         1.1.0       jar jdst"
+##########################################################################
+# run this script to set things up
+# the lib folder will be filled from the project.sh file
+##########################################################################
+
+. ~/secrets.sh # for $GITHUB_TOKEN
+
+echo "## clearing out lib folder..."
+rm -f lib/*.jar lib/*.pom
+
+echo "## downloading buildtools..."
+curl \
+        --location \
+        --remote-header-name \
+        --remote-name \
+        --fail \
+        --silent \
+        --show-error \
+        "https://github.com/ModelingValueGroup/buildtools/releases/latest/download/buildtools.jar"
+mv buildtools.jar ~/buildtools.jar
+
+echo "## generate pom from project.sh..."
+. <(java -jar ~/buildtools.jar)
+generateAll
+
+echo "## get dependencies from maven..."
+(
+    mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib || :
+    mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib -Dclassifier=javadoc || :
+    mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib -Dclassifier=sources || :
+) > /tmp/prepare.log
+(   getAllDependencies "$GITHUB_TOKEN" 2>&1 \
+        | fgrep -v --line-buffered 'could not download artifact: org.modelingvalue:' \
+        | fgrep -v --line-buffered 'missing dependency org.modelingvalue:' \
+        | fgrep -v --line-buffered '::info::no snapshot for '
+) || :
+
+echo "## lib folder contents:"
+(   cd lib
+    rm -f *.pom
+    ls | sed 's/-javadoc//;s/-sources//;s/^/    INFO: /' | sort -u 1>&2
 )

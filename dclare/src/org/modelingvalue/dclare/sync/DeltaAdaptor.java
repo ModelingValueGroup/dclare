@@ -21,7 +21,7 @@ import java.util.function.*;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.JsonForImmutableCollections.*;
+import org.modelingvalue.dclare.sync.JsonIC.*;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                       name;
@@ -51,7 +51,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         adaptorDaemon.accept(() ->
         {
             try {
-                new DeltaFromJson().fromJson(delta);
+                new FromJsonDeltas(delta).parse(); // return value ignored: parser handles the impact on the fly
             } catch (Throwable e) {
                 throw new Error(e);
             }
@@ -88,7 +88,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
-                deltaQueue.put(new DeltaToJson().toJson(deltaMap));
+                deltaQueue.put(new ToJsonDeltas(deltaMap).render());
             } catch (InterruptedException e) {
                 throw new Error(e);
             }
@@ -167,11 +167,15 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private class DeltaToJson extends ToJsonIC {
+    private class ToJsonDeltas extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
+
+        protected ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
+            super(root);
+        }
 
         @SuppressWarnings("unchecked")
         @Override
@@ -221,11 +225,15 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings("unused")
-    private class DeltaFromJson extends FromJsonIC {
+    private class FromJsonDeltas extends FromJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
+
+        protected FromJsonDeltas(String input) {
+            super(input);
+        }
 
         @Override
         protected Map<String, Object> makeMap() {

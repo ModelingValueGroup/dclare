@@ -24,16 +24,24 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.json.*;
 
-public class JsonForImmutableCollections extends Json {
+public class JsonIC extends Json {
     public static String toJson(Object o) {
-        return new ToJsonIC().toJson(o);
+        return ToJsonIC.toJson(o);
     }
 
     public static Object fromJson(String s) {
-        return new FromJsonIC().fromJson(s);
+        return FromJsonIC.fromJson(s);
     }
 
     public static class ToJsonIC extends ToJson {
+        public static String toJson(Object o) {
+            return new ToJsonIC(o).render();
+        }
+
+        protected ToJsonIC(Object root) {
+            super(root);
+        }
+
         @Override
         protected boolean isMapType(Object o) {
             return super.isMapType(o) || o instanceof Map;
@@ -42,6 +50,7 @@ public class JsonForImmutableCollections extends Json {
         @Override
         protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
             if (o instanceof Map) {
+                @SuppressWarnings("unchecked")
                 Stream<Entry<Object, Object>> entryStream = ((Map<Object, Object>) o).map(e1 -> new SimpleEntry<>(e1.getKey(), e1.getValue()));
                 return entryStream.sorted(Comparator.comparing(e -> e.getKey().toString())).iterator();
             } else {
@@ -51,6 +60,18 @@ public class JsonForImmutableCollections extends Json {
     }
 
     public static class FromJsonIC extends FromJsonBase<List<Object>, Map<String, Object>> {
+        public static Object fromJson(String s) {
+            return new FromJsonIC(s).parse();
+        }
+
+        protected FromJsonIC(String input) {
+            super(input);
+        }
+
+        public Object parse() {
+            return super.parse();
+        }
+
         @Override
         protected Map<String, Object> makeMap() {
             return Map.of();
