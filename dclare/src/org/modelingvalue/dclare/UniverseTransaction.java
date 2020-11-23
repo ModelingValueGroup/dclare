@@ -122,8 +122,7 @@ public class UniverseTransaction extends MutableTransaction {
         this.universeStatistics = new UniverseStatistics(this, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
         start(universe, null);
         preState = emptyState;
-        state = start != null ? start.clone(this) : emptyState;
-        pool.execute(this::mainLoop);
+        pool.execute(() -> mainLoop(start));
         init();
     }
 
@@ -131,7 +130,8 @@ public class UniverseTransaction extends MutableTransaction {
         timeTravelingActions = timeTravelingActions.add(action);
     }
 
-    protected void mainLoop() {
+    private void mainLoop(State start) {
+        state = start != null ? start.clone(this) : emptyState;
         while (!killed) {
             try {
                 handling = false;
