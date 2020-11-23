@@ -131,7 +131,7 @@ public class UniverseTransaction extends MutableTransaction {
         timeTravelingActions = timeTravelingActions.add(action);
     }
 
-    private void mainLoop() {
+    protected void mainLoop() {
         while (!killed) {
             try {
                 handling = false;
