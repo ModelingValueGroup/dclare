@@ -15,14 +15,17 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.AbstractMap.*;
-import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map.Entry;
-import java.util.stream.*;
+import java.util.stream.Stream;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.json.*;
+import org.modelingvalue.json.FromJsonBase;
+import org.modelingvalue.json.Json;
+import org.modelingvalue.json.ToJson;
 
 public class JsonIC extends Json {
     public static String toJson(Object o) {
@@ -68,6 +71,7 @@ public class JsonIC extends Json {
             super(input);
         }
 
+        @Override
         public Object parse() {
             return super.parse();
         }

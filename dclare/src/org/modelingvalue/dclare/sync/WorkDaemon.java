@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare.sync;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
-import java.io.*;
+import java.io.Closeable;
 
 @SuppressWarnings("unused")
 public abstract class WorkDaemon<WORK> extends Thread implements Closeable {
@@ -34,6 +34,7 @@ public abstract class WorkDaemon<WORK> extends Thread implements Closeable {
 
     protected abstract void execute(WORK w) throws InterruptedException;
 
+    @Override
     public void run() {
         traceLog("@%s: WorkDaemon BEGIN", getName());
         while (!stop) {

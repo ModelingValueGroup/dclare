@@ -15,13 +15,21 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.*;
-import java.util.function.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.JsonIC.*;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
+import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                       name;
@@ -44,12 +52,12 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
      * When a delta is received from a remote party it can be given to the local model through this method.
      * The delta will be queued and applied to the model async but in order of arrival.
      *
-     * @param delta the delta to apply to our model
+     * @param delta
+     *            the delta to apply to our model
      */
     @Override
     public void accept(String delta) {
-        adaptorDaemon.accept(() ->
-        {
+        adaptorDaemon.accept(() -> {
             try {
                 new FromJsonDeltas(delta).parse(); // return value ignored: parser handles the impact on the fly
             } catch (Throwable e) {
@@ -79,9 +87,12 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     /**
      * Serialize the delta coming from the local model and queue it for async retrieval through get().
      *
-     * @param pre  the pre state
-     * @param post the post state
-     * @param last indication if this is the last delta in a sequence
+     * @param pre
+     *            the pre state
+     * @param post
+     *            the post state
+     * @param last
+     *            indication if this is the last delta in a sequence
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void queueDelta(State pre, State post, Boolean last) {
@@ -161,6 +172,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             }
         }
 
+        @Override
         public boolean isBusy() {
             return super.isBusy() || !runnableQueue.isEmpty();
         }
@@ -173,6 +185,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         private Object currentOldValue;
         private Object currentNewValue;
 
+        @SuppressWarnings("rawtypes")
         protected ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
             super(root);
         }
@@ -200,6 +213,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             throw new Error("bad delta format");
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         protected String stringFromKey(Object keyObj) {
             String key;
@@ -240,6 +254,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             return getLevel() < 2 ? null : super.makeMap();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         protected String makeMapKey(String key) {
             switch (getLevel()) {
