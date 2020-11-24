@@ -40,11 +40,11 @@ public abstract class LeafTransaction extends Transaction {
         return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
     }
 
-    public static final LeafTransaction getCurrent() {
+    public static LeafTransaction getCurrent() {
         return CURRENT.get();
     }
 
-    public static final Context<LeafTransaction> getContext() {
+    public static Context<LeafTransaction> getContext() {
         return CURRENT;
     }
 

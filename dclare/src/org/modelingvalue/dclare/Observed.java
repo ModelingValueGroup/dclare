@@ -88,7 +88,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
-    private boolean                                   mandatory;
+    private final boolean                             mandatory;
     private final Observers<O, T>[]                   observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
