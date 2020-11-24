@@ -9,6 +9,6 @@
 	<classpathentry kind="src" path="tst"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/immutable-collections"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/mvgjson"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mvgJson"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
