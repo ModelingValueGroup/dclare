@@ -118,12 +118,8 @@ public class ConstantState {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
-                if (deriver == null) {
-                    throw new NonDeterministicException(object, constant, "Constant " + constant + " is not set and not derived");
-                } else {
-                    V soll = derive(leafTransaction, object, constant, deriver);
-                    ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
-                }
+                V soll = deriver == null ? constant.def : derive(leafTransaction, object, constant, deriver);
+                ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
             return ist == NULL ? null : ist;
         }
