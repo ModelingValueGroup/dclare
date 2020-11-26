@@ -159,7 +159,9 @@ public class ImperativeTransaction extends LeafTransaction {
         if (!Objects.equals(preValue, postValue)) {
             setted = setted.add(Pair.of(object, property));
             if (first) {
-                firstHandler.accept(pre);
+                if (firstHandler != null) {
+                    firstHandler.accept(pre);
+                }
                 universeTransaction().dummy();
             }
             changed(object, property, preValue, postValue);

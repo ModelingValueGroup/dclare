@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Setable;
@@ -36,6 +37,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     private final UniverseTransaction          tx;
     private final SerializationHelper<C, M, S> helper;
     private final AdaptorDaemon                adaptorDaemon;
+    private final ImperativeTransaction        imperativeTransaction;
     private final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
@@ -44,8 +46,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        tx.addImperative("sync-" + name, pre -> {
-        }, this::queueDelta, adaptorDaemon, true);
+        this.imperativeTransaction = tx.addImperative("sync-" + name, null, this::queueDelta, adaptorDaemon, false);
     }
 
     /**
@@ -57,7 +58,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
      */
     @Override
     public void accept(String delta) {
-        adaptorDaemon.accept(() -> {
+        imperativeTransaction.schedule(() -> {
             try {
                 new FromJsonDeltas(delta).parse(); // return value ignored: parser handles the impact on the fly
             } catch (Throwable e) {
