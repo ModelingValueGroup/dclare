@@ -175,7 +175,6 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
 
         @Override
         protected Object filter(Object o) {
-        	System.err.println("[filter] level: " + getLevel() + " index: " + getIndex() + "  o: " + o);
             if (getLevel() != 3) {
                 if (o instanceof Mutable) {
                     return helper.serializeMutable((M) o);
@@ -187,7 +186,6 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             }
             if (getIndex() == 0) {
                 currentOldValue = o;
-                System.err.println("filter returns null");
                 return null;
             }
             if (getIndex() == 1) {
