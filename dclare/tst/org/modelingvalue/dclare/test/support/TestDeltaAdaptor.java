@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,12 +15,17 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.*;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.sync.DeltaAdaptor;
+import org.modelingvalue.dclare.sync.SerializationHelper;
 
 @SuppressWarnings("rawtypes")
 public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
@@ -36,6 +41,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestOb
         super.queueDelta(pre, post, last);
     }
 
+    @Override
     protected void applyOneDelta(TestObject mutable, TestObserved<TestObject, Object> settable, Object value) {
         traceApplyOneDiff(mutable, settable, value);
         super.applyOneDelta(mutable, settable, value);
@@ -70,16 +76,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestOb
         if (TRACE) {
             try {
                 synchronized (TestDeltaAdaptor.class) {
-                    traceLog("APPLY delta\n"
-                                    + "  mutable  = %-50s (%s)\n"
-                                    + "  prop     = %-50s (%s)\n"
-                                    + "  currValue= %-50s (%s)\n"
-                                    + "  newValue = %-50s (%s)",
-                            mutable, mutable == null ? "" : mutable.getClass().getName(),
-                            prop, prop.getClass().getName(),
-                            prop.get(mutable), prop.getClass().getName(),
-                            value, value == null ? "" : value.getClass().getName()
-                    );
+                    traceLog("APPLY delta\n" + "  mutable  = %-50s (%s)\n" + "  prop     = %-50s (%s)\n" + "  currValue= %-50s (%s)\n" + "  newValue = %-50s (%s)", mutable, mutable == null ? "" : mutable.getClass().getName(), prop, prop.getClass().getName(), prop.get(mutable), prop.getClass().getName(), value, value == null ? "" : value.getClass().getName());
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

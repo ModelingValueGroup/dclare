@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -118,12 +118,8 @@ public class ConstantState {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
-                if (deriver == null) {
-                    throw new Error("Constant " + constant + " is not set and not derived");
-                } else {
-                    V soll = derive(leafTransaction, object, constant, deriver);
-                    ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
-                }
+                V soll = deriver == null ? constant.def : derive(leafTransaction, object, constant, deriver);
+                ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
             return ist == NULL ? null : ist;
         }
@@ -199,7 +195,7 @@ public class ConstantState {
                 try {
                     if (!list.isEmpty()) {
                         boolean weak = WEAK.get();
-                        WEAK.set(true);
+                        WEAK.setOnThread(true);
                         try {
                             for (Pair<Object, Constant> lazy : list) {
                                 if (constant.equals(lazy.b()) && object.equals(lazy.a())) {
@@ -209,7 +205,7 @@ public class ConstantState {
                                 ConstantState.this.get(leafTransaction, lazy.a(), lazy.b());
                             }
                         } finally {
-                            WEAK.set(weak);
+                            WEAK.setOnThread(weak);
                         }
                     }
                     return Constant.DERIVED.get(Pair.of(object, constant), () -> deriver.apply(object));

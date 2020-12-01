@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.time.Instant;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -34,15 +35,16 @@ import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
 
-    private static final boolean                                 TRACE_OBSERVERS  = Boolean.getBoolean("TRACE_OBSERVERS");
+    private static final boolean                                 TRACE_OBSERVERS = Boolean.getBoolean("TRACE_OBSERVERS");
 
-    public static final Context<Boolean>                         OBSERVE          = Context.of(true);
-    private static final Context<Boolean>                        EMTPTY_MANDATORY = Context.of(false);
+    public static final Context<Boolean>                         OBSERVE         = Context.of(true);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted          = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
+
+    private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
 
     private boolean                                              changed;
 
@@ -61,7 +63,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void run(State pre, UniverseTransaction universeTransaction) {
+    protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
         Pair<Instant, Throwable> throwable = null;
         // check if the universe is still in the same transaction, if not: reset my state
@@ -75,8 +77,9 @@ public class ObserverTransaction extends ActionTransaction {
         if (!observer.stopped && !universeTransaction.isKilled()) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
+            emptyMandatory.init(Set.of());
             try {
-                super.run(pre, universeTransaction);
+                doRun(pre, universeTransaction);
             } catch (BackwardException be) {
                 trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
             } catch (StopObserverException soe) {
@@ -87,18 +90,22 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (ConsistencyError ce) {
                 throw ce;
             } catch (NullPointerException npe) {
-                if (!EMTPTY_MANDATORY.get()) {
+                if (emptyMandatory.get().isEmpty()) {
                     throwable = Pair.of(Instant.now(), npe);
                 }
             } catch (Throwable t) {
                 throwable = Pair.of(Instant.now(), t);
             } finally {
-                EMTPTY_MANDATORY.set(false);
                 observe(pre, observer, setted.result(), getted.result());
+                emptyMandatory.clear();
                 observer.exception.set(mutable(), throwable);
                 changed = false;
             }
         }
+    }
+
+    protected void doRun(State pre, UniverseTransaction universeTransaction) {
+        super.run(pre, universeTransaction);
     }
 
     @SuppressWarnings("rawtypes")
@@ -179,8 +186,6 @@ public class ObserverTransaction extends ActionTransaction {
         init(result);
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
-            getted.init(Observed.OBSERVED_MAP);
-            setted.init(Observed.OBSERVED_MAP);
             observer.stopped = true;
             throw new TooManyChangesException(result, last, changes);
         }
@@ -203,7 +208,7 @@ public class ObserverTransaction extends ActionTransaction {
         observe(object, property, false);
         T result = super.get(object, property);
         if (result == null && property instanceof Observed && ((Observed) property).mandatory() && !((Observed) property).checkConsistency) {
-            EMTPTY_MANDATORY.set(true);
+            emptyMandatory.set(Set.of(true));
         }
         return result;
     }
@@ -224,7 +229,7 @@ public class ObserverTransaction extends ActionTransaction {
     public <O, T> T set(O object, Setable<O, T> property, T value) {
         observe(object, property, true);
         if (value == null && property instanceof Observed && ((Observed) property).mandatory() && ((Observed) property).checkConsistency) {
-            throw new NullPointerException(property.toString());
+            throw new NullPointerException();
         }
         return super.set(object, property, value);
     }
@@ -248,7 +253,15 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             super.runNonObserving(action);
         }
+    }
 
+    @Override
+    public <T> T getNonObserving(Supplier<T> action) {
+        if (getted.isInitialized()) {
+            return OBSERVE.get(false, action);
+        } else {
+            return super.getNonObserving(action);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

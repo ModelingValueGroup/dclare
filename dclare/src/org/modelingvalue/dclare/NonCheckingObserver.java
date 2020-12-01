@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -26,7 +26,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         return new NonCheckingObserver<>(id, action, initDirection);
     }
 
-    private NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
+    protected NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
     }
 
@@ -47,7 +47,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
     public static class NonCheckingTransaction extends ObserverTransaction {
 
-        private NonCheckingTransaction(UniverseTransaction root) {
+        protected NonCheckingTransaction(UniverseTransaction root) {
             super(root);
         }
 

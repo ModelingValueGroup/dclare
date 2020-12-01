@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -47,7 +47,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    protected State run(State state) {
+    protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
         init(state);
         try {
@@ -91,11 +91,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         State result = setted.result();
         preState = null;
         return result;
-    }
-
-    @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        return setted.get().get(object, property);
     }
 
     @Override

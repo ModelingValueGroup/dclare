@@ -1,6 +1,6 @@
 name: build
 
-on: [push, repository_dispatch]
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -46,7 +46,7 @@ jobs:
       - name: "download dependencies (as mentioned in pom)"
         run:  |
           . <(java -jar ~/buildtools.jar)
-          getAllDependencies "${{secrets.SCALEWAY_ACCESS_KEY}}" "${{secrets.SCALEWAY_SECRET_KEY}}"
+          getAllDependencies
           installJunitlauncher
 
       - name: "build"
@@ -108,3 +108,4 @@ jobs:
         if  : github.ref == 'refs/heads/master'
         with:
           file : "out/artifacts/dclare.jar"
+

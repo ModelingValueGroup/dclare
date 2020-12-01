@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,21 +15,30 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.*;
-import java.util.function.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.json.*;
-import org.modelingvalue.dclare.sync.json.JsonIC.*;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
+import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
-    private   final String                       name;
-    private   final UniverseTransaction          tx;
+    private final String                       name;
+    private final UniverseTransaction          tx;
     protected final SerializationHelper<C, M, S> helper;
-    private   final AdaptorDaemon                adaptorDaemon;
-    protected final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
+    private final AdaptorDaemon                adaptorDaemon;
+    private final ImperativeTransaction        imperativeTransaction;
+    protected final BlockingQueue<String>      deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
         this.name = name;
@@ -37,21 +46,21 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, true);
+        this.imperativeTransaction = tx.addImperative("sync-" + name, null, this::queueDelta, adaptorDaemon, false);
     }
 
     /**
      * When a delta is received from a remote party it can be given to the local model through this method.
      * The delta will be queued and applied to the model async but in order of arrival.
      *
-     * @param delta the delta to apply to our model
+     * @param delta
+     *            the delta to apply to our model
      */
     @Override
     public void accept(String delta) {
-        adaptorDaemon.accept(() ->
-        {
+        imperativeTransaction.schedule(() -> {
             try {
-                new DeltaFromJson().fromJson(delta);
+                new FromJsonDeltas(delta).parse(); // return value ignored: parser handles the impact on the fly
             } catch (Throwable e) {
                 throw new Error(e);
             }
@@ -79,16 +88,19 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     /**
      * Serialize the delta coming from the local model and queue it for async retrieval through get().
      *
-     * @param pre  the pre state
-     * @param post the post state
-     * @param last indication if this is the last delta in a sequence
+     * @param pre
+     *            the pre state
+     * @param post
+     *            the post state
+     * @param last
+     *            indication if this is the last delta in a sequence
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void queueDelta(State pre, State post, Boolean last) {
         Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
-                deltaQueue.put(new DeltaToJson().toJson(deltaMap));
+                deltaQueue.put(new ToJsonDeltas(deltaMap).render());
             } catch (InterruptedException e) {
                 throw new Error(e);
             }
@@ -161,18 +173,25 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             }
         }
 
+        @Override
         public boolean isBusy() {
             return super.isBusy() || !runnableQueue.isEmpty();
         }
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-	public class DeltaToJson extends ToJsonIC {
+	public class ToJsonDeltas extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
 
+        @SuppressWarnings("rawtypes")
+        private ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
+            super(root);
+        }
+      
+        @SuppressWarnings("unchecked")
         @Override
         protected Object filter(Object o) {
             if (getLevel() != 3) {
@@ -181,7 +200,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 } else if (o instanceof Setable) {
                     return helper.serializeSetable((S) o);
                 } else {
-                	return helper.serializeValue(currentSetable, o);
+                    return o;
                 }
             }
             if (getIndex() == 0) {
@@ -195,6 +214,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             throw new Error("bad delta format");
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         protected String stringFromKey(Object keyObj) {
             String key;
@@ -220,17 +240,22 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings("unused")
-    private class DeltaFromJson extends FromJsonIC {
+    private class FromJsonDeltas extends FromJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
+
+        protected FromJsonDeltas(String input) {
+            super(input);
+        }
 
         @Override
         protected Map<String, Object> makeMap() {
             return getLevel() < 2 ? null : super.makeMap();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         protected String makeMapKey(String key) {
             switch (getLevel()) {

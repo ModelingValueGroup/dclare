@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -39,11 +40,11 @@ public abstract class LeafTransaction extends Transaction {
         return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
     }
 
-    public static final LeafTransaction getCurrent() {
+    public static LeafTransaction getCurrent() {
         return CURRENT.get();
     }
 
-    public static final Context<LeafTransaction> getContext() {
+    public static Context<LeafTransaction> getContext() {
         return CURRENT;
     }
 
@@ -60,8 +61,6 @@ public abstract class LeafTransaction extends Transaction {
     public <O, T> T pre(O object, Getable<O, T> property) {
         return universeTransaction().preState().get(object, property);
     }
-
-    public abstract <O, T> T current(O object, Getable<O, T> property);
 
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
@@ -99,6 +98,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public void runNonObserving(Runnable action) {
         action.run();
+    }
+
+    public <T> T getNonObserving(Supplier<T> action) {
+        return action.get();
     }
 
     @Override

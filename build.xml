@@ -35,6 +35,7 @@
     <include name="*.swc"/>
     <include name="*.ear"/>
     <include name="*.jar"/>
+    <include name="*.klib"/>
     <include name="*.ane"/>
   </patternset>
   <patternset id="compiler.resources">
@@ -151,6 +152,9 @@
   <path id="library.gen:_junit-platform-launcher.classpath">
     <pathelement location="${basedir}/lib/junit-platform-launcher.jar"/>
   </path>
+  <path id="library.gen:_mvgjson.classpath">
+    <pathelement location="${basedir}/lib/mvgjson.jar"/>
+  </path>
   <path id="library.gen:_opentest4j.classpath">
     <pathelement location="${basedir}/lib/opentest4j.jar"/>
   </path>
@@ -172,7 +176,7 @@
   <target name="artifact.dclare-sources" depends="init.artifacts" description="Build 'dclare-sources' artifact">
     <property name="artifact.temp.output.dclare-sources" value="${artifacts.temp.dir}/dclare_sources"/>
     <mkdir dir="${artifact.temp.output.dclare-sources}"/>
-    <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+    <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="merge">
       <zipfileset dir="${basedir}/dclare/src"/>
       <zipfileset src="${basedir}/lib/immutable-collections-sources.jar"/>
     </jar>
@@ -181,7 +185,7 @@
   <target name="artifact.dclare:jar" depends="init.artifacts, compile.module.dclare" description="Build 'dclare:jar' artifact">
     <property name="artifact.temp.output.dclare:jar" value="${artifacts.temp.dir}/dclare_jar"/>
     <mkdir dir="${artifact.temp.output.dclare:jar}"/>
-    <jar destfile="${temp.jar.path.dclare.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+    <jar destfile="${temp.jar.path.dclare.jar}" duplicate="preserve" filesetmanifest="merge">
       <zipfileset dir="${dclare.output.dir}"/>
       <zipfileset src="${basedir}/lib/immutable-collections.jar"/>
     </jar>
