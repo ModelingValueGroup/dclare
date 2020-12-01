@@ -172,7 +172,7 @@
   <target name="artifact.dclare-sources" depends="init.artifacts" description="Build 'dclare-sources' artifact">
     <property name="artifact.temp.output.dclare-sources" value="${artifacts.temp.dir}/dclare_sources"/>
     <mkdir dir="${artifact.temp.output.dclare-sources}"/>
-    <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+    <jar destfile="${temp.jar.path.dclare-sources.jar}" duplicate="preserve" filesetmanifest="merge">
       <zipfileset dir="${basedir}/dclare/src"/>
       <zipfileset src="${basedir}/lib/immutable-collections-sources.jar"/>
     </jar>
@@ -181,7 +181,7 @@
   <target name="artifact.dclare:jar" depends="init.artifacts, compile.module.dclare" description="Build 'dclare:jar' artifact">
     <property name="artifact.temp.output.dclare:jar" value="${artifacts.temp.dir}/dclare_jar"/>
     <mkdir dir="${artifact.temp.output.dclare:jar}"/>
-    <jar destfile="${temp.jar.path.dclare.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+    <jar destfile="${temp.jar.path.dclare.jar}" duplicate="preserve" filesetmanifest="merge">
       <zipfileset dir="${dclare.output.dir}"/>
       <zipfileset src="${basedir}/lib/immutable-collections.jar"/>
     </jar>
