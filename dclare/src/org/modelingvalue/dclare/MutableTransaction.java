@@ -244,4 +244,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         return state;
     }
+
+    protected State lastState() {
+        return state[0];
+    }
 }
