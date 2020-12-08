@@ -108,7 +108,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
     private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
+    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this);
     private final UniverseStatistics                                                                universeStatistics;
     private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
     //
@@ -175,7 +175,7 @@ public class UniverseTransaction extends MutableTransaction {
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
-                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, leaf.initDirection())));
+                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, Direction.forward)));
                         state = state.get(() -> post(state));
                         if (stats().debugging()) {
                             handleTooManyChanges(state);
@@ -295,7 +295,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     private <O extends Mutable> State triggerPostActions(State state, List<Action<Universe>> actions) {
         for (Action<Universe> action : actions) {
-            state = trigger(state, universe(), action, action.initDirection());
+            state = trigger(state, universe(), action, Direction.forward);
         }
         return state;
     }

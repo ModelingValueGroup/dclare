@@ -22,12 +22,12 @@ import org.modelingvalue.collections.Set;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new NonCheckingObserver<>(id, action, initDirection);
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action) {
+        return new NonCheckingObserver<>(id, action);
     }
 
-    protected NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    protected NonCheckingObserver(Object id, Consumer<O> action) {
+        super(id, action);
     }
 
     @Override
@@ -49,12 +49,6 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
         protected NonCheckingTransaction(UniverseTransaction root) {
             super(root);
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected boolean countChanges(Observed observed) {
-            return false;
         }
 
         @SuppressWarnings("rawtypes")

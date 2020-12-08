@@ -18,15 +18,11 @@ package org.modelingvalue.dclare;
 public class Imperative extends Leaf {
 
     public static Imperative of(Object id) {
-        return new Imperative(id, Direction.forward);
+        return new Imperative(id);
     }
 
-    public static Imperative of(Object id, Direction initDirection) {
-        return new Imperative(id, initDirection);
-    }
-
-    protected Imperative(Object id, Direction initDirection) {
-        super(id, initDirection);
+    protected Imperative(Object id) {
+        super(id);
     }
 
     @Override

@@ -19,12 +19,10 @@ import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Leaf implements TransactionClass {
 
-    private final Object    id;
-    private final Direction initDirection;
+    private final Object id;
 
-    protected Leaf(Object id, Direction initDirection) {
+    protected Leaf(Object id) {
         this.id = id;
-        this.initDirection = initDirection;
     }
 
     @Override
@@ -52,10 +50,6 @@ public abstract class Leaf implements TransactionClass {
 
     public Object id() {
         return id;
-    }
-
-    protected Direction initDirection() {
-        return initDirection;
     }
 
 }

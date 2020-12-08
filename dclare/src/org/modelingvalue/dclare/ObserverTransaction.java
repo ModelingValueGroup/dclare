@@ -26,14 +26,15 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Observer.Observerds;
-import org.modelingvalue.dclare.ex.BackwardException;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
-import org.modelingvalue.dclare.ex.StopObserverException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
+
+    private static final Set<Boolean>                            FALSE           = Set.of();
+    private static final Set<Boolean>                            TRUE            = Set.of(true);
 
     private static final boolean                                 TRACE_OBSERVERS = Boolean.getBoolean("TRACE_OBSERVERS");
 
@@ -45,8 +46,8 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
 
     private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
-
-    private boolean                                              changed;
+    private final Concurrent<Set<Boolean>>                       hasChanged      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       isDestructive   = Concurrent.of();
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -77,29 +78,33 @@ public class ObserverTransaction extends ActionTransaction {
         if (!observer.stopped && !universeTransaction.isKilled()) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
-            emptyMandatory.init(Set.of());
+            emptyMandatory.init(FALSE);
+            hasChanged.init(FALSE);
+            isDestructive.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
-            } catch (BackwardException be) {
-                trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
-            } catch (StopObserverException soe) {
-                getted.clear();
-                setted.clear();
-                getted.init(Observed.OBSERVED_MAP);
-                setted.init(Observed.OBSERVED_MAP);
-            } catch (ConsistencyError ce) {
-                throw ce;
-            } catch (NullPointerException npe) {
-                if (emptyMandatory.get().isEmpty()) {
-                    throwable = Pair.of(Instant.now(), npe);
-                }
             } catch (Throwable t) {
-                throwable = Pair.of(Instant.now(), t);
+                do {
+                    if (t instanceof ConsistencyError) {
+                        throw (ConsistencyError) t;
+                    } else if (t instanceof NullPointerException) {
+                        if (emptyMandatory.result().equals(FALSE)) {
+                            throwable = Pair.of(Instant.now(), t);
+                        }
+                        return;
+                    } else if (t.getCause() != null) {
+                        t = t.getCause();
+                    } else {
+                        throwable = Pair.of(Instant.now(), t);
+                        return;
+                    }
+                } while (true);
             } finally {
                 observe(pre, observer, setted.result(), getted.result());
-                emptyMandatory.clear();
                 observer.exception.set(mutable(), throwable);
-                changed = false;
+                emptyMandatory.clear();
+                hasChanged.clear();
+                isDestructive.clear();
             }
         }
     }
@@ -108,19 +113,25 @@ public class ObserverTransaction extends ActionTransaction {
         super.run(pre, universeTransaction);
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
-        if (changed) {
-            checkTooManyChanges(pre, sets, gets);
-        }
         gets = gets.removeAll(sets, Set::removeAll);
         Mutable mutable = mutable();
         Observerds[] observeds = observer.observeds();
-        DefaultMap<Observed, Set<Mutable>> oldGets = observeds[Direction.forward.nr].set(mutable, gets);
-        DefaultMap<Observed, Set<Mutable>> oldSets = observeds[Direction.backward.nr].set(mutable, sets);
-        if (oldGets.isEmpty() && oldSets.isEmpty() && !(sets.isEmpty() && gets.isEmpty())) {
+        boolean firstTime = pre.get(mutable, observeds[Direction.forward.nr]).isEmpty() && pre.get(mutable, observeds[Direction.backward.nr]).isEmpty();
+        boolean lastTime = sets.isEmpty() && gets.isEmpty();
+        if (firstTime && !lastTime && isDestructive.result().equals(TRUE)) {
+            clearState();
+            trigger(mutable(), (Observer<Mutable>) observer, Direction.backward);
+        } else if (hasChanged.result().equals(TRUE)) {
+            checkTooManyChanges(pre, sets, gets);
+            trigger(mutable(), (Observer<Mutable>) observer, Direction.backward);
+        }
+        super.set(mutable, observeds[Direction.forward.nr], gets);
+        super.set(mutable, observeds[Direction.backward.nr], sets);
+        if (firstTime && !lastTime) {
             observer.instances++;
-        } else if (!(oldGets.isEmpty() && oldSets.isEmpty()) && sets.isEmpty() && gets.isEmpty()) {
+        } else if (!firstTime && lastTime) {
             observer.instances--;
         }
         checkTooManyObserved(sets, gets);
@@ -139,14 +150,12 @@ public class ObserverTransaction extends ActionTransaction {
         Observer<?> observer = observer();
         Mutable mutable = mutable();
         if (TRACE_OBSERVERS) {
-            State result = result();
-            init(result);
+            State result = resultState();
             System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
                     + toString(gets, mutable, (m, o) -> pre.get(m, o)) + " " + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
         }
         if (universeTransaction.stats().debugging()) {
-            State post = result();
-            init(post);
+            State result = resultState();
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
                     gets.addAll(sets, Set::addAll).filter(e -> !(e.getKey() instanceof NonCheckingObserved)).flatMap(e -> e.getValue().map(m -> {
@@ -155,7 +164,7 @@ public class ObserverTransaction extends ActionTransaction {
                     })).toMap(e -> e), //
                     sets.filter(e -> !(e.getKey() instanceof NonCheckingObserved)).flatMap(e -> e.getValue().map(m -> {
                         m = m.resolve(mutable);
-                        return Entry.of(ObservedInstance.of(m, e.getKey()), post.get(m, e.getKey()));
+                        return Entry.of(ObservedInstance.of(m, e.getKey()), result.get(m, e.getKey()));
                     })).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
         }
@@ -182,20 +191,12 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
-        State result = result();
-        init(result);
+        State result = resultState();
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
             observer.stopped = true;
             throw new TooManyChangesException(result, last, changes);
         }
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected boolean countChanges(Observed observed) {
-        boolean old = changed;
-        changed = true;
-        return !old;
     }
 
     @SuppressWarnings("rawtypes")
@@ -208,7 +209,7 @@ public class ObserverTransaction extends ActionTransaction {
         observe(object, property, false);
         T result = super.get(object, property);
         if (result == null && property instanceof Observed && ((Observed) property).mandatory() && !((Observed) property).checkConsistency) {
-            emptyMandatory.set(Set.of(true));
+            emptyMandatory.set(TRUE);
         }
         return result;
     }
@@ -220,6 +221,17 @@ public class ObserverTransaction extends ActionTransaction {
         T result = super.pre(object, property);
         if (result == null && property instanceof Observed && ((Observed) property).mandatory()) {
             result = super.get(object, property);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Override
+    public <O, T> T current(O object, Getable<O, T> property) {
+        observe(object, property, false);
+        T result = super.current(object, property);
+        if (result == null && property instanceof Observed && ((Observed) property).mandatory() && !((Observed) property).checkConsistency) {
+            emptyMandatory.set(TRUE);
         }
         return result;
     }
@@ -267,10 +279,13 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
-        runNonObserving(() -> super.changed(object, setable, preValue, postValue));
-        if (object instanceof Mutable && setable instanceof Observed && getted.isInitialized() && OBSERVE.get() && countChanges((Observed) setable)) {
-            trigger(mutable(), (Observer<Mutable>) observer(), Direction.backward);
+        if (object instanceof Mutable && setable instanceof Observed && getted.isInitialized() && OBSERVE.get()) {
+            hasChanged.set(TRUE);
+            if (setable.isDestructiveChange(preValue, postValue)) {
+                isDestructive.set(TRUE);
+            }
         }
+        runNonObserving(() -> super.changed(object, setable, preValue, postValue));
     }
 
 }

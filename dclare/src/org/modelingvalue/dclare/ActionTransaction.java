@@ -49,15 +49,17 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
-        init(state);
+        preState = state;
+        setted.init(state);
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
-            return result();
+            return setted.result();
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
         } finally {
-            clear();
+            setted.clear();
+            preState = null;
             TraceTimer.traceEnd(traceId());
         }
     }
@@ -74,23 +76,23 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return preState;
     }
 
-    protected void init(State state) {
-        if (preState != null) {
+    protected void clearState() {
+        if (preState == null) {
             throw new ConcurrentModificationException();
         }
-        preState = state;
-        setted.init(state);
-    }
-
-    protected void clear() {
         setted.clear();
-        preState = null;
+        setted.init(preState);
     }
 
-    protected State result() {
+    protected State resultState() {
         State result = setted.result();
-        preState = null;
+        setted.init(result);
         return result;
+    }
+
+    @Override
+    public State current() {
+        return setted.get();
     }
 
     @Override

@@ -71,6 +71,10 @@ public abstract class Getable<O, T> implements Feature {
         return currentLeaf(object).pre(object, this);
     }
 
+    public T current(O object) {
+        return currentLeaf(object).current(object, this);
+    }
+
     protected LeafTransaction currentLeaf(O object) {
         LeafTransaction current = LeafTransaction.getCurrent();
         if (current == null) {
@@ -83,7 +87,11 @@ public abstract class Getable<O, T> implements Feature {
 
     @SuppressWarnings("unchecked")
     public <E> Collection<E> getCollection(O object) {
-        T v = get(object);
+        return collection(get(object));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <E> Collection<E> collection(T v) {
         return v instanceof Collection ? (Collection<E>) v : v == null ? Set.of() : Set.of((E) v);
     }
 

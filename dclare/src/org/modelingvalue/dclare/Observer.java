@@ -31,11 +31,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
-        return new Observer<>(id, action, Direction.forward);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new Observer<>(id, action, initDirection);
+        return new Observer<>(id, action);
     }
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;
@@ -49,8 +45,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    protected Observer(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    protected Observer(Object id, Consumer<O> action) {
+        super(id, action);
         this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
         observeds = new Observerds[2];
         for (int ia = 0; ia < 2; ia++) {

@@ -50,12 +50,20 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract State state();
 
+    public State current() {
+        return state();
+    }
+
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T get(O object, Getable<O, T> property) {
         return state().get(object, property);
+    }
+
+    public <O, T> T current(O object, Getable<O, T> property) {
+        return current().get(object, property);
     }
 
     public <O, T> T pre(O object, Getable<O, T> property) {
