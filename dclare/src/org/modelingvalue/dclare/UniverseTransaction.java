@@ -15,17 +15,28 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.State.*;
+import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.function.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.collections.util.ContextThread.*;
-import org.modelingvalue.dclare.NonCheckingObserver.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.collections.util.TriConsumer;
+import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
@@ -101,19 +112,19 @@ public class UniverseTransaction extends MutableTransaction {
     private final UniverseStatistics                                                                universeStatistics;
     private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
     //
-    private              List<Action<Universe>>                                                          timeTravelingActions    = List.of(backward, forward);
-    private         List<Action<Universe>> postActions             = List.of();
-    private         List<State>            history                 = List.of();
-    private         List<State>            future                  = List.of();
-    private         State                  preState;
-    private         State                  state;
-    protected final ConstantState          constantState           = new ConstantState(this::handleException);
-    protected       boolean                initialized;
-    private         boolean                killed;
-    private         boolean                timeTraveling;
-    private         Throwable              error;
-    private         boolean                handling;
-    private         boolean                stopped;
+    private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
+    private List<Action<Universe>>                                                                  postActions             = List.of();
+    private List<State>                                                                             history                 = List.of();
+    private List<State>                                                                             future                  = List.of();
+    private State                                                                                   preState;
+    private State                                                                                   state;
+    protected final ConstantState                                                                   constantState           = new ConstantState(this::handleException);
+    protected boolean                                                                               initialized;
+    private boolean                                                                                 killed;
+    private boolean                                                                                 timeTraveling;
+    private Throwable                                                                               error;
+    private boolean                                                                                 handling;
+    private boolean                                                                                 stopped;
 
     protected UniverseTransaction(Universe universe, ContextPool pool, State start, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory, Consumer<UniverseTransaction> cycle) {
         super(null);
@@ -212,6 +223,15 @@ public class UniverseTransaction extends MutableTransaction {
 
     public boolean isStopped() {
         return stopped;
+    }
+
+    @Override
+    public State lastState() {
+        State result = super.lastState();
+        if (result == null) {
+            result = state;
+        }
+        return result;
     }
 
     protected void handleException(Throwable t) {
