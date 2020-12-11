@@ -76,14 +76,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return preState;
     }
 
-    protected void clearState() {
-        if (preState == null) {
-            throw new ConcurrentModificationException();
-        }
-        setted.clear();
-        setted.init(preState);
-    }
-
     protected State resultState() {
         State result = setted.result();
         setted.init(result);
@@ -100,10 +92,15 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return set(object, property, function.apply(setted.get().get(object, property), element));
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
         T pre = state().get(object, property);
+        set(object, property, pre, post);
+        return pre;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
         T[] oldNew = (T[]) new Object[2];
         if (setted.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
@@ -119,7 +116,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }, post, oldNew))) {
             changed(object, property, oldNew[0], oldNew[1]);
         }
-        return pre;
     }
 
     @Override

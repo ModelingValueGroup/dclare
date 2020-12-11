@@ -61,9 +61,4 @@ public class NonCheckingObserved<O, T> extends Observed<O, T> {
     protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
     }
 
-    @Override
-    public boolean isDestructiveChange(T pre, T post) {
-        return false;
-    }
-
 }

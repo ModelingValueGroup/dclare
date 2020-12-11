@@ -31,27 +31,26 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
-    private static final boolean                            TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<Map<Observer, Set<Mutable>>>[] triggeredActions;
-    private final Concurrent<Set<Mutable>>[]                triggeredChildren;
+    private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
+    private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                          actions       = new Set[1];
+    private final Set<Action<?>>[]                        actions       = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                            children      = new Set[1];
-    private final State[]                                   state         = new State[1];
+    private final Set<Mutable>[]                          children      = new Set[1];
+    private final State[]                                 state         = new State[1];
 
-    private Mutable                                         mutable;
+    private Mutable                                       mutable;
 
     @SuppressWarnings("unchecked")
 
     protected MutableTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
-        triggeredActions = new Concurrent[2];
+        triggeredActions = Concurrent.of();
         triggeredChildren = new Concurrent[2];
         for (int ia = 0; ia < 2; ia++) {
-            triggeredActions[ia] = Concurrent.of();
             triggeredChildren[ia] = Concurrent.of();
         }
     }
@@ -83,6 +82,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         try {
             if (this == universeTransaction()) {
                 move(mutable, Direction.forward, Direction.scheduled);
+                universeTransaction().setOldState(state[0]);
             }
             while (!universeTransaction().isKilled()) {
                 state[0] = state[0].set(mutable, Direction.scheduled.actions, Set.of(), actions);
@@ -101,6 +101,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                                 System.err.println("DCLARE: " + indent("    ") + mutable + " BACKWARD");
                             }
                             move(mutable, Direction.backward, Direction.scheduled);
+                            universeTransaction().setOldState(state[0]);
                         }
                     } else {
                         break;
@@ -146,20 +147,20 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             return base;
         } else {
             TraceTimer.traceBegin("merge");
+            triggeredActions.init(Map.of());
             for (int ia = 0; ia < 2; ia++) {
-                triggeredActions[ia].init(Map.of());
                 triggeredChildren[ia].init(Set.of());
             }
             try {
                 State state = base.merge(this, branches, branches.length);
+                state = trigger(state, triggeredActions.result(), Direction.forward);
                 for (int ia = 0; ia < 2; ia++) {
-                    state = trigger(state, triggeredActions[ia].result(), Direction.FORWARD_BACKWARD[ia]);
                     state = triggerMutables(state, triggeredChildren[ia].result(), Direction.FORWARD_BACKWARD[ia]);
                 }
                 return state;
             } finally {
+                triggeredActions.clear();
                 for (int ia = 0; ia < 2; ia++) {
-                    triggeredActions[ia].clear();
                     triggeredChildren[ia].clear();
                 }
                 TraceTimer.traceEnd("merge");
@@ -189,7 +190,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     if (!Objects.equals(branchValue, baseValue)) {
                         Map<Observer, Set<Mutable>> addedObservers = observers.removeAll(State.get(psb, os), Set::removeAll).//
                                 toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.resolve((Mutable) o)).toSet()));
-                        triggeredActions[os.direction().nr].change(ts -> ts.addAll(addedObservers, Set::addAll));
+                        triggeredActions.change(ts -> ts.addAll(addedObservers, Set::addAll));
                     }
                 }
             }

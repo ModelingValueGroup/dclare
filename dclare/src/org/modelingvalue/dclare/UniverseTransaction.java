@@ -108,7 +108,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
     private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this);
+    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
     private final UniverseStatistics                                                                universeStatistics;
     private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
     //
@@ -117,6 +117,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                             history                 = List.of();
     private List<State>                                                                             future                  = List.of();
     private State                                                                                   preState;
+    private State                                                                                   oldState;
     private State                                                                                   state;
     protected final ConstantState                                                                   constantState           = new ConstantState(this::handleException);
     protected boolean                                                                               initialized;
@@ -175,7 +176,7 @@ public class UniverseTransaction extends MutableTransaction {
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
-                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, Direction.forward)));
+                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, leaf.initDirection())));
                         state = state.get(() -> post(state));
                         if (stats().debugging()) {
                             handleTooManyChanges(state);
@@ -295,7 +296,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     private <O extends Mutable> State triggerPostActions(State state, List<Action<Universe>> actions) {
         for (Action<Universe> action : actions) {
-            state = trigger(state, universe(), action, Direction.forward);
+            state = trigger(state, universe(), action, action.initDirection());
         }
         return state;
     }
@@ -345,8 +346,8 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected State post(State pre) {
         if (initialized) {
-            pre = run(trigger(pre, universe(), clearOrphans, Direction.backward));
-            return run(trigger(pre, universe(), checkConsistency, Direction.backward));
+            pre = run(trigger(pre, universe(), clearOrphans, Direction.forward));
+            return run(trigger(pre, universe(), checkConsistency, Direction.forward));
         } else {
             return pre;
         }
@@ -446,6 +447,14 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State currentState() {
         return state;
+    }
+
+    public State oldState() {
+        return oldState;
+    }
+
+    void setOldState(State s) {
+        oldState = s;
     }
 
     protected boolean isTimeTraveling() {

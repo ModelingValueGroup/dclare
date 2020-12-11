@@ -21,17 +21,21 @@ public class Action<O extends Mutable> extends Leaf {
 
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
-        });
+        }, Direction.forward);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action);
+        return new Action<>(id, action, Direction.forward);
+    }
+
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new Action<>(id, action, initDirection);
     }
 
     private final Consumer<O> action;
 
-    protected Action(Object id, Consumer<O> action) {
-        super(id);
+    protected Action(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, initDirection);
         this.action = action;
     }
 
@@ -50,7 +54,7 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     public void trigger(O mutable) {
-        LeafTransaction.getCurrent().trigger(mutable, this, Direction.forward);
+        LeafTransaction.getCurrent().trigger(mutable, this, initDirection());
     }
 
     @Override

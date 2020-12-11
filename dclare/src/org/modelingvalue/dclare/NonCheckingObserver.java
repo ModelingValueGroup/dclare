@@ -23,11 +23,15 @@ import org.modelingvalue.collections.Set;
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action) {
-        return new NonCheckingObserver<>(id, action);
+        return new NonCheckingObserver<>(id, action, Direction.forward);
     }
 
-    protected NonCheckingObserver(Object id, Consumer<O> action) {
-        super(id, action);
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
+        return new NonCheckingObserver<>(id, action, initDirection);
+    }
+
+    protected NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
+        super(id, action, initDirection);
     }
 
     @Override
@@ -53,7 +57,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
+        protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> all) {
         }
 
         @SuppressWarnings("rawtypes")

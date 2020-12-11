@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -280,10 +279,6 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected boolean isOrphan(State state, Mutable m) {
         return !(m instanceof Universe) && state.get(m, Mutable.D_PARENT_CONTAINING) == null;
-    }
-
-    public boolean isDestructiveChange(T pre, T post) {
-        return Objects.equals(getDefault(), post) || collection(pre).size() > collection(post).size();
     }
 
 }
