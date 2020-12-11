@@ -43,7 +43,7 @@ public class NetUtils {
         	startClientThread(deltaAdapter, portNumber);
         	break;
         default:
-            throw new Error("define role with -DROLE=(server|client)");
+            System.err.println("delta support not enabled.");
         }
 	}
 
