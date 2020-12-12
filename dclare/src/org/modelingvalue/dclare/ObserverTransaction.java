@@ -47,7 +47,8 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
 
     private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       hasChanged      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       changed         = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       backwards       = Concurrent.of();
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -79,7 +80,8 @@ public class ObserverTransaction extends ActionTransaction {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
             emptyMandatory.init(FALSE);
-            hasChanged.init(FALSE);
+            changed.init(FALSE);
+            backwards.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
             } catch (Throwable t) {
@@ -102,7 +104,8 @@ public class ObserverTransaction extends ActionTransaction {
                 observe(pre, observer, setted.result(), getted.result());
                 observer.exception.set(mutable(), throwable);
                 emptyMandatory.clear();
-                hasChanged.clear();
+                changed.clear();
+                backwards.clear();
             }
         }
     }
@@ -114,8 +117,10 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
         gets = gets.removeAll(sets, Set::removeAll);
-        if (hasChanged.result().equals(TRUE)) {
+        if (changed.result().equals(TRUE)) {
             checkTooManyChanges(pre, sets, gets);
+            trigger(mutable(), (Observer<Mutable>) observer, Direction.forward);
+        } else if (backwards.result().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Direction.backward);
         }
         DefaultMap<Observed, Set<Mutable>> all = gets.addAll(sets, Set::addAll);
@@ -252,12 +257,12 @@ public class ObserverTransaction extends ActionTransaction {
             T old = universeTransaction().oldState().get(object, setable);
             if (!Objects.equals(pre, old)) {
                 if (Objects.equals(old, post)) {
-                    hasChanged.set(TRUE);
+                    backwards.set(TRUE);
                     return pre;
                 } else if (old instanceof Mergeable) {
                     T result = ((Mergeable<T>) old).merge(pre, post);
                     if (!result.equals(post)) {
-                        hasChanged.set(TRUE);
+                        backwards.set(TRUE);
                         return result;
                     }
                 }
@@ -298,7 +303,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
         if (observing(object, setable)) {
-            hasChanged.set(TRUE);
+            changed.set(TRUE);
         }
         runNonObserving(() -> super.changed(object, setable, preValue, postValue));
     }
