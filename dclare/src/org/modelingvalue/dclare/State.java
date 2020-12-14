@@ -15,15 +15,24 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.*;
-import java.util.*;
-import java.util.function.*;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -99,7 +108,7 @@ public class State implements Serializable {
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 
-    <O> DefaultMap<Setable, Object> getProperties(O object) {
+    public <O> DefaultMap<Setable, Object> getProperties(O object) {
         return map.get(object);
     }
 
@@ -241,15 +250,11 @@ public class State implements Serializable {
     }
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return map.diff(other.map)
-                .filter(d1 -> objectFilter.test(d1.getKey()))
-                .map(d2 -> {
-                    DefaultMap<Setable, Object> map2 = d2.getValue().a();
-                    Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b())
-                            .filter(d3 -> setableFilter.test(d3.getKey()))
-                            .toMap(e -> e);
-                    return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
-                }).notNull();
+        return map.diff(other.map).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
+            DefaultMap<Setable, Object> map2 = d2.getValue().a();
+            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
+            return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
+        }).notNull();
     }
 
     public Collection<Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>>> diff(State other, Predicate<Object> objectFilter) {
