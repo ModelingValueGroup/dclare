@@ -265,6 +265,11 @@ public class ObserverTransaction extends ActionTransaction {
                         backwards.set(TRUE);
                         return result;
                     }
+                } else if (state().containsChange(object, setable, post)) {
+                    backwards.set(TRUE);
+                    return pre;
+                } else {
+                    addChange(object, setable, pre);
                 }
             }
         }

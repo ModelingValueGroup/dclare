@@ -107,7 +107,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
     private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
-    private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    private final State                                                                             emptyState              = new State(this);
     protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
     private final UniverseStatistics                                                                universeStatistics;
     private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);

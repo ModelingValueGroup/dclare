@@ -101,6 +101,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                                 System.err.println("DCLARE: " + indent("    ") + mutable + " BACKWARD");
                             }
                             move(mutable, Direction.backward, Direction.scheduled);
+                            state[0] = state[0].clearChanges();
                             universeTransaction().setOldState(state[0]);
                         }
                     } else {
@@ -108,7 +109,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     }
                 }
             }
-            return state[0];
+            return this == universeTransaction() ? state[0].clearChanges() : state[0];
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable, t));
             return state[0];

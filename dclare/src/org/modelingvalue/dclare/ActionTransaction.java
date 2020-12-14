@@ -88,34 +88,38 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(setted.get().get(object, property), element));
+    public <O, T, E> T set(O object, Setable<O, T> setable, BiFunction<T, E, T> function, E element) {
+        return set(object, setable, function.apply(setted.get().get(object, setable), element));
     }
 
     @Override
-    public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T pre = state().get(object, property);
-        set(object, property, pre, post);
+    public <O, T> T set(O object, Setable<O, T> setable, T post) {
+        T pre = state().get(object, setable);
+        set(object, setable, pre, post);
         return pre;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
+    protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         T[] oldNew = (T[]) new Object[2];
-        if (setted.change(s -> s.set(object, property, (br, po) -> {
+        if (setted.change(s -> s.set(object, setable, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
             } else if (!Objects.equals(br, pre)) {
                 if (pre instanceof Mergeable) {
                     po = (T) ((Mergeable) pre).merge(br, po);
                 } else if (br != null && po != null) {
-                    handleMergeConflict(object, property, pre, br, po);
+                    handleMergeConflict(object, setable, pre, br, po);
                 }
             }
             return po;
         }, post, oldNew))) {
-            changed(object, property, oldNew[0], oldNew[1]);
+            changed(object, setable, oldNew[0], oldNew[1]);
         }
+    }
+
+    <T, O> void addChange(O object, Setable<O, T> setable, T value) {
+        setted.change(s -> s.addChange(object, setable, value));
     }
 
     @Override

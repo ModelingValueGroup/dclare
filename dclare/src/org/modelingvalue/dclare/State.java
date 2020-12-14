@@ -15,37 +15,61 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.*;
-import java.util.*;
-import java.util.function.*;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public class State implements Serializable {
-    private static final long                                           serialVersionUID   = -3468784705870374732L;
+public final class State implements Serializable {
+    private static final long                                                serialVersionUID   = -3468784705870374732L;
 
-    public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
-    public static final Predicate<Object>                               ALL_OBJECTS        = __ -> true;
-    public static final Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
-    public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
-    private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    public static final DefaultMap<Setable, Object>                          EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
+    public static final DefaultMap<Object, DefaultMap<Setable, Object>>      EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
+    public static final DefaultMap<Setable, Set<Object>>                     EMPTY_VALUES_MAP   = DefaultMap.of(s -> Set.of());
+    public static final DefaultMap<Object, DefaultMap<Setable, Set<Object>>> EMPTY_CHANGES_MAP  = DefaultMap.of(o -> EMPTY_VALUES_MAP);
+    public static final Predicate<Object>                                    ALL_OBJECTS        = __ -> true;
+    public static final Predicate<Setable>                                   ALL_SETTABLES      = __ -> true;
+    public static final BinaryOperator<String>                               CONCAT             = (a, b) -> a + b;
+    private static final Comparator<Entry>                                   COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
-    private final UniverseTransaction                                   universeTransaction;
+    private static final Object                                              NULL               = new Object() {
+                                                                                                    @Override
+                                                                                                    public String toString() {
+                                                                                                        return "null";
+                                                                                                    }
+                                                                                                };
 
-    State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    private final DefaultMap<Object, DefaultMap<Setable, Object>>            map;
+    private final DefaultMap<Object, DefaultMap<Setable, Set<Object>>>       changes;
+    private final UniverseTransaction                                        universeTransaction;
+
+    public State(UniverseTransaction universeTransaction) {
+        this(universeTransaction, EMPTY_OBJECTS_MAP, EMPTY_CHANGES_MAP);
+    }
+
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, DefaultMap<Object, DefaultMap<Setable, Set<Object>>> changes) {
         this.universeTransaction = universeTransaction;
         this.map = map;
+        this.changes = changes;
     }
 
     protected State clone(UniverseTransaction universeTransaction) {
-        return new State(universeTransaction, map);
+        return new State(universeTransaction, map, changes);
     }
 
     public <O, T> T get(O object, Getable<O, T> property) {
@@ -127,19 +151,42 @@ public class State implements Serializable {
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
         if (post.isEmpty()) {
             DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
-            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw, changes);
         } else {
-            return new State(universeTransaction, map.put(object, post));
+            return new State(universeTransaction, map.put(object, post), changes);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    <O, T> boolean containsChange(O object, Setable<O, T> setable, T value) {
+        Set<T> set = (Set<T>) changes.get(object).get(setable);
+        return set.contains(value == null ? NULL : value);
+    }
+
+    @SuppressWarnings("unchecked")
+    <O, T> Set<T> getChanges(O object, Setable<O, T> setable) {
+        return (Set<T>) changes.get(object).get(setable);
+    }
+
+    <O, T> State addChange(O object, Setable<O, T> setable, T value) {
+        DefaultMap<Setable, Set<Object>> pre = changes.get(object);
+        DefaultMap<Setable, Set<Object>> post = pre.put(setable, pre.get(setable).add(value == null ? NULL : value));
+        return new State(universeTransaction, map, changes.put(object, post));
+    }
+
+    State clearChanges() {
+        return changes.isEmpty() ? this : new State(universeTransaction, map, EMPTY_CHANGES_MAP);
     }
 
     @SuppressWarnings("unchecked")
     public State merge(StateMergeHandler changeHandler, State[] branches, int length) {
         DefaultMap<Object, DefaultMap<Setable, Object>>[] maps = new DefaultMap[length];
+        DefaultMap<Object, DefaultMap<Setable, Set<Object>>>[] changess = new DefaultMap[length];
         for (int i = 0; i < length; i++) {
             maps[i] = branches[i].map;
+            changess[i] = branches[i].changes;
         }
-        DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.merge((o, ps, pss, pl) -> {
+        DefaultMap<Object, DefaultMap<Setable, Object>> newMap = map.merge((o, ps, pss, pl) -> {
             DefaultMap<Setable, Object> props = ps.merge((p, v, vs, vl) -> {
                 Object r = v;
                 if (v instanceof Mergeable) {
@@ -170,9 +217,10 @@ public class State implements Serializable {
                 }
             }
             return props;
-        }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
-
+        }, maps, length);
+        DefaultMap<Object, DefaultMap<Setable, Set<Object>>> newChanges = changes.merge(changess, length);
+        return newMap.isEmpty() && newChanges.isEmpty() ? universeTransaction.emptyState() : //
+                new State(universeTransaction, newMap.isEmpty() ? EMPTY_OBJECTS_MAP : newMap, newChanges.isEmpty() ? EMPTY_CHANGES_MAP : newChanges);
     }
 
     @Override
@@ -241,15 +289,11 @@ public class State implements Serializable {
     }
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return map.diff(other.map)
-                .filter(d1 -> objectFilter.test(d1.getKey()))
-                .map(d2 -> {
-                    DefaultMap<Setable, Object> map2 = d2.getValue().a();
-                    Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b())
-                            .filter(d3 -> setableFilter.test(d3.getKey()))
-                            .toMap(e -> e);
-                    return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
-                }).notNull();
+        return map.diff(other.map).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
+            DefaultMap<Setable, Object> map2 = d2.getValue().a();
+            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
+            return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
+        }).notNull();
     }
 
     public Collection<Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>>> diff(State other, Predicate<Object> objectFilter) {
@@ -284,7 +328,7 @@ public class State implements Serializable {
 
     @Override
     public int hashCode() {
-        return universeTransaction.universe().hashCode() + map.hashCode();
+        return universeTransaction.universe().hashCode() + map.hashCode() + changes.hashCode();
     }
 
     @Override
@@ -296,7 +340,7 @@ public class State implements Serializable {
         } else if (!universeTransaction.universe().equals(((State) obj).universeTransaction.universe())) {
             return false;
         } else {
-            return Objects.equals(map, ((State) obj).map);
+            return Objects.equals(map, ((State) obj).map) && Objects.equals(changes, ((State) obj).changes);
         }
     }
 
