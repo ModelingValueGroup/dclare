@@ -123,7 +123,7 @@ public final class State implements Serializable {
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 
-    <O> DefaultMap<Setable, Object> getProperties(O object) {
+    public <O> DefaultMap<Setable, Object> getProperties(O object) {
         return map.get(object);
     }
 

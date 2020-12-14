@@ -262,12 +262,14 @@ public class UniverseTransaction extends MutableTransaction {
         LeafTransaction lt = LeafTransaction.getCurrent();
         State post = lt.state();
         preState.diff(post, o -> o instanceof Mutable).forEach(e0 -> {
-            if (e0.getKey() instanceof Universe || e0.getValue().b().get(Mutable.D_PARENT_CONTAINING) != null) {
-                MutableClass dClass = ((Mutable) e0.getKey()).dClass();
-                Collection.concat(dClass.dSetables().filter(Setable::checkConsistency), dClass.dObservers().map(Observer::exception)).forEach(s -> {
-                    if (!(s instanceof Constant) || constantState.isSet(lt, e0.getKey(), (Constant) s)) {
+            Mutable mutable = (Mutable) e0.getKey();
+            DefaultMap<Setable, Object> values = e0.getValue().b();
+            if (mutable instanceof Universe || values.get(Mutable.D_PARENT_CONTAINING) != null) {
+                MutableClass dClass = mutable.dClass();
+                Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
+                    if (!(s instanceof Constant) || constantState.isSet(lt, mutable, (Constant) s)) {
                         try {
-                            ((Setable) s).checkConsistency(post, e0.getKey(), s instanceof Constant ? constantState.get(lt, e0.getKey(), (Constant) s) : e0.getValue().b().get(s));
+                            ((Setable) s).checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
                         } catch (ConsistencyError e) {
                             consistencyError.updateAndGet(p -> p == null ? e : e.compareTo(p) < 0 ? e : p);
                         }
