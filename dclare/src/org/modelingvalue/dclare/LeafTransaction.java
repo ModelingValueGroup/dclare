@@ -81,12 +81,18 @@ public abstract class LeafTransaction extends Transaction {
         }
     }
 
-    protected <O extends Mutable> void trigger(O mutable, Action<O> action, Direction direction) {
-        Mutable object = mutable;
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Direction direction) {
+        Mutable object = target;
         set(object, direction.actions, Set::add, action);
+        if (direction == Direction.forward) {
+            set(object, Direction.backward.actions, Set::remove, action);
+        }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, direction.children, Set::add, object);
+            if (direction == Direction.forward && current(object, Direction.backward.actions).isEmpty() && current(object, Direction.backward.children).isEmpty()) {
+                set(container, Direction.backward.children, Set::remove, object);
+            }
             object = container;
             container = dParent(object);
         }

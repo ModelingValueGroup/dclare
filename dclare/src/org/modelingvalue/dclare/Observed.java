@@ -197,4 +197,8 @@ public class Observed<O, T> extends Setable<O, T> {
         throw new EmptyMandatoryException(object, this);
     }
 
+    protected T removeReplaced(T value) {
+        return value;
+    }
+
 }

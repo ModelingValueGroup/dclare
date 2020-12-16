@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
+import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -203,7 +204,7 @@ public class ObserverTransaction extends ActionTransaction {
                     "' while initializing constant '" + Constant.DERIVED.get().a() + "." + Constant.DERIVED.get().b() + "'");
         }
         if (observing(object, getable)) {
-            observe(object, getable, false);
+            observe(object, (Observed<O, T>) getable, false);
         }
         T result = super.get(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory() && !((Observed) getable).checkConsistency) {
@@ -216,7 +217,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     public <O, T> T pre(O object, Getable<O, T> getable) {
         if (observing(object, getable)) {
-            observe(object, getable, false);
+            observe(object, (Observed<O, T>) getable, false);
         }
         T result = super.pre(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
@@ -229,7 +230,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     public <O, T> T current(O object, Getable<O, T> getable) {
         if (observing(object, getable)) {
-            observe(object, getable, false);
+            observe(object, (Observed<O, T>) getable, false);
         }
         T result = super.current(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory() && !((Observed) getable).checkConsistency) {
@@ -242,8 +243,8 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
-            observe(object, setable, true);
-            post = rippleOut(object, setable, pre, post);
+            observe(object, (Observed<O, T>) setable, true);
+            post = rippleOut(object, (Observed<O, T>) setable, pre, post);
         }
         if (post == null && setable instanceof Observed && ((Observed) setable).mandatory() && ((Observed) setable).checkConsistency) {
             throw new NullPointerException();
@@ -252,15 +253,28 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected <T, O> T rippleOut(O object, Setable<O, T> setable, T pre, T post) {
+    protected <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         if (!Objects.equals(pre, post)) {
-            T old = universeTransaction().oldState().get(object, setable);
+            T old = universeTransaction().oldState().get(object, observed);
             if (!Objects.equals(pre, old)) {
                 if (Objects.equals(old, post)) {
                     backwards.set(TRUE);
                     return pre;
                 } else if (old instanceof Mergeable) {
-                    T result = ((Mergeable<T>) old).merge(pre, post);
+                    T result = observed.removeReplaced(((Mergeable<T>) old).merge(pre, post));
+                    if (!result.equals(post)) {
+                        backwards.set(TRUE);
+                        return result;
+                    }
+                }
+            } else if (observed.containment()) {
+                if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
+                    backwards.set(TRUE);
+                    return pre;
+                } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                    ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
+                    ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
+                    T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
                     if (!result.equals(post)) {
                         backwards.set(TRUE);
                         return result;
@@ -271,9 +285,16 @@ public class ObserverTransaction extends ActionTransaction {
         return post;
     }
 
+    @SuppressWarnings("rawtypes")
+    private boolean isActive(Mutable mutable) {
+        DefaultMap<Setable, Object> old = universeTransaction().oldState().getProperties(mutable);
+        DefaultMap<Setable, Object> pre = state().getProperties(mutable);
+        return pre.anyMatch(e -> e.getKey() instanceof Observed && old.getEntry(e.getKey()) == null);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private <O, T> void observe(O object, Getable<O, T> getable, boolean set) {
-        (set ? setted : getted).change(o -> o.add(((Observed) getable).entry((Mutable) object, mutable()), Set::addAll));
+    private <O, T> void observe(O object, Observed<O, T> observed, boolean set) {
+        (set ? setted : getted).change(o -> o.add(observed.entry((Mutable) object, mutable()), Set::addAll));
     }
 
     @SuppressWarnings("rawtypes")
