@@ -163,7 +163,7 @@ public class State implements Serializable {
                     r = ((Mergeable) v).merge(vs, (int) vl);
                 } else {
                     for (int i = 0; i < vl; i++) {
-                        if (!Objects.equals(vs[i], v)) {
+                        if (vs[i] != null && !vs[i].equals(v)) {
                             if (!Objects.equals(r, v)) {
                                 if (changeHandler != null) {
                                     changeHandler.handleMergeConflict(o, p, v, vs);
