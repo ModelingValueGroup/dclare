@@ -41,6 +41,8 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
 
+    private static final boolean CHECK_ORPHAN_STATE      = Boolean.getBoolean("CHECK_ORPHAN_STATE");
+
     private static final boolean TRACE_UNIVERSE          = Boolean.getBoolean("TRACE_UNIVERSE");
 
     public static final int      MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
@@ -287,7 +289,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings("rawtypes")
     protected void checkOrphanState(Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>> e0) {
-        if (!e0.getValue().b().isEmpty()) {
+        if (CHECK_ORPHAN_STATE && !e0.getValue().b().isEmpty()) {
             throw new Error("Orphan '" + e0.getKey() + "' has state '" + e0.getValue().b() + "'");
         }
     }

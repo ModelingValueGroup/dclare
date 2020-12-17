@@ -169,6 +169,10 @@ public class ImperativeTransaction extends LeafTransaction {
     }
 
     @Override
+    protected void setChanged(Mutable changed) {
+    }
+
+    @Override
     protected State run(State state) {
         throw new UnsupportedOperationException();
     }

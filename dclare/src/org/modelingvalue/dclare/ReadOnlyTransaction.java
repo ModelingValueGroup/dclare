@@ -96,6 +96,11 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
+    protected void setChanged(Mutable changed) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void stop() {
         super.stop();
         state = null;

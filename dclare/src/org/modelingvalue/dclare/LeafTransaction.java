@@ -81,6 +81,8 @@ public abstract class LeafTransaction extends Transaction {
         }
     }
 
+    protected abstract void setChanged(Mutable changed);
+
     protected <O extends Mutable> void trigger(O target, Action<O> action, Direction direction) {
         Mutable object = target;
         set(object, direction.actions, Set::add, action);

@@ -103,6 +103,9 @@ public class Observed<O, T> extends Setable<O, T> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
             }
+            if (o instanceof Mutable) {
+                l.setChanged((Mutable) o);
+            }
             Mutable source = l.mutable();
             for (Entry<Observer, Set<Mutable>> e : l.get(o, observers)) {
                 Observer observer = e.getKey();

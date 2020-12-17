@@ -32,7 +32,9 @@ public interface Mutable extends TransactionClass {
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
-                                                                                   };                                                                                                                                    //
+                                                                                   };
+
+    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //

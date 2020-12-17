@@ -287,9 +287,9 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("rawtypes")
     private boolean isActive(Mutable mutable) {
-        DefaultMap<Setable, Object> old = universeTransaction().oldState().getProperties(mutable);
-        DefaultMap<Setable, Object> pre = state().getProperties(mutable);
-        return pre.anyMatch(e -> e.getKey() instanceof Observed && old.getEntry(e.getKey()) == null);
+        byte old = universeTransaction().oldState().get(mutable, Mutable.D_CHANGE_NR);
+        byte pre = state().get(mutable, Mutable.D_CHANGE_NR);
+        return pre != old;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

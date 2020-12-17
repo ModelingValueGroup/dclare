@@ -22,6 +22,7 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -105,6 +106,13 @@ public class State implements Serializable {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
         T postVal = function.apply(preVal, element);
+        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+    }
+
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal);
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 

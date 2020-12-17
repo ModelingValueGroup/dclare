@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -32,6 +33,7 @@ import org.modelingvalue.dclare.ex.TransactionException;
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
     private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final UnaryOperator<Byte>              INCREMENT     = c -> ++c;
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
@@ -80,9 +82,11 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         this.mutable = mutable();
         state[0] = pre;
         try {
+
             if (this == universeTransaction()) {
                 move(mutable, Direction.forward, Direction.scheduled);
                 universeTransaction().setOldState(state[0]);
+                state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
             }
             while (!universeTransaction().isKilled()) {
                 state[0] = state[0].set(mutable, Direction.scheduled.actions, Set.of(), actions);
@@ -102,6 +106,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                             }
                             move(mutable, Direction.backward, Direction.scheduled);
                             universeTransaction().setOldState(state[0]);
+                            state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
                         }
                     } else {
                         break;
