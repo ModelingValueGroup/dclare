@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Set;
@@ -63,6 +65,20 @@ public interface Mutable extends TransactionClass {
             parent = parent.dParent();
         }
         return (C) parent;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
+        Mutable result = this;
+        Pair<Mutable, Setable<Mutable, ?>> pair;
+        while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
+            if (cls.isInstance(result) && containing.test(pair.b())) {
+                return (C) result;
+            } else {
+                result = pair.a();
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
