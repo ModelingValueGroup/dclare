@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -14,6 +14,8 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
+
+import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -32,7 +34,9 @@ public interface Mutable extends TransactionClass {
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
-                                                                                   };                                                                                                                                    //
+                                                                                   };
+
+    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //
@@ -61,6 +65,20 @@ public interface Mutable extends TransactionClass {
             parent = parent.dParent();
         }
         return (C) parent;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
+        Mutable result = this;
+        Pair<Mutable, Setable<Mutable, ?>> pair;
+        while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
+            if (cls.isInstance(result) && containing.test(pair.b())) {
+                return (C) result;
+            } else {
+                result = pair.a();
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

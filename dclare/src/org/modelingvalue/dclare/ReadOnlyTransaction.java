@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -65,11 +65,6 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        return get(object, property);
-    }
-
-    @Override
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         if (property instanceof Constant) {
             if (property.isHandlingChange()) {
@@ -97,6 +92,11 @@ public class ReadOnlyTransaction extends LeafTransaction {
 
     @Override
     protected <O extends Mutable> void trigger(O mutable, Action<O> action, Direction direction) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected void setChanged(Mutable changed) {
         throw new UnsupportedOperationException();
     }
 

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -13,19 +13,40 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.sync;
 
-@SuppressWarnings("unused")
-public final class StopObserverException extends RuntimeException {
+import java.util.function.*;
 
-    private static final long serialVersionUID = 2616181071425492626L;
+import org.modelingvalue.dclare.*;
 
-    public StopObserverException(String mess) {
-        super(mess);
-    }
+@SuppressWarnings({"rawtypes", "unused"})
+public interface UniverseSynchronizer<M extends Mutable> {
 
-    public StopObserverException(Throwable t) {
-        super(t);
-    }
+    String serializeDelta(State pre, State post);
 
+    void deserializeDelta(String delta);
+
+    /////////////////////////////////
+    Predicate<Mutable> mutableFilter();
+
+    Predicate<Setable> setableFilter();
+
+    /////////////////////////////////
+    String serializeClass(MutableClass clazz);
+
+    String serializeSetable(Setable<M, ?> setable);
+
+    String serializeMutable(M mutable);
+
+    <V> String serializeValue(Setable<M, V> setable, V value);
+
+    /////////////////////////////////
+    MutableClass deserializeClass(String s);
+
+    Setable<M, ?> deserializeSetable(MutableClass clazz, String s);
+
+    M deserializeMutable(MutableClass clazz, String s);
+
+    <V> V deserializeValue(Setable<M, V> setable, String s);
+    /////////////////////////////////
 }

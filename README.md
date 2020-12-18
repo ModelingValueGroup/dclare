@@ -14,3 +14,4 @@ mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib
 mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib -Dclassifier=javadoc
 mvn dependency:copy-dependencies -Dmdep.stripVersion=true -DoutputDirectory=lib -Dclassifier=sources
 ````
+

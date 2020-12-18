@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.State.*;
+import static org.modelingvalue.dclare.State.ALL_OBJECTS;
+import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -28,8 +29,8 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
+    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, firstHandler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
@@ -41,16 +42,18 @@ public class ImperativeTransaction extends LeafTransaction {
     private State                                             pre;
     private State                                             state;
     private final TriConsumer<State, State, Boolean>          diffHandler;
+    private final Consumer<State>                             firstHandler;
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
         this.setted = Set.of();
+        this.firstHandler = firstHandler;
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
-            LeafTransaction.getContext().set(this);
+            LeafTransaction.getContext().setOnThread(this);
             try {
                 r.run();
             } catch (Throwable t) {
@@ -152,19 +155,21 @@ public class ImperativeTransaction extends LeafTransaction {
         return oldNew[0];
     }
 
-    @Override
-    public <O, T> T current(O object, Getable<O, T> property) {
-        return get(object, property);
-    }
-
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
             setted = setted.add(Pair.of(object, property));
             if (first) {
+                if (firstHandler != null) {
+                    firstHandler.accept(pre);
+                }
                 universeTransaction().dummy();
             }
             changed(object, property, preValue, postValue);
         }
+    }
+
+    @Override
+    protected void setChanged(Mutable changed) {
     }
 
     @Override

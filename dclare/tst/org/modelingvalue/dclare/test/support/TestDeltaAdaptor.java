@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,64 +15,72 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
-import java.util.function.Predicate;
-
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
-import org.modelingvalue.dclare.delta.DeltaAdaptor;
+import org.modelingvalue.dclare.sync.DeltaAdaptor;
+import org.modelingvalue.dclare.sync.SerializationHelper;
 
 @SuppressWarnings("rawtypes")
-public class TestDeltaAdaptor extends DeltaAdaptor {
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        super(name, tx, objectFilter, setableFilter);
+public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
+    private static final boolean TRACE = false;
+
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestClass, TestObject, TestObserved<TestObject, Object>> serializationHelper) {
+        super(name, tx, serializationHelper);
     }
 
-    protected AdaptorThread makeThread(String name) {
-        return new TestAdaptorThread(name);
+    @Override
+    protected void queueDelta(State pre, State post, Boolean last) {
+        traceDiffHandler(pre, post);
+        super.queueDelta(pre, post, last);
     }
 
-    public boolean isBusy() {
-        return ((TestAdaptorThread) adaptorThread).isBusy() || !deltaQueue.isEmpty() || tx.isHandling() || tx.numInQueue() != 0;
+    @Override
+    protected void applyOneDelta(TestObject mutable, TestObserved<TestObject, Object> settable, Object value) {
+        traceApplyOneDiff(mutable, settable, value);
+        super.applyOneDelta(mutable, settable, value);
     }
 
-    public String isBusyExplaining() {
-        StringBuilder b = new StringBuilder();
-        if (((TestAdaptorThread) adaptorThread).isBusy()) {
-            b.append(" adaptorThread busy");
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private void traceDiffHandler(State pre, State post) {
+        if (TRACE) {
+            try {
+                synchronized (TestDeltaAdaptor.class) {
+                    pre.diff(post, x -> true, x -> true).forEach(e -> {
+                        Mutable mutable = (Mutable) e.getKey();
+
+                        Map<Setable, Pair<Object, Object>> map = e.getValue();
+                        traceLog("                             - %-30s(%s):", mutable, mutable.getClass().getName());
+                        map.forEach((Setable s, Pair<Object, Object> p) -> {
+                            traceLog("                                 - %-26s(%s) ", s, s.getClass().getName());
+                            traceLog("                                     < %-22s(%s) ", p.a(), p.a() == null ? "<null>" : p.a().getClass().getName());
+                            traceLog("                                     > %-22s(%s) ", p.b(), p.b() == null ? "<null>" : p.b().getClass().getName());
+                        });
+                    });
+                    TraceTimer.dumpLogs();
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
-        if (!deltaQueue.isEmpty()) {
-            b.append(" deltaQueue not empty");
-        }
-        if (tx.isHandling()) {
-            b.append(" tx is handling");
-        }
-        if (tx.numInQueue() != 0) {
-            b.append(" tx queue not empty");
-        }
-        return b.toString();
     }
 
-    private static class TestAdaptorThread extends AdaptorThread {
-        private boolean busy;
-
-        public TestAdaptorThread(String name) {
-            super(name);
-        }
-
-        public boolean isBusy() {
-            return !runnableQueue.isEmpty() || busy;
-        }
-
-        protected Runnable next() throws InterruptedException {
-            traceLog("***DeltaAdaptor %s: wait for Runnable...", getName());
-            busy = false;
-            Runnable r = super.next();
-            // TODO: there is a small period that the queue could be empty and that 'handling' is false but we still have work todo...
-            busy = true;
-            traceLog("***DeltaAdaptor %s: got Runnable...", getName());
-            return r;
+    @SuppressWarnings("unchecked")
+    private void traceApplyOneDiff(Mutable mutable, Setable prop, Object value) {
+        if (TRACE) {
+            try {
+                synchronized (TestDeltaAdaptor.class) {
+                    traceLog("APPLY delta\n" + "  mutable  = %-50s (%s)\n" + "  prop     = %-50s (%s)\n" + "  currValue= %-50s (%s)\n" + "  newValue = %-50s (%s)", mutable, mutable == null ? "" : mutable.getClass().getName(), prop, prop.getClass().getName(), prop.get(mutable), prop.getClass().getName(), value, value == null ? "" : value.getClass().getName());
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
     }
 }

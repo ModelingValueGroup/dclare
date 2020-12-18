@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -71,6 +71,10 @@ public abstract class Getable<O, T> implements Feature {
         return currentLeaf(object).pre(object, this);
     }
 
+    public T current(O object) {
+        return currentLeaf(object).current(object, this);
+    }
+
     protected LeafTransaction currentLeaf(O object) {
         LeafTransaction current = LeafTransaction.getCurrent();
         if (current == null) {
@@ -83,7 +87,11 @@ public abstract class Getable<O, T> implements Feature {
 
     @SuppressWarnings("unchecked")
     public <E> Collection<E> getCollection(O object) {
-        T v = get(object);
+        return collection(get(object));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <E> Collection<E> collection(T v) {
         return v instanceof Collection ? (Collection<E>) v : v == null ? Set.of() : Set.of((E) v);
     }
 

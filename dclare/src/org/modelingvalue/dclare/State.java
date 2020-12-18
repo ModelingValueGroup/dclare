@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -22,6 +22,7 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -36,17 +37,17 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
-    private static final long serialVersionUID = -3468784705870374732L;
+    private static final long                                           serialVersionUID   = -3468784705870374732L;
 
-    public static final  DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final  DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
-    public static final  Predicate<Object>                               ALL_OBJECTS        = __ -> true;
-    public static final  Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
-    public static final  BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
-    private static final Comparator<Entry>                               COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
+    public static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_OBJECTS_MAP  = DefaultMap.of(o -> EMPTY_SETABLES_MAP);
+    public static final Predicate<Object>                               ALL_OBJECTS        = __ -> true;
+    public static final Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
+    public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
+    private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
-    private final UniverseTransaction                             universeTransaction;
+    private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
+    private final UniverseTransaction                                   universeTransaction;
 
     State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
@@ -108,7 +109,14 @@ public class State implements Serializable {
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 
-    <O> DefaultMap<Setable, Object> getProperties(O object) {
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal);
+        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+    }
+
+    public <O> DefaultMap<Setable, Object> getProperties(O object) {
         return map.get(object);
     }
 
@@ -195,7 +203,7 @@ public class State implements Serializable {
 
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return get(() -> "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
-                        "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
+                "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
                         (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), CONCAT) + "}", //
                 CONCAT) + "}");
     }
@@ -251,7 +259,8 @@ public class State implements Serializable {
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return map.diff(other.map).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
-            Map<Setable, Pair<Object, Object>> diff = d2.getValue().a().diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
+            DefaultMap<Setable, Object> map2 = d2.getValue().a();
+            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
             return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
         }).notNull();
     }
@@ -261,7 +270,7 @@ public class State implements Serializable {
     }
 
     public String diffString(State other) {
-        return diffString(other, ALL_OBJECTS, ALL_SETTABLES);
+        return diffString(diff(other));
     }
 
     public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
@@ -269,13 +278,8 @@ public class State implements Serializable {
     }
 
     public String diffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
-        return get(() -> diff.reduce(
-                "",
-                (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce(
-                        "",
-                        (s2, e2) -> s2 + "\n      " + StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()),
-                        CONCAT) + "}",
-                CONCAT));
+        return get(() -> diff.reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce("", (s2, e2) -> s2 + "\n      " + //
+                StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT) + "}", CONCAT));
     }
 
     @SuppressWarnings("unchecked")
@@ -293,7 +297,7 @@ public class State implements Serializable {
 
     @Override
     public int hashCode() {
-        return universeTransaction.hashCode() + map.hashCode();
+        return universeTransaction.universe().hashCode() + map.hashCode();
     }
 
     @Override

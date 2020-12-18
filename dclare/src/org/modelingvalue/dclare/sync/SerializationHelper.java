@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -13,18 +13,34 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test;
+package org.modelingvalue.dclare.sync;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.util.function.*;
 
-public class CommunicationPeer {
-    public static void main(String[] args) throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-        String         line           = bufferedReader.readLine();
-        int            rt             = Integer.parseInt(line);
+import org.modelingvalue.dclare.*;
 
-        System.exit(rt);
-    }
+public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
+    /////////////////////////////////
+    Predicate<Mutable> mutableFilter();
+
+    Predicate<Setable<M, ?>> setableFilter();
+
+    /////////////////////////////////
+    String serializeClass(C clazz);
+
+    String serializeSetable(S setable);
+
+    String serializeMutable(M mutable);
+
+    Object serializeValue(S setable, Object value);
+
+    /////////////////////////////////
+    C deserializeClass(String s);
+
+    S deserializeSetable(C clazz, String s);
+
+    M deserializeMutable(String s);
+
+    Object deserializeValue(S setable, Object s);
+    /////////////////////////////////
 }

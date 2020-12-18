@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -40,7 +40,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;
     public final ExceptionSetable                     exception;
-    private final Observerds[]                        observeds;
+    private final Observerds                          observeds;
 
     protected long                                    runCount     = -1;
     protected int                                     instances;
@@ -52,14 +52,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     protected Observer(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
         this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
-        observeds = new Observerds[2];
-        for (int ia = 0; ia < 2; ia++) {
-            observeds[ia] = Observerds.of(this, Direction.FORWARD_BACKWARD[ia]);
-        }
+        observeds = Observerds.of(this);
         exception = ExceptionSetable.of(this);
     }
 
-    public Observerds[] observeds() {
+    public Observerds observeds() {
         return observeds;
     }
 
@@ -88,9 +85,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     }
 
     public void deObserve(O mutable) {
-        for (int ia = 0; ia < 2; ia++) {
-            observeds[ia].setDefault(mutable);
-        }
+        observeds.setDefault(mutable);
         for (Direction dir : Direction.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);
@@ -110,15 +105,15 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     @SuppressWarnings("rawtypes")
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
-        public static Observerds of(Observer observer, Direction direction) {
-            return new Observerds(observer, direction);
+        public static Observerds of(Observer observer) {
+            return new Observerds(observer);
         }
 
         @SuppressWarnings("unchecked")
-        private Observerds(Observer observer, Direction direction) {
-            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
+        private Observerds(Observer observer) {
+            super(observer, Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
+                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
                         Mutable o = a.resolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));
@@ -128,7 +123,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
                     });
                 }
             }, false);
-
         }
 
         @Override

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2019 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,15 +15,18 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("unused")
 public class TestClass implements MutableClass {
+    private static Map<Object, TestClass> staticTestClassMap = Map.of();
+
+    public static TestClass existing(Object id) {
+        return staticTestClassMap.get(id);
+    }
+
     @SafeVarargs
     public static TestClass of(Object id, Observer<? extends TestObject>... observers) {
         return new TestClass(id, Set.of(), Set.of(observers));
@@ -57,17 +60,24 @@ public class TestClass implements MutableClass {
         this.id = id;
         this.setables = setables;
         this.observers = observers;
+        synchronized (TestClass.class) {
+            staticTestClassMap = staticTestClassMap.put(id, this);
+        }
     }
 
     @Override
-    public Set <? extends Observer <?>> dObservers() {
+    public Set<? extends Observer<?>> dObservers() {
         return observers;
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public Set <? extends Setable <? extends Mutable, ?>> dSetables() {
-        return (Set <? extends Setable <? extends Mutable, ?>>) setables;
+    public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
+        return (Set<? extends Setable<? extends Mutable, ?>>) setables;
+    }
+
+    public String serializeClass() {
+        return id.toString();
     }
 
     @Override
@@ -93,5 +103,4 @@ public class TestClass implements MutableClass {
             return id.equals(c.id);
         }
     }
-
 }
