@@ -17,7 +17,7 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.util.StringUtil;
 
-public abstract class Leaf implements TransactionClass {
+public abstract class Leaf implements TransactionClass, Feature {
 
     private final Object    id;
     private final Direction initDirection;

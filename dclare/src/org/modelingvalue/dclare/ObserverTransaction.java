@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
@@ -46,6 +47,9 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> getted          = Concurrent.of();
     @SuppressWarnings("rawtypes")
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
+
+    @SuppressWarnings("rawtypes")
+    private final Concurrent<Map<Construction, Newable>>         constructions   = Concurrent.of();
 
     private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed         = Concurrent.of();
@@ -80,6 +84,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (!observer.stopped && !universeTransaction.isKilled()) {
             getted.init(Observed.OBSERVED_MAP);
             setted.init(Observed.OBSERVED_MAP);
+            constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             backwards.init(FALSE);
@@ -103,7 +108,8 @@ public class ObserverTransaction extends ActionTransaction {
                 } while (true);
             } finally {
                 observe(pre, observer, setted.result(), getted.result());
-                observer.exception.set(mutable(), throwable);
+                observer.exception().set(mutable(), throwable);
+                observer.constructed().set(mutable(), constructions.result());
                 emptyMandatory.clear();
                 changed.clear();
                 backwards.clear();
@@ -244,7 +250,9 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
-            post = rippleOut(object, (Observed<O, T>) setable, pre, post);
+            if (!Objects.equals(pre, post)) {
+                post = ((Observed<O, T>) setable).matchNewables(object, pre, post, rippleOut(object, (Observed<O, T>) setable, pre, post));
+            }
         }
         if (post == null && setable instanceof Observed && ((Observed) setable).mandatory() && ((Observed) setable).checkConsistency) {
             throw new NullPointerException();
@@ -254,31 +262,29 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        if (!Objects.equals(pre, post)) {
-            T old = universeTransaction().oldState().get(object, observed);
-            if (!Objects.equals(pre, old)) {
-                if (Objects.equals(old, post)) {
+        T old = universeTransaction().oldState().get(object, observed);
+        if (!Objects.equals(pre, old)) {
+            if (Objects.equals(old, post)) {
+                backwards.set(TRUE);
+                return pre;
+            } else if (old instanceof Mergeable) {
+                T result = ((Mergeable<T>) old).merge(pre, post);
+                if (!result.equals(post)) {
                     backwards.set(TRUE);
-                    return pre;
-                } else if (old instanceof Mergeable) {
-                    T result = observed.removeReplaced(((Mergeable<T>) old).merge(pre, post));
-                    if (!result.equals(post)) {
-                        backwards.set(TRUE);
-                        return result;
-                    }
+                    return result;
                 }
-            } else if (observed.containment()) {
-                if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
+            }
+        } else if (observed.containment()) {
+            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
+                backwards.set(TRUE);
+                return pre;
+            } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
+                ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
+                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
+                if (!result.equals(post)) {
                     backwards.set(TRUE);
-                    return pre;
-                } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-                    ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
-                    ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                    T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
-                    if (!result.equals(post)) {
-                        backwards.set(TRUE);
-                        return result;
-                    }
+                    return result;
                 }
             }
         }
@@ -331,6 +337,24 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T> boolean observing(O object, Getable<O, T> setable) {
         return object instanceof Mutable && setable instanceof Observed && getted.isInitialized() && OBSERVE.get();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
+        Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
+        Construction cons = pair != null ? Construction.of(pair.a(), pair.b(), context) : Construction.of(mutable(), observer(), context);
+        if (pair != null) {
+            return (O) universeTransaction().constantState.get(this, cons, Construction.CONSTRUCTED, c -> supplier.get());
+        } else {
+            O result = (O) current(mutable(), observer().constructed()).get(cons);
+            if (result == null) {
+                result = supplier.get();
+            }
+            set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
+            constructions.set((map, e) -> map.put(cons, e), result);
+            return result;
+        }
     }
 
 }

@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.Internable;
-
-public interface Feature extends Internable {
+public interface Feature {
 
 }

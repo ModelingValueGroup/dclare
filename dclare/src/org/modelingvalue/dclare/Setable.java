@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -35,35 +36,41 @@ public class Setable<O, T> extends Getable<O, T> {
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
-    public static <C, V> Setable<C, V> of(Object id, V def) {
-        return new Setable<>(id, def, false, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Setable<>(id, def, false, null, null, changed, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Setable<>(id, def, false, opposite, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new Setable<>(id, def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
-        return new Setable<>(id, def, containment, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, scope, changed, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, def, opposite, scope, null, modifiers);
     }
 
     protected QuadConsumer<LeafTransaction, O, T, T>  changed;
-    protected final boolean                           containment;
+    private final boolean                             containment;
     private final Supplier<Setable<?, ?>>             opposite;
     private final Supplier<Setable<O, Set<?>>>        scope;
     @SuppressWarnings("rawtypes")
     private final Constant<T, Entry<Setable, Object>> internal;
     protected final boolean                           checkConsistency;
+    private final boolean                             synthetic;
     private boolean                                   isReference;
 
-    protected Setable(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.checkConsistency = checkConsistency;
-        this.containment = containment;
+        this.checkConsistency = !hasModifier(modifiers, SetableModifier.doNotCheckConsistency);
+        this.containment = hasModifier(modifiers, SetableModifier.containment);
+        this.synthetic = hasModifier(modifiers, SetableModifier.synthetic);
         this.changed = changed;
         this.opposite = opposite;
         this.scope = scope;
@@ -71,6 +78,26 @@ public class Setable<O, T> extends Getable<O, T> {
             throw new Error("The containment setable " + this + " has an opposite");
         }
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+    }
+
+    public static boolean hasModifier(SetableModifier[] modifiers, SetableModifier modifier) {
+        for (int i = 0; i < modifiers.length; i++) {
+            if (modifiers[i] == modifier) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static SetableModifier[] addModifier(SetableModifier[] modifiers, SetableModifier modifier) {
+        for (int i = 0; i < modifiers.length; i++) {
+            if (modifiers[i] == modifier) {
+                return modifiers;
+            }
+        }
+        modifiers = Arrays.copyOf(modifiers, modifiers.length + 1);
+        modifiers[modifiers.length - 1] = modifier;
+        return modifiers;
     }
 
     @SuppressWarnings("rawtypes")
@@ -111,6 +138,11 @@ public class Setable<O, T> extends Getable<O, T> {
             TraceTimer.traceEnd("deduplicate");
         }
 
+    }
+
+    @Override
+    public boolean synthetic() {
+        return synthetic;
     }
 
     @Override

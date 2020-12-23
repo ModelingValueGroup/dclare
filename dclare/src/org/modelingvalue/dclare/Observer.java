@@ -21,11 +21,13 @@ import java.util.function.Consumer;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
-public class Observer<O extends Mutable> extends Action<O> implements Feature {
+public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
@@ -39,8 +41,9 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     }
 
     public final Setable<Mutable, Set<ObserverTrace>> traces;
-    public final ExceptionSetable                     exception;
+    private final ExceptionSetable                    exception;
     private final Observerds                          observeds;
+    private final Constructed                         constructed;
 
     protected long                                    runCount     = -1;
     protected int                                     instances;
@@ -54,6 +57,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
         observeds = Observerds.of(this);
         exception = ExceptionSetable.of(this);
+        constructed = Constructed.of(this);
     }
 
     public Observerds observeds() {
@@ -62,6 +66,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
     public ExceptionSetable exception() {
         return exception;
+    }
+
+    public Constructed constructed() {
+        return constructed;
     }
 
     public int countChangesPerInstance() {
@@ -111,7 +119,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
 
         @SuppressWarnings("unchecked")
         private Observerds(Observer observer) {
-            super(observer, Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
+            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
@@ -122,7 +130,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, false);
+            }, SetableModifier.doNotCheckConsistency);
         }
 
         @Override
@@ -142,7 +150,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, false, null, null, null, false);
+            super(Pair.of(observer, "exception"), null, null, null, null, SetableModifier.doNotCheckConsistency);
             this.observer = observer;
         }
 
@@ -165,6 +173,26 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
             if (p != null) {
                 throw new ThrowableError(o, observer, p.a(), p.b());
             }
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static class Constructed extends Observed<Mutable, Map<Construction, Newable>> {
+
+        public static Constructed of(Observer observer) {
+            return new Constructed(observer);
+        }
+
+        private Constructed(Observer observer) {
+            super(observer, Map.of(), null, null, (tx, o, pre, post) -> pre.diff(post).forEachOrdered(e -> {
+                Pair<Newable, Newable> d = e.getValue();
+                if (d.a() != null) {
+                    Newable.CONSTRUCTIONS.set(d.a(), Set::remove, e.getKey());
+                }
+                if (d.b() != null) {
+                    Newable.CONSTRUCTIONS.set(d.b(), Set::add, e.getKey());
+                }
+            }), SetableModifier.doNotCheckConsistency);
         }
     }
 

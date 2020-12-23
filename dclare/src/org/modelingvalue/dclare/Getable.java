@@ -18,10 +18,11 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.StringUtil;
 
 @SuppressWarnings("unused")
-public abstract class Getable<O, T> implements Feature {
+public abstract class Getable<O, T> implements Feature, Internable {
 
     protected final Object id;
     protected final T      def;
@@ -96,6 +97,10 @@ public abstract class Getable<O, T> implements Feature {
     }
 
     public boolean containment() {
+        return false;
+    }
+
+    public boolean synthetic() {
         return false;
     }
 

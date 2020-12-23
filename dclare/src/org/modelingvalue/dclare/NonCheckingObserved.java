@@ -24,36 +24,20 @@ import org.modelingvalue.collections.util.QuadConsumer;
 @SuppressWarnings("unused")
 public class NonCheckingObserved<O, T> extends Observed<O, T> {
 
-    public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new NonCheckingObserved<>(id, false, def, false, null, null, null);
+    public static <C, V> Observed<C, V> of(Object id, V def, SetableModifier... modifiers) {
+        return new NonCheckingObserved<>(id, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new NonCheckingObserved<>(id, false, def, containment, null, null, null);
+    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new NonCheckingObserved<>(id, def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new NonCheckingObserved<>(id, false, def, false, null, null, changed);
+    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new NonCheckingObserved<>(id, def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new NonCheckingObserved<>(id, false, def, false, opposite, null, null);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def) {
-        return new NonCheckingObserved<>(id, mandatory, def, false, null, null, null);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new NonCheckingObserved<>(id, mandatory, def, false, null, null, changed);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite) {
-        return new NonCheckingObserved<>(id, mandatory, def, false, opposite, null, null);
-    }
-
-    protected NonCheckingObserved(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed) {
-        super(id, mandatory, def, containment, opposite, scope, changed, false);
+    protected NonCheckingObserved(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, def, opposite, scope, changed, addModifier(modifiers, SetableModifier.doNotCheckConsistency));
     }
 
     @SuppressWarnings("rawtypes")

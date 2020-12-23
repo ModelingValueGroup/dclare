@@ -35,6 +35,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.SetableModifier;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
@@ -48,7 +49,7 @@ public class DclareTests {
 
     @Test
     public void source2target() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, true);
+        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
         Observed<TestObject, Integer> source = Observed.of("source", 0);
         Setable<TestObject, Integer> target = Setable.of("target", 0);
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
@@ -68,7 +69,7 @@ public class DclareTests {
     public void cycle1second() {
         Observed<TestUniverse, Long> currentTime = Observed.of("time", System.currentTimeMillis());
         long begin = System.currentTimeMillis();
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), true);
+        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, 100, r -> currentTime.set(universe, System.currentTimeMillis()));
         TestClass clazz = TestClass.of("Object", Observer.of("observer", o -> {
@@ -91,7 +92,7 @@ public class DclareTests {
 
     @Test
     public void derivationChain() {
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), true);
+        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
         Observed<TestObject, Integer> number = Observed.of("number", 0);
         Observed<TestObject, Integer> total = Observed.of("total", 0);
         int length = 5;
@@ -123,7 +124,7 @@ public class DclareTests {
 
     @Test
     public void opposites() {
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), true);
+        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
 
         int length = 30;
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
@@ -151,7 +152,7 @@ public class DclareTests {
 
     @Test
     public void moveAndRemove() {
-        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), true);
+        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
         Observed<TestObject, String> name = Observed.of("name", null);
         Observed<TestObject, String> qualifiedName = Observed.of("qualifiedName", null);
         TestClass clazz = TestClass.of("Object", children, //
@@ -213,8 +214,8 @@ public class DclareTests {
 
     @Test
     public void zuperBig() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, true);
-        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), true);
+        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
         TestClass clazz = TestClass.of("Object", children, Observer.of("observer", o -> {
             String name = o.id().toString();
@@ -235,8 +236,8 @@ public class DclareTests {
 
     @Test
     public void emptyMandatoryTest() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, true);
-        Observed<TestUniverse, String> mand = Observed.of("mandatory", true, null);
+        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestUniverse, String> mand = Observed.of("mandatory", null, SetableModifier.mandatory);
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
         TestClass clazz = TestClass.of("Object", mand);
@@ -254,7 +255,7 @@ public class DclareTests {
 
     @Test
     public void orphanReferenceTest() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, true);
+        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
         Observed<TestObject, TestObject> ref = Observed.of("ref", null);
         TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);

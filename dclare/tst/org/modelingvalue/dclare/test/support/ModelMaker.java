@@ -39,6 +39,7 @@ import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.SetableModifier;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
@@ -55,8 +56,8 @@ public class ModelMaker {
     private static final Observed<TestObject, Integer>                                               source                                   = TestObserved.of("#source", ModelMaker::id, ModelMaker::desInt, SOURCE_DEFAULT);
     private static final Observed<TestObject, Integer>                                               target                                   = TestObserved.of("#target", ModelMaker::id, ModelMaker::desInt, TARGET_DEFAULT);
     private static final Observed<TestObject, Integer>                                               target2                                  = TestObserved.of("#target2", ModelMaker::id, ModelMaker::desInt, TARGET2_DEFAULT);
-    private static final Observed<TestObject, TestObject>                                            extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, true);
-    private static final Observed<TestObject, Set<TestObject>>                                       extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), true);
+    private static final Observed<TestObject, TestObject>                                            extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, SetableModifier.containment);
+    private static final Observed<TestObject, Set<TestObject>>                                       extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), SetableModifier.containment);
     private static final Observed<TestObject, String>                                                extraString                              = TestObserved.of("#extra\n\"String", ModelMaker::id, ModelMaker::desString, "default");
     private static final Observed<TestObject, List<String>>                                          aList                                    = TestObserved.of("#aList", ModelMaker::id, ModelMaker::desList, List.of());
     private static final Observed<TestObject, Set<String>>                                           aSet                                     = TestObserved.of("#aSet", ModelMaker::id, ModelMaker::desSet, Set.of());
@@ -193,7 +194,7 @@ public class ModelMaker {
     public ModelMaker(String name, boolean isRobot) {
         this.name = name;
         xyzzy = TestObject.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
-        plugConst = Constant.of("plugConst", true, u -> xyzzy);
+        plugConst = Constant.of("plugConst", u -> xyzzy, SetableModifier.containment);
         universeClass = TestClass.of("Universe-" + name, plugConst);
         universe = TestUniverse.of("universe-" + name, universeClass);
         pool = newPool();

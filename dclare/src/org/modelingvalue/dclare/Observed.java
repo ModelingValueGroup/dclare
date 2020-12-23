@@ -15,13 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Direction.forward;
-
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
@@ -33,56 +32,24 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observed, Set<Mutable>> OBSERVED_MAP = DefaultMap.of(k -> Set.of());
 
-    public static <C, V> Observed<C, V> of(Object id, V def) {
-        return new Observed<>(id, false, def, false, null, null, null, true);
+    public static <C, V> Observed<C, V> of(Object id, V def, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment) {
-        return new Observed<>(id, false, def, containment, null, null, null, true);
+    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Observed<>(id, false, def, false, null, null, changed, true);
+    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new Observed<>(id, def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, boolean containment, boolean checkConsistency) {
-        return new Observed<>(id, false, def, containment, null, null, null, checkConsistency);
+    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, scope, changed, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Observed<>(id, false, def, false, opposite, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed<>(id, false, def, false, opposite, scope, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def) {
-        return new Observed<>(id, mandatory, def, false, null, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment) {
-        return new Observed<>(id, mandatory, def, containment, null, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment, boolean checkConsistency) {
-        return new Observed<>(id, mandatory, def, containment, null, null, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Observed<>(id, mandatory, def, false, null, null, changed, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Observed<>(id, mandatory, def, false, opposite, null, null, true);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed<>(id, mandatory, def, false, opposite, scope, null, checkConsistency);
-    }
-
-    public static <C, V> Observed<C, V> of(Object id, boolean mandatory, V def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, boolean checkConsistency) {
-        return new Observed<>(id, mandatory, def, containment, opposite, scope, null, checkConsistency);
+    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Observed<>(id, def, opposite, scope, null, modifiers);
     }
 
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
@@ -93,13 +60,13 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     @SuppressWarnings("unchecked")
-    protected Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        this(id, mandatory, def, containment, opposite, scope, new Observers<>(id), changed, checkConsistency);
+    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        this(id, def, opposite, scope, new Observers<>(id), changed, modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Observed(Object id, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T> observers, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, def, containment, opposite, scope, (l, o, p, n) -> {
+    private Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T> observers, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, def, opposite, scope, (l, o, p, n) -> {
             if (changed != null) {
                 changed.accept(l, o, p, n);
             }
@@ -113,12 +80,12 @@ public class Observed<O, T> extends Setable<O, T> {
                 for (Mutable m : e.getValue()) {
                     Mutable target = m.resolve((Mutable) o);
                     if (!l.cls().equals(observer) || !source.equals(target)) {
-                        l.trigger(target, observer, forward);
+                        l.trigger(target, observer, Direction.forward);
                     }
                 }
             }
-        }, checkConsistency);
-        this.mandatory = mandatory;
+        }, modifiers);
+        this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
         this.observers = observers;
         observers.observed = this;
     }
@@ -156,7 +123,7 @@ public class Observed<O, T> extends Setable<O, T> {
         private Observed<O, T> observed; // can not be made final because it has to be set after construction
 
         private Observers(Object id) {
-            super(id, Observer.OBSERVER_MAP, false, null, null, null, false);
+            super(id, Observer.OBSERVER_MAP, null, null, null, SetableModifier.doNotCheckConsistency);
             // changed can not be passed as arg above because it references 'observed'
             changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx.universeTransaction(), o, a);
         }
@@ -194,15 +161,110 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected boolean isEmpty(T result) {
-        return mandatory && (result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty()));
+        return mandatory && (result == null || (containsNewable(result) && ((ContainingCollection) result).isEmpty()));
     }
 
     protected void handleEmptyCheck(O object, T value) {
         throw new EmptyMandatoryException(object, this);
     }
 
-    protected T removeReplaced(T value) {
-        return value;
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected T matchNewables(O object, T pre, T post, T result) {
+        if (pre instanceof Newable && post instanceof Newable) {
+            Newable preNew = (Newable) pre;
+            Newable postNew = (Newable) post;
+            Set<Construction> preRes = preNew.dConstructions();
+            Set<Construction> postRes = postNew.dConstructions();
+            if (preRes.isEmpty()) {
+                return post;
+            } else if (postRes.isEmpty()) {
+                return pre;
+            } else if (preNew.dNewableType().equals(postNew.dNewableType())) {
+                if (postRes.allMatch(Construction::isObserver)) {
+                    mergeIn(preNew, preRes, postNew, postRes);
+                    return pre;
+                } else if (preRes.allMatch(Construction::isObserver)) {
+                    mergeIn(postNew, postRes, preNew, preRes);
+                    return post;
+                }
+            }
+        } else if (containsNewable(pre) || containsNewable(post)) {
+            ContainingCollection<Newable> preColl = (ContainingCollection<Newable>) pre;
+            ContainingCollection<Newable> postColl = (ContainingCollection<Newable>) post;
+            Map<Newable, Set<Construction>> preNew = preColl.filter(n -> !postColl.contains(n)).toMap(n -> Entry.of(n, n.dConstructions()));
+            Map<Newable, Set<Construction>> postNew = postColl.filter(n -> !preColl.contains(n)).toMap(n -> Entry.of(n, n.dConstructions()));
+            for (Entry<Newable, Set<Construction>> postEntry : postNew) {
+                if (postEntry.getValue().isEmpty()) {
+                    result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
+                    postNew = postNew.removeKey(postEntry.getKey());
+                } else if (postEntry.getValue().allMatch(Construction::isObserver)) {
+                    for (Entry<Newable, Set<Construction>> preEntry : preNew) {
+                        if (preEntry.getValue().isEmpty()) {
+                            result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
+                            preNew = preNew.removeKey(preEntry.getKey());
+                        } else if (match(postEntry.getKey(), postEntry.getValue(), preEntry.getKey())) {
+                            mergeIn(preEntry.getKey(), preEntry.getValue(), postEntry.getKey(), postEntry.getValue());
+                            if (((ContainingCollection) result).contains(preEntry.getKey())) {
+                                result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
+                            } else {
+                                result = (T) ((ContainingCollection) result).replace(postEntry.getKey(), preEntry.getKey());
+                            }
+                            preNew = preNew.removeKey(preEntry.getKey());
+                            postNew = postNew.removeKey(postEntry.getKey());
+                            break;
+                        }
+                    }
+                }
+            }
+            for (Entry<Newable, Set<Construction>> preEntry : preNew) {
+                if (preEntry.getValue().isEmpty()) {
+                    result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
+                    preNew = preNew.removeKey(preEntry.getKey());
+                } else if (preEntry.getValue().allMatch(Construction::isObserver)) {
+                    for (Entry<Newable, Set<Construction>> postEntry : postNew) {
+                        if (postEntry.getValue().isEmpty()) {
+                            result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
+                            postNew = postNew.removeKey(postEntry.getKey());
+                        } else if (match(preEntry.getKey(), preEntry.getValue(), postEntry.getKey())) {
+                            mergeIn(postEntry.getKey(), postEntry.getValue(), preEntry.getKey(), preEntry.getValue());
+                            if (((ContainingCollection) result).contains(postEntry.getKey())) {
+                                result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
+                            } else {
+                                result = (T) ((ContainingCollection) result).replace(preEntry.getKey(), postEntry.getKey());
+                            }
+                            postNew = postNew.removeKey(postEntry.getKey());
+                            preNew = preNew.removeKey(preEntry.getKey());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    private boolean match(Newable source, Set<Construction> cons, Newable target) {
+        if (source.dNewableType().equals(target.dNewableType())) {
+            if (Construction.sources(cons, Set.of()).contains(target)) {
+                return true;
+            } else {
+                Object sid = source.dIdentity();
+                Object tid = target.dIdentity();
+                if (sid != null && tid != null && sid.equals(tid)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private boolean containsNewable(T v) {
+        return v instanceof ContainingCollection && !((ContainingCollection) v).isEmpty() && ((ContainingCollection) v).get(0) instanceof Newable;
+    }
+
+    protected void mergeIn(Newable target, Set<Construction> targetCons, Newable source, Set<Construction> sourceCons) {
+
     }
 
 }
