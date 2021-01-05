@@ -20,7 +20,6 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
@@ -161,110 +160,11 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected boolean isEmpty(T result) {
-        return mandatory && (result == null || (containsNewable(result) && ((ContainingCollection) result).isEmpty()));
+        return mandatory && (result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty()));
     }
 
     protected void handleEmptyCheck(O object, T value) {
         throw new EmptyMandatoryException(object, this);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    protected T matchNewables(O object, T pre, T post, T result) {
-        if (pre instanceof Newable && post instanceof Newable) {
-            Newable preNew = (Newable) pre;
-            Newable postNew = (Newable) post;
-            Set<Construction> preRes = preNew.dConstructions();
-            Set<Construction> postRes = postNew.dConstructions();
-            if (preRes.isEmpty()) {
-                return post;
-            } else if (postRes.isEmpty()) {
-                return pre;
-            } else if (preNew.dNewableType().equals(postNew.dNewableType())) {
-                if (postRes.allMatch(Construction::isObserver)) {
-                    mergeIn(preNew, preRes, postNew, postRes);
-                    return pre;
-                } else if (preRes.allMatch(Construction::isObserver)) {
-                    mergeIn(postNew, postRes, preNew, preRes);
-                    return post;
-                }
-            }
-        } else if (containsNewable(pre) || containsNewable(post)) {
-            ContainingCollection<Newable> preColl = (ContainingCollection<Newable>) pre;
-            ContainingCollection<Newable> postColl = (ContainingCollection<Newable>) post;
-            Map<Newable, Set<Construction>> preNew = preColl.filter(n -> !postColl.contains(n)).toMap(n -> Entry.of(n, n.dConstructions()));
-            Map<Newable, Set<Construction>> postNew = postColl.filter(n -> !preColl.contains(n)).toMap(n -> Entry.of(n, n.dConstructions()));
-            for (Entry<Newable, Set<Construction>> postEntry : postNew) {
-                if (postEntry.getValue().isEmpty()) {
-                    result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
-                    postNew = postNew.removeKey(postEntry.getKey());
-                } else if (postEntry.getValue().allMatch(Construction::isObserver)) {
-                    for (Entry<Newable, Set<Construction>> preEntry : preNew) {
-                        if (preEntry.getValue().isEmpty()) {
-                            result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
-                            preNew = preNew.removeKey(preEntry.getKey());
-                        } else if (match(postEntry.getKey(), postEntry.getValue(), preEntry.getKey())) {
-                            mergeIn(preEntry.getKey(), preEntry.getValue(), postEntry.getKey(), postEntry.getValue());
-                            if (((ContainingCollection) result).contains(preEntry.getKey())) {
-                                result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
-                            } else {
-                                result = (T) ((ContainingCollection) result).replace(postEntry.getKey(), preEntry.getKey());
-                            }
-                            preNew = preNew.removeKey(preEntry.getKey());
-                            postNew = postNew.removeKey(postEntry.getKey());
-                            break;
-                        }
-                    }
-                }
-            }
-            for (Entry<Newable, Set<Construction>> preEntry : preNew) {
-                if (preEntry.getValue().isEmpty()) {
-                    result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
-                    preNew = preNew.removeKey(preEntry.getKey());
-                } else if (preEntry.getValue().allMatch(Construction::isObserver)) {
-                    for (Entry<Newable, Set<Construction>> postEntry : postNew) {
-                        if (postEntry.getValue().isEmpty()) {
-                            result = (T) ((ContainingCollection) result).remove(postEntry.getKey());
-                            postNew = postNew.removeKey(postEntry.getKey());
-                        } else if (match(preEntry.getKey(), preEntry.getValue(), postEntry.getKey())) {
-                            mergeIn(postEntry.getKey(), postEntry.getValue(), preEntry.getKey(), preEntry.getValue());
-                            if (((ContainingCollection) result).contains(postEntry.getKey())) {
-                                result = (T) ((ContainingCollection) result).remove(preEntry.getKey());
-                            } else {
-                                result = (T) ((ContainingCollection) result).replace(preEntry.getKey(), postEntry.getKey());
-                            }
-                            postNew = postNew.removeKey(postEntry.getKey());
-                            preNew = preNew.removeKey(preEntry.getKey());
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    private boolean match(Newable source, Set<Construction> cons, Newable target) {
-        if (source.dNewableType().equals(target.dNewableType())) {
-            if (Construction.sources(cons, Set.of()).contains(target)) {
-                return true;
-            } else {
-                Object sid = source.dIdentity();
-                Object tid = target.dIdentity();
-                if (sid != null && tid != null && sid.equals(tid)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    @SuppressWarnings("rawtypes")
-    private boolean containsNewable(T v) {
-        return v instanceof ContainingCollection && !((ContainingCollection) v).isEmpty() && ((ContainingCollection) v).get(0) instanceof Newable;
-    }
-
-    protected void mergeIn(Newable target, Set<Construction> targetCons, Newable source, Set<Construction> sourceCons) {
-
     }
 
 }

@@ -1,20 +1,23 @@
 package org.modelingvalue.dclare;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
 public class Construction extends IdentifiedByArray {
 
-    protected static final Constant<Construction, Newable> CONSTRUCTED = //
-            Constant.of("D_CONSTRUCTED", (Newable) null, (tx, c, p, n) -> Newable.CONSTRUCTIONS.set(n, Set::add, c));
+    protected static final Constant<Construction.Context, Newable> CONSTRUCTED = //
+            Constant.of("D_CONSTRUCTED", (Newable) null);
 
     public static Construction of(Object object, Feature feature, Context context) {
         return new Construction(object, feature, context);
     }
 
-    private Construction(Object object, Feature feature, Context context) {
+    protected Construction(Object object, Feature feature, Context context) {
         super(new Object[]{object, feature, context});
     }
 
@@ -38,29 +41,35 @@ public class Construction extends IdentifiedByArray {
         return !(feature() instanceof Observer);
     }
 
-    public static Set<Newable> sources(Set<Construction> cons, Set<Newable> sources) {
+    public static Optional<Newable> notObserverSource(Map<Newable, Set<Construction>> sources) {
+        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserver)).map(Entry::getKey).findFirst();
+    }
+
+    public static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
         for (Construction c : cons) {
             sources = sources.addAll(c.sources(sources));
         }
         return sources;
     }
 
-    private Set<Newable> sources(Set<Newable> sources) {
-        if (object() instanceof Newable && !sources.contains(object())) {
-            sources = sources.add((Newable) object());
-            sources = sources.addAll(sources(((Newable) object()).dConstructions(), sources));
+    private Map<Newable, Set<Construction>> sources(Map<Newable, Set<Construction>> sources) {
+        if (object() instanceof Newable && !sources.containsKey((Newable) object())) {
+            Set<Construction> cons = ((Newable) object()).dConstructions();
+            sources = sources.put((Newable) object(), cons);
+            sources = sources.addAll(sources(cons, sources));
         }
         Object[] array = context().array();
         for (int i = 0; i < array.length; i++) {
-            if (array[i] instanceof Newable && !sources.contains(array[i])) {
-                sources = sources.add((Newable) array[i]);
-                sources = sources.addAll(sources(((Newable) array[i]).dConstructions(), sources));
+            if (array[i] instanceof Newable && !sources.containsKey((Newable) array[i])) {
+                Set<Construction> cons = ((Newable) array[i]).dConstructions();
+                sources = sources.put((Newable) array[i], cons);
+                sources = sources.addAll(sources(cons, sources));
             }
         }
         return sources;
     }
 
-    public static final class Context extends IdentifiedByArray {
+    public static class Context extends IdentifiedByArray {
 
         public Context(Object[] identity) {
             super(identity);

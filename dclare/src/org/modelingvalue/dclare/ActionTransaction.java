@@ -30,8 +30,8 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
 
-    private final Setted setted = new Setted();
-    private State        preState;
+    private final CurrentState currentSate = new CurrentState();
+    private State              preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -50,15 +50,15 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
         preState = state;
-        setted.init(state);
+        currentSate.init(state);
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
-            return setted.result();
+            return currentSate.result();
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
         } finally {
-            setted.clear();
+            currentSate.clear();
             preState = null;
             TraceTimer.traceEnd(traceId());
         }
@@ -77,19 +77,19 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     protected State resultState() {
-        State result = setted.result();
-        setted.init(result);
+        State result = currentSate.result();
+        currentSate.init(result);
         return result;
     }
 
     @Override
     public State current() {
-        return setted.get();
+        return currentSate.get();
     }
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(setted.get().get(object, property), element));
+        return set(object, property, function.apply(currentSate.get().get(object, property), element));
     }
 
     @Override
@@ -102,7 +102,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
         T[] oldNew = (T[]) new Object[2];
-        if (setted.change(s -> s.set(object, property, (br, po) -> {
+        if (currentSate.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
             } else if (!Objects.equals(br, pre)) {
@@ -121,10 +121,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public <O> void clear(O object) {
         super.clear(object);
-        setted.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
+        currentSate.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
     }
 
-    private final class Setted extends Concurrent<State> {
+    private final class CurrentState extends Concurrent<State> {
         @Override
         protected State merge(State base, State[] branches, int length) {
             return base.merge(ActionTransaction.this, branches, length);
@@ -155,7 +155,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected Mutable dParent(Mutable object) {
-        return setted.get().getA(object, Mutable.D_PARENT_CONTAINING);
+        return currentSate.get().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
     @Override

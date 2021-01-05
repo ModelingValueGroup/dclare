@@ -17,18 +17,21 @@ package org.modelingvalue.dclare;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -251,7 +254,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
             if (!Objects.equals(pre, post)) {
-                post = ((Observed<O, T>) setable).matchNewables(object, pre, post, rippleOut(object, (Observed<O, T>) setable, pre, post));
+                post = matchNewables(setable, pre, post, rippleOut(object, (Observed<O, T>) setable, pre, post));
             }
         }
         if (post == null && setable instanceof Observed && ((Observed) setable).mandatory() && ((Observed) setable).checkConsistency) {
@@ -261,7 +264,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         T old = universeTransaction().oldState().get(object, observed);
         if (!Objects.equals(pre, old)) {
             if (Objects.equals(old, post)) {
@@ -275,7 +278,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         } else if (observed.containment()) {
-            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
+            if (pre instanceof Mutable && isActive((Mutable) pre)) {
                 backwards.set(TRUE);
                 return pre;
             } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
@@ -345,7 +348,9 @@ public class ObserverTransaction extends ActionTransaction {
         Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
         Construction cons = pair != null ? Construction.of(pair.a(), pair.b(), context) : Construction.of(mutable(), observer(), context);
         if (pair != null) {
-            return (O) universeTransaction().constantState.get(this, cons, Construction.CONSTRUCTED, c -> supplier.get());
+            O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
+            Newable.CONSTRUCTIONS.set(result, Set::add, cons);
+            return result;
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(cons);
             if (result == null) {
@@ -354,6 +359,103 @@ public class ObserverTransaction extends ActionTransaction {
             set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
             constructions.set((map, e) -> map.put(cons, e), result);
             return result;
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post, T rippleOut) {
+        if (!setable.containment()) {
+            return rippleOut;
+        } else if (rippleOut instanceof Newable) {
+            return (T) singleMatch((Newable) pre, (Newable) post, (Newable) rippleOut);
+        } else if (containsNewable(rippleOut)) {
+            return (T) manyMatch((ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post, (ContainingCollection<Newable>) rippleOut);
+        } else {
+            return rippleOut;
+        }
+    }
+
+    private Newable singleMatch(Newable before, Newable after, Newable result) {
+        if (before != null && after != null) {
+            Pair<Newable, Set<Construction>> pre = Pair.of(before, before.dConstructions());
+            Set<Construction> cons = after.dConstructions();
+            Map<Newable, Set<Construction>> srcs = Construction.sources(cons, Map.of());
+            Quadruple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>> post = Quadruple.of(after, cons, srcs, Construction.notObserverSource(srcs));
+            if (pre.b().isEmpty() && result.equals(before)) {
+                return after;
+            } else if (post.b().isEmpty() && result.equals(after)) {
+                return before;
+            } else if (post.b().allMatch(Construction::isObserver) && pre.a().dNewableType().equals(post.a().dNewableType()) && !pre.b().anyMatch(post.b()::contains)) {
+                makeTheSame(pre, post);
+                return before;
+            }
+        }
+        return result;
+    }
+
+    private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> rippleOut) {
+        ContainingCollection<Newable> result = rippleOut.clear().addAll(rippleOut.filter(n -> !n.dConstructions().isEmpty()));
+        List<Pair<Newable, Set<Construction>>> preList = preColl.filter(postColl::notContains).//
+                map(n -> Pair.of(n, n.dConstructions())).filter(p -> !p.b().isEmpty()).toList();
+        if (!preList.isEmpty()) {
+            List<Quadruple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>>> postList = postColl.//
+                    map(n -> {
+                        Set<Construction> cons = n.dConstructions();
+                        Map<Newable, Set<Construction>> srcs = Construction.sources(cons, Map.of());
+                        return Quadruple.of(n, cons, srcs, Construction.notObserverSource(srcs));
+                    }).filter(p -> !p.b().isEmpty()).toList();
+            if (!postList.isEmpty()) {
+                if (!(result instanceof List)) {
+                    preList = preList.sortedBy(p -> p.a().dSortKey()).toList();
+                    postList = postList.sortedBy(q -> q.d().orElse(q.a()).dSortKey()).toList();
+                }
+                for (int i = 0; i < postList.size(); i++) {
+                    Quadruple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>> post = postList.get(i);
+                    if (post.b().allMatch(Construction::isObserver)) {
+                        for (int ii = 0; ii < preList.size(); ii++) {
+                            Pair<Newable, Set<Construction>> pre = preList.get(ii);
+                            if (pre.a().dNewableType().equals(post.a().dNewableType()) && !pre.b().anyMatch(post.b()::contains) && areTheSame(pre, post)) {
+                                makeTheSame(pre, post);
+                                result = result.remove(post.a());
+                                preList = preList.removeIndex(ii);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private <T> boolean containsNewable(T v) {
+        return v instanceof ContainingCollection && !((ContainingCollection) v).isEmpty() && ((ContainingCollection) v).get(0) instanceof Newable;
+    }
+
+    private boolean areTheSame(Pair<Newable, Set<Construction>> pre, Quadruple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>> post) {
+        if (post.c().containsKey(pre.a())) {
+            return true;
+        } else {
+            Object preId = pre.a().dIdentity();
+            Object postId = post.a().dIdentity();
+            if (preId != null && postId != null && preId.equals(postId)) {
+                return true;
+            } else if (preId == null && post.d().map(Newable::dIdentity).orElse(postId) == null) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void makeTheSame(Pair<Newable, Set<Construction>> pre, Quadruple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>> post) {
+        for (Construction cons : post.b()) {
+            set((Mutable) cons.object(), ((Observer<?>) cons.feature()).constructed(), (map, e) -> map.put(cons, e), pre.a());
+            if (mutable().equals(cons.object()) && observer().equals(cons.feature())) {
+                constructions.set((map, e) -> map.put(cons, e), pre.a());
+            }
         }
     }
 

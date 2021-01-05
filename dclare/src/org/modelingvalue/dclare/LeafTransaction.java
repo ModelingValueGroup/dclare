@@ -122,7 +122,7 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     @Override
-    public final Mutable mutable() {
+    public Mutable mutable() {
         return parent().mutable();
     }
 
@@ -130,9 +130,11 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
+        O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
         Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
         Construction cons = pair != null ? Construction.of(pair.a(), pair.b(), context) : Construction.of(mutable(), leaf(), context);
-        return (O) universeTransaction().constantState.get(this, cons, Construction.CONSTRUCTED, c -> supplier.get());
+        set(result, Newable.CONSTRUCTIONS, Set::add, cons);
+        return result;
     }
 
 }
