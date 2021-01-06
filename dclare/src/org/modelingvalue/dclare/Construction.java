@@ -26,23 +26,23 @@ import org.modelingvalue.collections.util.IdentifiedByArray;
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
-    protected static final Constant<Construction.Context, Newable> CONSTRUCTED = //
+    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null);
 
-    public static Construction of(Context context) {
-        return new Construction(context);
+    public static Construction of(Reason reason) {
+        return new Construction(reason);
     }
 
-    public static Construction of(Mutable object, Observer observer, Context context) {
-        return new Construction(object, observer, context);
+    public static Construction of(Mutable object, Observer observer, Reason reason) {
+        return new Construction(object, observer, reason);
     }
 
-    private Construction(Context context) {
-        super(new Object[]{context});
+    private Construction(Reason reason) {
+        super(new Object[]{reason});
     }
 
-    private Construction(Mutable object, Observer observer, Context context) {
-        super(new Object[]{object, observer, context});
+    private Construction(Mutable object, Observer observer, Reason reason) {
+        super(new Object[]{object, observer, reason});
     }
 
     public Mutable object() {
@@ -53,8 +53,8 @@ public class Construction extends IdentifiedByArray {
         return (Observer) (array().length == 3 ? array()[1] : null);
     }
 
-    public Context context() {
-        return (Context) (array().length == 3 ? array()[2] : array()[0]);
+    public Reason reason() {
+        return (Reason) (array().length == 3 ? array()[2] : array()[0]);
     }
 
     public boolean isObserved() {
@@ -82,7 +82,7 @@ public class Construction extends IdentifiedByArray {
             sources = sources.put((Newable) object(), cons);
             sources = sources.addAll(sources(cons, sources));
         }
-        Object[] array = context().array();
+        Object[] array = reason().array();
         for (int i = 0; i < array.length; i++) {
             if (array[i] instanceof Newable && !sources.containsKey((Newable) array[i])) {
                 Set<Construction> cons = ((Newable) array[i]).dConstructions();
@@ -93,13 +93,13 @@ public class Construction extends IdentifiedByArray {
         return sources;
     }
 
-    public static Set<Object> reasons(Set<Construction> sources) {
-        return sources.map(Construction::context).map(Context::reason).toSet();
+    public static Set<Object> reasonTypes(Set<Construction> sources) {
+        return sources.map(Construction::reason).map(Reason::type).toSet();
     }
 
-    public abstract static class Context extends IdentifiedByArray {
+    public abstract static class Reason extends IdentifiedByArray {
 
-        protected Context(Object[] identity) {
+        protected Reason(Object[] identity) {
             super(identity);
         }
 
@@ -115,7 +115,7 @@ public class Construction extends IdentifiedByArray {
             return current;
         }
 
-        public abstract Object reason();
+        public abstract Object type();
 
     }
 

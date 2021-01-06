@@ -110,9 +110,9 @@ public class ReadOnlyTransaction extends LeafTransaction {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
-        O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
-        universeTransaction().put(new Object(), () -> Newable.CONSTRUCTIONS.set(result, Set::add, Construction.of(context)));
+    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+        O result = (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        universeTransaction().put(new Object(), () -> Newable.CONSTRUCTIONS.set(result, Set::add, Construction.of(reason)));
         return result;
     }
 

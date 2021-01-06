@@ -347,17 +347,17 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
+    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         if (Constant.DERIVED.get() != null) {
-            return super.construct(context, supplier);
+            return super.construct(reason, supplier);
         } else {
-            Construction cons = Construction.of(mutable(), observer(), context);
+            Construction cons = Construction.of(mutable(), observer(), reason);
             O result = (O) current(mutable(), observer().constructed()).get(cons);
             if (result == null) {
                 result = supplier.get();
             }
             if (TRACE_MATCHING) {
-                System.err.println("MATCHING " + context + " -> " + result);
+                System.err.println("MATCHING " + reason + " -> " + result);
             }
             set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
             constructions.set((map, e) -> map.put(cons, e), result);
@@ -432,13 +432,13 @@ public class ObserverTransaction extends ActionTransaction {
 
     private static Triple<Newable, Set<Construction>, Set<Object>> preInfo(Newable before) {
         Set<Construction> cons = before.dConstructions();
-        return Triple.of(before, cons, Construction.reasons(cons));
+        return Triple.of(before, cons, Construction.reasonTypes(cons));
     }
 
     private static Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>> postInfo(Newable after) {
         Set<Construction> cons = after.dConstructions();
         Map<Newable, Set<Construction>> srcs = Construction.sources(cons, Map.of());
-        return Quintuple.of(after, cons, srcs, Construction.notObservedSource(srcs), Construction.reasons(cons));
+        return Quintuple.of(after, cons, srcs, Construction.notObservedSource(srcs), Construction.reasonTypes(cons));
     }
 
     private static boolean sameTypeDifferentReason(Triple<Newable, Set<Construction>, Set<Object>> pre, Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>> post) {
