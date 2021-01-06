@@ -22,7 +22,6 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -131,9 +130,7 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
         O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
-        Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
-        Construction cons = pair != null ? Construction.of(pair.a(), pair.b(), context) : Construction.of(mutable(), leaf(), context);
-        set(result, Newable.CONSTRUCTIONS, Set::add, cons);
+        set(result, Newable.CONSTRUCTIONS, Set::add, Construction.of(context));
         return result;
     }
 

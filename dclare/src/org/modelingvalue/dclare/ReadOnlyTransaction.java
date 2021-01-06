@@ -19,7 +19,6 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
@@ -113,9 +112,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     @Override
     public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
         O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
-        Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
-        Construction cons = pair != null ? Construction.of(pair.a(), pair.b(), context) : Construction.of(mutable(), leaf(), context);
-        universeTransaction().put(new Object(), () -> Newable.CONSTRUCTIONS.set(result, Set::add, cons));
+        universeTransaction().put(new Object(), () -> Newable.CONSTRUCTIONS.set(result, Set::add, Construction.of(context)));
         return result;
     }
 

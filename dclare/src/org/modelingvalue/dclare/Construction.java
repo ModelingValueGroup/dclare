@@ -23,41 +23,50 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
+@SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
     protected static final Constant<Construction.Context, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null);
 
-    public static Construction of(Object object, Feature feature, Context context) {
-        return new Construction(object, feature, context);
+    public static Construction of(Context context) {
+        return new Construction(context);
     }
 
-    protected Construction(Object object, Feature feature, Context context) {
-        super(new Object[]{object, feature, context});
+    public static Construction of(Mutable object, Observer observer, Context context) {
+        return new Construction(object, observer, context);
     }
 
-    public Object object() {
-        return array()[0];
+    private Construction(Context context) {
+        super(new Object[]{context});
     }
 
-    public Feature feature() {
-        return (Feature) array()[1];
+    private Construction(Mutable object, Observer observer, Context context) {
+        super(new Object[]{object, observer, context});
+    }
+
+    public Mutable object() {
+        return (Mutable) (array().length == 3 ? array()[0] : null);
+    }
+
+    public Observer observer() {
+        return (Observer) (array().length == 3 ? array()[1] : null);
     }
 
     public Context context() {
-        return (Context) array()[2];
+        return (Context) (array().length == 3 ? array()[2] : array()[0]);
     }
 
-    public boolean isObserver() {
-        return feature() instanceof Observer;
+    public boolean isObserved() {
+        return array().length == 3;
     }
 
-    public boolean isNotObserver() {
-        return !(feature() instanceof Observer);
+    public boolean isNotObserved() {
+        return array().length != 3;
     }
 
-    public static Optional<Newable> notObserverSource(Map<Newable, Set<Construction>> sources) {
-        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserver)).map(Entry::getKey).findFirst();
+    public static Optional<Newable> notObservedSource(Map<Newable, Set<Construction>> sources) {
+        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).findFirst();
     }
 
     public static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
