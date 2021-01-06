@@ -401,8 +401,8 @@ public class ObserverTransaction extends ActionTransaction {
 
     private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> rippleOut) {
         ContainingCollection<Newable> result = rippleOut.clear().addAll(rippleOut.filter(n -> !n.dConstructions().isEmpty()));
-        List<Triple<Newable, Set<Construction>, Set<Object>>> preList = preColl.filter(postColl::notContains).//
-                map(ObserverTransaction::preInfo).filter(p -> !p.b().isEmpty()).toList();
+        List<Triple<Newable, Set<Construction>, Set<Object>>> preList = //
+                preColl.map(ObserverTransaction::preInfo).filter(p -> !p.b().isEmpty()).toList();
         if (!preList.isEmpty()) {
             List<Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>>> postList = //
                     postColl.map(ObserverTransaction::postInfo).filter(p -> !p.b().isEmpty()).toList();
