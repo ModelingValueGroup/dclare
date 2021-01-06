@@ -357,7 +357,8 @@ public class ObserverTransaction extends ActionTransaction {
                 result = supplier.get();
             }
             if (TRACE_MATCHING) {
-                System.err.println("MATCHING " + reason + " -> " + result);
+                O finalRsult = result;
+                runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalRsult));
             }
             set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
             constructions.set((map, e) -> map.put(cons, e), result);
@@ -447,7 +448,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     private static boolean areTheSame(Triple<Newable, Set<Construction>, Set<Object>> pre, Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>> post) {
         if (TRACE_MATCHING) {
-            System.err.println("MATCHING " + pre.a() + " <> " + post.a());
+            LeafTransaction.getCurrent().runNonObserving(() -> System.err.println("MATCHING " + pre.a() + " <> " + post.a()));
         }
         if (post.c().containsKey(pre.a())) {
             return true;
@@ -467,7 +468,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(Triple<Newable, Set<Construction>, Set<Object>> pre, Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>> post) {
         if (TRACE_MATCHING) {
-            System.err.println("MATCHING " + pre.a() + " == " + post.a());
+            runNonObserving(() -> System.err.println("MATCHING " + pre.a() + " == " + post.a()));
         }
         for (Construction cons : post.b()) {
             set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons, e), pre.a());
