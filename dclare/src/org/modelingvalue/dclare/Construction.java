@@ -93,9 +93,13 @@ public class Construction extends IdentifiedByArray {
         return sources;
     }
 
-    public static class Context extends IdentifiedByArray {
+    public static Set<Object> reasons(Set<Construction> sources) {
+        return sources.map(Construction::context).map(Context::reason).toSet();
+    }
 
-        public Context(Object[] identity) {
+    public abstract static class Context extends IdentifiedByArray {
+
+        protected Context(Object[] identity) {
             super(identity);
         }
 
@@ -110,6 +114,8 @@ public class Construction extends IdentifiedByArray {
             }
             return current;
         }
+
+        public abstract Object reason();
 
     }
 
