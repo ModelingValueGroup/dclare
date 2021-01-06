@@ -345,13 +345,10 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Context context, Supplier<O> supplier) {
-        Pair<Object, Constant<?, ?>> pair = Constant.DERIVED.get();
-        Construction cons = pair != null ? Construction.of(context) : Construction.of(mutable(), observer(), context);
-        if (pair != null) {
-            O result = (O) universeTransaction().constantState.get(this, context, Construction.CONSTRUCTED, c -> supplier.get());
-            Newable.CONSTRUCTIONS.set(result, Set::add, cons);
-            return result;
+        if (Constant.DERIVED.get() != null) {
+            return super.construct(context, supplier);
         } else {
+            Construction cons = Construction.of(mutable(), observer(), context);
             O result = (O) current(mutable(), observer().constructed()).get(cons);
             if (result == null) {
                 result = supplier.get();
