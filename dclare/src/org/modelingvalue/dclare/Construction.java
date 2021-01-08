@@ -97,6 +97,10 @@ public class Construction extends IdentifiedByArray {
         return sources.map(Construction::reason).map(Reason::type).toSet();
     }
 
+    public boolean completelyIdentified() {
+        return object().isIdentified() && reason().completelyIdentified();
+    }
+
     public abstract static class Reason extends IdentifiedByArray {
 
         protected Reason(Object[] identity) {
@@ -116,6 +120,16 @@ public class Construction extends IdentifiedByArray {
         }
 
         public abstract Object type();
+
+        public boolean completelyIdentified() {
+            Object[] array = array();
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] instanceof Newable && !((Newable) array[i]).isIdentified()) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
     }
 

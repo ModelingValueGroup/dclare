@@ -260,9 +260,6 @@ public class ObserverTransaction extends ActionTransaction {
                 post = matchNewables(setable, pre, post, rippleOut(object, (Observed<O, T>) setable, pre, post));
             }
         }
-        if (post == null && setable instanceof Observed && ((Observed) setable).mandatory() && ((Observed) setable).checkConsistency) {
-            throw new NullPointerException();
-        }
         super.set(object, setable, pre, post);
     }
 
@@ -348,7 +345,9 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        if (Constant.DERIVED.get() != null) {
+        if (!mutable().isIdentified() || !reason.completelyIdentified()) {
+            return null;
+        } else if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
         } else {
             Construction cons = Construction.of(mutable(), observer(), reason);
@@ -392,7 +391,7 @@ public class ObserverTransaction extends ActionTransaction {
                 return after;
             } else if (post.b().isEmpty() && result.equals(after)) {
                 return before;
-            } else if (post.b().allMatch(Construction::isObserved) && sameTypeDifferentReason(pre, post)) {
+            } else if (pre.b().anyMatch(Construction::isNotObserved) && post.b().allMatch(Construction::isObserved) && sameTypeDifferentReason(pre, post)) {
                 makeTheSame(pre, post);
                 return before;
             }
@@ -403,10 +402,10 @@ public class ObserverTransaction extends ActionTransaction {
     private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> rippleOut) {
         ContainingCollection<Newable> result = rippleOut.clear().addAll(rippleOut.filter(n -> !n.dConstructions().isEmpty()));
         List<Triple<Newable, Set<Construction>, Set<Object>>> preList = //
-                preColl.map(ObserverTransaction::preInfo).filter(p -> !p.b().isEmpty()).toList();
+                preColl.map(ObserverTransaction::preInfo).filter(p -> p.b().anyMatch(Construction::isNotObserved)).toList();
         if (!preList.isEmpty()) {
             List<Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>>> postList = //
-                    postColl.map(ObserverTransaction::postInfo).filter(p -> !p.b().isEmpty()).toList();
+                    postColl.map(ObserverTransaction::postInfo).filter(p -> !p.b().isEmpty() && p.b().allMatch(Construction::isObserved)).toList();
             if (!postList.isEmpty()) {
                 if (!(result instanceof List)) {
                     preList = preList.sortedBy(p -> p.a().dSortKey()).toList();
@@ -414,15 +413,13 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 for (int i = 0; i < postList.size(); i++) {
                     Quintuple<Newable, Set<Construction>, Map<Newable, Set<Construction>>, Optional<Newable>, Set<Object>> post = postList.get(i);
-                    if (post.b().allMatch(Construction::isObserved)) {
-                        for (int ii = 0; ii < preList.size(); ii++) {
-                            Triple<Newable, Set<Construction>, Set<Object>> pre = preList.get(ii);
-                            if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
-                                makeTheSame(pre, post);
-                                result = result.remove(post.a());
-                                preList = preList.removeIndex(ii);
-                                break;
-                            }
+                    for (int ii = 0; ii < preList.size(); ii++) {
+                        Triple<Newable, Set<Construction>, Set<Object>> pre = preList.get(ii);
+                        if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
+                            makeTheSame(pre, post);
+                            result = result.remove(post.a());
+                            preList = preList.removeIndex(ii);
+                            break;
                         }
                     }
                 }
