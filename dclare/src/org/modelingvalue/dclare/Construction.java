@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Entry;
@@ -26,7 +25,19 @@ import org.modelingvalue.collections.util.IdentifiedByArray;
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
-    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
+    protected static final Construction                           DUMMY       = Construction.of(new Reason(new Object[0]) {
+                                                                                  @Override
+                                                                                  public Object type() {
+                                                                                      return this;
+                                                                                  }
+
+                                                                                  @Override
+                                                                                  public String toString() {
+                                                                                      return "DUMMY";
+                                                                                  }
+                                                                              });
+
+    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED =                                            //
             Constant.of("D_CONSTRUCTED", (Newable) null);
 
     public static Construction of(Reason reason) {
@@ -65,11 +76,16 @@ public class Construction extends IdentifiedByArray {
         return array().length != 3;
     }
 
-    public static Optional<Newable> notObservedSource(Map<Newable, Set<Construction>> sources) {
-        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).findFirst();
+    public static Set<Newable> notObservedSources(Map<Newable, Set<Construction>> sources) {
+        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).toSet();
     }
 
-    public static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
+    public static Map<Newable, Set<Construction>> sources(Set<Construction> cons) {
+        Map<Newable, Set<Construction>> srcs = sources(cons, Map.of());
+        return srcs.filter(e -> !srcs.anyMatch(a -> a.getKey().dHasAncestor(e.getKey()))).toMap(e -> e);
+    }
+
+    private static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
         for (Construction c : cons) {
             sources = sources.addAll(c.sources(sources));
         }

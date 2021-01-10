@@ -67,6 +67,15 @@ public interface Mutable extends TransactionClass {
         return (C) parent;
     }
 
+    default boolean dHasAncestor(Mutable ancestor) {
+        for (Mutable parent = dParent(); parent != null; parent = parent.dParent()) {
+            if (parent.equals(ancestor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
         Mutable result = this;
