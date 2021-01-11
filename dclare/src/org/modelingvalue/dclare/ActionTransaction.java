@@ -76,15 +76,13 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return preState;
     }
 
-    protected State resultState() {
-        State result = currentSate.result();
-        currentSate.init(result);
-        return result;
-    }
-
     @Override
     public State current() {
         return currentSate.get();
+    }
+
+    public State merge() {
+        return currentSate.merge();
     }
 
     @Override

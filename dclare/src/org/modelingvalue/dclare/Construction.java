@@ -64,13 +64,9 @@ public class Construction extends IdentifiedByArray {
         return array().length != 3;
     }
 
-    public static Set<Newable> notObservedSources(Map<Newable, Set<Construction>> sources) {
-        return sources.filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).toSet();
-    }
-
-    public static Map<Newable, Set<Construction>> sources(Set<Construction> cons) {
-        Map<Newable, Set<Construction>> srcs = sources(cons, Map.of());
-        return srcs.filter(e -> !srcs.anyMatch(a -> a.getKey().dHasAncestor(e.getKey()))).toMap(e -> e);
+    public static Set<Newable> notObservedSources(Set<Construction> cons) {
+        Set<Newable> sources = sources(cons, Map.of()).filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).toSet();
+        return sources.filter(e -> !sources.anyMatch(a -> a.dHasAncestor(e))).toSet();
     }
 
     private static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {

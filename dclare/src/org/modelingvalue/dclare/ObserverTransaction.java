@@ -30,7 +30,7 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Sextuple;
+import org.modelingvalue.collections.util.Quintuple;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -157,12 +157,12 @@ public class ObserverTransaction extends ActionTransaction {
         Observer<?> observer = observer();
         Mutable mutable = mutable();
         if (TRACE_OBSERVERS) {
-            State result = resultState();
+            State result = merge();
             System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
                     + toString(gets, mutable, (m, o) -> pre.get(m, o)) + " " + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
         }
         if (universeTransaction.stats().debugging()) {
-            State result = resultState();
+            State result = merge();
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
                     gets.addAll(sets, Set::addAll).filter(e -> !(e.getKey() instanceof NonCheckingObserved)).flatMap(e -> e.getValue().map(m -> {
@@ -198,7 +198,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
-        State result = resultState();
+        State result = merge();
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
             observer.stopped = true;
@@ -380,9 +380,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private Newable singleMatch(Newable before, Newable after, Newable result) {
+        merge();
         if (after != null) {
             MatchInfo post = MatchInfo.of(after);
             if (!post.hasReasonToExist()) {
+                if (TRACE_MATCHING) {
+                    runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
+                }
                 result = result.equals(after) ? before : result;
             } else if (before != null) {
                 MatchInfo pre = MatchInfo.of(before);
@@ -396,28 +400,34 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> result) {
-        List<MatchInfo> preList = preColl.filter(postColl::notContains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+        merge();
         List<MatchInfo> postList = postColl.map(MatchInfo::of).filter(MatchInfo::hasOnlyIndirectReasonsToExist).toList();
         for (int i = 0; i < postList.size(); i++) {
             MatchInfo post = postList.get(i);
             if (!post.hasReasonToExist()) {
+                if (TRACE_MATCHING) {
+                    runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
+                }
                 postList = postList.removeIndex(i--);
                 result = result.remove(post.newable());
             }
         }
-        if (!(result instanceof List)) {
-            preList = preList.sortedBy(p -> p.newable().dSortKey()).toList();
-            postList = postList.sortedBy(q -> q.notObservedSources().map(Newable::dSortKey).sorted().findFirst().get()).toList();
-        }
-        for (int i = 0; i < postList.size(); i++) {
-            MatchInfo post = postList.get(i);
-            for (int ii = 0; ii < preList.size(); ii++) {
-                MatchInfo pre = preList.get(ii);
-                if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
-                    makeTheSame(pre, post);
-                    result = result.remove(post.newable());
-                    preList = preList.removeIndex(ii);
-                    break;
+        if (!postList.isEmpty()) {
+            List<MatchInfo> preList = preColl.filter(postColl::notContains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+            if (!(result instanceof List)) {
+                preList = preList.sortedBy(p -> p.newable().dSortKey()).toList();
+                postList = postList.sortedBy(q -> q.notObservedSources().map(Newable::dSortKey).sorted().findFirst().get()).toList();
+            }
+            for (int i = 0; i < postList.size(); i++) {
+                MatchInfo post = postList.get(i);
+                for (int ii = 0; ii < preList.size(); ii++) {
+                    MatchInfo pre = preList.get(ii);
+                    if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
+                        makeTheSame(pre, post);
+                        result = result.remove(post.newable());
+                        preList = preList.removeIndex(ii);
+                        break;
+                    }
                 }
             }
         }
@@ -428,10 +438,9 @@ public class ObserverTransaction extends ActionTransaction {
         return pre.newable().dNewableType().equals(post.newable().dNewableType()) && !pre.reasonTypes().anyMatch(post.reasonTypes()::contains);
     }
 
-    private static boolean areTheSame(MatchInfo pre, MatchInfo post) {
+    private boolean areTheSame(MatchInfo pre, MatchInfo post) {
         if (TRACE_MATCHING) {
-            LeafTransaction tx = LeafTransaction.getCurrent();
-            tx.runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + tx.cls()));
+            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
         }
         if (pre.identity() != null && post.identity() != null && pre.identity().equals(post.identity())) {
             return true;
@@ -455,22 +464,20 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private static final class MatchInfo extends Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> {
+    private static final class MatchInfo extends Quintuple<Newable, Object, Set<Construction>, Set<Newable>, Set<Object>> {
 
         private static final long serialVersionUID = 4565551522857366810L;
 
         private static MatchInfo of(Newable newable) {
-            Set<Construction> cons = newable.dConstructions();
-            Map<Newable, Set<Construction>> srcs = Construction.sources(cons);
-            return new MatchInfo(newable, cons, srcs);
+            return new MatchInfo(newable, newable.dConstructions());
         }
 
-        private MatchInfo(Newable newable, Set<Construction> cons, Map<Newable, Set<Construction>> srcs) {
-            super(newable, newable.dIdentity(), cons, srcs, Construction.notObservedSources(srcs), Construction.reasonTypes(cons));
+        private MatchInfo(Newable newable, Set<Construction> cons) {
+            super(newable, newable.dIdentity(), cons, Construction.notObservedSources(cons), Construction.reasonTypes(cons));
         }
 
         private boolean hasReasonToExist() {
-            return constructions().anyMatch(Construction::isNotObserved) || sources().flatMap(Entry::getValue).anyMatch(Construction::isNotObserved);
+            return hasDirectReasonToExist() || !notObservedSources().isEmpty();
         }
 
         private boolean hasDirectReasonToExist() {
@@ -493,16 +500,12 @@ public class ObserverTransaction extends ActionTransaction {
             return c();
         }
 
-        private Map<Newable, Set<Construction>> sources() {
+        private Set<Newable> notObservedSources() {
             return d();
         }
 
-        private Set<Newable> notObservedSources() {
-            return e();
-        }
-
         private Set<Object> reasonTypes() {
-            return f();
+            return e();
         }
 
     }
