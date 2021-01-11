@@ -152,8 +152,4 @@ public interface Mutable extends TransactionClass {
         return this;
     }
 
-    default boolean isIdentified() {
-        return true;
-    }
-
 }

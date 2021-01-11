@@ -30,7 +30,6 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.collections.util.Sextuple;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
@@ -344,9 +343,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        if (!mutable().isIdentified() || !reason.completelyIdentified()) {
-            return null;
-        } else if (Constant.DERIVED.get() != null) {
+        if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
         } else {
             Construction cons = Construction.of(mutable(), observer(), reason);
@@ -356,7 +353,7 @@ public class ObserverTransaction extends ActionTransaction {
             }
             if (TRACE_MATCHING) {
                 O finalResult = result;
-                runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult));
+                runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + observer()));
             }
             set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
             constructions.set((map, e) -> map.put(cons, e), result);
@@ -383,74 +380,62 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private Newable singleMatch(Newable before, Newable after, Newable result) {
-        if (before != null && after != null) {
-            Quadruple<Newable, Object, Set<Construction>, Set<Object>> pre = preInfo(before);
-            Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> post = postInfo(after);
-            if (pre.c().isEmpty() && result.equals(before)) {
-                return after;
-            } else if (post.c().isEmpty() && result.equals(after)) {
-                return before;
-            } else if (pre.c().anyMatch(Construction::isNotObserved) && post.c().allMatch(Construction::isObserved) && sameTypeDifferentReason(pre, post)) {
-                makeTheSame(pre, post);
-                return before;
-            }
-        }
-        return result;
-    }
-
-    private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> rippleOut) {
-        ContainingCollection<Newable> result = rippleOut.clear().addAll(rippleOut.filter(n -> !n.dConstructions().isEmpty()));
-        List<Quadruple<Newable, Object, Set<Construction>, Set<Object>>> preList = //
-                preColl.filter(postColl::notContains).map(ObserverTransaction::preInfo).filter(p -> p.c().anyMatch(Construction::isNotObserved)).toList();
-        if (!preList.isEmpty()) {
-            List<Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>>> postList = //
-                    postColl.map(ObserverTransaction::postInfo).filter(p -> !p.c().isEmpty() && p.c().allMatch(Construction::isObserved)).toList();
-            if (!postList.isEmpty()) {
-                if (!(result instanceof List)) {
-                    preList = preList.sortedBy(p -> p.a().dSortKey()).toList();
-                    postList = postList.sortedBy(q -> q.e().map(Newable::dSortKey).sorted().findFirst().get()).toList();
-                }
-                for (int i = 0; i < postList.size(); i++) {
-                    Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> post = postList.get(i);
-                    for (int ii = 0; ii < preList.size(); ii++) {
-                        Quadruple<Newable, Object, Set<Construction>, Set<Object>> pre = preList.get(ii);
-                        if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
-                            makeTheSame(pre, post);
-                            result = result.remove(post.a());
-                            preList = preList.removeIndex(ii);
-                            break;
-                        }
-                    }
+        if (after != null) {
+            MatchInfo post = MatchInfo.of(after);
+            if (!post.hasReasonToExist()) {
+                result = result.equals(after) ? before : result;
+            } else if (before != null) {
+                MatchInfo pre = MatchInfo.of(before);
+                if (pre.hasDirectReasonToExist() && post.hasOnlyIndirectReasonsToExist() && sameTypeDifferentReason(pre, post)) {
+                    makeTheSame(pre, post);
+                    result = before;
                 }
             }
         }
         return result;
     }
 
-    private static Quadruple<Newable, Object, Set<Construction>, Set<Object>> preInfo(Newable before) {
-        Set<Construction> cons = before.dConstructions();
-        return Quadruple.of(before, before.dIdentity(), cons, Construction.reasonTypes(cons));
+    private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> result) {
+        List<MatchInfo> preList = preColl.filter(postColl::notContains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+        List<MatchInfo> postList = postColl.map(MatchInfo::of).filter(MatchInfo::hasOnlyIndirectReasonsToExist).toList();
+        for (int i = 0; i < postList.size(); i++) {
+            MatchInfo post = postList.get(i);
+            if (!post.hasReasonToExist()) {
+                postList = postList.removeIndex(i--);
+                result = result.remove(post.newable());
+            }
+        }
+        if (!(result instanceof List)) {
+            preList = preList.sortedBy(p -> p.newable().dSortKey()).toList();
+            postList = postList.sortedBy(q -> q.notObservedSources().map(Newable::dSortKey).sorted().findFirst().get()).toList();
+        }
+        for (int i = 0; i < postList.size(); i++) {
+            MatchInfo post = postList.get(i);
+            for (int ii = 0; ii < preList.size(); ii++) {
+                MatchInfo pre = preList.get(ii);
+                if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
+                    makeTheSame(pre, post);
+                    result = result.remove(post.newable());
+                    preList = preList.removeIndex(ii);
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
-    private static Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> postInfo(Newable after) {
-        Set<Construction> cons = after.dConstructions();
-        Map<Newable, Set<Construction>> srcs = Construction.sources(cons);
-        return Sextuple.of(after, after.dIdentity(), cons, srcs, Construction.notObservedSources(srcs), Construction.reasonTypes(cons));
+    private static boolean sameTypeDifferentReason(MatchInfo pre, MatchInfo post) {
+        return pre.newable().dNewableType().equals(post.newable().dNewableType()) && !pre.reasonTypes().anyMatch(post.reasonTypes()::contains);
     }
 
-    private static boolean sameTypeDifferentReason(Quadruple<Newable, Object, Set<Construction>, Set<Object>> pre, Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> post) {
-        return pre.a().dNewableType().equals(post.a().dNewableType()) && !pre.c().anyMatch(post.e()::contains);
-    }
-
-    private static boolean areTheSame(Quadruple<Newable, Object, Set<Construction>, Set<Object>> pre, Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> post) {
+    private static boolean areTheSame(MatchInfo pre, MatchInfo post) {
         if (TRACE_MATCHING) {
-            LeafTransaction.getCurrent().runNonObserving(() -> System.err.println("MATCHING " + pre.a() + " <> " + post.a()));
+            LeafTransaction tx = LeafTransaction.getCurrent();
+            tx.runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + tx.cls()));
         }
-        if (post.d().containsKey(pre.a())) {
+        if (pre.identity() != null && post.identity() != null && pre.identity().equals(post.identity())) {
             return true;
-        } else if (pre.b() != null && post.b() != null && pre.b().equals(post.b())) {
-            return true;
-        } else if (pre.b() == null && post.e().anyMatch(s -> s.dIdentity() == null)) {
+        } else if (pre.identity() == null && post.notObservedSources().anyMatch(s -> s.dIdentity() == null)) {
             return true;
         } else {
             return false;
@@ -458,16 +443,68 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void makeTheSame(Quadruple<Newable, Object, Set<Construction>, Set<Object>> pre, Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> post) {
+    private void makeTheSame(MatchInfo pre, MatchInfo post) {
         if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCHING " + pre.a() + " == " + post.a()));
+            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " == " + post.newable() + "   " + observer()));
         }
-        for (Construction cons : post.c()) {
-            set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons, e), pre.a());
+        for (Construction cons : post.constructions()) {
+            set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons, e), pre.newable());
             if (mutable().equals(cons.object()) && observer().equals(cons.observer())) {
-                constructions.set((map, e) -> map.put(cons, e), pre.a());
+                constructions.set((map, e) -> map.put(cons, e), pre.newable());
             }
         }
+    }
+
+    private static final class MatchInfo extends Sextuple<Newable, Object, Set<Construction>, Map<Newable, Set<Construction>>, Set<Newable>, Set<Object>> {
+
+        private static final long serialVersionUID = 4565551522857366810L;
+
+        private static MatchInfo of(Newable newable) {
+            Set<Construction> cons = newable.dConstructions();
+            Map<Newable, Set<Construction>> srcs = Construction.sources(cons);
+            return new MatchInfo(newable, cons, srcs);
+        }
+
+        private MatchInfo(Newable newable, Set<Construction> cons, Map<Newable, Set<Construction>> srcs) {
+            super(newable, newable.dIdentity(), cons, srcs, Construction.notObservedSources(srcs), Construction.reasonTypes(cons));
+        }
+
+        private boolean hasReasonToExist() {
+            return constructions().anyMatch(Construction::isNotObserved) || sources().flatMap(Entry::getValue).anyMatch(Construction::isNotObserved);
+        }
+
+        private boolean hasDirectReasonToExist() {
+            return constructions().anyMatch(Construction::isNotObserved);
+        }
+
+        private boolean hasOnlyIndirectReasonsToExist() {
+            return constructions().allMatch(Construction::isObserved);
+        }
+
+        private Newable newable() {
+            return a();
+        }
+
+        private Object identity() {
+            return b();
+        }
+
+        private Set<Construction> constructions() {
+            return c();
+        }
+
+        private Map<Newable, Set<Construction>> sources() {
+            return d();
+        }
+
+        private Set<Newable> notObservedSources() {
+            return e();
+        }
+
+        private Set<Object> reasonTypes() {
+            return f();
+        }
+
     }
 
 }

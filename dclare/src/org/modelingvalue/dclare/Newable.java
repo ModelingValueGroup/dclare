@@ -64,9 +64,4 @@ public interface Newable extends Mutable, Mergeable<Newable> {
         return MERGER;
     }
 
-    @Override
-    default boolean isIdentified() {
-        return dConstructions().anyMatch(Construction::isNotObserved);
-    }
-
 }

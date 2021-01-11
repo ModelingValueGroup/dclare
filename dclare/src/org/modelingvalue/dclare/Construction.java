@@ -25,19 +25,7 @@ import org.modelingvalue.collections.util.IdentifiedByArray;
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
-    protected static final Construction                           DUMMY       = Construction.of(new Reason(new Object[0]) {
-                                                                                  @Override
-                                                                                  public Object type() {
-                                                                                      return this;
-                                                                                  }
-
-                                                                                  @Override
-                                                                                  public String toString() {
-                                                                                      return "DUMMY";
-                                                                                  }
-                                                                              });
-
-    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED =                                            //
+    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null);
 
     public static Construction of(Reason reason) {
@@ -113,10 +101,6 @@ public class Construction extends IdentifiedByArray {
         return sources.map(Construction::reason).map(Reason::type).toSet();
     }
 
-    public boolean completelyIdentified() {
-        return object().isIdentified() && reason().completelyIdentified();
-    }
-
     public abstract static class Reason extends IdentifiedByArray {
 
         protected Reason(Object[] identity) {
@@ -136,16 +120,6 @@ public class Construction extends IdentifiedByArray {
         }
 
         public abstract Object type();
-
-        public boolean completelyIdentified() {
-            Object[] array = array();
-            for (int i = 0; i < array.length; i++) {
-                if (array[i] instanceof Newable && !((Newable) array[i]).isIdentified()) {
-                    return false;
-                }
-            }
-            return true;
-        }
 
     }
 
