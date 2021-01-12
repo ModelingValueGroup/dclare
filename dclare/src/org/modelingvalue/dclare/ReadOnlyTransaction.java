@@ -18,8 +18,6 @@ package org.modelingvalue.dclare;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.Set;
-
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
 
@@ -111,9 +109,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        O result = (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        universeTransaction().put(new Object(), () -> Newable.CONSTRUCTIONS.set(result, Set::add, Construction.of(reason)));
-        return result;
+        return (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
     }
 
 }

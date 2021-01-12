@@ -66,11 +66,6 @@ public class Construction extends IdentifiedByArray {
         return array().length != 3;
     }
 
-    private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons) {
-        Map<Mutable, Set<Construction>> sources = sources(cons, Map.of());
-        return sources.filter(e -> !sources.anyMatch(a -> a.getKey().dHasAncestor(e.getKey()))).toMap(e -> e);
-    }
-
     private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons, Map<Mutable, Set<Construction>> sources) {
         for (Construction c : cons) {
             sources = sources.addAll(c.sources(sources));
@@ -134,7 +129,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         private MatchInfo(Newable newable, Set<Construction> cons) {
-            super(newable, newable.dIdentity(), cons, Construction.sources(cons));
+            super(newable, newable.dIdentity(), cons, Construction.sources(cons, Map.of()));
         }
 
         public boolean hasSameType(MatchInfo other) {
