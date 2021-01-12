@@ -48,7 +48,8 @@ public interface Newable extends Mutable, Mergeable<Newable> {
 
     Object dNewableType();
 
-    Comparable<?> dSortKey();
+    @SuppressWarnings("rawtypes")
+    Comparable dSortKey();
 
     default Set<Construction> dConstructions() {
         return CONSTRUCTIONS.current(this);

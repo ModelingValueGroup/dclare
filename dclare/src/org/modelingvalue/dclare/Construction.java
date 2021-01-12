@@ -17,10 +17,12 @@ package org.modelingvalue.dclare;
 
 import java.util.function.Supplier;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
+import org.modelingvalue.collections.util.Quintuple;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
@@ -64,36 +66,46 @@ public class Construction extends IdentifiedByArray {
         return array().length != 3;
     }
 
-    public static Set<Newable> notObservedSources(Set<Construction> cons) {
-        Set<Newable> sources = sources(cons, Map.of()).filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).toSet();
-        return sources.filter(e -> !sources.anyMatch(a -> a.dHasAncestor(e))).toSet();
+    private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons) {
+        Map<Mutable, Set<Construction>> sources = sources(cons, Map.of());
+        return sources.filter(e -> !sources.anyMatch(a -> a.getKey().dHasAncestor(e.getKey()))).toMap(e -> e);
     }
 
-    private static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
+    private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons, Map<Mutable, Set<Construction>> sources) {
         for (Construction c : cons) {
             sources = sources.addAll(c.sources(sources));
         }
         return sources;
     }
 
-    private Map<Newable, Set<Construction>> sources(Map<Newable, Set<Construction>> sources) {
-        if (object() instanceof Newable && !sources.containsKey((Newable) object())) {
-            Set<Construction> cons = ((Newable) object()).dConstructions();
-            sources = sources.put((Newable) object(), cons);
-            sources = sources.addAll(sources(cons, sources));
-        }
-        Object[] array = reason().array();
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] instanceof Newable && !sources.containsKey((Newable) array[i])) {
-                Set<Construction> cons = ((Newable) array[i]).dConstructions();
-                sources = sources.put((Newable) array[i], cons);
-                sources = sources.addAll(sources(cons, sources));
+    private Map<Mutable, Set<Construction>> sources(Map<Mutable, Set<Construction>> sources) {
+        if (isObserved()) {
+            sources = sources(object(), sources);
+            Object[] array = reason().array();
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] instanceof Mutable) {
+                    sources = sources((Mutable) array[i], sources);
+                }
             }
         }
         return sources;
     }
 
-    public static Set<Object> reasonTypes(Set<Construction> sources) {
+    private static Map<Mutable, Set<Construction>> sources(Mutable mutable, Map<Mutable, Set<Construction>> sources) {
+        if (!sources.containsKey(mutable)) {
+            if (mutable instanceof Newable) {
+                Set<Construction> cons = ((Newable) mutable).dConstructions();
+                sources = sources.put(mutable, cons);
+                return sources.putAll(sources(cons, sources));
+            } else {
+                return sources.put(mutable, Set.of());
+            }
+        } else {
+            return sources;
+        }
+    }
+
+    private static Set<Object> reasonTypes(Set<Construction> sources) {
         return sources.map(Construction::reason).map(Reason::type).toSet();
     }
 
@@ -116,6 +128,64 @@ public class Construction extends IdentifiedByArray {
         }
 
         public abstract Object type();
+
+    }
+
+    public static final class MatchInfo extends Quintuple<Newable, Object, Set<Construction>, Map<Mutable, Set<Construction>>, Set<Object>> {
+
+        private static final long serialVersionUID = 4565551522857366810L;
+
+        public static MatchInfo of(Newable newable) {
+            return new MatchInfo(newable, newable.dConstructions());
+        }
+
+        private MatchInfo(Newable newable, Set<Construction> cons) {
+            super(newable, newable.dIdentity(), cons, Construction.sources(cons), Construction.reasonTypes(cons));
+        }
+
+        public boolean sameTypeDifferentReason(MatchInfo other) {
+            return newable().dNewableType().equals(other.newable().dNewableType()) && !reasonTypes().anyMatch(other.reasonTypes()::contains);
+        }
+
+        public boolean hasDirectReasonToExist() {
+            return constructions().anyMatch(Construction::isNotObserved);
+        }
+
+        public boolean hasIndirectReasonToExist() {
+            return sources().anyMatch(e -> !(e.getKey() instanceof Newable) || e.getValue().anyMatch(Construction::isNotObserved));
+        }
+
+        public boolean hasUnidentifiedSource() {
+            return notObservedSources().anyMatch(n -> n.dIdentity() == null);
+        }
+
+        public Collection<Comparable> sourcesSortKeys() {
+            return notObservedSources().map(Newable::dSortKey).sorted();
+        }
+
+        private Collection<Newable> notObservedSources() {
+            return sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class);
+        }
+
+        public Newable newable() {
+            return a();
+        }
+
+        public Object identity() {
+            return b();
+        }
+
+        public Set<Construction> constructions() {
+            return c();
+        }
+
+        private Map<Mutable, Set<Construction>> sources() {
+            return d();
+        }
+
+        private Set<Object> reasonTypes() {
+            return e();
+        }
 
     }
 

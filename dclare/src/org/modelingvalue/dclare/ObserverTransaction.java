@@ -30,7 +30,7 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Quintuple;
+import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -383,28 +383,31 @@ public class ObserverTransaction extends ActionTransaction {
         merge();
         if (after != null) {
             MatchInfo post = MatchInfo.of(after);
-            if (!post.hasReasonToExist()) {
-                if (TRACE_MATCHING) {
-                    runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
-                }
-                result = result.equals(after) ? before : result;
-            } else if (before != null) {
-                MatchInfo pre = MatchInfo.of(before);
-                if (pre.hasDirectReasonToExist() && post.hasOnlyIndirectReasonsToExist() && sameTypeDifferentReason(pre, post)) {
-                    makeTheSame(pre, post);
-                    result = before;
+            if (!post.hasDirectReasonToExist()) {
+                if (!post.hasIndirectReasonToExist()) {
+                    if (TRACE_MATCHING) {
+                        runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
+                    }
+                    result = result.equals(after) ? before : result;
+                } else if (before != null) {
+                    MatchInfo pre = MatchInfo.of(before);
+                    if (pre.hasDirectReasonToExist() && pre.sameTypeDifferentReason(post)) {
+                        makeTheSame(pre, post);
+                        result = before;
+                    }
                 }
             }
         }
         return result;
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> result) {
         merge();
-        List<MatchInfo> postList = postColl.map(MatchInfo::of).filter(MatchInfo::hasOnlyIndirectReasonsToExist).toList();
+        List<MatchInfo> postList = postColl.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
         for (int i = 0; i < postList.size(); i++) {
             MatchInfo post = postList.get(i);
-            if (!post.hasReasonToExist()) {
+            if (!post.hasIndirectReasonToExist()) {
                 if (TRACE_MATCHING) {
                     runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
                 }
@@ -413,16 +416,16 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         if (!postList.isEmpty()) {
-            List<MatchInfo> preList = preColl.filter(postColl::notContains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+            List<MatchInfo> preList = preColl.exclude(postColl::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
             if (!(result instanceof List)) {
-                preList = preList.sortedBy(p -> p.newable().dSortKey()).toList();
-                postList = postList.sortedBy(q -> q.notObservedSources().map(Newable::dSortKey).sorted().findFirst().get()).toList();
+                preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
+                postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
             }
             for (int i = 0; i < postList.size(); i++) {
                 MatchInfo post = postList.get(i);
                 for (int ii = 0; ii < preList.size(); ii++) {
                     MatchInfo pre = preList.get(ii);
-                    if (sameTypeDifferentReason(pre, post) && areTheSame(pre, post)) {
+                    if (pre.sameTypeDifferentReason(post) && areTheSame(pre, post)) {
                         makeTheSame(pre, post);
                         result = result.remove(post.newable());
                         preList = preList.removeIndex(ii);
@@ -434,17 +437,13 @@ public class ObserverTransaction extends ActionTransaction {
         return result;
     }
 
-    private static boolean sameTypeDifferentReason(MatchInfo pre, MatchInfo post) {
-        return pre.newable().dNewableType().equals(post.newable().dNewableType()) && !pre.reasonTypes().anyMatch(post.reasonTypes()::contains);
-    }
-
     private boolean areTheSame(MatchInfo pre, MatchInfo post) {
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
         }
         if (pre.identity() != null && post.identity() != null && pre.identity().equals(post.identity())) {
             return true;
-        } else if (pre.identity() == null && post.notObservedSources().anyMatch(s -> s.dIdentity() == null)) {
+        } else if (pre.identity() == null && post.hasUnidentifiedSource()) {
             return true;
         } else {
             return false;
@@ -462,52 +461,6 @@ public class ObserverTransaction extends ActionTransaction {
                 constructions.set((map, e) -> map.put(cons, e), pre.newable());
             }
         }
-    }
-
-    private static final class MatchInfo extends Quintuple<Newable, Object, Set<Construction>, Set<Newable>, Set<Object>> {
-
-        private static final long serialVersionUID = 4565551522857366810L;
-
-        private static MatchInfo of(Newable newable) {
-            return new MatchInfo(newable, newable.dConstructions());
-        }
-
-        private MatchInfo(Newable newable, Set<Construction> cons) {
-            super(newable, newable.dIdentity(), cons, Construction.notObservedSources(cons), Construction.reasonTypes(cons));
-        }
-
-        private boolean hasReasonToExist() {
-            return hasDirectReasonToExist() || !notObservedSources().isEmpty();
-        }
-
-        private boolean hasDirectReasonToExist() {
-            return constructions().anyMatch(Construction::isNotObserved);
-        }
-
-        private boolean hasOnlyIndirectReasonsToExist() {
-            return constructions().allMatch(Construction::isObserved);
-        }
-
-        private Newable newable() {
-            return a();
-        }
-
-        private Object identity() {
-            return b();
-        }
-
-        private Set<Construction> constructions() {
-            return c();
-        }
-
-        private Set<Newable> notObservedSources() {
-            return d();
-        }
-
-        private Set<Object> reasonTypes() {
-            return e();
-        }
-
     }
 
 }
