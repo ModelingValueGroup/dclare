@@ -217,7 +217,7 @@ public class ObserverTransaction extends ActionTransaction {
             observe(object, (Observed<O, T>) getable, false);
         }
         T result = super.get(object, getable);
-        if (result == null && getable instanceof Observed && ((Observed) getable).mandatory() && !((Observed) getable).checkConsistency) {
+        if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
             emptyMandatory.set(TRUE);
         }
         return result;
@@ -232,6 +232,9 @@ public class ObserverTransaction extends ActionTransaction {
         T result = super.pre(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
             result = super.get(object, getable);
+            if (result == null) {
+                emptyMandatory.set(TRUE);
+            }
         }
         return result;
     }
@@ -243,7 +246,7 @@ public class ObserverTransaction extends ActionTransaction {
             observe(object, (Observed<O, T>) getable, false);
         }
         T result = super.current(object, getable);
-        if (result == null && getable instanceof Observed && ((Observed) getable).mandatory() && !((Observed) getable).checkConsistency) {
+        if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
             emptyMandatory.set(TRUE);
         }
         return result;
@@ -391,7 +394,7 @@ public class ObserverTransaction extends ActionTransaction {
                     result = result.equals(after) ? before : result;
                 } else if (before != null) {
                     MatchInfo pre = MatchInfo.of(before);
-                    if (pre.hasDirectReasonToExist() && pre.sameTypeDifferentReason(post)) {
+                    if (pre.hasDirectReasonToExist() && pre.hasSameType(post)) {
                         makeTheSame(pre, post);
                         result = before;
                     }
@@ -425,7 +428,7 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = postList.get(i);
                 for (int ii = 0; ii < preList.size(); ii++) {
                     MatchInfo pre = preList.get(ii);
-                    if (pre.sameTypeDifferentReason(post) && areTheSame(pre, post)) {
+                    if (pre.hasSameType(post) && areTheSame(pre, post)) {
                         makeTheSame(pre, post);
                         result = result.remove(post.newable());
                         preList = preList.removeIndex(ii);

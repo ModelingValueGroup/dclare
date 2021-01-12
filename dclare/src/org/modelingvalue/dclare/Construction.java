@@ -22,7 +22,7 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
-import org.modelingvalue.collections.util.Quintuple;
+import org.modelingvalue.collections.util.Quadruple;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
@@ -105,10 +105,6 @@ public class Construction extends IdentifiedByArray {
         }
     }
 
-    private static Set<Object> reasonTypes(Set<Construction> sources) {
-        return sources.map(Construction::reason).map(Reason::type).toSet();
-    }
-
     public abstract static class Reason extends IdentifiedByArray {
 
         protected Reason(Object[] identity) {
@@ -127,11 +123,9 @@ public class Construction extends IdentifiedByArray {
             return current;
         }
 
-        public abstract Object type();
-
     }
 
-    public static final class MatchInfo extends Quintuple<Newable, Object, Set<Construction>, Map<Mutable, Set<Construction>>, Set<Object>> {
+    public static final class MatchInfo extends Quadruple<Newable, Object, Set<Construction>, Map<Mutable, Set<Construction>>> {
 
         private static final long serialVersionUID = 4565551522857366810L;
 
@@ -140,11 +134,11 @@ public class Construction extends IdentifiedByArray {
         }
 
         private MatchInfo(Newable newable, Set<Construction> cons) {
-            super(newable, newable.dIdentity(), cons, Construction.sources(cons), Construction.reasonTypes(cons));
+            super(newable, newable.dIdentity(), cons, Construction.sources(cons));
         }
 
-        public boolean sameTypeDifferentReason(MatchInfo other) {
-            return newable().dNewableType().equals(other.newable().dNewableType()) && !reasonTypes().anyMatch(other.reasonTypes()::contains);
+        public boolean hasSameType(MatchInfo other) {
+            return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
         public boolean hasDirectReasonToExist() {
@@ -181,10 +175,6 @@ public class Construction extends IdentifiedByArray {
 
         private Map<Mutable, Set<Construction>> sources() {
             return d();
-        }
-
-        private Set<Object> reasonTypes() {
-            return e();
         }
 
     }

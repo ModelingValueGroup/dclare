@@ -23,6 +23,8 @@ public enum SetableModifier {
 
     synthetic(),
 
+    doNotCheckMandatory(),
+
     doNotCheckConsistency();
 
 }

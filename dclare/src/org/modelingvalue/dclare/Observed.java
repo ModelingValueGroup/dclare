@@ -54,6 +54,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private final boolean                             mandatory;
+    private final boolean                             checkMandatory;
     private final Observers<O, T>                     observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -84,6 +85,7 @@ public class Observed<O, T> extends Setable<O, T> {
             }
         }, modifiers);
         this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
+        this.checkMandatory = !hasModifier(modifiers, SetableModifier.doNotCheckMandatory);
         this.observers = observers;
         observers.observed = this;
     }
@@ -101,6 +103,10 @@ public class Observed<O, T> extends Setable<O, T> {
 
     public boolean mandatory() {
         return mandatory;
+    }
+
+    public boolean checkMandatory() {
+        return checkMandatory;
     }
 
     public Setable<Object, Set<ObserverTrace>> readers() {
@@ -144,7 +150,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @Override
     public boolean checkConsistency() {
-        return checkConsistency && (mandatory || super.checkConsistency());
+        return checkConsistency && ((mandatory && checkMandatory) || super.checkConsistency());
     }
 
     @Override
@@ -152,18 +158,14 @@ public class Observed<O, T> extends Setable<O, T> {
         if (super.checkConsistency()) {
             super.checkConsistency(state, object, post);
         }
-        if (checkConsistency && isEmpty(post)) {
-            handleEmptyCheck(object, post);
+        if (checkConsistency && checkMandatory && mandatory && isEmpty(post)) {
+            throw new EmptyMandatoryException(object, this);
         }
     }
 
     @SuppressWarnings("rawtypes")
     protected boolean isEmpty(T result) {
-        return mandatory && (result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty()));
-    }
-
-    protected void handleEmptyCheck(O object, T value) {
-        throw new EmptyMandatoryException(object, this);
+        return result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty());
     }
 
 }
