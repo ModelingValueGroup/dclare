@@ -15,56 +15,27 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import java.util.function.Function;
 
-public class TestObject implements Mutable {
-    private final Object    id;
-    private final TestClass clazz;
+import org.modelingvalue.dclare.Setable;
 
-    public static TestObject of(Object id, TestClass clazz) {
-        return new TestObject(id, clazz);
+@SuppressWarnings({"unused", "rawtypes"})
+public class TestNewableClass extends TestMutableClass {
+
+    @SafeVarargs
+    public static TestNewableClass of(Object id, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
+        return new TestNewableClass(id, identity, setables);
     }
 
-    protected TestObject(Object id, TestClass clazz) {
-        this.id = id;
-        this.clazz = clazz;
+    private final Function<TestNewable, Object> identity;
+
+    protected TestNewableClass(Object id, Function<TestNewable, Object> identity, Setable... setables) {
+        super(id, setables);
+        this.identity = identity;
     }
 
-    @Override
-    public TestClass dClass() {
-        return clazz;
+    public Function<TestNewable, Object> identity() {
+        return identity;
     }
 
-    public Object id() {
-        return id;
-    }
-
-    @Override
-    public String toString() {
-        return dClass() + "@" + StringUtil.toString(id());
-    }
-
-    @Override
-    public int hashCode() {
-        return dClass().hashCode() ^ id().hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        } else if (obj == null) {
-            return false;
-        } else if (getClass() != obj.getClass()) {
-            return false;
-        } else {
-            TestObject c = (TestObject) obj;
-            return id().equals(c.id()) && dClass().equals(c.dClass());
-        }
-    }
-
-    public String serialize() {
-        return id.toString();
-    }
 }

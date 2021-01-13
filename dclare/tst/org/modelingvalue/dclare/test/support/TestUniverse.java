@@ -20,19 +20,19 @@ import java.util.function.Consumer;
 import org.modelingvalue.dclare.Universe;
 
 @SuppressWarnings("unused")
-public class TestUniverse extends TestObject implements Universe {
-    public static TestUniverse of(Object id, TestClass clazz) {
+public class TestUniverse extends TestMutable implements Universe {
+    public static TestUniverse of(Object id, TestMutableClass clazz) {
         return new TestUniverse(id, u -> {
         }, clazz);
     }
 
-    public static TestUniverse of(Object id, Consumer<Universe> init, TestClass clazz) {
+    public static TestUniverse of(Object id, Consumer<Universe> init, TestMutableClass clazz) {
         return new TestUniverse(id, init, clazz);
     }
 
     private final Consumer<Universe> init;
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestClass clazz) {
+    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz) {
         super(id, clazz);
         this.init = init;
     }

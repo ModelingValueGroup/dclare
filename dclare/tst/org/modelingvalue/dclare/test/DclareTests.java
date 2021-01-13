@@ -33,7 +33,6 @@ import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.SetableModifier;
 import org.modelingvalue.dclare.State;
@@ -41,20 +40,20 @@ import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 import org.modelingvalue.dclare.test.support.Fibonacci;
-import org.modelingvalue.dclare.test.support.TestClass;
-import org.modelingvalue.dclare.test.support.TestObject;
+import org.modelingvalue.dclare.test.support.TestMutable;
+import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestUniverse;
 
 public class DclareTests {
 
     @Test
     public void source2target() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
-        Observed<TestObject, Integer> source = Observed.of("source", 0);
-        Setable<TestObject, Integer> target = Setable.of("target", 0);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
-        TestClass clazz = TestClass.of("Object", Observer.of("observer", o -> target.set(o, source.get(o))));
-        TestObject object = TestObject.of("object", clazz);
+        Observed<TestUniverse, TestMutable> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestMutable, Integer> source = Observed.of("source", 0);
+        Setable<TestMutable, Integer> target = Setable.of("target", 0);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
+        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> target.set(o, source.get(o)));
+        TestMutable object = TestMutable.of("object", clazz);
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
         universeTransaction.put("step1", () -> child.set(universe, object));
         universeTransaction.put("step2", () -> source.set(object, 10));
@@ -69,18 +68,18 @@ public class DclareTests {
     public void cycle1second() {
         Observed<TestUniverse, Long> currentTime = Observed.of("time", System.currentTimeMillis());
         long begin = System.currentTimeMillis();
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
+        Observed<TestUniverse, Set<TestMutable>> children = Observed.of("children", Set.of(), SetableModifier.containment);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", children));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, 100, r -> currentTime.set(universe, System.currentTimeMillis()));
-        TestClass clazz = TestClass.of("Object", Observer.of("observer", o -> {
+        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> {
             long time = currentTime.get(universe);
             if (time - begin > 1000) {
                 universeTransaction.stop();
             }
-        }));
+        });
         universeTransaction.put("step1", () -> {
             for (int io = 0; io < 8; io++) {
-                children.set(universe, Set::add, TestObject.of(io, clazz));
+                children.set(universe, Set::add, TestMutable.of(io, clazz));
             }
         });
         State result = universeTransaction.waitForEnd();
@@ -92,87 +91,87 @@ public class DclareTests {
 
     @Test
     public void derivationChain() {
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
-        Observed<TestObject, Integer> number = Observed.of("number", 0);
-        Observed<TestObject, Integer> total = Observed.of("total", 0);
+        Observed<TestUniverse, Set<TestMutable>> children = Observed.of("children", Set.of(), SetableModifier.containment);
+        Observed<TestMutable, Integer> number = Observed.of("number", 0);
+        Observed<TestMutable, Integer> total = Observed.of("total", 0);
         int length = 5;
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", children));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
-        TestClass clazz = TestClass.of("Object", Observer.of("observer", o -> {
+        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> {
             int i = (int) o.id();
-            total.set(o, number.get(o) + (i > 0 ? total.get(TestObject.of(i - 1, o.dClass())) : 0));
-        }));
+            total.set(o, number.get(o) + (i > 0 ? total.get(TestMutable.of(i - 1, o.dClass())) : 0));
+        });
         universeTransaction.put("step1", () -> {
             for (int io = 0; io < length; io++) {
-                children.set(universe, Set::add, TestObject.of(io, clazz));
+                children.set(universe, Set::add, TestMutable.of(io, clazz));
             }
         });
         universeTransaction.put("step2", () -> {
             for (int io = 0; io < length; io++) {
-                number.set(TestObject.of(io, clazz), 1);
+                number.set(TestMutable.of(io, clazz), 1);
             }
         });
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();
 
         printState(universeTransaction, result);
-        assertEquals(length, (int) result.get(TestObject.of(length - 1, clazz), total));
+        assertEquals(length, (int) result.get(TestMutable.of(length - 1, clazz), total));
     }
 
-    static final Observed<TestObject, TestObject> next     = Observed.of("next", null, () -> DclareTests.previous);
-    static final Observed<TestObject, TestObject> previous = Observed.of("previous", null, () -> DclareTests.next);
+    static final Observed<TestMutable, TestMutable> next     = Observed.of("next", null, () -> DclareTests.previous);
+    static final Observed<TestMutable, TestMutable> previous = Observed.of("previous", null, () -> DclareTests.next);
 
     @Test
     public void opposites() {
-        Observed<TestUniverse, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
+        Observed<TestUniverse, Set<TestMutable>> children = Observed.of("children", Set.of(), SetableModifier.containment);
 
         int length = 30;
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", children));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
-        TestClass clazz = TestClass.of("Object");
+        TestMutableClass clazz = TestMutableClass.of("Object");
         universeTransaction.put("backwards", () -> {
             for (int i = 0; i < length; i++) {
-                TestObject o = TestObject.of(i, clazz);
+                TestMutable o = TestMutable.of(i, clazz);
                 children.set(universe, Set::add, o);
-                next.set(o, i > 0 ? TestObject.of(i - 1, clazz) : null);
+                next.set(o, i > 0 ? TestMutable.of(i - 1, clazz) : null);
             }
         });
         universeTransaction.put("forwards", () -> {
             for (int i = 0; i < length; i++) {
-                TestObject o = TestObject.of(i, clazz);
-                previous.set(o, i > 0 ? TestObject.of(i - 1, clazz) : null);
+                TestMutable o = TestMutable.of(i, clazz);
+                previous.set(o, i > 0 ? TestMutable.of(i - 1, clazz) : null);
             }
         });
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();
 
-        assertEquals(TestObject.of(11, clazz), result.get(TestObject.of(10, clazz), next));
+        assertEquals(TestMutable.of(11, clazz), result.get(TestMutable.of(10, clazz), next));
         printState(universeTransaction, result);
     }
 
     @Test
     public void moveAndRemove() {
-        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
-        Observed<TestObject, String> name = Observed.of("name", null);
-        Observed<TestObject, String> qualifiedName = Observed.of("qualifiedName", null);
-        TestClass clazz = TestClass.of("Object", children, //
-                Observer.of("qualifiedName", o -> qualifiedName.set(o, qualifiedName.get(o.dParent(TestObject.class)) + "." + name.get(o))), //
-                Observer.of("name", o -> name.set(o, (String) o.id())));
-        TestObject c1 = TestObject.of("c1", clazz);
-        TestObject c2 = TestObject.of("c2", clazz);
-        TestObject gc1 = TestObject.of("gc1", clazz);
-        TestObject gc2 = TestObject.of("gc2", clazz);
-        TestObject gc3 = TestObject.of("gc3", clazz);
-        TestObject gc4 = TestObject.of("gc4", clazz);
-        TestObject ggc1 = TestObject.of("ggc1", clazz);
-        TestObject ggc2 = TestObject.of("ggc2", clazz);
-        TestObject ggc3 = TestObject.of("ggc3", clazz);
-        TestObject ggc4 = TestObject.of("ggc4", clazz);
-        TestObject ggc5 = TestObject.of("ggc5", clazz);
-        TestObject ggc6 = TestObject.of("ggc6", clazz);
-        TestObject ggc7 = TestObject.of("ggc7", clazz);
-        TestObject ggc8 = TestObject.of("ggc8", clazz);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", children));
+        Observed<TestMutable, Set<TestMutable>> children = Observed.of("children", Set.of(), SetableModifier.containment);
+        Observed<TestMutable, String> name = Observed.of("name", null);
+        Observed<TestMutable, String> qualifiedName = Observed.of("qualifiedName", null);
+        TestMutableClass clazz = TestMutableClass.of("Object", children).observe(//
+                o -> qualifiedName.set(o, qualifiedName.get(o.dParent(TestMutable.class)) + "." + name.get(o)), //
+                o -> name.set(o, (String) o.id()));
+        TestMutable c1 = TestMutable.of("c1", clazz);
+        TestMutable c2 = TestMutable.of("c2", clazz);
+        TestMutable gc1 = TestMutable.of("gc1", clazz);
+        TestMutable gc2 = TestMutable.of("gc2", clazz);
+        TestMutable gc3 = TestMutable.of("gc3", clazz);
+        TestMutable gc4 = TestMutable.of("gc4", clazz);
+        TestMutable ggc1 = TestMutable.of("ggc1", clazz);
+        TestMutable ggc2 = TestMutable.of("ggc2", clazz);
+        TestMutable ggc3 = TestMutable.of("ggc3", clazz);
+        TestMutable ggc4 = TestMutable.of("ggc4", clazz);
+        TestMutable ggc5 = TestMutable.of("ggc5", clazz);
+        TestMutable ggc6 = TestMutable.of("ggc6", clazz);
+        TestMutable ggc7 = TestMutable.of("ggc7", clazz);
+        TestMutable ggc8 = TestMutable.of("ggc8", clazz);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", children));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
         universeTransaction.put("step1", () -> {
             qualifiedName.set(universe, "u");
@@ -196,7 +195,7 @@ public class DclareTests {
 
     @Test
     public void constants() {
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe"));
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe"));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
         universeTransaction.put("step1", () -> Fibonacci.FIBONACCI.get(BigInteger.valueOf(10)));
         universeTransaction.put("step2", () -> Fibonacci.FIBONACCI.get(BigInteger.valueOf(100000)));
@@ -214,34 +213,34 @@ public class DclareTests {
 
     @Test
     public void zuperBig() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
-        Observed<TestObject, Set<TestObject>> children = Observed.of("children", Set.of(), SetableModifier.containment);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
-        TestClass clazz = TestClass.of("Object", children, Observer.of("observer", o -> {
+        Observed<TestUniverse, TestMutable> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestMutable, Set<TestMutable>> children = Observed.of("children", Set.of(), SetableModifier.containment);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
+        TestMutableClass clazz = TestMutableClass.of("Object", children).observe(o -> {
             String name = o.id().toString();
             if (name.length() < 12) {
                 for (int i = 0; i < 10; i++) {
-                    children.set(o, Set::add, TestObject.of(name + i, o.dClass()));
+                    children.set(o, Set::add, TestMutable.of(name + i, o.dClass()));
                 }
             }
-        }));
+        });
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, MAX_IN_IN_QUEUE, 1000000000, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
-        universeTransaction.put("init", () -> child.set(universe, TestObject.of("object", clazz)));
+        universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();
 
         printState(universeTransaction, result);
-        assertEquals(1_111_112, result.getObjects(TestObject.class).size());
+        assertEquals(1_111_112, result.getObjects(TestMutable.class).size());
     }
 
     @Test
     public void emptyMandatoryTest() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestUniverse, TestMutable> child = Observed.of("child", null, SetableModifier.containment);
         Observed<TestUniverse, String> mand = Observed.of("mandatory", null, SetableModifier.mandatory);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
-        TestClass clazz = TestClass.of("Object", mand);
-        universeTransaction.put("init", () -> child.set(universe, TestObject.of("object", clazz)));
+        TestMutableClass clazz = TestMutableClass.of("Object", mand);
+        universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
         try {
             universeTransaction.waitForEnd();
@@ -255,13 +254,13 @@ public class DclareTests {
 
     @Test
     public void orphanReferenceTest() {
-        Observed<TestUniverse, TestObject> child = Observed.of("child", null, SetableModifier.containment);
-        Observed<TestObject, TestObject> ref = Observed.of("ref", null);
-        TestUniverse universe = TestUniverse.of("universe", TestClass.of("Universe", child));
+        Observed<TestUniverse, TestMutable> child = Observed.of("child", null, SetableModifier.containment);
+        Observed<TestMutable, TestMutable> ref = Observed.of("ref", null);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
         UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
-        TestClass clazz = TestClass.of("Object", ref);
-        universeTransaction.put("init", () -> child.set(universe, TestObject.of("object", clazz)));
-        universeTransaction.put("orphan", () -> ref.set(TestObject.of("object", clazz), TestObject.of("orphan", clazz)));
+        TestMutableClass clazz = TestMutableClass.of("Object", ref);
+        universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
+        universeTransaction.put("orphan", () -> ref.set(TestMutable.of("object", clazz), TestMutable.of("orphan", clazz)));
         universeTransaction.stop();
         try {
             universeTransaction.waitForEnd();

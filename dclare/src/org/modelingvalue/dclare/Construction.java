@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
@@ -100,7 +101,11 @@ public class Construction extends IdentifiedByArray {
         }
     }
 
-    public abstract static class Reason extends IdentifiedByArray {
+    public static class Reason extends IdentifiedByArray {
+
+        public static Reason of(Object... identity) {
+            return new Reason(identity);
+        }
 
         protected Reason(Object[] identity) {
             super(identity);
@@ -116,6 +121,11 @@ public class Construction extends IdentifiedByArray {
                 throw new NullPointerException("No current transaction in " + Thread.currentThread() + " , while accessing " + toString());
             }
             return current;
+        }
+
+        @Override
+        public String toString() {
+            return Arrays.toString(array());
         }
 
     }

@@ -15,44 +15,56 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
-public class Shared {
+public class TestMutable implements Mutable {
+    private final Object    id;
+    private final TestMutableClass clazz;
 
-    public static final boolean     PRINT_STATE = true;
-    public static final ContextPool THE_POOL    = ContextThread.createPool();
+    public static TestMutable of(Object id, TestMutableClass clazz) {
+        return new TestMutable(id, clazz);
+    }
 
-    public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
-        if (PRINT_STATE) {
-            int num = result == null ? -1 : result.getObjects(TestMutable.class).size();
+    protected TestMutable(Object id, TestMutableClass clazz) {
+        this.id = id;
+        this.clazz = clazz;
+    }
 
-            System.err.println("**** stats *********************************************************");
-            System.err.println(universeTransaction.stats());
-            if (0 <= num) {
-                System.err.println("**** num DObjects **************************************************");
-                System.err.println(num);
-                if (num < 100) {
-                    System.err.println("**** end-state *****************************************************");
-                    System.err.println(result.asString());
-                }
-            }
-            if (extraLines.length > 0) {
-                System.err.println("********************************************************************");
-                for (String line : extraLines) {
-                    System.err.println(line);
-                }
-            }
-            System.err.println("********************************************************************");
+    @Override
+    public TestMutableClass dClass() {
+        return clazz;
+    }
+
+    public Object id() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return dClass() + "@" + StringUtil.toString(id());
+    }
+
+    @Override
+    public int hashCode() {
+        return dClass().hashCode() ^ id().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj == null) {
+            return false;
+        } else if (getClass() != obj.getClass()) {
+            return false;
+        } else {
+            TestMutable c = (TestMutable) obj;
+            return id().equals(c.id()) && dClass().equals(c.dClass());
         }
     }
 
-    public static Throwable getCause(Throwable t) {
-        while (t.getCause() != null) {
-            t = t.getCause();
-        }
-        return t;
+    public String serialize() {
+        return id.toString();
     }
 }

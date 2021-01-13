@@ -28,10 +28,10 @@ import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 
 @SuppressWarnings("rawtypes")
-public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
+public class TestDeltaAdaptor extends DeltaAdaptor<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestClass, TestObject, TestObserved<TestObject, Object>> serializationHelper) {
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> serializationHelper) {
         super(name, tx, serializationHelper);
     }
 
@@ -42,7 +42,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestOb
     }
 
     @Override
-    protected void applyOneDelta(TestObject mutable, TestObserved<TestObject, Object> settable, Object value) {
+    protected void applyOneDelta(TestMutable mutable, TestObserved<TestMutable, Object> settable, Object value) {
         traceApplyOneDiff(mutable, settable, value);
         super.applyOneDelta(mutable, settable, value);
     }
