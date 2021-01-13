@@ -48,8 +48,8 @@ public class NewableTests {
         Observed<TestMutable, Set<TestNewable>> acs = Observed.of("acs", Set.of(), containment);
         Observed<TestMutable, Set<TestNewable>> bcs = Observed.of("bcs", Set.of(), containment);
 
-        Observed<TestMutable, TestNewable> ar = Observed.of("a", null);
-        Observed<TestMutable, TestNewable> br = Observed.of("b", null);
+        Observed<TestMutable, TestNewable> ar = Observed.of("a", null, synthetic);
+        Observed<TestMutable, TestNewable> br = Observed.of("b", null, synthetic);
 
         TestNewableClass A = TestNewableClass.of("A", n::get, n, acs, br);
         TestNewableClass B = TestNewableClass.of("B", n::get, n, bcs, ar);
@@ -115,28 +115,38 @@ public class NewableTests {
     }
 
     @Test
-    public void oo2fb() {
+    public void oo2fb_oo() {
         oofb(true, false, true, false);
     }
 
     @Test
-    public void fb2oo() {
+    public void fb2oo_fb() {
         oofb(false, true, false, true);
     }
 
     @Test
-    public void oo2fb_fb() {
+    public void oo2fb_oo_fb() {
         oofb(true, false, true, true);
     }
 
     @Test
-    public void fb2oo_oo() {
+    public void fb2oo_oo_fb() {
         oofb(false, true, true, true);
     }
 
     //@Test
-    public void oo2fb_fb2oo() {
+    public void oo2fb_fb2oo_oo_fb() {
         oofb(true, true, true, true);
+    }
+
+    //@Test
+    public void oo2fb_fb2oo_oo() {
+        oofb(true, true, true, false);
+    }
+
+    //@Test
+    public void oo2fb_fb2oo_fb() {
+        oofb(true, true, false, true);
     }
 
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {

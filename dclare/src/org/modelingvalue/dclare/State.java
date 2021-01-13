@@ -102,6 +102,13 @@ public class State implements Serializable {
         return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
     }
 
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        oldNew[0] = get(props, property);
+        oldNew[1] = oper.apply(oldNew[0]);
+        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+    }
+
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);

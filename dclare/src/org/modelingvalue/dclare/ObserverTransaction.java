@@ -374,9 +374,9 @@ public class ObserverTransaction extends ActionTransaction {
     private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post, T rippleOut) {
         if (!setable.containment()) {
             return rippleOut;
-        } else if (rippleOut instanceof Newable) {
+        } else if (pre instanceof Newable || rippleOut instanceof Newable) {
             return (T) singleMatch((Newable) pre, (Newable) post, (Newable) rippleOut);
-        } else if (containsNewable(rippleOut)) {
+        } else if (containsNewable(pre) || containsNewable(rippleOut)) {
             return (T) manyMatch((ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post, (ContainingCollection<Newable>) rippleOut);
         } else {
             return rippleOut;

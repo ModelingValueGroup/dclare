@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
@@ -189,7 +190,7 @@ public class Setable<O, T> extends Getable<O, T> {
                     for (Direction dir : Direction.values()) {
                         dir.children.set((Mutable) object, Set::remove, removed);
                     }
-                    Mutable.D_PARENT_CONTAINING.set(removed, null);
+                    Mutable.D_PARENT_CONTAINING.setDefault(removed);
                 }
             });
         } else if (opposite != null) {
@@ -223,6 +224,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         return currentLeaf(object).set(object, this, function, element);
+    }
+
+    public <E> T set(O object, UnaryOperator<T> oper) {
+        return currentLeaf(object).set(object, this, oper);
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})

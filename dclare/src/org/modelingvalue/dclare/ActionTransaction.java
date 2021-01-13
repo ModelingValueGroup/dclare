@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -88,6 +89,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         return set(object, property, function.apply(currentSate.get().get(object, property), element));
+    }
+
+    @Override
+    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        return set(object, property, oper.apply(currentSate.get().get(object, property)));
     }
 
     @Override

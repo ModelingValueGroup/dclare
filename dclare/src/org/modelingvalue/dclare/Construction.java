@@ -173,7 +173,8 @@ public class Construction extends IdentifiedByArray {
         }
 
         private Collection<Newable> notObservedSources() {
-            return sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class);
+            Set<Newable> set = sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class).toSet();
+            return set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p)));
         }
 
         public Newable newable() {

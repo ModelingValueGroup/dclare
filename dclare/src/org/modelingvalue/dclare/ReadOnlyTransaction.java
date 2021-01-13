@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
@@ -77,6 +78,11 @@ public class ReadOnlyTransaction extends LeafTransaction {
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         throw new UnsupportedOperationException();
     }
 

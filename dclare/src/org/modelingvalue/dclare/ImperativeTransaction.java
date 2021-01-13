@@ -21,6 +21,7 @@ import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -151,6 +152,16 @@ public class ImperativeTransaction extends LeafTransaction {
         T[] oldNew = (T[]) new Object[2];
         boolean first = pre == state;
         state = state.set(object, property, function, element, oldNew);
+        changed(object, property, oldNew[0], oldNew[1], first);
+        return oldNew[0];
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        T[] oldNew = (T[]) new Object[2];
+        boolean first = pre == state;
+        state = state.set(object, property, oper, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
     }

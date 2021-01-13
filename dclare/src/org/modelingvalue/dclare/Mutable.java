@@ -58,6 +58,11 @@ public interface Mutable extends TransactionClass {
         return pair != null ? pair.b() : null;
     }
 
+    default void dDelete() {
+        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        pair.b().remove(pair.a(), this);
+    }
+
     @SuppressWarnings("unchecked")
     default <C> C dAncestor(Class<C> cls) {
         Mutable parent = this;

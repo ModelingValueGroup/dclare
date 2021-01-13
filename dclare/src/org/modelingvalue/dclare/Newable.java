@@ -20,29 +20,41 @@ import org.modelingvalue.collections.util.Mergeable;
 
 public interface Newable extends Mutable, Mergeable<Newable> {
 
-    Newable                              MERGER        = new Newable() {
-                                                           @Override
-                                                           public MutableClass dClass() {
-                                                               throw new UnsupportedOperationException();
-                                                           }
+    Newable                              MERGER               = new Newable() {
+                                                                  @Override
+                                                                  public MutableClass dClass() {
+                                                                      throw new UnsupportedOperationException();
+                                                                  }
 
-                                                           @Override
-                                                           public Object dIdentity() {
-                                                               throw new UnsupportedOperationException();
-                                                           }
+                                                                  @Override
+                                                                  public Object dIdentity() {
+                                                                      throw new UnsupportedOperationException();
+                                                                  }
 
-                                                           @Override
-                                                           public Object dNewableType() {
-                                                               throw new UnsupportedOperationException();
-                                                           }
+                                                                  @Override
+                                                                  public Object dNewableType() {
+                                                                      throw new UnsupportedOperationException();
+                                                                  }
 
-                                                           @Override
-                                                           public Comparable<?> dSortKey() {
-                                                               throw new UnsupportedOperationException();
-                                                           }
-                                                       };
+                                                                  @Override
+                                                                  public Comparable<?> dSortKey() {
+                                                                      throw new UnsupportedOperationException();
+                                                                  }
+                                                              };
 
-    Observed<Newable, Set<Construction>> CONSTRUCTIONS = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic);
+    Observed<Newable, Set<Construction>> CONSTRUCTIONS        = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> CONSTRUCTIONS.set(n, cs -> {
+                                                                  for (Construction c : cs) {
+                                                                      if (c.object() instanceof Newable && CONSTRUCTIONS.get((Newable) c.object()).isEmpty()) {
+                                                                          cs = cs.remove(c);
+                                                                      }
+                                                                  }
+                                                                  if (cs.isEmpty()) {
+                                                                      n.dDelete();
+                                                                  }
+                                                                  return cs;
+                                                              }));
 
     Object dIdentity();
 
@@ -63,6 +75,18 @@ public interface Newable extends Mutable, Mergeable<Newable> {
     @Override
     default Newable getMerger() {
         return MERGER;
+    }
+
+    @Override
+    default void dActivate() {
+        Mutable.super.dActivate();
+        D_CONSTRUCTIONS_RULE.trigger(this);
+    }
+
+    @Override
+    default void dDeactivate() {
+        Mutable.super.dDeactivate();
+        D_CONSTRUCTIONS_RULE.deObserve(this);
     }
 
 }

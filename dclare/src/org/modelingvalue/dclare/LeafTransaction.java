@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -55,6 +56,8 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
+
+    public abstract <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
