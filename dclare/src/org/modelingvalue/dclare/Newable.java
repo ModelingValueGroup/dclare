@@ -42,7 +42,7 @@ public interface Newable extends Mutable, Mergeable<Newable> {
                                                            }
                                                        };
 
-    Observed<Newable, Set<Construction>> CONSTRUCTIONS = Observed.of("D_CONSTRUCTIONS", Set.of());
+    Observed<Newable, Set<Construction>> CONSTRUCTIONS = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic);
 
     Object dIdentity();
 

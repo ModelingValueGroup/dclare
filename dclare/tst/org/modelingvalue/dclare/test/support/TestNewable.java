@@ -53,8 +53,8 @@ public class TestNewable extends TestMutable implements Newable {
 
     @SuppressWarnings("rawtypes")
     @Override
-    public Comparable id() {
-        return (Comparable) super.id();
+    public Integer id() {
+        return (Integer) super.id();
     }
 
     @Override

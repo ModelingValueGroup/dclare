@@ -352,11 +352,17 @@ public class ObserverTransaction extends ActionTransaction {
             Construction cons = Construction.of(mutable(), observer(), reason);
             O result = (O) current(mutable(), observer().constructed()).get(cons);
             if (result == null) {
+                if (mutable() instanceof Newable) {
+                    MatchInfo info = MatchInfo.of((Newable) mutable());
+                    if (!info.hasDirectReasonToExist() && !info.hasIndirectReasonToExist()) {
+                        return null;
+                    }
+                }
                 result = supplier.get();
-            }
-            if (TRACE_MATCHING) {
-                O finalResult = result;
-                runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + observer()));
+                if (TRACE_MATCHING) {
+                    O finalResult = result;
+                    runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + observer()));
+                }
             }
             set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
             constructions.set((map, e) -> map.put(cons, e), result);
@@ -428,29 +434,20 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = postList.get(i);
                 for (int ii = 0; ii < preList.size(); ii++) {
                     MatchInfo pre = preList.get(ii);
-                    if (pre.hasSameType(post) && areTheSame(pre, post)) {
-                        makeTheSame(pre, post);
-                        result = result.remove(post.newable());
-                        preList = preList.removeIndex(ii);
-                        break;
+                    if (pre.hasSameType(post)) {
+                        if (pre.areTheSame(post)) {
+                            makeTheSame(pre, post);
+                            result = result.remove(post.newable());
+                            preList = preList.removeIndex(ii);
+                            break;
+                        } else if (TRACE_MATCHING) {
+                            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
+                        }
                     }
                 }
             }
         }
         return result;
-    }
-
-    private boolean areTheSame(MatchInfo pre, MatchInfo post) {
-        if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
-        }
-        if (pre.identity() != null && post.identity() != null && pre.identity().equals(post.identity())) {
-            return true;
-        } else if (pre.identity() == null && post.hasUnidentifiedSource()) {
-            return true;
-        } else {
-            return false;
-        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

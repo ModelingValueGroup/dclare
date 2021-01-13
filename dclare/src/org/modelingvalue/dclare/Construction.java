@@ -146,6 +146,16 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
+        public boolean areTheSame(MatchInfo other) {
+            if (identity() != null && other.identity() != null && identity().equals(other.identity())) {
+                return true;
+            } else if (identity() == null && other.hasUnidentifiedSource()) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
         public boolean hasDirectReasonToExist() {
             return constructions().anyMatch(Construction::isNotObserved);
         }
