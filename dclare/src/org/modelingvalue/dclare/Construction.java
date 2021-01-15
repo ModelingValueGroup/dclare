@@ -128,11 +128,31 @@ public class Construction extends IdentifiedByArray {
             return Arrays.toString(array());
         }
 
+        public boolean dIsIdentified() {
+            for (Object e : array()) {
+                if (e instanceof Newable && !((Newable) e).dIsIdentified()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public boolean dIsObsolete() {
+            for (Object e : array()) {
+                if (e instanceof Newable && ((Newable) e).dIsObsolete()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
     }
 
     public static final class MatchInfo extends Quadruple<Newable, Object, Set<Construction>, Map<Mutable, Set<Construction>>> {
 
-        private static final long serialVersionUID = 4565551522857366810L;
+        private static final long serialVersionUID    = 4565551522857366810L;
+
+        private boolean           unidentifiedMatched = false;
 
         public static MatchInfo of(Newable newable) {
             return new MatchInfo(newable, newable.dConstructions());
@@ -147,9 +167,21 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            return identity() != null && other.identity() != null && identity().equals(other.identity()) || //
-                    other.sources().containsKey(newable()); // || //
-            // identity() == null && other.hasUnidentifiedSource();
+            if (identity() != null && other.identity() != null && identity().equals(other.identity())) {
+                return true;
+            } else if (other.sources().containsKey(newable())) {
+                return true;
+            } else if (!unidentifiedMatched && identity() == null && !other.unidentifiedMatched && other.hasUnidentifiedSource()) {
+                unidentifiedMatched = true;
+                other.unidentifiedMatched = true;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        public boolean areUnidentified(MatchInfo other) {
+            return identity() == null && other.hasUnidentifiedSource();
         }
 
         public boolean hasDirectReasonToExist() {

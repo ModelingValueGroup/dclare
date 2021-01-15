@@ -42,7 +42,6 @@ public class NewableTests {
 
     static {
         System.setProperty("TRACE_MATCHING", "true");
-        // System.setProperty("TRACE_OBSERVERS", "true");
     }
 
     @Test
@@ -95,7 +94,11 @@ public class NewableTests {
             TestNewable b1 = c.create(B);
             TestNewable b2 = c.create(B);
             TestNewable a3 = c.create(A);
-            cs.set(universe, Set.of(a1, a3, b1, b2));
+            TestNewable ax = c.create(A);
+            TestNewable ay = c.create(A);
+            TestNewable bx = c.create(B);
+            TestNewable by = c.create(B);
+            cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by));
             n.set(a1, "x");
             n.set(b1, "x");
             n.set(b2, "y");
@@ -121,7 +124,7 @@ public class NewableTests {
 
         run(utx, "changeName", c -> {
             for (TestNewable o : created.merge()) {
-                n.set(o, n.get(o).toUpperCase());
+                n.set(o, n.get(o) != null ? n.get(o).toUpperCase() : null);
             }
         });
 
@@ -132,9 +135,9 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(14, objects.size());
+            assertEquals(18, objects.size());
             assertTrue(objects.containsAll(created.result()));
-            assertTrue(objects.allMatch(o -> n.get(o) != null && n.get(o).equals(n.get(o).toUpperCase())));
+            assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
         });
 
@@ -240,7 +243,7 @@ public class NewableTests {
             )));
             REF.observe(rf -> mrol.set(rf, create(rf, "1", ROL, //
                     rl -> n.set(rl, n.get(rf)), //
-                    rl -> otr.set(rl, mobt.get(typ.get(rf))) // !!!!!!!!!!!!!!!!!!!!!!!
+                    rl -> otr.set(rl, mobt.get(typ.get(rf))) //
             )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(opp.get(rf)).compareTo(n.get(rf)) > 0 ? create(rf, "2", FAT, //
                     ft -> n.set(ft, n.get(rf) + (opp.get(rf) == null ? "" : "_" + n.get(opp.get(rf)))), //
                     ft -> left.set(ft, mrol.get(rf)), //
@@ -260,8 +263,8 @@ public class NewableTests {
             )));
             ROL.observe(rl -> mref.set(rl, !n.get(rl).equals("~") ? create(rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
-                    rf -> typ.set(rf, mcls.get(otr.get(rl))), // !!!!!!!!!!!!!!!!!!!!!!!
-                    rf -> opp.set(rf, mref.get(rlopp.get(rl)))//
+                    rf -> typ.set(rf, mcls.get(otr.get(rl))), //
+                    rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
             ) : null));
         }
 

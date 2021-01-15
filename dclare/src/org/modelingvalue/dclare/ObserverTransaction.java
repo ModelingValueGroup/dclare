@@ -122,7 +122,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
-        if (!(mutable() instanceof Newable && ((Newable) mutable()).dIsObsolete())) {
+        if (!mutable().dIsObsolete()) {
             super.run(pre, universeTransaction);
         } else {
             getted.set(Observed.OBSERVED_MAP);

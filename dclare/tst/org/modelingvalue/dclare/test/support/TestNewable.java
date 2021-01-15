@@ -99,12 +99,9 @@ public class TestNewable extends TestMutable implements Newable {
             for (int i = 0; i < observers.length; i++) {
                 Consumer<TestNewable> finalCons = observers[i];
                 Observer observer = Observer.<TestNewable> of(Pair.of(this, i), c -> {
-                    for (Object e : array()) {
-                        if (e instanceof Newable && ((Newable) e).dIsObsolete()) {
-                            return;
-                        }
+                    if (!dIsObsolete()) {
+                        finalCons.accept(c);
                     }
-                    finalCons.accept(c);
                 });
                 this.observers = this.observers.add(observer);
             }

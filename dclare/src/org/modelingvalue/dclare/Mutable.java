@@ -159,4 +159,12 @@ public interface Mutable extends TransactionClass {
         return this;
     }
 
+    default boolean dIsIdentified() {
+        return true;
+    }
+
+    default boolean dIsObsolete() {
+        return false;
+    }
+
 }

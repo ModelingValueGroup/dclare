@@ -64,6 +64,12 @@ public interface Newable extends Mutable, Mergeable<Newable> {
         return CONSTRUCTIONS.current(this);
     }
 
+    @Override
+    default boolean dIsIdentified() {
+        return dIdentity() != null;
+    }
+
+    @Override
     default boolean dIsObsolete() {
         return CONSTRUCTIONS.current(this).isEmpty();
     }
