@@ -194,6 +194,7 @@ public class Setable<O, T> extends Getable<O, T> {
                 }
             });
         } else if (opposite != null) {
+            isReference = true;
             Setable<Object, ?> opp = (Setable<Object, ?>) opposite.get();
             Setable.diff(preValue, postValue, //
                     added -> opp.add(added, object), //

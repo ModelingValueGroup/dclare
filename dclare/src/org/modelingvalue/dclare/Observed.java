@@ -138,7 +138,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + super.toString();
+            return getClass().getSimpleName() + ":" + super.toString();
         }
 
     }

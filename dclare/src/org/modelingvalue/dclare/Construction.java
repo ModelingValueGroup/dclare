@@ -147,13 +147,9 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (identity() != null && other.identity() != null && identity().equals(other.identity())) {
-                return true;
-            } else if (identity() == null && other.hasUnidentifiedSource()) {
-                return true;
-            } else {
-                return false;
-            }
+            return identity() != null && other.identity() != null && identity().equals(other.identity()) || //
+                    other.sources().containsKey(newable()); // || //
+            // identity() == null && other.hasUnidentifiedSource();
         }
 
         public boolean hasDirectReasonToExist() {

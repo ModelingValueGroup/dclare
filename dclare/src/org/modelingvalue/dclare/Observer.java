@@ -135,7 +135,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + super.toString().substring(4);
+            return getClass().getSimpleName() + ":" + super.toString().substring(4);
         }
 
     }

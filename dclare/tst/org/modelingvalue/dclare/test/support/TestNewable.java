@@ -32,9 +32,22 @@ public class TestNewable extends TestMutable implements Newable {
     private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
     @SafeVarargs
-    @SuppressWarnings("rawtypes")
     public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
-        return LeafTransaction.getCurrent().construct(new TestReason(reason, observers), () -> new TestNewable(COUNTER.getAndIncrement(), clazz));
+        return create(clazz, new TestReason(new Object[]{reason}, observers));
+    }
+
+    @SafeVarargs
+    public static TestNewable create(Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+        return create(clazz, new TestReason(new Object[]{reason1, reason2}, observers));
+    }
+
+    @SafeVarargs
+    public static TestNewable create(Object reason1, Object reason2, Object reason3, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+        return create(clazz, new TestReason(new Object[]{reason1, reason2, reason3}, observers));
+    }
+
+    private static TestNewable create(TestNewableClass clazz, TestReason reason) {
+        return LeafTransaction.getCurrent().construct(reason, () -> new TestNewable(COUNTER.getAndIncrement(), clazz));
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -51,7 +64,6 @@ public class TestNewable extends TestMutable implements Newable {
         return (TestNewableClass) super.dClass();
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
     public Integer id() {
         return (Integer) super.id();
@@ -62,13 +74,11 @@ public class TestNewable extends TestMutable implements Newable {
         return dClass();
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
     public Comparable dSortKey() {
         return id();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Collection<? extends Observer<?>> dMutableObservers() {
         return dConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
@@ -84,11 +94,18 @@ public class TestNewable extends TestMutable implements Newable {
 
         private Set<Observer> observers = Set.of();
 
-        @SafeVarargs
-        private TestReason(Object id, Consumer<TestNewable>... observers) {
-            super(new Object[]{id});
+        private TestReason(Object[] id, Consumer<TestNewable>[] observers) {
+            super(id);
             for (int i = 0; i < observers.length; i++) {
-                Observer observer = Observer.of(Pair.of(id, i), observers[i]);
+                Consumer<TestNewable> finalCons = observers[i];
+                Observer observer = Observer.<TestNewable> of(Pair.of(this, i), c -> {
+                    for (Object e : array()) {
+                        if (e instanceof Newable && ((Newable) e).dIsObsolete()) {
+                            return;
+                        }
+                    }
+                    finalCons.accept(c);
+                });
                 this.observers = this.observers.add(observer);
             }
         }

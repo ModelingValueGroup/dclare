@@ -122,7 +122,11 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
-        super.run(pre, universeTransaction);
+        if (!(mutable() instanceof Newable && ((Newable) mutable()).dIsObsolete())) {
+            super.run(pre, universeTransaction);
+        } else {
+            getted.set(Observed.OBSERVED_MAP);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -258,7 +262,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
             if (!Objects.equals(pre, post)) {
-                post = matchNewables(setable, pre, post, rippleOut(object, (Observed<O, T>) setable, pre, post));
+                post = rippleOut(object, (Observed<O, T>) setable, pre, matchNewables(setable, pre, post));
             }
         }
         super.set(object, setable, pre, post);
@@ -371,15 +375,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post, T rippleOut) {
-        if (!setable.containment()) {
-            return rippleOut;
-        } else if (pre instanceof Newable || rippleOut instanceof Newable) {
-            return (T) singleMatch((Newable) pre, (Newable) post, (Newable) rippleOut);
-        } else if (containsNewable(pre) || containsNewable(rippleOut)) {
-            return (T) manyMatch((ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post, (ContainingCollection<Newable>) rippleOut);
+    private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post) {
+        if (post instanceof Newable) {
+            return (T) singleMatch(setable, (Newable) pre, (Newable) post);
+        } else if (containsNewable(post)) {
+            return (T) manyMatch(setable, (ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post);
         } else {
-            return rippleOut;
+            return post;
         }
     }
 
@@ -388,66 +390,64 @@ public class ObserverTransaction extends ActionTransaction {
         return v instanceof ContainingCollection && !((ContainingCollection) v).isEmpty() && ((ContainingCollection) v).get(0) instanceof Newable;
     }
 
-    private Newable singleMatch(Newable before, Newable after, Newable result) {
+    @SuppressWarnings("rawtypes")
+    private Newable singleMatch(Setable setable, Newable before, Newable after) {
         merge();
-        if (after != null) {
-            MatchInfo post = MatchInfo.of(after);
-            if (!post.hasDirectReasonToExist()) {
-                if (!post.hasIndirectReasonToExist()) {
-                    if (TRACE_MATCHING) {
-                        runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
-                    }
-                    result = result.equals(after) ? before : result;
-                } else if (before != null) {
-                    MatchInfo pre = MatchInfo.of(before);
-                    if (pre.hasDirectReasonToExist() && pre.hasSameType(post)) {
-                        makeTheSame(pre, post);
-                        result = before;
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private ContainingCollection<Newable> manyMatch(ContainingCollection<Newable> preColl, ContainingCollection<Newable> postColl, ContainingCollection<Newable> result) {
-        merge();
-        List<MatchInfo> postList = postColl.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
-        for (int i = 0; i < postList.size(); i++) {
-            MatchInfo post = postList.get(i);
-            if (!post.hasIndirectReasonToExist()) {
-                if (TRACE_MATCHING) {
-                    runNonObserving(() -> System.err.println("MATCHING -- " + post.newable() + "   " + observer()));
-                }
-                postList = postList.removeIndex(i--);
-                result = result.remove(post.newable());
-            }
-        }
-        if (!postList.isEmpty()) {
-            List<MatchInfo> preList = preColl.exclude(postColl::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
-            if (!(result instanceof List)) {
-                preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
-                postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
-            }
-            for (int i = 0; i < postList.size(); i++) {
-                MatchInfo post = postList.get(i);
-                for (int ii = 0; ii < preList.size(); ii++) {
-                    MatchInfo pre = preList.get(ii);
-                    if (pre.hasSameType(post)) {
-                        if (pre.areTheSame(post)) {
+        if (setable.containment()) {
+            if (before != null) {
+                MatchInfo pre = MatchInfo.of(before);
+                if (pre.hasDirectReasonToExist()) {
+                    MatchInfo post = MatchInfo.of(after);
+                    if (!post.hasDirectReasonToExist()) {
+                        if (post.constructions().isEmpty()) {
+                            after = before;
+                        } else if (pre.hasSameType(post)) {
                             makeTheSame(pre, post);
-                            result = result.remove(post.newable());
-                            preList = preList.removeIndex(ii);
-                            break;
-                        } else if (TRACE_MATCHING) {
-                            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
+                            after = before;
                         }
                     }
                 }
             }
+        } else if (after.dIsObsolete()) {
+            after = before;
         }
-        return result;
+        return after;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private ContainingCollection<Newable> manyMatch(Setable setable, ContainingCollection<Newable> before, ContainingCollection<Newable> after) {
+        merge();
+        if (setable.containment()) {
+            List<MatchInfo> preList = before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+            if (!preList.isEmpty()) {
+                List<MatchInfo> postList = after.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
+                if (!postList.isEmpty()) {
+                    if (!(after instanceof List)) {
+                        preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
+                        postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
+                    }
+                    for (MatchInfo post : postList) {
+                        if (post.constructions().isEmpty()) {
+                            after = after.remove(post.newable());
+                        } else {
+                            for (MatchInfo pre : preList) {
+                                if (pre.hasSameType(post)) {
+                                    if (pre.areTheSame(post)) {
+                                        makeTheSame(pre, post);
+                                        after = after.remove(post.newable());
+                                    } else if (TRACE_MATCHING) {
+                                        runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (after.anyMatch(Newable::dIsObsolete)) {
+            after = before;
+        }
+        return after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -461,6 +461,7 @@ public class ObserverTransaction extends ActionTransaction {
                 constructions.set((map, e) -> map.put(cons, e), pre.newable());
             }
         }
+        clear(post.newable());
     }
 
 }

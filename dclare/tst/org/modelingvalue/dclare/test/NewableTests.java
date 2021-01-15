@@ -18,12 +18,17 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.SetableModifier.containment;
+// import static org.modelingvalue.dclare.SetableModifier.doNotCheckConsistency;
 import static org.modelingvalue.dclare.SetableModifier.synthetic;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -37,6 +42,7 @@ public class NewableTests {
 
     static {
         System.setProperty("TRACE_MATCHING", "true");
+        // System.setProperty("TRACE_OBSERVERS", "true");
     }
 
     @Test
@@ -64,31 +70,43 @@ public class NewableTests {
             cs.set(u, as.addAll(as.map(br::get)));
         });
 
-        A.observe(a -> br.set(a, create(a, B, b -> n.set(b, n.get(a)), b -> bcs.set(b, acs.get(a).map(br::get).toSet()))));
-        B.observe(b -> ar.set(b, create(b, A, a -> n.set(a, n.get(b)), a -> acs.set(a, bcs.get(b).map(ar::get).toSet()))));
+        A.observe(a -> br.set(a, create(a, B, //
+                b -> n.set(b, n.get(a)), //
+                b -> bcs.set(b, acs.get(a).map(br::get).toSet())//
+        )));
+        B.observe(b -> ar.set(b, create(b, A, //
+                a -> n.set(a, n.get(b)), //
+                a -> acs.set(a, bcs.get(b).map(ar::get).toSet())//
+        )));
 
-        AC.observe(ac -> br.set(ac, create(ac, BC, bc -> n.set(bc, n.get(ac)))));
-        BC.observe(bc -> ar.set(bc, create(bc, AC, ac -> n.set(ac, n.get(bc)))));
+        AC.observe(ac -> br.set(ac, create(ac, BC, //
+                bc -> n.set(bc, n.get(ac))//
+        )));
+        BC.observe(bc -> ar.set(bc, create(bc, AC, //
+                ac -> n.set(ac, n.get(bc))//
+        )));
 
         TestUniverse universe = TestUniverse.of("universe", U);
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
-        universeTransaction.put("init", () -> {
-            TestNewable a1 = create(1, A);
-            TestNewable b1 = create(2, B);
-            TestNewable b2 = create(3, B);
-            TestNewable a3 = create(4, A);
+        Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
+
+            TestNewable a1 = c.create(A);
+            TestNewable b1 = c.create(B);
+            TestNewable b2 = c.create(B);
+            TestNewable a3 = c.create(A);
             cs.set(universe, Set.of(a1, a3, b1, b2));
             n.set(a1, "x");
             n.set(b1, "x");
             n.set(b2, "y");
             n.set(a3, "z");
-            TestNewable ac1 = create(11, AC);
-            TestNewable bc1 = create(12, BC);
-            TestNewable ac2 = create(13, AC);
-            TestNewable bc2 = create(14, BC);
-            TestNewable bc3 = create(15, BC);
-            TestNewable bc4 = create(16, BC);
+
+            TestNewable ac1 = c.create(AC);
+            TestNewable bc1 = c.create(BC);
+            TestNewable ac2 = c.create(AC);
+            TestNewable bc2 = c.create(BC);
+            TestNewable bc3 = c.create(BC);
+            TestNewable bc4 = c.create(BC);
             acs.set(a1, Set.of(ac1, ac2));
             bcs.set(b1, Set.of(bc1, bc2));
             bcs.set(b2, Set.of(bc3, bc4));
@@ -98,17 +116,25 @@ public class NewableTests {
             n.set(bc2, "q");
             n.set(bc3, "r");
             n.set(bc4, "s");
+
         });
 
-        universeTransaction.stop();
-        State result = universeTransaction.waitForEnd();
+        run(utx, "changeName", c -> {
+            for (TestNewable o : created.merge()) {
+                n.set(o, n.get(o).toUpperCase());
+            }
+        });
+
+        utx.stop();
+        State result = utx.waitForEnd();
 
         System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-
             assertEquals(14, objects.size());
+            assertTrue(objects.containsAll(created.result()));
+            assertTrue(objects.allMatch(o -> n.get(o) != null && n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
         });
 
@@ -134,17 +160,17 @@ public class NewableTests {
         oofb(false, true, true, true);
     }
 
-    //@Test
+    @Test
     public void oo2fb_fb2oo_oo_fb() {
         oofb(true, true, true, true);
     }
 
-    //@Test
+    @Test
     public void oo2fb_fb2oo_oo() {
         oofb(true, true, true, false);
     }
 
-    //@Test
+    @Test
     public void oo2fb_fb2oo_fb() {
         oofb(true, true, false, true);
     }
@@ -177,7 +203,7 @@ public class NewableTests {
         TestNewableClass FBM = TestNewableClass.of("FBM", n::get, n, ots, fts, moom);
 
         Observed<TestMutable, TestNewable> mcls = Observed.of("mcls", null, synthetic);
-        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of());
+        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of(), synthetic);
         TestNewableClass OBT = TestNewableClass.of("OBT", n::get, n, mcls, _otr);
 
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
@@ -212,10 +238,10 @@ public class NewableTests {
             CLS.observe(cl -> mobt.set(cl, create(cl, OBT, //
                     ot -> n.set(ot, n.get(cl)) //
             )));
-            REF.observe(rf -> mrol.set(rf, create(rf, ROL, //
+            REF.observe(rf -> mrol.set(rf, create(rf, "1", ROL, //
                     rl -> n.set(rl, n.get(rf)), //
-                    rl -> otr.set(rl, mobt.get(typ.get(rf))) //
-            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(opp.get(rf)).compareTo(n.get(rf)) > 0 ? create(rf, FAT, //
+                    rl -> otr.set(rl, mobt.get(typ.get(rf))) // !!!!!!!!!!!!!!!!!!!!!!!
+            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(opp.get(rf)).compareTo(n.get(rf)) > 0 ? create(rf, "2", FAT, //
                     ft -> n.set(ft, n.get(rf) + (opp.get(rf) == null ? "" : "_" + n.get(opp.get(rf)))), //
                     ft -> left.set(ft, mrol.get(rf)), //
                     ft -> right.set(ft, opp.get(rf) == null ? create(rf, ROL, rl -> n.set(rl, "~")) : mrol.get(opp.get(rf))) //
@@ -234,7 +260,7 @@ public class NewableTests {
             )));
             ROL.observe(rl -> mref.set(rl, !n.get(rl).equals("~") ? create(rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
-                    rf -> typ.set(rf, mcls.get(otr.get(rl))), //
+                    rf -> typ.set(rf, mcls.get(otr.get(rl))), // !!!!!!!!!!!!!!!!!!!!!!!
                     rf -> opp.set(rf, mref.get(rlopp.get(rl)))//
             ) : null));
         }
@@ -242,23 +268,23 @@ public class NewableTests {
         // Instances
 
         TestUniverse universe = TestUniverse.of("universe", U);
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
-        universeTransaction.put("init", () -> {
+        Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
             if (ooIn) { // OO
-                TestNewable oom = create(1, OOM);
+                TestNewable oom = c.create(OOM);
                 ooms.set(universe, Set.of(oom));
                 n.set(oom, "model");
 
-                TestNewable cl1 = create(2, CLS);
-                TestNewable cl2 = create(3, CLS);
+                TestNewable cl1 = c.create(CLS);
+                TestNewable cl2 = c.create(CLS);
                 cls.set(oom, Set.of(cl1, cl2));
                 n.set(cl1, "A");
                 n.set(cl2, "B");
 
-                TestNewable rf1 = create(4, REF);
-                TestNewable rf2 = create(5, REF);
+                TestNewable rf1 = c.create(REF);
+                TestNewable rf2 = c.create(REF);
                 refs.set(cl1, Set.of(rf1));
                 refs.set(cl2, Set.of(rf2));
                 n.set(rf1, "b");
@@ -270,22 +296,22 @@ public class NewableTests {
             }
 
             if (fbIn) { // FB
-                TestNewable fbm = create(11, FBM);
+                TestNewable fbm = c.create(FBM);
                 fbms.set(universe, Set.of(fbm));
                 n.set(fbm, "model");
 
-                TestNewable ot1 = create(12, OBT);
-                TestNewable ot2 = create(13, OBT);
+                TestNewable ot1 = c.create(OBT);
+                TestNewable ot2 = c.create(OBT);
                 ots.set(fbm, Set.of(ot1, ot2));
                 n.set(ot1, "A");
                 n.set(ot2, "B");
 
-                TestNewable ft1 = create(14, FAT);
+                TestNewable ft1 = c.create(FAT);
                 fts.set(fbm, Set.of(ft1));
                 n.set(ft1, "a_b");
 
-                TestNewable rl1 = create(15, ROL);
-                TestNewable rl2 = create(16, ROL);
+                TestNewable rl1 = c.create(ROL);
+                TestNewable rl2 = c.create(ROL);
                 left.set(ft1, rl1);
                 right.set(ft1, rl2);
                 n.set(rl1, "a");
@@ -296,18 +322,38 @@ public class NewableTests {
 
         });
 
-        universeTransaction.stop();
-        State result = universeTransaction.waitForEnd();
+        utx.stop();
+        State result = utx.waitForEnd();
 
         System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
             assertEquals(11, objects.size());
+            assertTrue(objects.containsAll(created.result()));
+            assertTrue(objects.allMatch(o -> n.get(o) != null));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
         });
 
         return result;
+    }
+
+    private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> init) {
+        Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
+        utx.put(id, () -> {
+            AtomicInteger conter = new AtomicInteger(0);
+            init.accept(c -> {
+                TestNewable newable = create(conter.getAndIncrement(), c);
+                created.set(Set::add, newable);
+                return newable;
+            });
+        });
+        return created;
+    }
+
+    @FunctionalInterface
+    public interface Creator {
+        TestNewable create(TestNewableClass clazz);
     }
 
 }

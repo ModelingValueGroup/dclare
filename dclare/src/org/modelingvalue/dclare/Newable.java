@@ -50,9 +50,6 @@ public interface Newable extends Mutable, Mergeable<Newable> {
                                                                           cs = cs.remove(c);
                                                                       }
                                                                   }
-                                                                  if (cs.isEmpty()) {
-                                                                      n.dDelete();
-                                                                  }
                                                                   return cs;
                                                               }));
 
@@ -67,14 +64,23 @@ public interface Newable extends Mutable, Mergeable<Newable> {
         return CONSTRUCTIONS.current(this);
     }
 
+    default boolean dIsObsolete() {
+        return CONSTRUCTIONS.current(this).isEmpty();
+    }
+
     @Override
     default Newable merge(Newable[] branches, int length) {
-        return branches[length - 1];
+        return branches[length - 1] != MERGER ? branches[length - 1] : branches[length - 2];
     }
 
     @Override
     default Newable getMerger() {
         return MERGER;
+    }
+
+    @Override
+    default Class<Newable> getMeetClass() {
+        return Newable.class;
     }
 
     @Override

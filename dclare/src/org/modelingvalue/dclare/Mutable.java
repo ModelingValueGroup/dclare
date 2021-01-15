@@ -60,7 +60,9 @@ public interface Mutable extends TransactionClass {
 
     default void dDelete() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
-        pair.b().remove(pair.a(), this);
+        if (pair != null) {
+            pair.b().remove(pair.a(), this);
+        }
     }
 
     @SuppressWarnings("unchecked")
