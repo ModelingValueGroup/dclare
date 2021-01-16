@@ -167,16 +167,12 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (identity() != null && other.identity() != null && identity().equals(other.identity())) {
-                return true;
-            } else if (other.sources().containsKey(newable())) {
-                return true;
-            } else if (!unidentifiedMatched && identity() == null && !other.unidentifiedMatched && other.hasUnidentifiedSource()) {
+            if (!unidentifiedMatched && !other.unidentifiedMatched && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
                 unidentifiedMatched = true;
                 other.unidentifiedMatched = true;
                 return true;
             } else {
-                return false;
+                return other.sources().containsKey(newable());
             }
         }
 

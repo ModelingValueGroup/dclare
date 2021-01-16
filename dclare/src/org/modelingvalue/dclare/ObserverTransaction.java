@@ -262,7 +262,10 @@ public class ObserverTransaction extends ActionTransaction {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
             if (!Objects.equals(pre, post)) {
-                post = rippleOut(object, (Observed<O, T>) setable, pre, matchNewables(setable, pre, post));
+                post = setable.hasNewables() ? matchNewables(setable, pre, post) : post;
+                if (!Objects.equals(pre, post)) {
+                    post = rippleOut(object, (Observed<O, T>) setable, pre, post);
+                }
             }
         }
         super.set(object, setable, pre, post);
@@ -376,52 +379,45 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post) {
-        if (post instanceof Newable) {
-            return (T) singleMatch(setable, (Newable) pre, (Newable) post);
-        } else if (containsNewable(post)) {
+        if (setable.isMany()) {
             return (T) manyMatch(setable, (ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post);
         } else {
-            return post;
+            return (T) singleMatch(setable, (Newable) pre, (Newable) post);
         }
     }
 
     @SuppressWarnings("rawtypes")
-    private static <T> boolean containsNewable(T v) {
-        return v instanceof ContainingCollection && !((ContainingCollection) v).isEmpty() && ((ContainingCollection) v).get(0) instanceof Newable;
-    }
-
-    @SuppressWarnings("rawtypes")
     private Newable singleMatch(Setable setable, Newable before, Newable after) {
-        merge();
-        if (setable.containment()) {
-            if (before != null) {
-                MatchInfo pre = MatchInfo.of(before);
-                if (pre.hasDirectReasonToExist()) {
-                    MatchInfo post = MatchInfo.of(after);
-                    if (!post.hasDirectReasonToExist()) {
-                        if (post.constructions().isEmpty()) {
-                            after = before;
-                        } else if (pre.hasSameType(post)) {
+        if (after != null) {
+            merge();
+            if (setable.containment()) {
+                MatchInfo post = MatchInfo.of(after);
+                if (!post.hasDirectReasonToExist()) {
+                    if (post.constructions().isEmpty()) {
+                        after = before;
+                    } else if (before != null) {
+                        MatchInfo pre = MatchInfo.of(before);
+                        if (pre.hasDirectReasonToExist() && pre.hasSameType(post)) {
                             makeTheSame(pre, post);
                             after = before;
                         }
                     }
                 }
+            } else if (after.dIsObsolete()) {
+                after = before;
             }
-        } else if (after.dIsObsolete()) {
-            after = before;
         }
         return after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Newable> manyMatch(Setable setable, ContainingCollection<Newable> before, ContainingCollection<Newable> after) {
-        merge();
-        if (setable.containment()) {
-            List<MatchInfo> preList = before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
-            if (!preList.isEmpty()) {
+        if (!after.isEmpty()) {
+            merge();
+            if (setable.containment()) {
                 List<MatchInfo> postList = after.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
                 if (!postList.isEmpty()) {
+                    List<MatchInfo> preList = before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
                     if (!(after instanceof List)) {
                         preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
                         postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
@@ -443,9 +439,9 @@ public class ObserverTransaction extends ActionTransaction {
                         }
                     }
                 }
+            } else if (after.anyMatch(Newable::dIsObsolete)) {
+                after = before;
             }
-        } else if (after.anyMatch(Newable::dIsObsolete)) {
-            after = before;
         }
         return after;
     }

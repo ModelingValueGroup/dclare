@@ -98,11 +98,19 @@ public class NewableTests {
             TestNewable ay = c.create(A);
             TestNewable bx = c.create(B);
             TestNewable by = c.create(B);
-            cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by));
+            TestNewable au = c.create(A);
+            TestNewable av = c.create(A);
+            TestNewable bu = c.create(B);
+            TestNewable bv = c.create(B);
+            cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by, au, av, bu, bv));
             n.set(a1, "x");
             n.set(b1, "x");
             n.set(b2, "y");
             n.set(a3, "z");
+            n.set(au, "w");
+            n.set(av, "w");
+            n.set(bu, "w");
+            n.set(bv, "w");
 
             TestNewable ac1 = c.create(AC);
             TestNewable bc1 = c.create(BC);
@@ -135,7 +143,7 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(18, objects.size());
+            assertEquals(22, objects.size());
             assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));

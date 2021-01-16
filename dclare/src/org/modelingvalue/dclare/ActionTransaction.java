@@ -98,6 +98,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
+        property.init(post);
         T pre = state().get(object, property);
         set(object, property, pre, post);
         return pre;
