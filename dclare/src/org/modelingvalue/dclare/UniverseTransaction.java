@@ -236,13 +236,21 @@ public class UniverseTransaction extends MutableTransaction {
         return result;
     }
 
-    protected void handleException(Throwable t) {
-        errors.updateAndGet(e -> e.add(t));
+    protected void handleExceptions(Set<Throwable> errors) {
         if (TRACE_UNIVERSE) {
+            Throwable t = errors.sorted(this::compare).findFirst().get();
             System.err.println("Exception in Universe:");
             t.printStackTrace();
         }
         kill();
+    }
+
+    protected final void handleException(Throwable t) {
+        handleExceptions(errors.updateAndGet(e -> e.add(t)));
+    }
+
+    public Set<Throwable> errors() {
+        return errors.get();
     }
 
     public void throwIfError() {
@@ -282,16 +290,18 @@ public class UniverseTransaction extends MutableTransaction {
                 MutableClass dClass = mutable.dClass();
                 Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, mutable, (Constant) s)) {
-                        Set<ConsistencyError> errors = ((Setable) s).checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
-                        for (ConsistencyError e : errors) {
-                            handleException(e);
-                        }
+                        Set<Throwable> es = ((Setable) s).checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
+                        errors.updateAndGet(es::addAll);
                     }
                 });
             } else {
                 checkOrphanState(e0);
             }
         });
+        Set<Throwable> es = errors.get();
+        if (!es.isEmpty()) {
+            handleExceptions(es);
+        }
     }
 
     @SuppressWarnings("rawtypes")
