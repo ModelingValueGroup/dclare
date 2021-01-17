@@ -238,7 +238,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void handleExceptions(Set<Throwable> errors) {
         if (TRACE_UNIVERSE) {
-            Throwable t = errors.sorted(this::compare).findFirst().get();
+            Throwable t = errors.sorted(this::compareThrowable).findFirst().get();
             System.err.println("Exception in Universe:");
             t.printStackTrace();
         }
@@ -256,12 +256,12 @@ public class UniverseTransaction extends MutableTransaction {
     public void throwIfError() {
         Set<Throwable> es = errors.get();
         if (!es.isEmpty()) {
-            Throwable e = es.sorted(this::compare).findFirst().get();
+            Throwable e = es.sorted(this::compareThrowable).findFirst().get();
             throw new Error("Error in engine " + state.get(() -> e.getMessage()), e);
         }
     }
 
-    protected int compare(Throwable a, Throwable b) {
+    public int compareThrowable(Throwable a, Throwable b) {
         if (a instanceof ConsistencyError) {
             if (b instanceof ConsistencyError) {
                 return ((ConsistencyError) a).compareTo((ConsistencyError) b);
