@@ -25,6 +25,7 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
@@ -40,21 +41,21 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<>(id, action, initDirection);
     }
 
-    public final Setable<Mutable, Set<ObserverTrace>> traces;
-    private final ExceptionSetable                    exception;
-    private final Observerds                          observeds;
-    private final Constructed                         constructed;
+    public final Traces                         traces;
+    private final ExceptionSetable              exception;
+    private final Observerds                    observeds;
+    private final Constructed                   constructed;
 
-    protected long                                    runCount     = -1;
-    protected int                                     instances;
-    protected int                                     changes;
-    protected boolean                                 stopped;
+    protected long                              runCount     = -1;
+    protected int                               instances;
+    protected int                               changes;
+    protected boolean                           stopped;
     @SuppressWarnings("rawtypes")
-    private final Entry<Observer, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     protected Observer(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
-        this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
+        traces = new Traces(Pair.of(this, "TRACES"));
         observeds = Observerds.of(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
@@ -107,6 +108,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             return changes;
         } else {
             return changes / i;
+        }
+    }
+
+    public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
+        protected Traces(Object id) {
+            super(id, Set.of(), null, null, null);
         }
     }
 
@@ -169,10 +176,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
 
         @Override
-        public void checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
-            if (p != null) {
-                throw new ThrowableError(o, observer, p.a(), p.b());
-            }
+        public Set<ConsistencyError> checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
+            return p != null ? Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
         }
     }
 

@@ -30,6 +30,7 @@ import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
 import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
@@ -314,11 +315,12 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public void checkConsistency(State state, O object, T post) {
+    public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
+        Set<ConsistencyError> errors = Set.of();
         if (isReference()) {
             for (Mutable m : mutables(post)) {
                 if (isOrphan(state, m)) {
-                    throw new ReferencedOrphanException(object, this, m);
+                    errors = errors.add(new ReferencedOrphanException(object, this, m));
                 }
             }
         }
@@ -326,14 +328,15 @@ public class Setable<O, T> extends Getable<O, T> {
             Set s = state.get(object, scope.get());
             if (post instanceof ContainingCollection) {
                 if (!s.containsAll((ContainingCollection) post)) {
-                    throw new OutOfScopeException(object, this, post, s);
+                    errors = errors.add(new OutOfScopeException(object, this, post, s));
                 }
             } else if (post != null) {
                 if (!s.contains(post)) {
-                    throw new OutOfScopeException(object, this, post, s);
+                    errors = errors.add(new OutOfScopeException(object, this, post, s));
                 }
             }
         }
+        return errors;
     }
 
     protected boolean isOrphan(State state, Mutable m) {

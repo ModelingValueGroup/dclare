@@ -23,7 +23,6 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
-import org.modelingvalue.collections.util.Quadruple;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
@@ -148,18 +147,24 @@ public class Construction extends IdentifiedByArray {
 
     }
 
-    public static final class MatchInfo extends Quadruple<Newable, Object, Set<Construction>, Map<Mutable, Set<Construction>>> {
+    public static final class MatchInfo {
 
-        private static final long serialVersionUID    = 4565551522857366810L;
+        private final Newable                   newable;
+        private final Object                    identity;
+        private final Set<Construction>         constructions;
 
-        private boolean           unidentifiedMatched = false;
+        private Map<Mutable, Set<Construction>> sources;
+        private Set<Newable>                    notObservedSources;
+        private boolean                         unidentifiedMatched = false;
 
         public static MatchInfo of(Newable newable) {
-            return new MatchInfo(newable, newable.dConstructions());
+            return new MatchInfo(newable);
         }
 
-        private MatchInfo(Newable newable, Set<Construction> cons) {
-            super(newable, newable.dIdentity(), cons, Construction.sources(cons, Map.of()));
+        private MatchInfo(Newable newable) {
+            this.newable = newable;
+            this.identity = newable.dIdentity();
+            this.constructions = newable.dConstructions();
         }
 
         public boolean hasSameType(MatchInfo other) {
@@ -196,25 +201,41 @@ public class Construction extends IdentifiedByArray {
             return notObservedSources().map(Newable::dSortKey).sorted();
         }
 
-        private Collection<Newable> notObservedSources() {
-            Set<Newable> set = sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class).toSet();
-            return set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p)));
-        }
-
         public Newable newable() {
-            return a();
+            return newable;
         }
 
         public Object identity() {
-            return b();
+            return identity;
         }
 
         public Set<Construction> constructions() {
-            return c();
+            return constructions;
         }
 
         private Map<Mutable, Set<Construction>> sources() {
-            return d();
+            if (sources == null) {
+                sources = Construction.sources(constructions, Map.of());
+            }
+            return sources;
+        }
+
+        private Set<Newable> notObservedSources() {
+            if (notObservedSources == null) {
+                Set<Newable> set = sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class).toSet();
+                notObservedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
+            }
+            return notObservedSources;
+        }
+
+        @Override
+        public int hashCode() {
+            return newable.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof MatchInfo && newable.equals(((MatchInfo) other).newable);
         }
 
     }

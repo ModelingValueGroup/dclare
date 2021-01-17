@@ -76,7 +76,12 @@ public interface Newable extends Mutable, Mergeable<Newable> {
 
     @Override
     default Newable merge(Newable[] branches, int length) {
-        return branches[length - 1] != MERGER ? branches[length - 1] : branches[length - 2];
+        for (int i = branches.length - 1; i >= 0; i--) {
+            if (branches[i] != null && branches[i] != MERGER && !branches[i].dIsObsolete()) {
+                return branches[i];
+            }
+        }
+        return this;
     }
 
     @Override

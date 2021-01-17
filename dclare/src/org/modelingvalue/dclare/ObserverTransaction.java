@@ -132,20 +132,20 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> sets, DefaultMap<Observed, Set<Mutable>> gets) {
         gets = gets.removeAll(sets, Set::removeAll);
+        DefaultMap<Observed, Set<Mutable>> all = gets.addAll(sets, Set::addAll);
+        checkTooManyObserved(all);
         if (changed.result().equals(TRUE)) {
             checkTooManyChanges(pre, sets, gets);
             trigger(mutable(), (Observer<Mutable>) observer, Direction.forward);
         } else if (backwards.result().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Direction.backward);
         }
-        DefaultMap<Observed, Set<Mutable>> all = gets.addAll(sets, Set::addAll);
         DefaultMap preAll = super.set(mutable(), observer.observeds(), all);
         if (preAll.isEmpty() && !all.isEmpty()) {
             observer.instances++;
         } else if (!preAll.isEmpty() && all.isEmpty()) {
             observer.instances--;
         }
-        checkTooManyObserved(all);
     }
 
     @SuppressWarnings("rawtypes")
@@ -165,6 +165,11 @@ public class ObserverTransaction extends ActionTransaction {
             System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
                     + toString(gets, mutable, (m, o) -> pre.get(m, o)) + " " + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
         }
+        int totalChanges = universeTransaction.stats().bumpAndGetTotalChanges();
+        int changesPerInstance = observer.countChangesPerInstance();
+        if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() || totalChanges > universeTransaction.stats().maxTotalNrOfChanges()) {
+            universeTransaction.stats().setDebugging(true);
+        }
         if (universeTransaction.stats().debugging()) {
             State result = merge();
             Set<ObserverTrace> traces = observer.traces.get(mutable);
@@ -178,17 +183,9 @@ public class ObserverTransaction extends ActionTransaction {
                         return Entry.of(ObservedInstance.of(m, e.getKey()), result.get(m, e.getKey()));
                     })).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
-        }
-        int totalChanges = universeTransaction.stats().bumpAndGetTotalChanges();
-        int changesPerInstance = observer.countChangesPerInstance();
-        if (changesPerInstance > universeTransaction.stats().maxNrOfChanges()) {
-            universeTransaction.stats().setDebugging(true);
             if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() * 2) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
-            }
-        } else if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges()) {
-            universeTransaction.stats().setDebugging(true);
-            if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges() + universeTransaction.stats().maxNrOfChanges()) {
+            } else if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges() + universeTransaction.stats().maxNrOfChanges()) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }

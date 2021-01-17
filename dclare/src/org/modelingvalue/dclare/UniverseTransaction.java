@@ -112,8 +112,9 @@ public class UniverseTransaction extends MutableTransaction {
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Direction.forward);
     private final UniverseStatistics                                                                universeStatistics;
-    private final AtomicReference<ConsistencyError>                                                 consistencyError        = new AtomicReference<>(null);
-    //
+    private final AtomicReference<Set<Throwable>>                                                   errors                  = new AtomicReference<>(Set.of());
+    protected final ConstantState                                                                   constantState           = new ConstantState(this::handleException);
+
     private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                  postActions             = List.of();
     private List<State>                                                                             history                 = List.of();
@@ -121,11 +122,9 @@ public class UniverseTransaction extends MutableTransaction {
     private State                                                                                   preState;
     private State                                                                                   oldState;
     private State                                                                                   state;
-    protected final ConstantState                                                                   constantState           = new ConstantState(this::handleException);
     protected boolean                                                                               initialized;
     private boolean                                                                                 killed;
     private boolean                                                                                 timeTraveling;
-    private Throwable                                                                               error;
     private boolean                                                                                 handling;
     private boolean                                                                                 stopped;
 
@@ -180,7 +179,7 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                         state = state.get(() -> run(trigger(pre(state), universe(), leaf, leaf.initDirection())));
                         state = state.get(() -> post(state));
-                        if (stats().debugging()) {
+                        if (!killed && stats().debugging()) {
                             handleTooManyChanges(state);
                         }
                     }
@@ -238,9 +237,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void handleException(Throwable t) {
-        if (error == null) {
-            error = t;
-        }
+        errors.updateAndGet(e -> e.add(t));
         if (TRACE_UNIVERSE) {
             System.err.println("Exception in Universe:");
             t.printStackTrace();
@@ -249,9 +246,24 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public void throwIfError() {
-        Throwable e = error;
-        if (e != null) {
-            throw new Error(e);
+        Set<Throwable> es = errors.get();
+        if (!es.isEmpty()) {
+            Throwable e = es.sorted(this::compare).findFirst().get();
+            throw new Error("Error in engine " + state.get(() -> e.getMessage()), e);
+        }
+    }
+
+    protected int compare(Throwable a, Throwable b) {
+        if (a instanceof ConsistencyError) {
+            if (b instanceof ConsistencyError) {
+                return ((ConsistencyError) a).compareTo((ConsistencyError) b);
+            } else {
+                return 1;
+            }
+        } else if (b instanceof ConsistencyError) {
+            return -1;
+        } else {
+            return Integer.compare(a.hashCode(), b.hashCode());
         }
     }
 
@@ -270,10 +282,9 @@ public class UniverseTransaction extends MutableTransaction {
                 MutableClass dClass = mutable.dClass();
                 Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, mutable, (Constant) s)) {
-                        try {
-                            ((Setable) s).checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
-                        } catch (ConsistencyError e) {
-                            consistencyError.updateAndGet(p -> p == null ? e : e.compareTo(p) < 0 ? e : p);
+                        Set<ConsistencyError> errors = ((Setable) s).checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
+                        for (ConsistencyError e : errors) {
+                            handleException(e);
                         }
                     }
                 });
@@ -281,10 +292,6 @@ public class UniverseTransaction extends MutableTransaction {
                 checkOrphanState(e0);
             }
         });
-        ConsistencyError error = consistencyError.getAndSet(null);
-        if (error != null) {
-            throw error;
-        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -308,9 +315,9 @@ public class UniverseTransaction extends MutableTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void handleTooManyChanges(State state) {
         ObserverTrace trace = state//
-                .filter(o -> o instanceof Mutable, s -> s.id instanceof Pair && ((Pair) s.id).a() instanceof Observer && ((Pair) s.id).b().equals("TRACES"))//
-                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow()))//
-                .min((a, b) -> Integer.compare(b.done().size(), a.done().size()))//
+                .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
+                .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
+                .min((a, b) -> Integer.compare(b.done().size(), a.done().size())) //
                 .orElseThrow();
         throw new TooManyChangesException(state, trace, trace.done().size());
     }
@@ -395,9 +402,7 @@ public class UniverseTransaction extends MutableTransaction {
         try {
             State state = resultQueue.take();
             resultQueue.put(state);
-            if (error != null) {
-                throw new Error("Error in engine " + state.get(() -> error.getMessage()), error);
-            }
+            throwIfError();
             return state;
         } catch (InterruptedException e) {
             throw new Error(e);
