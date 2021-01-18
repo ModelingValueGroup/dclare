@@ -61,11 +61,6 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public <O, T> T get(O object, Getable<O, T> property) {
-        return state.get(object, property);
-    }
-
-    @Override
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         if (property instanceof Constant) {
             if (property.isHandlingChange()) {

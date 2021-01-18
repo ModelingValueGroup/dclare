@@ -15,9 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Arrays;
-import java.util.function.Supplier;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -47,23 +44,37 @@ public class Construction extends IdentifiedByArray {
     }
 
     public Mutable object() {
-        return (Mutable) (array().length == 3 ? array()[0] : null);
+        return (Mutable) (super.size() == 3 ? super.get(0) : null);
     }
 
     public Observer observer() {
-        return (Observer) (array().length == 3 ? array()[1] : null);
+        return (Observer) (super.size() == 3 ? super.get(1) : null);
     }
 
     public Reason reason() {
-        return (Reason) (array().length == 3 ? array()[2] : array()[0]);
+        return (Reason) (super.size() == 3 ? super.get(2) : super.get(0));
+    }
+
+    @Override
+    public Object get(int i) {
+        return reason().get(object(), i);
+    }
+
+    public boolean isObsolete() {
+        return reason().isObsolete(object());
+    }
+
+    @Override
+    public int size() {
+        return reason().size();
     }
 
     public boolean isObserved() {
-        return array().length == 3;
+        return super.size() == 3;
     }
 
     public boolean isNotObserved() {
-        return array().length != 3;
+        return super.size() != 3;
     }
 
     private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons, Map<Mutable, Set<Construction>> sources) {
@@ -76,10 +87,9 @@ public class Construction extends IdentifiedByArray {
     private Map<Mutable, Set<Construction>> sources(Map<Mutable, Set<Construction>> sources) {
         if (isObserved()) {
             sources = sources(object(), sources);
-            Object[] array = reason().array();
-            for (int i = 0; i < array.length; i++) {
-                if (array[i] instanceof Mutable) {
-                    sources = sources((Mutable) array[i], sources);
+            for (int i = 0; i < super.size(); i++) {
+                if (super.get(i) instanceof Mutable) {
+                    sources = sources((Mutable) super.get(i), sources);
                 }
             }
         }
@@ -100,49 +110,41 @@ public class Construction extends IdentifiedByArray {
         }
     }
 
-    public static class Reason extends IdentifiedByArray {
+    public static abstract class Reason extends IdentifiedByArray {
 
-        public static Reason of(Object... identity) {
-            return new Reason(identity);
+        protected Reason(Mutable thiz, Object[] identity) {
+            super(thiz(thiz, identity));
         }
 
-        protected Reason(Object[] identity) {
-            super(identity);
-        }
-
-        public <O extends Newable> O construct(Supplier<O> supplier) {
-            return currentLeaf().construct(this, supplier);
-        }
-
-        private LeafTransaction currentLeaf() {
-            LeafTransaction current = LeafTransaction.getCurrent();
-            if (current == null) {
-                throw new NullPointerException("No current transaction in " + Thread.currentThread() + " , while accessing " + toString());
-            }
-            return current;
-        }
-
-        @Override
-        public String toString() {
-            return Arrays.toString(array());
-        }
-
-        public boolean dIsIdentified() {
-            for (Object e : array()) {
-                if (e instanceof Newable && !((Newable) e).dIsIdentified()) {
-                    return false;
+        private static Object[] thiz(Mutable thiz, Object[] identity) {
+            if (thiz != null) {
+                for (int i = 0; i < identity.length; i++) {
+                    if (thiz.equals(identity[i])) {
+                        identity[i] = Mutable.THIS;
+                    }
                 }
             }
-            return true;
+            return identity;
         }
 
-        public boolean dIsObsolete() {
-            for (Object e : array()) {
+        public boolean isObsolete(Mutable thiz) {
+            for (int i = 0; i < size(); i++) {
+                Object e = get(thiz, i);
                 if (e instanceof Newable && ((Newable) e).dIsObsolete()) {
                     return true;
                 }
             }
             return false;
+        }
+
+        @Override
+        public Object get(int i) {
+            throw new UnsupportedOperationException();
+        }
+
+        public Object get(Mutable thiz, int i) {
+            Object e = super.get(i);
+            return e == Mutable.THIS ? thiz : e;
         }
 
     }

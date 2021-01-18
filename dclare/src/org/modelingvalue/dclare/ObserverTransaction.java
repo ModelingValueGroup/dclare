@@ -53,7 +53,7 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> setted          = Concurrent.of();
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<Map<Construction, Newable>>         constructions   = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  constructions   = Concurrent.of();
 
     private final Concurrent<Set<Boolean>>                       emptyMandatory  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed         = Concurrent.of();
@@ -269,6 +269,14 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    public <O> void clear(O object) {
+        for (Entry<Setable, Object> e : state().getProperties(object)) {
+            super.set(object, e.getKey(), state().get(object, e.getKey()), e.getKey().getDefault());
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         T old = universeTransaction().oldState().get(object, observed);
         if (!Objects.equals(pre, old)) {
@@ -353,8 +361,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
         } else {
-            Construction cons = Construction.of(mutable(), observer(), reason);
-            O result = (O) current(mutable(), observer().constructed()).get(cons);
+            O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
                 if (mutable() instanceof Newable) {
                     MatchInfo info = MatchInfo.of((Newable) mutable());
@@ -368,8 +375,8 @@ public class ObserverTransaction extends ActionTransaction {
                     runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + observer()));
                 }
             }
-            set(mutable(), observer().constructed(), (map, e) -> map.put(cons, e), result);
-            constructions.set((map, e) -> map.put(cons, e), result);
+            set(mutable(), observer().constructed(), (map, e) -> map.put(reason, e), result);
+            constructions.set((map, e) -> map.put(reason, e), result);
             return result;
         }
     }
@@ -449,9 +456,9 @@ public class ObserverTransaction extends ActionTransaction {
             runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " == " + post.newable() + "   " + observer()));
         }
         for (Construction cons : post.constructions()) {
-            set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons, e), pre.newable());
+            set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons.reason(), e), pre.newable());
             if (mutable().equals(cons.object()) && observer().equals(cons.observer())) {
-                constructions.set((map, e) -> map.put(cons, e), pre.newable());
+                constructions.set((map, e) -> map.put(cons.reason(), e), pre.newable());
             }
         }
         clear(post.newable());

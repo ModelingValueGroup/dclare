@@ -20,9 +20,10 @@ import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.Triple;
 import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observer;
 
@@ -33,21 +34,24 @@ public class TestNewable extends TestMutable implements Newable {
 
     @SafeVarargs
     public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
-        return create(clazz, new TestReason(new Object[]{reason}, observers));
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason}, observers));
     }
 
     @SafeVarargs
     public static TestNewable create(Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
-        return create(clazz, new TestReason(new Object[]{reason1, reason2}, observers));
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason1, reason2}, observers));
     }
 
     @SafeVarargs
     public static TestNewable create(Object reason1, Object reason2, Object reason3, TestNewableClass clazz, Consumer<TestNewable>... observers) {
-        return create(clazz, new TestReason(new Object[]{reason1, reason2, reason3}, observers));
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason1, reason2, reason3}, observers));
     }
 
-    private static TestNewable create(TestNewableClass clazz, TestReason reason) {
-        return LeafTransaction.getCurrent().construct(reason, () -> new TestNewable(COUNTER.getAndIncrement(), clazz));
+    private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
+        return tx.construct(reason, () -> new TestNewable(COUNTER.getAndIncrement(), clazz));
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -94,12 +98,12 @@ public class TestNewable extends TestMutable implements Newable {
 
         private Set<Observer> observers = Set.of();
 
-        private TestReason(Object[] id, Consumer<TestNewable>[] observers) {
-            super(id);
+        private TestReason(Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
+            super(thiz, id);
             for (int i = 0; i < observers.length; i++) {
                 Consumer<TestNewable> finalCons = observers[i];
-                Observer observer = Observer.<TestNewable> of(Pair.of(this, i), c -> {
-                    if (!dIsObsolete()) {
+                Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), c -> {
+                    if (!isObsolete((Mutable) ((Triple) LeafTransaction.getCurrent().leaf().id()).a())) {
                         finalCons.accept(c);
                     }
                 });

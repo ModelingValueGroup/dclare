@@ -182,7 +182,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public static class Constructed extends Observed<Mutable, Map<Construction, Newable>> {
+    public static class Constructed extends Observed<Mutable, Map<Construction.Reason, Newable>> {
 
         public static Constructed of(Observer observer) {
             return new Constructed(observer);
@@ -190,12 +190,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         private Constructed(Observer observer) {
             super(observer, Map.of(), null, null, (tx, o, pre, post) -> pre.diff(post).forEachOrdered(e -> {
+                Construction cons = Construction.of(o, observer, e.getKey());
                 Pair<Newable, Newable> d = e.getValue();
                 if (d.a() != null) {
-                    Newable.CONSTRUCTIONS.set(d.a(), Set::remove, e.getKey());
+                    Newable.CONSTRUCTIONS.set(d.a(), Set::remove, cons);
                 }
                 if (d.b() != null) {
-                    Newable.CONSTRUCTIONS.set(d.b(), Set::add, e.getKey());
+                    Newable.CONSTRUCTIONS.set(d.b(), Set::add, cons);
                 }
             }), SetableModifier.doNotCheckConsistency, SetableModifier.synthetic);
         }
