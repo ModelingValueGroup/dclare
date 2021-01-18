@@ -66,8 +66,8 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Constant<T, Entry<Setable, Object>> internal;
     protected final boolean                           checkConsistency;
     private final boolean                             synthetic;
-    private final boolean                             isMany;
 
+    private Boolean                                   isMany;
     private Boolean                                   isReference;
     private Boolean                                   hasNewables;
 
@@ -79,7 +79,6 @@ public class Setable<O, T> extends Getable<O, T> {
         this.changed = changed;
         this.opposite = opposite;
         this.scope = scope;
-        this.isMany = def instanceof ContainingCollection;
         if (containment && opposite != null) {
             throw new Error("The containment setable " + this + " has an opposite");
         }
@@ -147,7 +146,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean isMany() {
-        return isMany;
+        return isMany != null && isMany;
     }
 
     public boolean isReference() {
@@ -228,6 +227,7 @@ public class Setable<O, T> extends Getable<O, T> {
             if (element != null) {
                 isReference = element instanceof Mutable && !containment && this != Mutable.D_PARENT_CONTAINING;
                 hasNewables = element instanceof Newable && this != Mutable.D_PARENT_CONTAINING;
+                isMany = postValue instanceof ContainingCollection;
             }
         }
     }

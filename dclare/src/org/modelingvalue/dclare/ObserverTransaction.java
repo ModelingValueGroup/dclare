@@ -253,16 +253,21 @@ public class ObserverTransaction extends ActionTransaction {
         return result;
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
             if (!Objects.equals(pre, post)) {
-                post = setable.hasNewables() ? matchNewables(setable, pre, post) : post;
-                if (!Objects.equals(pre, post)) {
-                    post = rippleOut(object, (Observed<O, T>) setable, pre, post);
+                if (setable.hasNewables()) {
+                    Object[] prePost = matchNewables(setable, pre, post);
+                    if (!Objects.equals(pre, (T) prePost[0])) {
+                        super.set(object, setable, pre, (T) prePost[0]);
+                    }
+                    pre = (T) prePost[0];
+                    post = (T) prePost[1];
                 }
+                post = rippleOut(object, (Observed<O, T>) setable, pre, post);
             }
         }
         super.set(object, setable, pre, post);
@@ -382,16 +387,16 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private <O, T> T matchNewables(Setable<O, T> setable, T pre, T post) {
+    private <O, T> Object[] matchNewables(Setable<O, T> setable, T pre, T post) {
         if (setable.isMany()) {
-            return (T) manyMatch(setable, (ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post);
+            return manyMatch(setable, (ContainingCollection<Newable>) pre, (ContainingCollection<Newable>) post);
         } else {
-            return (T) singleMatch(setable, (Newable) pre, (Newable) post);
+            return singleMatch(setable, (Newable) pre, (Newable) post);
         }
     }
 
     @SuppressWarnings("rawtypes")
-    private Newable singleMatch(Setable setable, Newable before, Newable after) {
+    private Object[] singleMatch(Setable setable, Newable before, Newable after) {
         if (after != null) {
             merge();
             if (setable.containment()) {
@@ -411,17 +416,17 @@ public class ObserverTransaction extends ActionTransaction {
                 after = before;
             }
         }
-        return after;
+        return new Object[]{before, after};
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ContainingCollection<Newable> manyMatch(Setable setable, ContainingCollection<Newable> before, ContainingCollection<Newable> after) {
-        if (!after.isEmpty()) {
+    private Object[] manyMatch(Setable setable, ContainingCollection<Newable> before, ContainingCollection<Newable> after) {
+        if (after != null && !after.isEmpty()) {
             merge();
             if (setable.containment()) {
                 List<MatchInfo> postList = after.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
                 if (!postList.isEmpty()) {
-                    List<MatchInfo> preList = before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+                    List<MatchInfo> preList = before == null ? List.of() : before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
                     if (!(after instanceof List)) {
                         preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
                         postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
@@ -429,12 +434,14 @@ public class ObserverTransaction extends ActionTransaction {
                     for (MatchInfo post : postList) {
                         if (post.constructions().isEmpty()) {
                             after = after.remove(post.newable());
+                            before = before.remove(post.newable());
                         } else {
                             for (MatchInfo pre : preList) {
                                 if (pre.hasSameType(post)) {
                                     if (pre.areTheSame(post)) {
                                         makeTheSame(pre, post);
                                         after = after.remove(post.newable());
+                                        before = before.remove(post.newable());
                                     } else if (TRACE_MATCHING) {
                                         runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
                                     }
@@ -447,7 +454,7 @@ public class ObserverTransaction extends ActionTransaction {
                 after = before;
             }
         }
-        return after;
+        return new Object[]{before, after};
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
