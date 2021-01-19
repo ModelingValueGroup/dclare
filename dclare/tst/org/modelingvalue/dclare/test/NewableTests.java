@@ -405,6 +405,7 @@ public class NewableTests {
                     return false;
                 } else {
                     Newable bn = bo.get();
+                    bl = bl.remove(bn);
                     for (Setable s : an.dClass().dSetables()) {
                         if (!s.id().toString().startsWith("m")) {
                             Object av = as.get(() -> s.get(an));
@@ -416,24 +417,7 @@ public class NewableTests {
                     }
                 }
             }
-            for (Newable bn : bl) {
-                Optional<Newable> ao = al.filter(an -> equals(as, an, bs, bn, done)).findAny();
-                if (ao.isEmpty()) {
-                    return false;
-                } else {
-                    Newable an = ao.get();
-                    for (Setable s : an.dClass().dSetables()) {
-                        if (!s.id().toString().startsWith("m")) {
-                            Object av = as.get(() -> s.get(an));
-                            Object bv = bs.get(() -> s.get(bn));
-                            if (!equals(as, av, bs, bv, done)) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
+            return bl.isEmpty();
         } else {
             return false;
         }
