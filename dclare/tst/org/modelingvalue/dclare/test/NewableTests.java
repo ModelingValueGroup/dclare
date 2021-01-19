@@ -221,13 +221,16 @@ public class NewableTests {
     @Test
     public void testAll() {
         State state = oofb(false, false, true, true);
-        assertTrue(equals(state, oofb(true, false, true, false)));
-        assertTrue(equals(state, oofb(false, true, false, true)));
-        assertTrue(equals(state, oofb(true, false, true, true)));
-        assertTrue(equals(state, oofb(false, true, true, true)));
-        assertTrue(equals(state, oofb(true, true, true, true)));
-        assertTrue(equals(state, oofb(true, true, true, false)));
-        assertTrue(equals(state, oofb(true, true, false, true)));
+        int i = 0;
+        while (i++ < 10) {
+            assertTrue(equals(state, oofb(true, false, true, false)));
+            assertTrue(equals(state, oofb(false, true, false, true)));
+            assertTrue(equals(state, oofb(true, false, true, true)));
+            assertTrue(equals(state, oofb(false, true, true, true)));
+            assertTrue(equals(state, oofb(true, true, true, true)));
+            assertTrue(equals(state, oofb(true, true, true, false)));
+            assertTrue(equals(state, oofb(true, true, false, true)));
+        }
     }
 
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
