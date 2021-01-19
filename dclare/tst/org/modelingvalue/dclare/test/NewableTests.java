@@ -54,7 +54,20 @@ public class NewableTests {
     }
 
     @Test
-    public void simpleBidirectional() {
+    public void singleBidirectional() {
+        a_b();
+    }
+
+    @Test
+    public void manyBidirectional() {
+        State state = a_b();
+        int i = 0;
+        while (i++ < 100) {
+            assertTrue(equals(state, a_b()));
+        }
+    }
+
+    public State a_b() {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
 
@@ -158,6 +171,7 @@ public class NewableTests {
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
         });
 
+        return result;
     }
 
     @Test
@@ -395,19 +409,19 @@ public class NewableTests {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static boolean equals(State as, State bs) {
-        List<Newable> al = as.getObjects(Newable.class).toList();
-        List<Newable> bl = bs.getObjects(Newable.class).toList();
+        List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
+        List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         if (al.size() == bl.size()) {
             HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
             for (Newable an : al) {
-                Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findAny();
+                Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
                 if (bo.isEmpty()) {
                     return false;
                 } else {
                     Newable bn = bo.get();
                     bl = bl.remove(bn);
                     for (Setable s : an.dClass().dSetables()) {
-                        if (!s.id().toString().startsWith("m")) {
+                        if (!s.synthetic()) {
                             Object av = as.get(() -> s.get(an));
                             Object bv = bs.get(() -> s.get(bn));
                             if (!equals(as, av, bs, bv, done)) {
