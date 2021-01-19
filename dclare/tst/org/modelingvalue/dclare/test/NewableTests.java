@@ -23,13 +23,22 @@ import static org.modelingvalue.dclare.SetableModifier.synthetic;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.test.support.TestMutable;
@@ -152,6 +161,11 @@ public class NewableTests {
     }
 
     @Test
+    public void oo_fb() {
+        oofb(false, false, true, true);
+    }
+
+    @Test
     public void oo2fb_oo() {
         oofb(true, false, true, false);
     }
@@ -184,6 +198,18 @@ public class NewableTests {
     @Test
     public void oo2fb_fb2oo_fb() {
         oofb(true, true, false, true);
+    }
+
+    @Test
+    public void testAll() {
+        State state = oofb(false, false, true, true);
+        assertTrue(equals(state, oofb(true, false, true, false)));
+        assertTrue(equals(state, oofb(false, true, false, true)));
+        assertTrue(equals(state, oofb(true, false, true, true)));
+        assertTrue(equals(state, oofb(false, true, true, true)));
+        assertTrue(equals(state, oofb(true, true, true, true)));
+        assertTrue(equals(state, oofb(true, true, true, false)));
+        assertTrue(equals(state, oofb(true, true, false, true)));
     }
 
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
@@ -365,6 +391,90 @@ public class NewableTests {
     @FunctionalInterface
     public interface Creator {
         TestNewable create(TestNewableClass clazz);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static boolean equals(State as, State bs) {
+        List<Newable> al = as.getObjects(Newable.class).toList();
+        List<Newable> bl = bs.getObjects(Newable.class).toList();
+        if (al.size() == bl.size()) {
+            HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
+            for (Newable an : al) {
+                Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findAny();
+                if (bo.isEmpty()) {
+                    return false;
+                } else {
+                    Newable bn = bo.get();
+                    for (Setable s : an.dClass().dSetables()) {
+                        if (!s.id().toString().startsWith("m")) {
+                            Object av = as.get(() -> s.get(an));
+                            Object bv = bs.get(() -> s.get(bn));
+                            if (!equals(as, av, bs, bv, done)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            for (Newable bn : bl) {
+                Optional<Newable> ao = al.filter(an -> equals(as, an, bs, bn, done)).findAny();
+                if (ao.isEmpty()) {
+                    return false;
+                } else {
+                    Newable an = ao.get();
+                    for (Setable s : an.dClass().dSetables()) {
+                        if (!s.id().toString().startsWith("m")) {
+                            Object av = as.get(() -> s.get(an));
+                            Object bv = bs.get(() -> s.get(bn));
+                            if (!equals(as, av, bs, bv, done)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static boolean equals(State as, Object a, State bs, Object b, Map<Pair<Newable, Newable>, Boolean> done) {
+        boolean result = false;
+        if (Objects.equals(a, b)) {
+            result = true;
+        } else if (a instanceof Newable && b instanceof Newable) {
+            Newable an = (Newable) a;
+            Newable bn = (Newable) b;
+            Pair<Newable, Newable> key = Pair.of(an, bn);
+            if (done.containsKey(key)) {
+                result = done.get(key);
+            } else {
+                if (equals(as, as.get(() -> an.dClass()), bs, bs.get(() -> bn.dClass()), done) && //
+                        equals(as, as.get(() -> an.dNewableType()), bs, bs.get(() -> bn.dNewableType()), done) && //
+                        equals(as, as.get(() -> an.dIdentity()), bs, bs.get(() -> bn.dIdentity()), done) && //
+                        equals(as, as.get(() -> an.dParent()), bs, bs.get(() -> bn.dParent()), done)) {
+                    result = true;
+                }
+                done.put(key, result);
+            }
+        } else if (a instanceof Collection && b instanceof Collection && //
+                (!((Collection) a).filter(Newable.class).findAny().isEmpty() || //
+                        !((Collection) b).filter(Newable.class).isEmpty())) {
+            if (((Collection) a).size() == ((Collection) b).size()) {
+                List<Newable> al = as.get(() -> ((Collection<Newable>) a).sortedBy(n -> (Comparable) n.dIdentity()).toList());
+                List<Newable> bl = bs.get(() -> ((Collection<Newable>) b).sortedBy(n -> (Comparable) n.dIdentity()).toList());
+                result = true;
+                for (int i = 0; i < al.size(); i++) {
+                    if (!equals(as, al.get(i), bs, bl.get(i), done)) {
+                        result = false;
+                        break;
+                    }
+                }
+            }
+        }
+        return result;
     }
 
 }
