@@ -50,8 +50,10 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "true");
+        System.setProperty("TRACE_MATCHING", "false");
     }
+
+    static final boolean PRINT_RESULT_STATE = false;
 
     @Test
     public void singleBidirectional() {
@@ -161,7 +163,9 @@ public class NewableTests {
         utx.stop();
         State result = utx.waitForEnd();
 
-        System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+        if (PRINT_RESULT_STATE) {
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+        }
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
@@ -376,7 +380,9 @@ public class NewableTests {
         utx.stop();
         State result = utx.waitForEnd();
 
-        System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+        if (PRINT_RESULT_STATE) {
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+        }
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
