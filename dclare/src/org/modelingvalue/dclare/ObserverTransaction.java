@@ -420,29 +420,27 @@ public class ObserverTransaction extends ActionTransaction {
         if (after != null && !after.isEmpty()) {
             merge();
             List<MatchInfo> postList = after.map(MatchInfo::of).exclude(MatchInfo::hasDirectReasonToExist).toList();
-            if (!postList.isEmpty()) {
-                List<MatchInfo> preList = null;
-                for (MatchInfo post : postList) {
-                    if (post.constructions().isEmpty()) {
-                        after = after.remove(post.newable());
-                        before = before.remove(post.newable());
-                    } else if (setable.containment()) {
-                        if (preList == null) {
-                            preList = before == null ? List.of() : before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
-                            if (!(after instanceof List)) {
-                                preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
-                                postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
-                            }
+            List<MatchInfo> preList = null;
+            for (MatchInfo post : postList) {
+                if (post.constructions().isEmpty()) {
+                    after = after.remove(post.newable());
+                    before = before.remove(post.newable());
+                } else if (setable.containment()) {
+                    if (preList == null) {
+                        preList = before == null ? List.of() : before.exclude(after::contains).map(MatchInfo::of).filter(MatchInfo::hasDirectReasonToExist).toList();
+                        if (!(after instanceof List)) {
+                            preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
+                            postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
                         }
-                        for (MatchInfo pre : preList) {
-                            if (pre.hasSameType(post)) {
-                                if (pre.areTheSame(post)) {
-                                    makeTheSame(pre, post);
-                                    after = after.remove(post.newable());
-                                    before = before.remove(post.newable());
-                                } else if (TRACE_MATCHING) {
-                                    runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
-                                }
+                    }
+                    for (MatchInfo pre : preList) {
+                        if (pre.hasSameType(post)) {
+                            if (pre.areTheSame(post)) {
+                                makeTheSame(pre, post);
+                                after = after.remove(post.newable());
+                                before = before.remove(post.newable());
+                            } else if (TRACE_MATCHING) {
+                                runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
                             }
                         }
                     }
