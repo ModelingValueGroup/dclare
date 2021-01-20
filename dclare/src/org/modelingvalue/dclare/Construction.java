@@ -157,7 +157,7 @@ public class Construction extends IdentifiedByArray {
 
         private Map<Mutable, Set<Construction>> sources;
         private Set<Newable>                    notObservedSources;
-        private boolean                         unidentifiedMatched = false;
+        private boolean                         idMatched;
 
         public static MatchInfo of(Newable newable) {
             return new MatchInfo(newable);
@@ -174,9 +174,9 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (!unidentifiedMatched && !other.unidentifiedMatched && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                unidentifiedMatched = true;
-                other.unidentifiedMatched = true;
+            if (!idMatched && !other.idMatched && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
+                idMatched = true;
+                other.idMatched = true;
                 return true;
             } else {
                 return other.sources().containsKey(newable());
