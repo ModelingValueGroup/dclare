@@ -379,7 +379,7 @@ public class ObserverTransaction extends ActionTransaction {
                 result = supplier.get();
                 if (TRACE_MATCHING) {
                     O finalResult = result;
-                    runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + observer()));
+                    runNonObserving(() -> System.err.println("MATCHING " + reason + " -> " + finalResult + "   " + this));
                 }
             }
             set(mutable(), observer().constructed(), (map, e) -> map.put(reason, e), result);
@@ -442,7 +442,7 @@ public class ObserverTransaction extends ActionTransaction {
                                 after = after.remove(post.newable());
                                 before = before.remove(post.newable());
                             } else if (TRACE_MATCHING) {
-                                runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + observer()));
+                                runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " <> " + post.newable() + "   " + this));
                             }
                         }
                     }
@@ -455,7 +455,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo pre, MatchInfo post) {
         if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " == " + post.newable() + "   " + observer()));
+            runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " == " + post.newable() + "   " + this));
         }
         for (Construction cons : post.constructions()) {
             Mutable obj = cons.object();
