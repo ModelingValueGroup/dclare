@@ -288,25 +288,26 @@ public class ObserverTransaction extends ActionTransaction {
         if (!Objects.equals(pre, old)) {
             if (Objects.equals(old, post)) {
                 backwards.set(TRUE);
-                return pre;
+                post = pre;
             } else if (old instanceof Mergeable) {
                 T result = ((Mergeable<T>) old).merge(pre, post);
                 if (!result.equals(post)) {
                     backwards.set(TRUE);
-                    return result;
+                    post = result;
                 }
             }
-        } else if (observed.containment()) {
-            if (pre instanceof Mutable && isActive((Mutable) pre)) {
+        }
+        if (observed.containment()) {
+            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
                 backwards.set(TRUE);
-                return pre;
+                post = pre;
             } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
                 T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
                 if (!result.equals(post)) {
                     backwards.set(TRUE);
-                    return result;
+                    post = result;
                 }
             }
         }
