@@ -101,7 +101,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                             state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
                             break;
                         } else {
-                            if (TRACE_MUTABLE) {
+                            if (TRACE_MUTABLE || UniverseTransaction.TRACE_UNIVERSE) {
                                 System.err.println("DCLARE: " + indent("    ") + mutable + " BACKWARD");
                             }
                             move(mutable, Direction.backward, Direction.scheduled);
