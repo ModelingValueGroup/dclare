@@ -16,31 +16,8 @@
 package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Mergeable;
 
-public interface Newable extends Mutable, Mergeable<Newable> {
-
-    Newable                              MERGER               = new Newable() {
-                                                                  @Override
-                                                                  public MutableClass dClass() {
-                                                                      throw new UnsupportedOperationException();
-                                                                  }
-
-                                                                  @Override
-                                                                  public Object dIdentity() {
-                                                                      throw new UnsupportedOperationException();
-                                                                  }
-
-                                                                  @Override
-                                                                  public Object dNewableType() {
-                                                                      throw new UnsupportedOperationException();
-                                                                  }
-
-                                                                  @Override
-                                                                  public Comparable<?> dSortKey() {
-                                                                      throw new UnsupportedOperationException();
-                                                                  }
-                                                              };
+public interface Newable extends Mutable {
 
     Observed<Newable, Set<Construction>> CONSTRUCTIONS        = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
 
@@ -72,26 +49,6 @@ public interface Newable extends Mutable, Mergeable<Newable> {
     @Override
     default boolean dIsObsolete() {
         return CONSTRUCTIONS.current(this).isEmpty();
-    }
-
-    @Override
-    default Newable merge(Newable[] branches, int length) {
-        for (int i = branches.length - 1; i >= 0; i--) {
-            if (branches[i] != null && branches[i] != MERGER && !branches[i].dIsObsolete()) {
-                return branches[i];
-            }
-        }
-        return this;
-    }
-
-    @Override
-    default Newable getMerger() {
-        return MERGER;
-    }
-
-    @Override
-    default Class<Newable> getMeetClass() {
-        return Newable.class;
     }
 
     @Override

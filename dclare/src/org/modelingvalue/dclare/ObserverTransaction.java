@@ -31,6 +31,7 @@ import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.MatchInfo;
+import org.modelingvalue.dclare.Observer.Constructed;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -456,12 +457,13 @@ public class ObserverTransaction extends ActionTransaction {
             runNonObserving(() -> System.err.println("MATCHING " + pre.newable() + " == " + post.newable() + "   " + observer()));
         }
         for (Construction cons : post.constructions()) {
-            set(cons.object(), cons.observer().constructed(), (map, e) -> map.put(cons.reason(), e), pre.newable());
-            if (mutable().equals(cons.object()) && observer().equals(cons.observer())) {
+            Mutable obj = cons.object();
+            Constructed set = cons.observer().constructed();
+            super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
+            if (mutable().equals(obj) && observer().equals(cons.observer())) {
                 constructions.set((map, e) -> map.put(cons.reason(), e), pre.newable());
             }
         }
-        clear(post.newable());
     }
 
 }
