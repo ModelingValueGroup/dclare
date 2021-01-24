@@ -157,6 +157,7 @@ public class Construction extends IdentifiedByArray {
 
         private Map<Mutable, Set<Construction>> sources;
         private Set<Newable>                    notObservedSources;
+        private Set<Newable>                    sourcesAndAncestors;
         private boolean                         idMatched;
 
         public static MatchInfo of(Newable newable) {
@@ -165,7 +166,7 @@ public class Construction extends IdentifiedByArray {
 
         private MatchInfo(Newable newable) {
             this.newable = newable;
-            this.identity = newable.dIdentity();
+            this.identity = newable.dCatchingIdentity();
             this.constructions = newable.dConstructions();
         }
 
@@ -179,8 +180,15 @@ public class Construction extends IdentifiedByArray {
                 other.idMatched = true;
                 return true;
             } else {
-                return other.sources().containsKey(newable());
+                return other.sourcesAndAncestors().contains(newable());
             }
+        }
+
+        private Set<Newable> sourcesAndAncestors() {
+            if (sourcesAndAncestors == null) {
+                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
+            }
+            return sourcesAndAncestors;
         }
 
         public boolean areUnidentified(MatchInfo other) {
@@ -196,7 +204,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean hasUnidentifiedSource() {
-            return notObservedSources().anyMatch(n -> n.dIdentity() == null);
+            return notObservedSources().anyMatch(n -> n.dCatchingIdentity() == null);
         }
 
         public Collection<Comparable> sourcesSortKeys() {

@@ -19,6 +19,7 @@ import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 
@@ -76,6 +77,17 @@ public interface Mutable extends TransactionClass {
             parent = parent.dParent();
         }
         return (C) parent;
+    }
+
+    @SuppressWarnings("unchecked")
+    default <C> List<C> dAncestors(Class<C> cls) {
+        List<C> result = List.of();
+        Mutable parent = this;
+        while (cls.isInstance(parent)) {
+            result = result.append((C) parent);
+            parent = parent.dParent();
+        }
+        return result;
     }
 
     default boolean dHasAncestor(Mutable ancestor) {

@@ -29,11 +29,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Newable;
@@ -65,7 +67,7 @@ public class NewableTests {
         State state = a_b();
         int i = 0;
         while (i++ < 100) {
-            assertTrue(equals(state, a_b()));
+            compareStates(state, a_b());
         }
     }
 
@@ -223,13 +225,13 @@ public class NewableTests {
         State state = oofb(false, false, true, true);
         int i = 0;
         while (i++ < 10) {
-            assertTrue(equals(state, oofb(true, false, true, false)));
-            assertTrue(equals(state, oofb(false, true, false, true)));
-            assertTrue(equals(state, oofb(true, false, true, true)));
-            assertTrue(equals(state, oofb(false, true, true, true)));
-            assertTrue(equals(state, oofb(true, true, true, true)));
-            assertTrue(equals(state, oofb(true, true, true, false)));
-            assertTrue(equals(state, oofb(true, true, false, true)));
+            compareStates(state, oofb(true, false, true, false));
+            compareStates(state, oofb(false, true, false, true));
+            compareStates(state, oofb(true, false, true, true));
+            compareStates(state, oofb(false, true, true, true));
+            compareStates(state, oofb(true, true, true, true));
+            compareStates(state, oofb(true, true, true, false));
+            compareStates(state, oofb(true, true, false, true));
         }
     }
 
@@ -264,14 +266,17 @@ public class NewableTests {
         Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of(), synthetic);
         TestNewableClass OBT = TestNewableClass.of("OBT", n::get, n, mcls, _otr);
 
-        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
-        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment);
-        TestNewableClass FAT = TestNewableClass.of("FAT", n::get, n, left, right);
-
         Observed<TestMutable, TestNewable> otr = Observed.of("otr", null, () -> _otr);
         Observed<TestMutable, TestNewable> mref = Observed.of("mref", null, synthetic);
         Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null);
         TestNewableClass ROL = TestNewableClass.of("ROL", n::get, n, otr, mref, rlopp);
+
+        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
+        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment);
+        Function<TestNewable, Object> ftId = ft -> {
+            return Pair.of(otr.get(left.get(ft)), otr.get(right.get(ft)));
+        };
+        TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
         ROL.observe(rl -> {
             TestNewable ft = (TestNewable) rl.dParent();
@@ -445,33 +450,25 @@ public class NewableTests {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static boolean equals(State as, State bs) {
+    private static void compareStates(State as, State bs) {
         List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
-        if (al.size() == bl.size()) {
-            HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
-            for (Newable an : al) {
-                Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
-                if (bo.isEmpty()) {
-                    return false;
-                } else {
-                    Newable bn = bo.get();
-                    bl = bl.remove(bn);
-                    for (Setable s : an.dClass().dSetables()) {
-                        if (!s.synthetic()) {
-                            Object av = as.get(() -> s.get(an));
-                            Object bv = bs.get(() -> s.get(bn));
-                            if (!equals(as, av, bs, bv, done)) {
-                                return false;
-                            }
-                        }
-                    }
+        assertEquals(al.size(), bl.size());
+        HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
+        for (Newable an : al) {
+            Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
+            assertTrue(!bo.isEmpty());
+            Newable bn = bo.get();
+            bl = bl.remove(bn);
+            for (Setable s : an.dClass().dSetables()) {
+                if (!s.synthetic()) {
+                    Object av = as.get(() -> s.get(an));
+                    Object bv = bs.get(() -> s.get(bn));
+                    assertTrue(equals(as, av, bs, bv, done));
                 }
             }
-            return bl.isEmpty();
-        } else {
-            return false;
         }
+        assertTrue(bl.isEmpty());
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -479,6 +476,15 @@ public class NewableTests {
         boolean result = false;
         if (Objects.equals(a, b)) {
             result = true;
+        } else if (a instanceof Struct && b instanceof Struct) {
+            Struct structa = (Struct) a;
+            Struct structb = (Struct) b;
+            if (structa.length() == structb.length()) {
+                result = true;
+                for (int i = 0; i < structa.length(); i++) {
+                    result &= equals(as, structa.get(i), bs, structb.get(i), done);
+                }
+            }
         } else if (a instanceof Newable && b instanceof Newable) {
             Newable an = (Newable) a;
             Newable bn = (Newable) b;
@@ -498,15 +504,17 @@ public class NewableTests {
                 (!((Collection) a).filter(Newable.class).findAny().isEmpty() || //
                         !((Collection) b).filter(Newable.class).isEmpty())) {
             if (((Collection) a).size() == ((Collection) b).size()) {
-                List<Newable> al = as.get(() -> ((Collection<Newable>) a).sortedBy(n -> (Comparable) n.dIdentity()).toList());
-                List<Newable> bl = bs.get(() -> ((Collection<Newable>) b).sortedBy(n -> (Comparable) n.dIdentity()).toList());
-                result = true;
-                for (int i = 0; i < al.size(); i++) {
-                    if (!equals(as, al.get(i), bs, bl.get(i), done)) {
-                        result = false;
-                        break;
+                List<Newable> al = ((Collection<Newable>) a).toList();
+                List<Newable> bl = ((Collection<Newable>) b).toList();
+                for (int ai = 0; ai < al.size(); ai++) {
+                    for (int bi = 0; bi < bl.size(); bi++) {
+                        if (equals(as, al.get(ai), bs, bl.get(bi), done)) {
+                            bl = bl.removeIndex(bi);
+                            break;
+                        }
                     }
                 }
+                result = bl.isEmpty();
             }
         }
         return result;

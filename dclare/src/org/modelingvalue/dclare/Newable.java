@@ -32,6 +32,14 @@ public interface Newable extends Mutable {
 
     Object dIdentity();
 
+    default Object dCatchingIdentity() {
+        try {
+            return dIdentity();
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
     Object dNewableType();
 
     @SuppressWarnings("rawtypes")
@@ -43,7 +51,7 @@ public interface Newable extends Mutable {
 
     @Override
     default boolean dIsIdentified() {
-        return dIdentity() != null;
+        return dCatchingIdentity() != null;
     }
 
     @Override

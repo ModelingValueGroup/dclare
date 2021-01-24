@@ -275,14 +275,6 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    @Override
-    public <O> void clear(O object) {
-        for (Entry<Setable, Object> e : state().getProperties(object)) {
-            super.set(object, e.getKey(), state().get(object, e.getKey()), e.getKey().getDefault());
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         T old = universeTransaction().oldState().get(object, observed);
         if (!Objects.equals(pre, old)) {

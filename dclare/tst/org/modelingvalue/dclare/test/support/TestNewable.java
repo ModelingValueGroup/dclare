@@ -90,7 +90,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public String toString() {
-        Object id = dIdentity();
+        Object id = dCatchingIdentity();
         return id != null ? super.toString() + ":" + id : super.toString();
     }
 
