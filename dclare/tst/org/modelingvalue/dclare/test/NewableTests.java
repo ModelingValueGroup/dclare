@@ -50,10 +50,10 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "false");
+        System.setProperty("TRACE_MATCHING", "true");
     }
 
-    static final boolean PRINT_RESULT_STATE = false;
+    static final boolean PRINT_RESULT_STATE = true;
 
     @Test
     public void singleBidirectional() {
@@ -337,20 +337,34 @@ public class NewableTests {
 
                 TestNewable cl1 = c.create(CLS);
                 TestNewable cl2 = c.create(CLS);
-                cls.set(oom, Set.of(cl1, cl2));
+                TestNewable cl3 = c.create(CLS);
+                TestNewable cl4 = c.create(CLS);
+                cls.set(oom, Set.of(cl1, cl2, cl3, cl4));
                 n.set(cl1, "A");
                 n.set(cl2, "B");
+                n.set(cl3, "C");
+                n.set(cl4, "D");
 
                 TestNewable rf1 = c.create(REF);
                 TestNewable rf2 = c.create(REF);
+                TestNewable rf3 = c.create(REF);
+                TestNewable rf4 = c.create(REF);
                 refs.set(cl1, Set.of(rf1));
                 refs.set(cl2, Set.of(rf2));
+                refs.set(cl3, Set.of(rf3));
+                refs.set(cl4, Set.of(rf4));
                 n.set(rf1, "b");
                 n.set(rf2, "a");
+                n.set(rf3, "d");
+                n.set(rf4, "c");
                 opp.set(rf1, rf2);
                 opp.set(rf2, rf1);
+                opp.set(rf3, rf4);
+                opp.set(rf4, rf3);
                 typ.set(rf1, cl2);
                 typ.set(rf2, cl1);
+                typ.set(rf3, cl4);
+                typ.set(rf4, cl3);
             }
 
             if (fbIn) { // FB
@@ -360,22 +374,36 @@ public class NewableTests {
 
                 TestNewable ot1 = c.create(OBT);
                 TestNewable ot2 = c.create(OBT);
-                ots.set(fbm, Set.of(ot1, ot2));
+                TestNewable ot3 = c.create(OBT);
+                TestNewable ot4 = c.create(OBT);
+                ots.set(fbm, Set.of(ot1, ot2, ot3, ot4));
                 n.set(ot1, "A");
                 n.set(ot2, "B");
+                n.set(ot3, "C");
+                n.set(ot4, "D");
 
                 TestNewable ft1 = c.create(FAT);
-                fts.set(fbm, Set.of(ft1));
+                TestNewable ft2 = c.create(FAT);
+                fts.set(fbm, Set.of(ft1, ft2));
                 n.set(ft1, "a_b");
+                n.set(ft2, "c_d");
 
                 TestNewable rl1 = c.create(ROL);
                 TestNewable rl2 = c.create(ROL);
+                TestNewable rl3 = c.create(ROL);
+                TestNewable rl4 = c.create(ROL);
                 left.set(ft1, rl1);
                 right.set(ft1, rl2);
+                left.set(ft2, rl3);
+                right.set(ft2, rl4);
                 n.set(rl1, "a");
                 n.set(rl2, "b");
+                n.set(rl3, "c");
+                n.set(rl4, "d");
                 otr.set(rl1, ot1);
                 otr.set(rl2, ot2);
+                otr.set(rl3, ot3);
+                otr.set(rl4, ot4);
             }
 
         });
@@ -389,7 +417,7 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(11, objects.size());
+            assertEquals(20, objects.size());
             assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> n.get(o) != null));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
