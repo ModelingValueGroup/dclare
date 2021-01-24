@@ -52,7 +52,7 @@ public abstract class ConsistencyError extends RuntimeException implements Compa
 
     @Override
     public int compareTo(ConsistencyError o) {
-        return severity > o.severity ? -1 : severity < o.severity ? 1 : 0;
+        return severity < o.severity ? -1 : severity > o.severity ? 1 : 0;
     }
 
 }

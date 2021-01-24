@@ -238,9 +238,9 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void handleExceptions(Set<Throwable> errors) {
         if (TRACE_UNIVERSE) {
-            Throwable t = errors.sorted(this::compareThrowable).findFirst().get();
+            List<Throwable> list = errors.sorted(this::compareThrowable).toList();
             System.err.println("Exception in Universe:");
-            t.printStackTrace();
+            list.first().printStackTrace();
         }
         kill();
     }
@@ -256,8 +256,8 @@ public class UniverseTransaction extends MutableTransaction {
     public void throwIfError() {
         Set<Throwable> es = errors.get();
         if (!es.isEmpty()) {
-            Throwable e = es.sorted(this::compareThrowable).findFirst().get();
-            throw new Error("Error in engine " + state.get(() -> e.getMessage()), e);
+            List<Throwable> list = es.sorted(this::compareThrowable).toList();
+            throw new Error("Error in engine " + state.get(() -> list.first().getMessage()), list.first());
         }
     }
 

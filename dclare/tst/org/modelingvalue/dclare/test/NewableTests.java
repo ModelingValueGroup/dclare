@@ -18,7 +18,6 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.SetableModifier.containment;
-// import static org.modelingvalue.dclare.SetableModifier.doNotCheckConsistency;
 import static org.modelingvalue.dclare.SetableModifier.synthetic;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
@@ -52,10 +51,12 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "false");
+        System.setProperty("TRACE_MATCHING", "true");
+        System.setProperty("TRACE_UNIVERSE", "true");
+        // System.setProperty("TRACE_OBSERVERS", "true");
     }
 
-    static final boolean PRINT_RESULT_STATE = false;
+    static final boolean PRINT_RESULT_STATE = true;
 
     @Test
     public void singleBidirectional() {
@@ -235,6 +236,7 @@ public class NewableTests {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
 
         Observed<TestMutable, String> n = Observed.of("n", null);
@@ -274,13 +276,29 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
         Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment);
         Function<TestNewable, Object> ftId = ft -> {
-            return Pair.of(otr.get(left.get(ft)), otr.get(right.get(ft)));
+            TestNewable lt = otr.get(left.get(ft));
+            TestNewable rt = right.get(ft);
+            return lt != null && rt != null ? Pair.of(lt, otr.get(rt)) : null;
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
         ROL.observe(rl -> {
             TestNewable ft = (TestNewable) rl.dParent();
             rlopp.set(rl, rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft));
+        }, rl -> {
+            if (n.get(rl) == null) {
+                n.set(rl, "~");
+            }
+        });
+
+        FAT.observe(ft -> {
+            if (left.get(ft) == null) {
+                //left.set(ft, create("L", ft, ROL));
+            }
+        }, ft -> {
+            if (right.get(ft) == null) {
+                // right.set(ft, create("R", ft, ROL));
+            }
         });
 
         // Universe
@@ -301,13 +319,13 @@ public class NewableTests {
             CLS.observe(cl -> mobt.set(cl, create(cl, OBT, //
                     ot -> n.set(ot, n.get(cl)) //
             )));
-            REF.observe(rf -> mrol.set(rf, create(rf, "1", ROL, //
+            REF.observe(rf -> mrol.set(rf, create(rf, "R", ROL, //
                     rl -> n.set(rl, n.get(rf)), //
-                    rl -> otr.set(rl, mobt.get(typ.get(rf))) //
-            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(opp.get(rf)).compareTo(n.get(rf)) > 0 ? create(rf, "2", FAT, //
-                    ft -> n.set(ft, n.get(rf) + (opp.get(rf) == null ? "" : "_" + n.get(opp.get(rf)))), //
+                    rl -> otr.set(rl, typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
+            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) < 0 ? create(rf, "F", FAT, //
+                    ft -> n.set(ft, opp.get(rf) == null ? n.get(rf) : n.get(rf) + "_" + n.get(opp.get(rf))), //
                     ft -> left.set(ft, mrol.get(rf)), //
-                    ft -> right.set(ft, opp.get(rf) == null ? create(rf, ROL, rl -> n.set(rl, "~")) : mrol.get(opp.get(rf))) //
+                    ft -> right.set(ft, opp.get(rf) == null ? create(rf, "O", ROL) : mrol.get(opp.get(rf))) //
             ) : null));
         }
 
@@ -319,11 +337,11 @@ public class NewableTests {
             )));
             OBT.observe(ot -> mcls.set(ot, create(ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
-                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).map(mref::get).notNull().toSet()) //
+                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()) //
             )));
-            ROL.observe(rl -> mref.set(rl, !n.get(rl).equals("~") ? create(rl, REF, //
+            ROL.observe(rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null ? create(rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
-                    rf -> typ.set(rf, mcls.get(otr.get(rl))), //
+                    rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
                     rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
             ) : null));
         }
@@ -464,7 +482,7 @@ public class NewableTests {
                 if (!s.synthetic()) {
                     Object av = as.get(() -> s.get(an));
                     Object bv = bs.get(() -> s.get(bn));
-                    assertTrue(equals(as, av, bs, bv, done));
+                    assertTrue(equals(as, av, bs, bv, done), s + " = " + av + " <> " + bv);
                 }
             }
         }
