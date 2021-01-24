@@ -52,10 +52,10 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "true");
+        System.setProperty("TRACE_MATCHING", "false");
     }
 
-    static final boolean PRINT_RESULT_STATE = true;
+    static final boolean PRINT_RESULT_STATE = false;
 
     @Test
     public void singleBidirectional() {
