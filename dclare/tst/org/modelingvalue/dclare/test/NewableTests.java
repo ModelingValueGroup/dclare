@@ -18,6 +18,8 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.SetableModifier.containment;
+import static org.modelingvalue.dclare.SetableModifier.doNotCheckMandatory;
+import static org.modelingvalue.dclare.SetableModifier.mandatory;
 import static org.modelingvalue.dclare.SetableModifier.synthetic;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
@@ -37,6 +39,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
@@ -239,7 +242,7 @@ public class NewableTests {
     @SuppressWarnings("unchecked")
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
 
-        Observed<TestMutable, String> n = Observed.of("n", null);
+        Observed<TestMutable, String> n = Observed.of("n", null, mandatory, doNotCheckMandatory);
 
         // OO
 
@@ -276,9 +279,13 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
         Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment);
         Function<TestNewable, Object> ftId = ft -> {
-            TestNewable lt = otr.get(left.get(ft));
-            TestNewable rt = right.get(ft);
-            return lt != null && rt != null ? Pair.of(lt, otr.get(rt)) : null;
+            TestNewable lr = left.get(ft);
+            TestNewable rr = right.get(ft);
+            TestNewable lt = otr.get(lr);
+            TestNewable rt = otr.get(rr);
+            String ln = n.get(lr);
+            String rn = n.get(rr);
+            return Quadruple.of(ln, lt, rn, rt);
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
@@ -362,10 +369,11 @@ public class NewableTests {
                 TestNewable rf4 = c.create(REF);
                 TestNewable rf5 = c.create(REF);
                 TestNewable rf6 = c.create(REF);
+                TestNewable rf7 = c.create(REF);
                 refs.set(cl1, Set.of(rf1, rf5));
                 refs.set(cl2, Set.of(rf2));
                 refs.set(cl3, Set.of(rf3));
-                refs.set(cl4, Set.of(rf4, rf6));
+                refs.set(cl4, Set.of(rf4, rf6, rf7));
                 n.set(rf1, "b");
                 n.set(rf2, "a");
                 n.set(rf3, "d");
@@ -402,7 +410,8 @@ public class NewableTests {
                 TestNewable ft2 = c.create(FAT);
                 TestNewable ft3 = c.create(FAT);
                 TestNewable ft4 = c.create(FAT);
-                fts.set(fbm, Set.of(ft1, ft2, ft3, ft4));
+                TestNewable ft5 = c.create(FAT);
+                fts.set(fbm, Set.of(ft1, ft2, ft3, ft4, ft5));
                 n.set(ft1, "a_b");
                 n.set(ft2, "c_d");
                 n.set(ft3, "e");
@@ -416,6 +425,8 @@ public class NewableTests {
                 TestNewable rl6 = c.create(ROL);
                 TestNewable rl7 = c.create(ROL);
                 TestNewable rl8 = c.create(ROL);
+                TestNewable rl9 = c.create(ROL);
+                TestNewable rl10 = c.create(ROL);
                 left.set(ft1, rl1);
                 right.set(ft1, rl2);
                 left.set(ft2, rl3);
@@ -424,6 +435,8 @@ public class NewableTests {
                 right.set(ft3, rl6);
                 left.set(ft4, rl7);
                 right.set(ft4, rl8);
+                left.set(ft5, rl9);
+                right.set(ft5, rl10);
                 n.set(rl1, "a");
                 n.set(rl2, "b");
                 n.set(rl3, "c");
@@ -432,6 +445,7 @@ public class NewableTests {
                 n.set(rl6, "e");
                 n.set(rl7, "~");
                 n.set(rl8, "f");
+                n.set(rl9, "~");
                 otr.set(rl1, ot1);
                 otr.set(rl2, ot2);
                 otr.set(rl3, ot3);
@@ -439,6 +453,7 @@ public class NewableTests {
                 otr.set(rl5, ot1);
                 otr.set(rl6, ot3);
                 otr.set(rl7, ot4);
+                otr.set(rl9, ot4);
             }
 
         });
@@ -452,9 +467,8 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(28, objects.size());
+            assertEquals(32, objects.size());
             assertTrue(objects.containsAll(created.result()));
-            assertTrue(objects.allMatch(o -> n.get(o) != null));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
         });
 
