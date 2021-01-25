@@ -39,7 +39,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
@@ -285,7 +284,7 @@ public class NewableTests {
             TestNewable rt = otr.get(rr);
             String ln = n.get(lr);
             String rn = n.get(rr);
-            return Quadruple.of(ln, lt, rn, rt);
+            return Set.of(Pair.of(ln, lt), Pair.of(rn, rt));
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
@@ -544,12 +543,10 @@ public class NewableTests {
                 }
                 done.put(key, result);
             }
-        } else if (a instanceof Collection && b instanceof Collection && //
-                (!((Collection) a).filter(Newable.class).findAny().isEmpty() || //
-                        !((Collection) b).filter(Newable.class).isEmpty())) {
+        } else if (a instanceof Collection && b instanceof Collection) {
             if (((Collection) a).size() == ((Collection) b).size()) {
-                List<Newable> al = ((Collection<Newable>) a).toList();
-                List<Newable> bl = ((Collection<Newable>) b).toList();
+                List al = ((Collection) a).toList();
+                List bl = ((Collection) b).toList();
                 for (int ai = 0; ai < al.size(); ai++) {
                     for (int bi = 0; bi < bl.size(); bi++) {
                         if (equals(as, al.get(ai), bs, bl.get(bi), done)) {
