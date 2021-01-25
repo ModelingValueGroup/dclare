@@ -273,11 +273,11 @@ public class NewableTests {
 
         Observed<TestMutable, TestNewable> otr = Observed.of("otr", null, () -> _otr);
         Observed<TestMutable, TestNewable> mref = Observed.of("mref", null, synthetic);
-        Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null);
+        Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory);
         TestNewableClass ROL = TestNewableClass.of("ROL", n::get, n, otr, mref, rlopp);
 
-        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment);
-        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment);
+        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
+        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
         Function<TestNewable, Object> ftId = ft -> {
             TestNewable lr = left.get(ft);
             TestNewable rr = right.get(ft);
