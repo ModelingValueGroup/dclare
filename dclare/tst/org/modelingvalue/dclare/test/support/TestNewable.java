@@ -96,7 +96,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     private static class TestReason extends Construction.Reason {
 
-        private Set<Observer> observers = Set.of();
+        private Set<Observer<?>> observers = Set.of();
 
         private TestReason(Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
             super(thiz, id);

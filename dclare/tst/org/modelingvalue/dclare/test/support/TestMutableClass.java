@@ -31,19 +31,19 @@ import org.modelingvalue.dclare.Setable;
 public class TestMutableClass implements MutableClass {
     private static Map<Object, TestMutableClass> staticTestClassMap = Map.of();
 
-    public static TestMutableClass existing(Object id) {
+    public static TestMutableClass existing(String id) {
         return staticTestClassMap.get(id);
     }
 
     @SafeVarargs
-    public static TestMutableClass of(Object id, Setable<? extends TestMutable, ?>... setables) {
+    public static TestMutableClass of(String id, Setable<? extends TestMutable, ?>... setables) {
         return new TestMutableClass(id, setables);
     }
 
     private final AtomicInteger counter = new AtomicInteger(0);
     private final Object        id;
-    private Set<Setable>        setables;
-    private Set<Observer>       observers;
+    private Set<Setable<? extends Mutable, ?>>        setables;
+    private Set<Observer<?>>       observers;
 
     protected TestMutableClass(Object id, Setable[] setables) {
         this.id = id;
