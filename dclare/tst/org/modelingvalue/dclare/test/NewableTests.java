@@ -53,9 +53,9 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        // System.setProperty("TRACE_MATCHING", "true");
-        // System.setProperty("TRACE_UNIVERSE", "true");
-        // System.setProperty("TRACE_OBSERVERS", "true");
+        System.setProperty("TRACE_MATCHING", "false");
+        System.setProperty("TRACE_UNIVERSE", "false");
+        System.setProperty("TRACE_OBSERVERS", "false");
     }
 
     static final boolean PRINT_RESULT_STATE = false;
@@ -227,7 +227,7 @@ public class NewableTests {
     public void testAll() {
         State state = oofb(false, false, true, true);
         int i = 0;
-        while (i++ < 10) {
+        while (i++ < 20) {
             compareStates(state, oofb(true, false, true, false));
             compareStates(state, oofb(false, true, false, true));
             compareStates(state, oofb(true, false, true, true));
