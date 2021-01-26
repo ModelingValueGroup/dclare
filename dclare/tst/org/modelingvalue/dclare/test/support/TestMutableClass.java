@@ -40,11 +40,12 @@ public class TestMutableClass implements MutableClass {
         return new TestMutableClass(id, setables);
     }
 
-    private final AtomicInteger counter = new AtomicInteger(0);
-    private final Object        id;
-    private Set<Setable<? extends Mutable, ?>>        setables;
-    private Set<Observer<?>>       observers;
+    private final AtomicInteger                counter = new AtomicInteger(0);
+    private final Object                       id;
+    private Set<Setable<? extends Mutable, ?>> setables;
+    private Set<Observer<?>>                   observers;
 
+    @SuppressWarnings("unchecked")
     protected TestMutableClass(Object id, Setable[] setables) {
         this.id = id;
         this.setables = Set.of();
