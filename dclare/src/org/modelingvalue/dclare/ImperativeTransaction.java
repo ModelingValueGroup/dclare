@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -21,6 +21,7 @@ import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -155,6 +156,16 @@ public class ImperativeTransaction extends LeafTransaction {
         return oldNew[0];
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        T[] oldNew = (T[]) new Object[2];
+        boolean first = pre == state;
+        state = state.set(object, property, oper, oldNew);
+        changed(object, property, oldNew[0], oldNew[1], first);
+        return oldNew[0];
+    }
+
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
             setted = setted.add(Pair.of(object, property));
@@ -166,6 +177,10 @@ public class ImperativeTransaction extends LeafTransaction {
             }
             changed(object, property, preValue, postValue);
         }
+    }
+
+    @Override
+    protected void setChanged(Mutable changed) {
     }
 
     @Override

@@ -15,51 +15,60 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Consumer;
+import org.modelingvalue.collections.Set;
 
-public class Action<O extends Mutable> extends Leaf {
+public interface Newable extends Mutable {
 
-    public static <M extends Mutable> Action<M> of(Object id) {
-        return new Action<>(id, o -> {
-        }, Direction.forward);
+    Observed<Newable, Set<Construction>> CONSTRUCTIONS        = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> CONSTRUCTIONS.set(n, cs -> {
+                                                                  for (Construction c : cs) {
+                                                                      if (c.object() instanceof Newable && CONSTRUCTIONS.get((Newable) c.object()).isEmpty()) {
+                                                                          cs = cs.remove(c);
+                                                                      }
+                                                                  }
+                                                                  return cs;
+                                                              }));
+
+    Object dIdentity();
+
+    default Object dCatchingIdentity() {
+        try {
+            return dIdentity();
+        } catch (Throwable e) {
+            return null;
+        }
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action, Direction.forward);
-    }
+    Object dNewableType();
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new Action<>(id, action, initDirection);
-    }
+    @SuppressWarnings("rawtypes")
+    Comparable dSortKey();
 
-    private final Consumer<O> action;
-
-    protected Action(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, initDirection);
-        this.action = action;
-    }
-
-    @Override
-    public ActionTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().actionTransactions.get().open(this, parent);
-    }
-
-    @Override
-    public void closeTransaction(Transaction tx) {
-        tx.universeTransaction().actionTransactions.get().close((ActionTransaction) tx);
-    }
-
-    public void run(O object) {
-        action.accept(object);
-    }
-
-    public void trigger(O mutable) {
-        LeafTransaction.getCurrent().trigger(mutable, this, initDirection());
+    default Set<Construction> dConstructions() {
+        return CONSTRUCTIONS.current(this);
     }
 
     @Override
-    public ActionTransaction newTransaction(UniverseTransaction universeTransaction) {
-        return new ActionTransaction(universeTransaction);
+    default boolean dIsIdentified() {
+        return dCatchingIdentity() != null;
+    }
+
+    @Override
+    default boolean dIsObsolete() {
+        return CONSTRUCTIONS.current(this).isEmpty();
+    }
+
+    @Override
+    default void dActivate() {
+        Mutable.super.dActivate();
+        D_CONSTRUCTIONS_RULE.trigger(this);
+    }
+
+    @Override
+    default void dDeactivate() {
+        Mutable.super.dDeactivate();
+        D_CONSTRUCTIONS_RULE.deObserve(this);
     }
 
 }

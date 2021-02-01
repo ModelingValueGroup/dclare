@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,19 +20,19 @@ import java.util.function.Consumer;
 import org.modelingvalue.dclare.Universe;
 
 @SuppressWarnings("unused")
-public class TestUniverse extends TestObject implements Universe {
-    public static TestUniverse of(Object id, TestClass clazz) {
+public class TestUniverse extends TestMutable implements Universe {
+    public static TestUniverse of(Object id, TestMutableClass clazz) {
         return new TestUniverse(id, u -> {
         }, clazz);
     }
 
-    public static TestUniverse of(Object id, Consumer<Universe> init, TestClass clazz) {
+    public static TestUniverse of(Object id, Consumer<Universe> init, TestMutableClass clazz) {
         return new TestUniverse(id, init, clazz);
     }
 
     private final Consumer<Universe> init;
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestClass clazz) {
+    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz) {
         super(id, clazz);
         this.init = init;
     }

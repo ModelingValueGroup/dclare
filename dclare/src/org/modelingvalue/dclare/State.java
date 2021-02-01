@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,15 +15,25 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.*;
-import java.util.*;
-import java.util.function.*;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -92,6 +102,13 @@ public class State implements Serializable {
         return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
     }
 
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        oldNew[0] = get(props, property);
+        oldNew[1] = oper.apply(oldNew[0]);
+        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+    }
+
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
@@ -99,7 +116,14 @@ public class State implements Serializable {
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
     }
 
-    <O> DefaultMap<Setable, Object> getProperties(O object) {
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal);
+        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+    }
+
+    public <O> DefaultMap<Setable, Object> getProperties(O object) {
         return map.get(object);
     }
 
@@ -241,15 +265,11 @@ public class State implements Serializable {
     }
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return map.diff(other.map)
-                .filter(d1 -> objectFilter.test(d1.getKey()))
-                .map(d2 -> {
-                    DefaultMap<Setable, Object> map2 = d2.getValue().a();
-                    Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b())
-                            .filter(d3 -> setableFilter.test(d3.getKey()))
-                            .toMap(e -> e);
-                    return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
-                }).notNull();
+        return map.diff(other.map).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
+            DefaultMap<Setable, Object> map2 = d2.getValue().a();
+            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
+            return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
+        }).notNull();
     }
 
     public Collection<Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>>> diff(State other, Predicate<Object> objectFilter) {

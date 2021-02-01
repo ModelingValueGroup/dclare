@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -30,8 +31,8 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
 
-    private final Setted setted = new Setted();
-    private State        preState;
+    private final CurrentState currentSate = new CurrentState();
+    private State              preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -49,15 +50,17 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
-        init(state);
+        preState = state;
+        currentSate.init(state);
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
-            return result();
+            return currentSate.result();
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
         } finally {
-            clear();
+            currentSate.clear();
+            preState = null;
             TraceTimer.traceEnd(traceId());
         }
     }
@@ -74,36 +77,37 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return preState;
     }
 
-    protected void init(State state) {
-        if (preState != null) {
-            throw new ConcurrentModificationException();
-        }
-        preState = state;
-        setted.init(state);
+    @Override
+    public State current() {
+        return currentSate.get();
     }
 
-    protected void clear() {
-        setted.clear();
-        preState = null;
-    }
-
-    protected State result() {
-        State result = setted.result();
-        preState = null;
-        return result;
+    public State merge() {
+        return currentSate.merge();
     }
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(setted.get().get(object, property), element));
+        return set(object, property, function.apply(currentSate.get().get(object, property), element));
+    }
+
+    @Override
+    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        return set(object, property, oper.apply(currentSate.get().get(object, property)));
+    }
+
+    @Override
+    public <O, T> T set(O object, Setable<O, T> property, T post) {
+        property.init(post);
+        T pre = state().get(object, property);
+        set(object, property, pre, post);
+        return pre;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T pre = state().get(object, property);
+    protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
         T[] oldNew = (T[]) new Object[2];
-        if (setted.change(s -> s.set(object, property, (br, po) -> {
+        if (currentSate.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
             } else if (!Objects.equals(br, pre)) {
@@ -117,26 +121,36 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }, post, oldNew))) {
             changed(object, property, oldNew[0], oldNew[1]);
         }
-        return pre;
     }
 
-    @Override
-    public <O> void clear(O object) {
-        super.clear(object);
-        setted.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
-    }
-
-    private final class Setted extends Concurrent<State> {
+    private final class CurrentState extends Concurrent<State> {
         @Override
         protected State merge(State base, State[] branches, int length) {
             return base.merge(ActionTransaction.this, branches, length);
         }
     }
 
+    @Override
+    public <O> void clear(O object) {
+        super.clear(object);
+        currentSate.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
+    }
+
+    @Override
+    protected void setChanged(Mutable changed) {
+        Universe universe = universeTransaction().universe();
+        byte cnr = get(universe, Mutable.D_CHANGE_NR);
+        while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
+            changed = dParent(changed);
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     @Override
     public void handleMergeConflict(Object object, Setable property, Object pre, Object... branches) {
-        throw new NotMergeableException(object + "." + property + "= " + pre + " -> " + StringUtil.toString(branches));
+        if (property != Mutable.D_CHANGE_NR) {
+            throw new NotMergeableException(object + "." + property + "= " + pre + " -> " + StringUtil.toString(branches));
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -146,7 +160,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected Mutable dParent(Mutable object) {
-        return setted.get().getA(object, Mutable.D_PARENT_CONTAINING);
+        return currentSate.get().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
     @Override

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -21,11 +21,14 @@ import java.util.function.Consumer;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
-public class Observer<O extends Mutable> extends Action<O> implements Feature {
+public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
@@ -38,33 +41,36 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         return new Observer<>(id, action, initDirection);
     }
 
-    public final Setable<Mutable, Set<ObserverTrace>> traces;
-    public final ExceptionSetable                     exception;
-    private final Observerds[]                        observeds;
+    public final Traces                         traces;
+    private final ExceptionSetable              exception;
+    private final Observerds                    observeds;
+    private final Constructed                   constructed;
 
-    protected long                                    runCount     = -1;
-    protected int                                     instances;
-    protected int                                     changes;
-    protected boolean                                 stopped;
+    protected long                              runCount     = -1;
+    protected int                               instances;
+    protected int                               changes;
+    protected boolean                           stopped;
     @SuppressWarnings("rawtypes")
-    private final Entry<Observer, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     protected Observer(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
-        this.traces = Setable.of(Pair.of(this, "TRACES"), Set.of());
-        observeds = new Observerds[2];
-        for (int ia = 0; ia < 2; ia++) {
-            observeds[ia] = Observerds.of(this, Direction.FORWARD_BACKWARD[ia]);
-        }
+        traces = new Traces(Pair.of(this, "TRACES"));
+        observeds = Observerds.of(this);
         exception = ExceptionSetable.of(this);
+        constructed = Constructed.of(this);
     }
 
-    public Observerds[] observeds() {
+    public Observerds observeds() {
         return observeds;
     }
 
     public ExceptionSetable exception() {
         return exception;
+    }
+
+    public Constructed constructed() {
+        return constructed;
     }
 
     public int countChangesPerInstance() {
@@ -88,9 +94,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
     }
 
     public void deObserve(O mutable) {
-        for (int ia = 0; ia < 2; ia++) {
-            observeds[ia].setDefault(mutable);
-        }
+        observeds.setDefault(mutable);
         for (Direction dir : Direction.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);
@@ -107,18 +111,24 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         }
     }
 
+    public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
+        protected Traces(Object id) {
+            super(id, Set.of(), null, null, null);
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
-        public static Observerds of(Observer observer, Direction direction) {
-            return new Observerds(observer, direction);
+        public static Observerds of(Observer observer) {
+            return new Observerds(observer);
         }
 
         @SuppressWarnings("unchecked")
-        private Observerds(Observer observer, Direction direction) {
-            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, false, null, null, (tx, mutable, pre, post) -> {
+        private Observerds(Observer observer) {
+            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
+                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
                         Mutable o = a.resolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));
@@ -127,13 +137,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, false);
-
+            }, SetableModifier.doNotCheckConsistency);
         }
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + super.toString().substring(4);
+            return getClass().getSimpleName() + ":" + super.toString().substring(4);
         }
 
     }
@@ -148,7 +157,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, false, null, null, null, false);
+            super(Pair.of(observer, "exception"), null, null, null, null, SetableModifier.doNotCheckConsistency);
             this.observer = observer;
         }
 
@@ -167,10 +176,29 @@ public class Observer<O extends Mutable> extends Action<O> implements Feature {
         }
 
         @Override
-        public void checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
-            if (p != null) {
-                throw new ThrowableError(o, observer, p.a(), p.b());
-            }
+        public Set<ConsistencyError> checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
+            return p != null ? Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static class Constructed extends Observed<Mutable, Map<Construction.Reason, Newable>> {
+
+        public static Constructed of(Observer observer) {
+            return new Constructed(observer);
+        }
+
+        private Constructed(Observer observer) {
+            super(observer, Map.of(), null, null, (tx, o, pre, post) -> pre.diff(post).forEachOrdered(e -> {
+                Construction cons = Construction.of(o, observer, e.getKey());
+                Pair<Newable, Newable> d = e.getValue();
+                if (d.a() != null) {
+                    Newable.CONSTRUCTIONS.set(d.a(), Set::remove, cons);
+                }
+                if (d.b() != null) {
+                    Newable.CONSTRUCTIONS.set(d.b(), Set::add, cons);
+                }
+            }), SetableModifier.doNotCheckConsistency, SetableModifier.synthetic);
         }
     }
 

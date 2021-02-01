@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,8 +15,11 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 
@@ -27,12 +30,14 @@ public interface Mutable extends TransactionClass {
 
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", false, null, false, null, null, null, true) {
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, SetableModifier.synthetic) {
                                                                                        @SuppressWarnings("rawtypes")
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
                                                                                        }
-                                                                                   };                                                                                                                                    //
+                                                                                   };
+
+    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //
@@ -44,6 +49,10 @@ public interface Mutable extends TransactionClass {
     @SuppressWarnings("unchecked")
     Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_CONTAINMENT_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
+    default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
+        return D_PARENT_CONTAINING.get(this);
+    }
+
     default Mutable dParent() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
         return pair != null ? pair.a() : null;
@@ -54,6 +63,13 @@ public interface Mutable extends TransactionClass {
         return pair != null ? pair.b() : null;
     }
 
+    default void dDelete() {
+        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        if (pair != null) {
+            pair.b().remove(pair.a(), this);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     default <C> C dAncestor(Class<C> cls) {
         Mutable parent = this;
@@ -61,6 +77,40 @@ public interface Mutable extends TransactionClass {
             parent = parent.dParent();
         }
         return (C) parent;
+    }
+
+    @SuppressWarnings("unchecked")
+    default <C> List<C> dAncestors(Class<C> cls) {
+        List<C> result = List.of();
+        Mutable parent = this;
+        while (cls.isInstance(parent)) {
+            result = result.append((C) parent);
+            parent = parent.dParent();
+        }
+        return result;
+    }
+
+    default boolean dHasAncestor(Mutable ancestor) {
+        for (Mutable parent = dParent(); parent != null; parent = parent.dParent()) {
+            if (parent.equals(ancestor)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
+        Mutable result = this;
+        Pair<Mutable, Setable<Mutable, ?>> pair;
+        while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
+            if (cls.isInstance(result) && containing.test(pair.b())) {
+                return (C) result;
+            } else {
+                result = pair.a();
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -123,6 +173,14 @@ public interface Mutable extends TransactionClass {
 
     default Mutable resolve(Mutable self) {
         return this;
+    }
+
+    default boolean dIsIdentified() {
+        return true;
+    }
+
+    default boolean dIsObsolete() {
+        return false;
     }
 
 }

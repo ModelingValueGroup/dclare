@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -50,12 +51,22 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract State state();
 
+    public State current() {
+        return state();
+    }
+
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
+
+    public abstract <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T get(O object, Getable<O, T> property) {
         return state().get(object, property);
+    }
+
+    public <O, T> T current(O object, Getable<O, T> property) {
+        return current().get(object, property);
     }
 
     public <O, T> T pre(O object, Getable<O, T> property) {
@@ -73,12 +84,20 @@ public abstract class LeafTransaction extends Transaction {
         }
     }
 
-    protected <O extends Mutable> void trigger(O mutable, Action<O> action, Direction direction) {
-        Mutable object = mutable;
+    protected abstract void setChanged(Mutable changed);
+
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Direction direction) {
+        Mutable object = target;
         set(object, direction.actions, Set::add, action);
+        if (direction == Direction.forward) {
+            set(object, Direction.backward.actions, Set::remove, action);
+        }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, direction.children, Set::add, object);
+            if (direction == Direction.forward && current(object, Direction.backward.actions).isEmpty() && current(object, Direction.backward.children).isEmpty()) {
+                set(container, Direction.backward.children, Set::remove, object);
+            }
             object = container;
             container = dParent(object);
         }
@@ -105,10 +124,17 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     @Override
-    public final Mutable mutable() {
+    public Mutable mutable() {
         return parent().mutable();
     }
 
     public abstract ActionInstance actionInstance();
+
+    @SuppressWarnings("unchecked")
+    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+        O result = (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        set(result, Newable.CONSTRUCTIONS, Set::add, Construction.of(reason));
+        return result;
+    }
 
 }

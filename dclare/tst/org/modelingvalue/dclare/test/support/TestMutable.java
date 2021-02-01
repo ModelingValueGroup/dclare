@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -13,19 +13,58 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test.support;
 
-@SuppressWarnings("unused")
-public final class StopObserverException extends RuntimeException {
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.*;
 
-    private static final long serialVersionUID = 2616181071425492626L;
+public class TestMutable implements Mutable {
+    private final Object    id;
+    private final TestMutableClass clazz;
 
-    public StopObserverException(String mess) {
-        super(mess);
+    public static TestMutable of(Object id, TestMutableClass clazz) {
+        return new TestMutable(id, clazz);
     }
 
-    public StopObserverException(Throwable t) {
-        super(t);
+    protected TestMutable(Object id, TestMutableClass clazz) {
+        this.id = id;
+        this.clazz = clazz;
     }
 
+    @Override
+    public TestMutableClass dClass() {
+        return clazz;
+    }
+
+    public Object id() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return dClass() + "@" + StringUtil.toString(id());
+    }
+
+    @Override
+    public int hashCode() {
+        return dClass().hashCode() ^ id().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj == null) {
+            return false;
+        } else if (getClass() != obj.getClass()) {
+            return false;
+        } else {
+            TestMutable c = (TestMutable) obj;
+            return id().equals(c.id()) && dClass().equals(c.dClass());
+        }
+    }
+
+    public String serialize() {
+        return id.toString();
+    }
 }

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -28,10 +28,10 @@ import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 
 @SuppressWarnings("rawtypes")
-public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestObserved<TestObject, Object>> {
+public class TestDeltaAdaptor extends DeltaAdaptor<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> {
     private static final boolean TRACE = false;
 
-    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestClass, TestObject, TestObserved<TestObject, Object>> serializationHelper) {
+    public TestDeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> serializationHelper) {
         super(name, tx, serializationHelper);
     }
 
@@ -42,7 +42,7 @@ public class TestDeltaAdaptor extends DeltaAdaptor<TestClass, TestObject, TestOb
     }
 
     @Override
-    protected void applyOneDelta(TestObject mutable, TestObserved<TestObject, Object> settable, Object value) {
+    protected void applyOneDelta(TestMutable mutable, TestObserved<TestMutable, Object> settable, Object value) {
         traceApplyOneDiff(mutable, settable, value);
         super.applyOneDelta(mutable, settable, value);
     }
