@@ -35,10 +35,10 @@ import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                       name;
     private final UniverseTransaction          tx;
-    private final SerializationHelper<C, M, S> helper;
+    protected final SerializationHelper<C, M, S> helper;
     private final AdaptorDaemon                adaptorDaemon;
     private final ImperativeTransaction        imperativeTransaction;
-    private final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
+    protected final BlockingQueue<String>      deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
         this.name = name;
@@ -107,7 +107,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
     }
 
-    private Predicate<Object> getObjectFilter() {
+    protected Predicate<Object> getObjectFilter() {
         return o -> o instanceof Mutable && helper.mutableFilter().test((Mutable) o);
     }
 
@@ -180,17 +180,17 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private class ToJsonDeltas extends ToJsonIC {
+	public class ToJsonDeltas extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
 
         @SuppressWarnings("rawtypes")
-        protected ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
+        private ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
             super(root);
         }
-
+      
         @SuppressWarnings("unchecked")
         @Override
         protected Object filter(Object o) {
