@@ -28,18 +28,51 @@ import org.modelingvalue.dclare.Setable;
 
 public class NetUtils {
 
+    public static enum Role {
+        server(),
+        client(),
+        none();
+    }
+
+    private static Role role = null;
+
+    public static boolean isActive() {
+        return getRole() != Role.none;
+    }
+
+    public static Role getRole() {
+        if (role == null) {
+            String roleProp = System.getProperty("ROLE", "none");
+            System.err.println("DCLARE: ROLE=" + roleProp);
+            switch (roleProp) {
+            case "server":
+                role = Role.server;
+                break;
+            case "client":
+                role = Role.client;
+                break;
+            case "none":
+                role = Role.none;
+                break;
+            default:
+                role = Role.none;
+                throw new Error("DCLARE: Illegal ROLE=" + roleProp + " (must be 'server', 'client' or 'none')");
+            }
+        }
+        return role;
+    }
+
     public static <M extends Mutable> void startDeltaSupport(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter) {
         int portNumber = 55055;
-        System.err.println("ROLE: " + System.getProperty("ROLE"));
-        switch (System.getProperty("ROLE")) {
-        case "server":
+        switch (getRole()) {
+        case server:
             startServerThread(deltaAdapter, portNumber);
             break;
-        case "client":
+        case client:
             startClientThread(deltaAdapter, portNumber);
             break;
-        default:
-            System.err.println("delta support not enabled.");
+        case none:
+            break;
         }
     }
 
