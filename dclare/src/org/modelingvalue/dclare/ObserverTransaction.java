@@ -438,6 +438,8 @@ public class ObserverTransaction extends ActionTransaction {
                         } else if (!pre.hasDirectReasonToExist() && post.areTheSame(pre)) {
                             makeTheSame(post, pre);
                             before = before.replace(pre.newable(), post.newable());
+                        } else if (TRACE_MATCHING) {
+                            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + " <> " + post.newable() + ")"));
                         }
                     }
                 }
@@ -447,7 +449,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private boolean becameObsolete(Newable removed, Map<Reason, Newable> cons) {
-        boolean obsolete = removed.dConstructions().anyMatch(c -> mutable().equals(c.object())) && !cons.anyMatch(e -> e.getValue().equals(removed));
+        boolean obsolete = removed.dConstructions().anyMatch(c -> mutable().equals(c.object()) && observer().equals(c.observer())) && !cons.anyMatch(e -> e.getValue().equals(removed));
         if (obsolete) {
             super.set(removed, Newable.D_OBSOLETE, Boolean.TRUE);
         }
