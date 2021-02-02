@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.modelingvalue.dclare.Setable;
@@ -28,6 +29,7 @@ public class TestNewableClass extends TestMutableClass {
     }
 
     private final Function<TestNewable, Object> identity;
+    private final AtomicInteger                 counter = new AtomicInteger(0);
 
     protected TestNewableClass(Object id, Function<TestNewable, Object> identity, Setable... setables) {
         super(id, setables);
@@ -36,6 +38,10 @@ public class TestNewableClass extends TestMutableClass {
 
     public Function<TestNewable, Object> identity() {
         return identity;
+    }
+
+    public AtomicInteger counter() {
+        return counter;
     }
 
 }

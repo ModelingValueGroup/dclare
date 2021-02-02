@@ -39,6 +39,8 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.Quadruple;
+import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
@@ -98,19 +100,19 @@ public class NewableTests {
             cs.set(u, as.addAll(as.map(br::get)));
         });
 
-        A.observe(a -> br.set(a, create(a, B, //
+        A.observe(a -> br.set(a, create("1", a, B, //
                 b -> n.set(b, n.get(a)), //
                 b -> bcs.set(b, acs.get(a).map(br::get).toSet())//
         )));
-        B.observe(b -> ar.set(b, create(b, A, //
+        B.observe(b -> ar.set(b, create("2", b, A, //
                 a -> n.set(a, n.get(b)), //
                 a -> acs.set(a, bcs.get(b).map(ar::get).toSet())//
         )));
 
-        AC.observe(ac -> br.set(ac, create(ac, BC, //
+        AC.observe(ac -> br.set(ac, create("3", ac, BC, //
                 bc -> n.set(bc, n.get(ac))//
         )));
-        BC.observe(bc -> ar.set(bc, create(bc, AC, //
+        BC.observe(bc -> ar.set(bc, create("4", bc, AC, //
                 ac -> n.set(ac, n.get(bc))//
         )));
 
@@ -132,6 +134,7 @@ public class NewableTests {
             TestNewable bu = c.create(B);
             TestNewable bv = c.create(B);
             cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by, au, av, bu, bv));
+            cs.set(universe, Set.of(a1, b1));
             n.set(a1, "x");
             n.set(b1, "x");
             n.set(b2, "y");
@@ -174,10 +177,11 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(22, objects.size());
             assertTrue(objects.containsAll(created.result()));
+            assertEquals(22, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
         return result;
@@ -284,13 +288,23 @@ public class NewableTests {
             TestNewable rt = otr.get(rr);
             String ln = n.get(lr);
             String rn = n.get(rr);
-            return Set.of(Pair.of(ln, lt), Pair.of(rn, rt));
+            return Quadruple.of(ln, lt, rn, rt);
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
         ROL.observe(rl -> {
             TestNewable ft = (TestNewable) rl.dParent();
             rlopp.set(rl, rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft));
+        });
+
+        FAT.observe(ft -> {
+            if (left.get(ft) == null) {
+                left.set(ft, create("L", ft, ROL));
+            }
+        }, ft -> {
+            if (right.get(ft) == null) {
+                right.set(ft, create("R", ft, ROL));
+            }
         });
 
         // Universe
@@ -303,21 +317,21 @@ public class NewableTests {
 
         if (oo2fb) {
             U.observe(u -> fbms.set(u, ooms.get(u).map(mfbm::get).toSet()));
-            OOM.observe(oo -> mfbm.set(oo, create(oo, FBM, //
+            OOM.observe(oo -> mfbm.set(oo, create("1", oo, FBM, //
                     fb -> n.set(fb, n.get(oo)), //
                     fb -> ots.set(fb, cls.get(oo).map(mobt::get).toSet()), //
                     fb -> fts.set(fb, cls.get(oo).flatMap(refs::get).map(mfat::get).notNull().toSet()) //
             )));
-            CLS.observe(cl -> mobt.set(cl, create(cl, OBT, //
+            CLS.observe(cl -> mobt.set(cl, create("2", cl, OBT, //
                     ot -> n.set(ot, n.get(cl)) //
             )));
-            REF.observe(rf -> mrol.set(rf, create(rf, "R", ROL, //
+            REF.observe(rf -> mrol.set(rf, create("3", rf, ROL, //
                     rl -> n.set(rl, n.get(rf)), //
                     rl -> otr.set(rl, typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
-            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create(rf, "F", FAT, //
+            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create("4", rf, FAT, //
                     ft -> n.set(ft, opp.get(rf) == null ? n.get(rf) : n.get(opp.get(rf)) + "_" + n.get(rf)), //
                     ft -> right.set(ft, mrol.get(rf)), //
-                    ft -> left.set(ft, opp.get(rf) == null ? create(rf, "O", ROL, //
+                    ft -> left.set(ft, opp.get(rf) == null ? create("5", rf, ROL, //
                             rl -> n.set(rl, "~"), //
                             rl -> otr.set(rl, mobt.get((TestNewable) rf.dParent()))) : mrol.get(opp.get(rf))) //
             ) : null));
@@ -325,15 +339,15 @@ public class NewableTests {
 
         if (fb2oo) {
             U.observe(u -> ooms.set(u, fbms.get(u).map(moom::get).toSet()));
-            FBM.observe(fb -> moom.set(fb, create(fb, OOM, //
+            FBM.observe(fb -> moom.set(fb, create("6", fb, OOM, //
                     oo -> n.set(oo, n.get(fb)), //
                     oo -> cls.set(oo, ots.get(fb).map(mcls::get).toSet()) //
             )));
-            OBT.observe(ot -> mcls.set(ot, create(ot, CLS, //
+            OBT.observe(ot -> mcls.set(ot, create("7", ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
                     cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()) //
             )));
-            ROL.observe(rl -> mref.set(rl, !"~".equals(n.get(rl)) ? create(rl, REF, //
+            ROL.observe(rl -> mref.set(rl, !"~".equals(n.get(rl)) ? create("8", rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
                     rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
                     rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
@@ -466,12 +480,17 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(32, objects.size());
             assertTrue(objects.containsAll(created.result()));
+            assertEquals(32, objects.size());
             assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
         return result;
+    }
+
+    private static List<Object> reasonTypes(Newable newable) {
+        return newable.dConstructions().map(Construction::reason).map(Construction.Reason::type).toList();
     }
 
     private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> init) {
@@ -479,7 +498,7 @@ public class NewableTests {
         utx.put(id, () -> {
             AtomicInteger conter = new AtomicInteger(0);
             init.accept(c -> {
-                TestNewable newable = create(conter.getAndIncrement(), c);
+                TestNewable newable = create(id + conter.getAndIncrement(), c);
                 created.set(Set::add, newable);
                 return newable;
             });
@@ -517,18 +536,7 @@ public class NewableTests {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static boolean equals(State as, Object a, State bs, Object b, Map<Pair<Newable, Newable>, Boolean> done) {
         boolean result = false;
-        if (Objects.equals(a, b)) {
-            result = true;
-        } else if (a instanceof Struct && b instanceof Struct) {
-            Struct structa = (Struct) a;
-            Struct structb = (Struct) b;
-            if (structa.length() == structb.length()) {
-                result = true;
-                for (int i = 0; i < structa.length(); i++) {
-                    result &= equals(as, structa.get(i), bs, structb.get(i), done);
-                }
-            }
-        } else if (a instanceof Newable && b instanceof Newable) {
+        if (a instanceof Newable && b instanceof Newable) {
             Newable an = (Newable) a;
             Newable bn = (Newable) b;
             Pair<Newable, Newable> key = Pair.of(an, bn);
@@ -542,6 +550,15 @@ public class NewableTests {
                     result = true;
                 }
                 done.put(key, result);
+            }
+        } else if (a instanceof Struct && b instanceof Struct) {
+            Struct structa = (Struct) a;
+            Struct structb = (Struct) b;
+            if (structa.length() == structb.length()) {
+                result = true;
+                for (int i = 0; i < structa.length(); i++) {
+                    result &= equals(as, structa.get(i), bs, structb.get(i), done);
+                }
             }
         } else if (a instanceof Collection && b instanceof Collection) {
             if (((Collection) a).size() == ((Collection) b).size()) {
@@ -557,6 +574,8 @@ public class NewableTests {
                 }
                 result = bl.isEmpty();
             }
+        } else if (Objects.equals(a, b)) {
+            result = true;
         }
         return result;
     }

@@ -60,10 +60,6 @@ public class Construction extends IdentifiedByArray {
         return reason().get(object(), i);
     }
 
-    public boolean isObsolete() {
-        return reason().isObsolete(object());
-    }
-
     @Override
     public int size() {
         return reason().size();
@@ -127,16 +123,6 @@ public class Construction extends IdentifiedByArray {
             return identity;
         }
 
-        public boolean isObsolete(Mutable thiz) {
-            for (int i = 0; i < size(); i++) {
-                Object e = get(thiz, i);
-                if (e instanceof Newable && ((Newable) e).dIsObsolete()) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         @Override
         public Object get(int i) {
             throw new UnsupportedOperationException();
@@ -147,6 +133,8 @@ public class Construction extends IdentifiedByArray {
             return e == Mutable.THIS ? thiz : e;
         }
 
+        public abstract Object type();
+
     }
 
     public static final class MatchInfo {
@@ -156,9 +144,9 @@ public class Construction extends IdentifiedByArray {
         private final Set<Construction>         constructions;
 
         private Map<Mutable, Set<Construction>> sources;
+        private Set<Object>                     types;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
-        private boolean                         idMatched;
 
         public static MatchInfo of(Newable newable) {
             return new MatchInfo(newable);
@@ -166,7 +154,7 @@ public class Construction extends IdentifiedByArray {
 
         private MatchInfo(Newable newable) {
             this.newable = newable;
-            this.identity = newable.dCatchingIdentity();
+            this.identity = newable.dMatchingIdentity();
             this.constructions = newable.dConstructions();
         }
 
@@ -175,9 +163,9 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (!idMatched && !other.idMatched && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                idMatched = true;
-                other.idMatched = true;
+            if (!other.types().isEmpty() && !types().anyMatch(other.types()::contains) && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
+                types = types().addAll(other.types());
+                other.types = Set.of();
                 return true;
             } else {
                 return other.sourcesAndAncestors().contains(newable());
@@ -200,11 +188,11 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean hasIndirectReasonToExist() {
-            return sources().anyMatch(e -> !(e.getKey() instanceof Newable) || e.getValue().anyMatch(Construction::isNotObserved));
+            return constructions().anyMatch(Construction::isObserved);
         }
 
         public boolean hasUnidentifiedSource() {
-            return notObservedSources().anyMatch(n -> n.dCatchingIdentity() == null);
+            return notObservedSources().anyMatch(n -> n.dMatchingIdentity() == null);
         }
 
         public Collection<Comparable> sourcesSortKeys() {
@@ -223,11 +211,18 @@ public class Construction extends IdentifiedByArray {
             return constructions;
         }
 
-        private Map<Mutable, Set<Construction>> sources() {
+        public Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
                 sources = Construction.sources(constructions, Map.of());
             }
             return sources;
+        }
+
+        private Set<Object> types() {
+            if (types == null) {
+                types = constructions.map(Construction::reason).map(Reason::type).toSet();
+            }
+            return types;
         }
 
         private Set<Newable> notObservedSources() {
@@ -246,6 +241,11 @@ public class Construction extends IdentifiedByArray {
         @Override
         public boolean equals(Object other) {
             return other instanceof MatchInfo && newable.equals(((MatchInfo) other).newable);
+        }
+
+        @Override
+        public String toString() {
+            return newable.toString();
         }
 
     }

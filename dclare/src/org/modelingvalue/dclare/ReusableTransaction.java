@@ -15,11 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Reusable;
 
 public class ReusableTransaction<C extends TransactionClass, T extends Transaction> extends Reusable<UniverseTransaction, C, T, MutableTransaction> {
-
-    private static final long serialVersionUID = -2818161207254622257L;
 
     @SuppressWarnings("unchecked")
     public ReusableTransaction(UniverseTransaction universeTransaction) {

@@ -37,8 +37,9 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
+    @SuppressWarnings("rawtypes")
     public static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
+        return map.reduce(0, (a, e) -> a + (!(e.getKey() instanceof Observed) || ((Observed) e.getKey()).checkConsistency() ? e.getValue().size() : 0), Integer::sum);
     }
 
     public static LeafTransaction getCurrent() {
@@ -133,7 +134,7 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         O result = (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        set(result, Newable.CONSTRUCTIONS, Set::add, Construction.of(reason));
+        set(result, Newable.D_CONSTRUCTIONS, Set::add, Construction.of(reason));
         return result;
     }
 

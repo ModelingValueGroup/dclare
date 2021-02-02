@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
@@ -29,8 +28,6 @@ import org.modelingvalue.dclare.Observer;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
-
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
     @SafeVarargs
     public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
@@ -51,7 +48,7 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
-        return tx.construct(reason, () -> new TestNewable(COUNTER.getAndIncrement(), clazz));
+        return tx.construct(reason, () -> new TestNewable(clazz.counter().getAndIncrement(), clazz));
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -90,7 +87,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public String toString() {
-        Object id = dCatchingIdentity();
+        Object id = dMatchingIdentity();
         return id != null ? super.toString() + ":" + id : super.toString();
     }
 
@@ -98,13 +95,15 @@ public class TestNewable extends TestMutable implements Newable {
 
         private Set<Observer<?>> observers = Set.of();
 
+        @SuppressWarnings("unchecked")
         private TestReason(Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
             super(thiz, id);
             for (int i = 0; i < observers.length; i++) {
                 Consumer<TestNewable> finalCons = observers[i];
-                Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), c -> {
-                    if (!isObsolete((Mutable) ((Triple) LeafTransaction.getCurrent().leaf().id()).a())) {
-                        finalCons.accept(c);
+                Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
+                    Mutable t = ((Triple<Mutable, ?, ?>) LeafTransaction.getCurrent().leaf().id()).a();
+                    if (!t.dIsObsolete() && n.dConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
+                        finalCons.accept(n);
                     }
                 });
                 this.observers = this.observers.add(observer);
@@ -114,6 +113,11 @@ public class TestNewable extends TestMutable implements Newable {
         @SuppressWarnings("unchecked")
         public Set<? extends Observer<?>> observers() {
             return (Set<? extends Observer<?>>) observers;
+        }
+
+        @Override
+        public Object type() {
+            return get(null, 0);
         }
 
     }

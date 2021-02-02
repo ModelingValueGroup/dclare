@@ -19,11 +19,13 @@ import org.modelingvalue.collections.Set;
 
 public interface Newable extends Mutable {
 
-    Observed<Newable, Set<Construction>> CONSTRUCTIONS        = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
 
-    Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> CONSTRUCTIONS.set(n, cs -> {
+    Observed<Newable, Boolean>           D_OBSOLETE           = Observed.of("D_OBSOLETE", Boolean.FALSE, SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_CONSTRUCTIONS.set(n, cs -> {
                                                                   for (Construction c : cs) {
-                                                                      if (c.object() instanceof Newable && CONSTRUCTIONS.get((Newable) c.object()).isEmpty()) {
+                                                                      if (c.object() instanceof Newable && ((Newable) c.object()).dIsObsolete()) {
                                                                           cs = cs.remove(c);
                                                                       }
                                                                   }
@@ -32,7 +34,7 @@ public interface Newable extends Mutable {
 
     Object dIdentity();
 
-    default Object dCatchingIdentity() {
+    default Object dMatchingIdentity() {
         try {
             return dIdentity();
         } catch (Throwable e) {
@@ -46,17 +48,12 @@ public interface Newable extends Mutable {
     Comparable dSortKey();
 
     default Set<Construction> dConstructions() {
-        return CONSTRUCTIONS.current(this);
-    }
-
-    @Override
-    default boolean dIsIdentified() {
-        return dCatchingIdentity() != null;
+        return D_CONSTRUCTIONS.current(this);
     }
 
     @Override
     default boolean dIsObsolete() {
-        return CONSTRUCTIONS.current(this).isEmpty();
+        return D_OBSOLETE.current(this);
     }
 
     @Override
