@@ -1,9 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="dclare:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts</output-path>
-    <root id="archive" name="dclare.jar">
-      <element id="module-output" name="dclare" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/immutable-collections.jar" path-in-jar="/" />
-    </root>
-  </artifact>
-</component>
