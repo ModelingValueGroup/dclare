@@ -31,6 +31,7 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.Triple;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.Observer.Constructed;
@@ -162,10 +163,12 @@ public class ObserverTransaction extends ActionTransaction {
         UniverseTransaction universeTransaction = universeTransaction();
         Observer<?> observer = observer();
         Mutable mutable = mutable();
-        if (TRACE_OBSERVERS && sets.anyMatch(e -> !e.getKey().synthetic())) {
+        if (TRACE_OBSERVERS) {
             State result = merge();
-            System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
-                    + toString(sets, mutable, (m, o) -> pre.get(m, o) + "->" + result.get(m, o)) + ")");
+            if (sets.anyMatch(e -> !e.getKey().synthetic() && e.getValue().map(o -> o.resolve(mutable)).anyMatch(o -> !Objects.equals(pre.get(o, e.getKey()), result.get(o, e.getKey()))))) {
+                System.err.println("DCLARE: " + parent().indent("    ") + mutable + "." + observer() + " ("//
+                        + toString(sets, mutable, (m, o) -> Triple.of(m, pre.get(m, o), result.get(m, o))) + ")");
+            }
         }
         int totalChanges = universeTransaction.stats().bumpAndGetTotalChanges();
         int changesPerInstance = observer.countChangesPerInstance();
@@ -194,10 +197,10 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("rawtypes")
-    private static String toString(DefaultMap<Observed, Set<Mutable>> sets, Mutable self, BiFunction<Mutable, Observed, Object> value) {
-        return sets.filter(e -> !e.getKey().synthetic()).reduce("", (r1, e) -> (r1.isEmpty() ? "" : r1 + " ") + e.getValue().reduce("", (r2, m) -> //
-        (m != Mutable.THIS ? m + "." : "") + e.getKey() + "=" + value.apply(m.resolve(self), e.getKey()), //
-                (a, b) -> a + " " + b), (a, b) -> a + " " + b);
+    private static String toString(DefaultMap<Observed, Set<Mutable>> sets, Mutable self, BiFunction<Mutable, Observed, Triple<Mutable, Object, Object>> value) {
+        return sets.filter(e -> !e.getKey().synthetic()).reduce("", (r1, e) -> (r1.isEmpty() ? "" : r1 + " ") + e.getValue().map(m -> value.apply(m.resolve(self), e.getKey())).//
+                filter(t -> !Objects.equals(t.b(), t.c())).reduce("", (r2, t) -> (t.a() != self ? t.a() + "." : "") + e.getKey() + "=" + t.b() + "->" + t.c(), //
+                        (a, b) -> a + " " + b), (a, b) -> a + " " + b);
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
@@ -428,18 +431,18 @@ public class ObserverTransaction extends ActionTransaction {
             if (post.newable().dIsObsolete()) {
                 after = after.remove(post.newable());
                 before = before.remove(post.newable());
-            } else if (setable.containment()) {
+            } else {
                 for (MatchInfo pre : preList) {
                     if (pre.hasSameType(post)) {
                         if (!post.hasDirectReasonToExist() && pre.areTheSame(post)) {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
                             before = before.remove(post.newable());
+                            break;
                         } else if (!pre.hasDirectReasonToExist() && post.areTheSame(pre)) {
                             makeTheSame(post, pre);
                             before = before.replace(pre.newable(), post.newable());
-                        } else if (TRACE_MATCHING) {
-                            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + " <> " + post.newable() + ")"));
+                            break;
                         }
                     }
                 }
