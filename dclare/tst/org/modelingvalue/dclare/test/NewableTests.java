@@ -231,7 +231,7 @@ public class NewableTests {
     public void testAll() {
         State state = oofb(false, false, true, true);
         int i = 0;
-        while (i++ < 20) {
+        while (i++ < 100) {
             compareStates(state, oofb(true, false, true, false));
             compareStates(state, oofb(false, true, false, true));
             compareStates(state, oofb(true, false, true, true));

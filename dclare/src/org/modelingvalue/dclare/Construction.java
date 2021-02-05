@@ -144,7 +144,7 @@ public class Construction extends IdentifiedByArray {
         private final Set<Construction>         constructions;
 
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     types;
+        private Set<Object>                     reasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
 
@@ -163,13 +163,21 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (!other.types().isEmpty() && !types().anyMatch(other.types()::contains) && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                types = types().addAll(other.types());
-                other.types = Set.of();
+            if (!other.reasonTypes().isEmpty() && !haveTheSameReasonTypes(other) && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
+                reasonTypes = reasonTypes().addAll(other.reasonTypes());
+                other.reasonTypes = Set.of();
                 return true;
             } else {
-                return other.sourcesAndAncestors().contains(newable());
+                return haveCyclicReason(other);
             }
+        }
+
+        public boolean haveCyclicReason(MatchInfo other) {
+            return other.sourcesAndAncestors().contains(newable());
+        }
+
+        public boolean haveTheSameReasonTypes(MatchInfo other) {
+            return reasonTypes().anyMatch(other.reasonTypes()::contains);
         }
 
         private Set<Newable> sourcesAndAncestors() {
@@ -218,11 +226,11 @@ public class Construction extends IdentifiedByArray {
             return sources;
         }
 
-        private Set<Object> types() {
-            if (types == null) {
-                types = constructions.map(Construction::reason).map(Reason::type).toSet();
+        private Set<Object> reasonTypes() {
+            if (reasonTypes == null) {
+                reasonTypes = constructions.map(Construction::reason).map(Reason::type).toSet();
             }
-            return types;
+            return reasonTypes;
         }
 
         private Set<Newable> notObservedSources() {

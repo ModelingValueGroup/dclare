@@ -263,15 +263,15 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable, true);
-            if (!Objects.equals(pre, post)) {
-                if (setable.hasNewables()) {
-                    Object[] prePost = matchNewables(setable, pre, post);
-                    if (!Objects.equals(pre, (T) prePost[0])) {
-                        super.set(object, setable, pre, (T) prePost[0]);
-                    }
-                    pre = (T) prePost[0];
-                    post = (T) prePost[1];
+            if (setable.hasNewables() && !Objects.equals(pre, post)) {
+                Object[] prePost = matchNewables(setable, pre, post);
+                if (!Objects.equals(pre, (T) prePost[0])) {
+                    super.set(object, setable, pre, (T) prePost[0]);
                 }
+                pre = (T) prePost[0];
+                post = (T) prePost[1];
+            }
+            if (!Objects.equals(pre, post)) {
                 post = rippleOut(object, (Observed<O, T>) setable, pre, post);
             }
         }
@@ -390,19 +390,19 @@ public class ObserverTransaction extends ActionTransaction {
     private Object[] singleMatch(Setable setable, Object before, Object after) {
         merge();
         Map<Reason, Newable> cons = constructions.merge();
-        if (before instanceof Newable && after == null && becameObsolete((Newable) before, cons)) {
+        if (before instanceof Newable && (((Newable) before).dIsObsolete() || becameObsolete((Newable) before, cons))) {
             before = after;
         } else if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after);
             if (post.newable().dIsObsolete()) {
                 after = before;
-            } else if (setable.containment() && before instanceof Newable) {
+            } else if (before instanceof Newable) {
                 MatchInfo pre = MatchInfo.of((Newable) before);
                 if (pre.hasSameType(post)) {
-                    if (!post.hasDirectReasonToExist()) {
+                    if (!post.hasDirectReasonToExist() && (!pre.haveTheSameReasonTypes(post) || pre.haveCyclicReason(post))) {
                         makeTheSame(pre, post);
                         after = before;
-                    } else if (!pre.hasDirectReasonToExist()) {
+                    } else if (!pre.hasDirectReasonToExist() && (!post.haveTheSameReasonTypes(pre) || post.haveCyclicReason(pre))) {
                         makeTheSame(post, pre);
                         before = after;
                     }
@@ -410,6 +410,7 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         return new Object[]{before, after};
+
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -418,8 +419,9 @@ public class ObserverTransaction extends ActionTransaction {
         Map<Reason, Newable> cons = constructions.merge();
         List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(MatchInfo::of).toList();
         for (MatchInfo pre : preList) {
-            if (becameObsolete(pre.newable(), cons)) {
+            if (pre.newable().dIsObsolete() || becameObsolete(pre.newable(), cons)) {
                 before = before.remove(pre.newable());
+                preList = preList.remove(pre);
             }
         }
         List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(MatchInfo::of).toList();
@@ -438,11 +440,9 @@ public class ObserverTransaction extends ActionTransaction {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
                             before = before.remove(post.newable());
-                            break;
                         } else if (!pre.hasDirectReasonToExist() && post.areTheSame(pre)) {
                             makeTheSame(post, pre);
                             before = before.replace(pre.newable(), post.newable());
-                            break;
                         }
                     }
                 }
