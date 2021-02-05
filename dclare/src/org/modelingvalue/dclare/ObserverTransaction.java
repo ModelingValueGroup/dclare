@@ -200,7 +200,7 @@ public class ObserverTransaction extends ActionTransaction {
     private static String toString(DefaultMap<Observed, Set<Mutable>> sets, Mutable self, BiFunction<Mutable, Observed, Triple<Mutable, Object, Object>> value) {
         return sets.filter(e -> !e.getKey().synthetic()).reduce("", (r1, e) -> (r1.isEmpty() ? "" : r1 + " ") + e.getValue().map(m -> value.apply(m.resolve(self), e.getKey())).//
                 filter(t -> !Objects.equals(t.b(), t.c())).reduce("", (r2, t) -> (t.a() != self ? t.a() + "." : "") + e.getKey() + "=" + t.b() + "->" + t.c(), //
-                        (a, b) -> a + " " + b), (a, b) -> a + " " + b);
+                        (a, b) -> a.isBlank() || b.isBlank() ? a + b : a + " " + b), (a, b) -> a.isBlank() || b.isBlank() ? a + b : a + " " + b);
     }
 
     private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
@@ -399,10 +399,10 @@ public class ObserverTransaction extends ActionTransaction {
             } else if (before instanceof Newable) {
                 MatchInfo pre = MatchInfo.of((Newable) before);
                 if (pre.hasSameType(post)) {
-                    if (!post.hasDirectReasonToExist() && (!pre.haveTheSameReasonTypes(post) || pre.haveCyclicReason(post))) {
+                    if (!post.hasDirectReasonToExist()) {
                         makeTheSame(pre, post);
                         after = before;
-                    } else if (!pre.hasDirectReasonToExist() && (!post.haveTheSameReasonTypes(pre) || post.haveCyclicReason(pre))) {
+                    } else if (!pre.hasDirectReasonToExist()) {
                         makeTheSame(post, pre);
                         before = after;
                     }
@@ -442,7 +442,7 @@ public class ObserverTransaction extends ActionTransaction {
                             before = before.remove(post.newable());
                         } else if (!pre.hasDirectReasonToExist() && post.areTheSame(pre)) {
                             makeTheSame(post, pre);
-                            before = before.replace(pre.newable(), post.newable());
+                            before = before.remove(pre.newable());
                         }
                     }
                 }

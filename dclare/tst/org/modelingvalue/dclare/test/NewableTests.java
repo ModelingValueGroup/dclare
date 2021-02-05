@@ -39,7 +39,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
@@ -288,7 +287,7 @@ public class NewableTests {
             TestNewable rt = otr.get(rr);
             String ln = n.get(lr);
             String rn = n.get(rr);
-            return Quadruple.of(ln, lt, rn, rt);
+            return Set.of(Pair.of(ln, lt), Pair.of(rn, rt));
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
@@ -345,9 +344,9 @@ public class NewableTests {
             )));
             OBT.observe(ot -> mcls.set(ot, create("7", ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
-                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()) //
+                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).map(mref::get).notNull().toSet()) //
             )));
-            ROL.observe(rl -> mref.set(rl, !"~".equals(n.get(rl)) ? create("8", rl, REF, //
+            ROL.observe(rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create("8", rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
                     rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
                     rf -> opp.set(rf, mref.get(rlopp.get(rl))) //

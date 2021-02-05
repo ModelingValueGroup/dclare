@@ -144,6 +144,7 @@ public class Construction extends IdentifiedByArray {
         private final Set<Construction>         constructions;
 
         private Map<Mutable, Set<Construction>> sources;
+        private Set<Object>                     matchedReasonTypes = Set.of();
         private Set<Object>                     reasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
@@ -163,8 +164,9 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean areTheSame(MatchInfo other) {
-            if (!other.reasonTypes().isEmpty() && !haveTheSameReasonTypes(other) && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                reasonTypes = reasonTypes().addAll(other.reasonTypes());
+            if (!other.reasonTypes().isEmpty() && !matchedReasonTypes.anyMatch(other.reasonTypes()::contains) && //
+                    (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
+                matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
                 other.reasonTypes = Set.of();
                 return true;
             } else {
@@ -174,10 +176,6 @@ public class Construction extends IdentifiedByArray {
 
         public boolean haveCyclicReason(MatchInfo other) {
             return other.sourcesAndAncestors().contains(newable());
-        }
-
-        public boolean haveTheSameReasonTypes(MatchInfo other) {
-            return reasonTypes().anyMatch(other.reasonTypes()::contains);
         }
 
         private Set<Newable> sourcesAndAncestors() {
