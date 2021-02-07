@@ -22,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -41,16 +42,18 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
 
-    private static final boolean   CHECK_ORPHAN_STATE      = Boolean.getBoolean("CHECK_ORPHAN_STATE");
+    private static final boolean             CHECK_ORPHAN_STATE      = Boolean.getBoolean("CHECK_ORPHAN_STATE");
 
-    protected static final boolean TRACE_UNIVERSE          = Boolean.getBoolean("TRACE_UNIVERSE");
+    private static final boolean             TRACE_UNIVERSE          = Boolean.getBoolean("TRACE_UNIVERSE");
 
-    public static final int        MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
-    public static final int        MAX_TOTAL_NR_OF_CHANGES = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", 10000);
-    public static final int        MAX_NR_OF_CHANGES       = Integer.getInteger("MAX_NR_OF_CHANGES", 200);
-    public static final int        MAX_NR_OF_OBSERVED      = Integer.getInteger("MAX_NR_OF_OBSERVED", 1000);
-    public static final int        MAX_NR_OF_OBSERVERS     = Integer.getInteger("MAX_NR_OF_OBSERVERS", 1000);
-    public static final int        MAX_NR_OF_HISTORY       = Integer.getInteger("MAX_NR_OF_HISTORY", 64) + 3;
+    public static final int                  MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
+    public static final int                  MAX_TOTAL_NR_OF_CHANGES = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", 10000);
+    public static final int                  MAX_NR_OF_CHANGES       = Integer.getInteger("MAX_NR_OF_CHANGES", 200);
+    public static final int                  MAX_NR_OF_OBSERVED      = Integer.getInteger("MAX_NR_OF_OBSERVED", 1000);
+    public static final int                  MAX_NR_OF_OBSERVERS     = Integer.getInteger("MAX_NR_OF_OBSERVERS", 1000);
+    public static final int                  MAX_NR_OF_HISTORY       = Integer.getInteger("MAX_NR_OF_HISTORY", 64) + 3;
+
+    private static final UnaryOperator<Byte> INCREMENT               = c -> ++c;
 
     public static UniverseTransaction of(Universe id, ContextPool pool, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         return new UniverseTransaction(id, pool, null, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, null);
@@ -127,6 +130,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 timeTraveling;
     private boolean                                                                                 handling;
     private boolean                                                                                 stopped;
+    private boolean                                                                                 orphansDetected;
 
     protected UniverseTransaction(Universe universe, ContextPool pool, State start, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory, Consumer<UniverseTransaction> cycle) {
         super(null);
@@ -177,14 +181,18 @@ public class UniverseTransaction extends MutableTransaction {
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
-                        state = state.get(() -> run(trigger(pre(state), universe(), leaf, leaf.initDirection())));
+                        state = state.get(() -> pre(state));
+                        state = state.get(() -> run(trigger(state, universe(), leaf, Direction.scheduled)));
+                        if (initialized) {
+                            state = state.get(() -> run(trigger(state, universe(), checkConsistency, Direction.scheduled)));
+                        }
                         state = state.get(() -> post(state));
                         if (!killed && stats().debugging()) {
                             handleTooManyChanges(state);
                         }
                     }
                     if (!killed) {
-                        state = state.get(() -> run(triggerPostActions(state, postActions)));
+                        state = state.get(() -> run(triggerPostActions(state)));
                     }
                     if (!killed && inQueue.isEmpty()) {
                         if (isStopped(state)) {
@@ -213,6 +221,30 @@ public class UniverseTransaction extends MutableTransaction {
         constantState.stop();
         end(state);
         stopped = true;
+    }
+
+    @Override
+    protected State run(State state) {
+        oldState = state;
+        state = super.run(state);
+        state = clearOrphans(state);
+        while (hasQueued(state, universe(), Direction.backward)) {
+            if (TRACE_UNIVERSE) {
+                System.err.println("DCLARE: " + indent("    ") + universe() + " BACKWARD");
+            }
+            oldState = state;
+            state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
+            state = super.run(state);
+            state = clearOrphans(state);
+        }
+        return state;
+    }
+
+    private State clearOrphans(State state) {
+        do {
+            state = super.run(trigger(state, universe(), clearOrphans, Direction.scheduled));
+        } while (orphansDetected);
+        return state;
     }
 
     public int numInQueue() {
@@ -315,9 +347,9 @@ public class UniverseTransaction extends MutableTransaction {
         return (Universe) mutable();
     }
 
-    private <O extends Mutable> State triggerPostActions(State state, List<Action<Universe>> actions) {
-        for (Action<Universe> action : actions) {
-            state = trigger(state, universe(), action, action.initDirection());
+    private <O extends Mutable> State triggerPostActions(State state) {
+        for (Action<Universe> action : postActions) {
+            state = trigger(state, universe(), action, Direction.scheduled);
         }
         return state;
     }
@@ -349,29 +381,33 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State st = tx.state();
-        //TODO: see DCL-150
-        Map<Object, Map<Setable, Pair<Object, Object>>> changed //
-                = preState()//
-                        .diff(st, o -> o instanceof Mutable && !(o instanceof Universe) && st.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null, ALL_SETTABLES)//
-                        .toMap(Function.identity());
-        changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
-        changed.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
+        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preState()//
+                .diff(st, o -> {
+                    if (o instanceof Mutable && !(o instanceof Universe)) {
+                        DefaultMap<Setable, Object> properties = st.getProperties(o);
+                        return !properties.isEmpty() && properties.get(Mutable.D_PARENT_CONTAINING) == null && mustBeCleared((Mutable) o);
+                    } else {
+                        return false;
+                    }
+                }, ALL_SETTABLES)//
+                .toMap(Function.identity());
+        orphansDetected = !orphans.isEmpty();
+        orphans.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
-    protected void clear(LeafTransaction tx, Mutable orphan) {
+    private void clear(LeafTransaction tx, Mutable orphan) {
         tx.clear(orphan);
         for (Mutable child : orphan.dChildren()) {
             clear(tx, child);
         }
     }
 
-    protected State post(State pre) {
-        if (initialized) {
-            pre = run(trigger(pre, universe(), clearOrphans, Direction.forward));
-            return run(trigger(pre, universe(), checkConsistency, Direction.forward));
-        } else {
-            return pre;
-        }
+    protected boolean mustBeCleared(Mutable orphan) {
+        return true;
+    }
+
+    protected State post(State state) {
+        return state;
     }
 
     public boolean isStopped(State state) {
@@ -470,10 +506,6 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State oldState() {
         return oldState;
-    }
-
-    void setOldState(State s) {
-        oldState = s;
     }
 
     protected boolean isTimeTraveling() {

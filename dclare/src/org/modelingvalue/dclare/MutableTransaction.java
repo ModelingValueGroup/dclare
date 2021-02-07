@@ -16,7 +16,6 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -33,7 +32,6 @@ import org.modelingvalue.dclare.ex.TransactionException;
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
     private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
-    private static final UnaryOperator<Byte>              INCREMENT     = c -> ++c;
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
@@ -62,8 +60,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return (Mutable) cls();
     }
 
-    private boolean hasQueued(State state, Direction dir) {
-        return !state.get(mutable, dir.actions).isEmpty() || !state.get(mutable, dir.children).isEmpty();
+    protected boolean hasQueued(State state, Mutable object, Direction dir) {
+        return !state.get(object, dir.actions).isEmpty() || !state.get(object, dir.children).isEmpty();
     }
 
     private void move(Mutable object, Direction from, Direction to) {
@@ -82,11 +80,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         this.mutable = mutable();
         state[0] = pre;
         try {
-
-            if (this == universeTransaction()) {
-                move(mutable, Direction.forward, Direction.scheduled);
-                universeTransaction().setOldState(state[0]);
-                state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
+            if (parent() == null) {
+                move(mutable, Direction.backward, Direction.scheduled);
             }
             while (!universeTransaction().isKilled()) {
                 state[0] = state[0].set(mutable, Direction.scheduled.actions, Set.of(), actions);
@@ -96,19 +91,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     state[0] = state[0].set(mutable, Direction.scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
                         run(children[0], Direction.scheduled.children);
-                    } else if (hasQueued(state[0], Direction.backward)) {
-                        if (this != universeTransaction()) {
-                            state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
-                            break;
-                        } else {
-                            if (TRACE_MUTABLE || UniverseTransaction.TRACE_UNIVERSE) {
-                                System.err.println("DCLARE: " + indent("    ") + mutable + " BACKWARD");
-                            }
-                            move(mutable, Direction.backward, Direction.scheduled);
-                            universeTransaction().setOldState(state[0]);
-                            state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
-                        }
                     } else {
+                        if (parent() != null && hasQueued(state[0], mutable, Direction.backward)) {
+                            state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
+                        }
                         break;
                     }
                 }

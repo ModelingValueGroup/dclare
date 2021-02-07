@@ -131,12 +131,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    public <O> void clear(O object) {
-        super.clear(object);
-        currentSate.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
-    }
-
-    @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
         byte cnr = get(universe, Mutable.D_CHANGE_NR);

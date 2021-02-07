@@ -15,12 +15,14 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.modelingvalue.dclare.Universe;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
+
     public static TestUniverse of(Object id, TestMutableClass clazz) {
         return new TestUniverse(id, u -> {
         }, clazz);
@@ -30,6 +32,7 @@ public class TestUniverse extends TestMutable implements Universe {
         return new TestUniverse(id, init, clazz);
     }
 
+    private final AtomicInteger      counter = new AtomicInteger(0);
     private final Consumer<Universe> init;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz) {
@@ -41,5 +44,9 @@ public class TestUniverse extends TestMutable implements Universe {
     public void init() {
         Universe.super.init();
         init.accept(this);
+    }
+
+    public int uniqueInt() {
+        return counter.getAndIncrement();
     }
 }

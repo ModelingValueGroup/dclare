@@ -181,7 +181,7 @@ public class Setable<O, T> extends Getable<O, T> {
         return changed != null || containment || opposite != null;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
         init(postValue);
         if (changed != null) {
