@@ -225,19 +225,21 @@ public class UniverseTransaction extends MutableTransaction {
 
     @Override
     protected State run(State state) {
-        oldState = state;
-        state = super.run(state);
-        state = clearOrphans(state);
-        while (hasQueued(state, universe(), Direction.backward)) {
-            if (TRACE_UNIVERSE) {
-                System.err.println("DCLARE: " + indent("    ") + universe() + " BACKWARD");
-            }
+        do {
             oldState = state;
             state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
             state = super.run(state);
             state = clearOrphans(state);
-        }
+        } while (hasBackwardActionsQueued(state));
         return state;
+    }
+
+    private boolean hasBackwardActionsQueued(State state) {
+        boolean result = hasQueued(state, universe(), Direction.backward);
+        if (TRACE_UNIVERSE && result) {
+            System.err.println("DCLARE: " + indent("    ") + universe() + " BACKWARD");
+        }
+        return result;
     }
 
     private State clearOrphans(State state) {
