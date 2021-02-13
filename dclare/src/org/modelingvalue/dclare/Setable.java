@@ -77,7 +77,15 @@ public class Setable<O, T> extends Getable<O, T> {
         this.containment = hasModifier(modifiers, SetableModifier.containment);
         this.synthetic = hasModifier(modifiers, SetableModifier.synthetic);
         this.changed = changed;
-        this.opposite = opposite;
+        if (hasModifier(modifiers, SetableModifier.symmetricOpposite)) {
+            if (opposite != null) {
+                throw new Error("The setable " + this + " is already a symetric-opposite");
+            } else {
+                this.opposite = () -> this;
+            }
+        } else {
+            this.opposite = opposite;
+        }
         this.scope = scope;
         if (containment && opposite != null) {
             throw new Error("The containment setable " + this + " has an opposite");
@@ -177,7 +185,7 @@ public class Setable<O, T> extends Getable<O, T> {
         return scope != null ? scope.get() : null;
     }
 
-    protected final boolean isHandlingChange() {
+    protected boolean isHandlingChange() {
         return changed != null || containment || opposite != null;
     }
 

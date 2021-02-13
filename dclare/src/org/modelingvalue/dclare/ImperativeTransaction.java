@@ -37,13 +37,13 @@ public class ImperativeTransaction extends LeafTransaction {
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
-    //
     @SuppressWarnings("rawtypes")
     private Set<Pair<Object, Setable>>                        setted;
     private State                                             pre;
     private State                                             state;
     private final TriConsumer<State, State, Boolean>          diffHandler;
     private final Consumer<State>                             firstHandler;
+    private final Pair<ImperativeTransaction, String>         actionId  = Pair.of(this, "$toDClare");
 
     protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
@@ -97,12 +97,19 @@ public class ImperativeTransaction extends LeafTransaction {
             CHANGE_NR.set(this, (BiFunction<Long, Integer, Long>) Long::sum, 1);
             State finalState = state;
             pre = finalState;
-            universeTransaction().put(Pair.of(this, "$toDClare"), () -> {
+            universeTransaction().put(actionId, () -> {
                 try {
                     finalPre.diff(finalState, ALL_OBJECTS, ALL_SETTABLES).forEachOrdered(s -> {
-                        Object o = s.getKey();
-                        for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
-                            d.getKey().set(o, d.getValue().b());
+                        if (s.getKey() instanceof Mutable) {
+                            Action.of(actionId, o -> {
+                                for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
+                                    d.getKey().set(o, d.getValue().b());
+                                }
+                            }).trigger((Mutable) s.getKey());
+                        } else {
+                            for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
+                                d.getKey().set(s.getKey(), d.getValue().b());
+                            }
                         }
                     });
                 } catch (Throwable t) {
@@ -134,6 +141,11 @@ public class ImperativeTransaction extends LeafTransaction {
                 pre = state;
             }
         }
+    }
+
+    @Override
+    public boolean isChanged() {
+        return pre != state;
     }
 
     @SuppressWarnings("unchecked")

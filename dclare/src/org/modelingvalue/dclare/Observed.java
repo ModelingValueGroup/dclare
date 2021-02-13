@@ -60,42 +60,25 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    @SuppressWarnings("unchecked")
-    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        this(id, def, opposite, scope, new Observers<>(id), changed, modifiers);
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T> observers, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        super(id, def, opposite, scope, (l, o, p, n) -> {
-            if (changed != null) {
-                changed.accept(l, o, p, n);
-            }
-            if (o instanceof Mutable) {
-                l.setChanged((Mutable) o);
-            }
-            Mutable source = l.mutable();
-            for (Entry<Observer, Set<Mutable>> e : l.get(o, observers)) {
-                Observer observer = e.getKey();
-                for (Mutable m : e.getValue()) {
-                    Mutable target = m.resolve((Mutable) o);
-                    if (!l.cls().equals(observer) || !source.equals(target)) {
-                        l.trigger(target, observer, Direction.forward);
-                    }
-                }
-            }
-        }, modifiers);
+    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, def, opposite, scope, changed, modifiers);
         this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
         this.checkMandatory = !hasModifier(modifiers, SetableModifier.doNotCheckMandatory);
-        this.observers = observers;
-        observers.observed = this;
+        this.observers = new Observers<>(id);
+        this.observers.observed = this;
     }
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
+        if (checkConsistency && utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
             throw new TooManyObserversException(object, this, observers, utx);
         }
+    }
+
+    @Override
+    protected boolean isHandlingChange() {
+        return true;
     }
 
     public Observers<O, T> observers() {

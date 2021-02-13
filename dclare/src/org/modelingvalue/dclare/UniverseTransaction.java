@@ -124,7 +124,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                             history                 = List.of();
     private List<State>                                                                             future                  = List.of();
     private State                                                                                   preState;
-    private State                                                                                   oldState;
+    private State                                                                                   startState;
     private State                                                                                   state;
     protected boolean                                                                               initialized;
     private boolean                                                                                 killed;
@@ -146,15 +146,18 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void mainLoop(State start) {
         state = start != null ? start.clone(this) : emptyState;
+        if (TRACE_UNIVERSE) {
+            System.err.println("DCLARE: START UNIVERSE " + this);
+        }
         while (!killed) {
             try {
                 handling = false;
                 Action<Universe> action = take();
-                handling = true;
-                universeStatistics.setDebugging(false);
                 preState = state;
+                universeStatistics.setDebugging(false);
+                handling = true;
                 if (TRACE_UNIVERSE) {
-                    System.err.println("DCLARE: START UNIVERSE " + this);
+                    System.err.println("DCLARE: BEGIN TRANSACTION " + this);
                 }
                 TraceTimer.traceBegin("root");
                 try {
@@ -205,6 +208,9 @@ public class UniverseTransaction extends MutableTransaction {
                 } catch (Throwable t) {
                     handleException(t);
                 } finally {
+                    if (TRACE_UNIVERSE) {
+                        System.err.println("DCLARE: END TRANSACTION " + this);
+                    }
                     end(action);
                     universeStatistics.completeRun();
                     TraceTimer.traceEnd("root");
@@ -212,9 +218,9 @@ public class UniverseTransaction extends MutableTransaction {
             } catch (Throwable t) {
                 handleException(t);
             }
-            if (TRACE_UNIVERSE) {
-                System.err.println("DCLARE: STOP UNIVERSE " + this);
-            }
+        }
+        if (TRACE_UNIVERSE) {
+            System.err.println("DCLARE: STOP UNIVERSE " + this);
         }
         stop();
         history = history.append(state);
@@ -226,18 +232,18 @@ public class UniverseTransaction extends MutableTransaction {
     @Override
     protected State run(State state) {
         do {
-            oldState = state;
+            startState = state;
             state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
             state = super.run(state);
             state = clearOrphans(state);
-        } while (hasBackwardActionsQueued(state));
+        } while (!killed && hasBackwardActionsQueued(state));
         return state;
     }
 
     private boolean hasBackwardActionsQueued(State state) {
         boolean result = hasQueued(state, universe(), Direction.backward);
         if (TRACE_UNIVERSE && result) {
-            System.err.println("DCLARE: " + indent("    ") + universe() + " BACKWARD");
+            System.err.println("DCLARE: BACKWARD UNIVERSE " + this);
         }
         return result;
     }
@@ -245,7 +251,7 @@ public class UniverseTransaction extends MutableTransaction {
     private State clearOrphans(State state) {
         do {
             state = super.run(triggerAction(state, clearOrphans));
-        } while (orphansDetected);
+        } while (!killed && orphansDetected);
         return state;
     }
 
@@ -273,7 +279,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void handleExceptions(Set<Throwable> errors) {
         if (TRACE_UNIVERSE) {
             List<Throwable> list = errors.sorted(this::compareThrowable).toList();
-            System.err.println("Exception in Universe:");
+            System.err.println("DCLARE: EXCEPTION " + this);
             list.first().printStackTrace();
         }
         kill();
@@ -514,8 +520,8 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    public State oldState() {
-        return oldState;
+    public State startState() {
+        return startState;
     }
 
     protected boolean isTimeTraveling() {

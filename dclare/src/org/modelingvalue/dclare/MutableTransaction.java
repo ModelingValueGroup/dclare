@@ -31,18 +31,19 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
-    private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final boolean                          TRACE_MUTABLE              = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final int                              MAX_NR_OFF_MERGE_CONFLICTS = Integer.getInteger("MAX_NR_OFF_MERGE_CONFLICTS", 4);
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions       = new Set[1];
+    private final Set<Action<?>>[]                        actions                    = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children      = new Set[1];
-    private final State[]                                 state         = new State[1];
+    private final Set<Mutable>[]                          children                   = new Set[1];
+    private final State[]                                 state                      = new State[1];
 
-    private Mutable                                       mutable;
+    private int                                           nrOffMergeConflicts;
 
     @SuppressWarnings("unchecked")
 
@@ -77,23 +78,22 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @Override
     protected State run(State pre) {
         TraceTimer.traceBegin("compound");
-        this.mutable = mutable();
         state[0] = pre;
         try {
             if (parent() == null) {
-                move(mutable, Direction.backward, Direction.scheduled);
+                move(mutable(), Direction.backward, Direction.scheduled);
             }
             while (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable, Direction.scheduled.actions, Set.of(), actions);
+                state[0] = state[0].set(mutable(), Direction.scheduled.actions, Set.of(), actions);
                 if (!actions[0].isEmpty()) {
                     run(actions[0], Direction.scheduled.actions);
                 } else {
-                    state[0] = state[0].set(mutable, Direction.scheduled.children, Set.of(), children);
+                    state[0] = state[0].set(mutable(), Direction.scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
                         run(children[0], Direction.scheduled.children);
                     } else {
-                        if (parent() != null && hasQueued(state[0], mutable, Direction.backward)) {
-                            state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
+                        if (parent() != null && hasQueued(state[0], mutable(), Direction.backward)) {
+                            state[0] = state[0].set(parent().mutable(), Direction.backward.children, Set::add, mutable());
                         }
                         break;
                     }
@@ -101,10 +101,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
             return state[0];
         } catch (Throwable t) {
-            universeTransaction().handleException(new TransactionException(mutable, t));
+            universeTransaction().handleException(new TransactionException(mutable(), t));
             return state[0];
         } finally {
-            mutable = null;
+            nrOffMergeConflicts = 0;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -114,7 +114,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         if (TRACE_MUTABLE) {
-            System.err.println("DCLARE: " + indent("    ") + mutable + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
+            System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
         try {
             state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
@@ -126,11 +126,15 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         return r;
                     })));
         } catch (NotMergeableException nme) {
-            for (TransactionClass t : todo.random()) {
-                state[0] = t.run(state[0], this);
+            if (++nrOffMergeConflicts > MAX_NR_OFF_MERGE_CONFLICTS) {
+                throw nme;
+            } else {
+                for (TransactionClass t : todo.random()) {
+                    state[0] = t.run(state[0], this);
+                }
             }
         }
-        move(mutable, Direction.forward, Direction.scheduled);
+        move(mutable(), Direction.forward, Direction.scheduled);
     }
 
     private State merge(State base, State[] branches) {
@@ -229,7 +233,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             state = state.set(object, direction.actions, Set::add, action);
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
-        while (parent != null && !mutable.equals(object)) {
+        while (parent != null && !mutable().equals(object)) {
             state = state.set(parent, direction.children, Set::add, object);
             object = parent;
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);

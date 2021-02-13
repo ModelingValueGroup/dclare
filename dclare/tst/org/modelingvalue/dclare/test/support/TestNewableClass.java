@@ -40,8 +40,8 @@ public class TestNewableClass extends TestMutableClass {
         return identity;
     }
 
-    public AtomicInteger counter() {
-        return counter;
+    public int uniqueInt() {
+        return counter.getAndIncrement();
     }
 
 }

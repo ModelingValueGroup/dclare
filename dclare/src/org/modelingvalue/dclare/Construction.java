@@ -143,6 +143,7 @@ public class Construction extends IdentifiedByArray {
         private final Object                    identity;
         private final Set<Construction>         constructions;
 
+        private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
         private Set<Object>                     matchedReasonTypes = Set.of();
         private Set<Object>                     reasonTypes;
@@ -159,18 +160,18 @@ public class Construction extends IdentifiedByArray {
             this.constructions = newable.dConstructions();
         }
 
-        public boolean hasSameType(MatchInfo other) {
+        public boolean haveSameType(MatchInfo other) {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean areTheSame(MatchInfo other) {
+        public boolean haveSameIdentity(MatchInfo other) {
             if (!other.reasonTypes().isEmpty() && !matchedReasonTypes.anyMatch(other.reasonTypes()::contains) && //
                     (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
                 matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
                 other.reasonTypes = Set.of();
                 return true;
             } else {
-                return haveCyclicReason(other);
+                return false;
             }
         }
 
@@ -178,23 +179,12 @@ public class Construction extends IdentifiedByArray {
             return other.sourcesAndAncestors().contains(newable());
         }
 
-        private Set<Newable> sourcesAndAncestors() {
-            if (sourcesAndAncestors == null) {
-                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
-            }
-            return sourcesAndAncestors;
-        }
-
         public boolean areUnidentified(MatchInfo other) {
             return identity() == null && other.hasUnidentifiedSource();
         }
 
         public boolean hasDirectReasonToExist() {
-            return constructions().anyMatch(Construction::isNotObserved);
-        }
-
-        public boolean hasIndirectReasonToExist() {
-            return constructions().anyMatch(Construction::isObserved);
+            return isOld() || constructions().anyMatch(Construction::isNotObserved);
         }
 
         public boolean hasUnidentifiedSource() {
@@ -209,7 +199,7 @@ public class Construction extends IdentifiedByArray {
             return newable;
         }
 
-        public Object identity() {
+        private Object identity() {
             return identity;
         }
 
@@ -217,7 +207,14 @@ public class Construction extends IdentifiedByArray {
             return constructions;
         }
 
-        public Map<Mutable, Set<Construction>> sources() {
+        private Set<Newable> sourcesAndAncestors() {
+            if (sourcesAndAncestors == null) {
+                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
+            }
+            return sourcesAndAncestors;
+        }
+
+        private Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
                 sources = Construction.sources(constructions, Map.of());
             }
@@ -237,6 +234,14 @@ public class Construction extends IdentifiedByArray {
                 notObservedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
             }
             return notObservedSources;
+        }
+
+        public boolean isOld() {
+            if (isOld == null) {
+                UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
+                isOld = utx.startState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
+            }
+            return isOld;
         }
 
         @Override

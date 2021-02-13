@@ -23,6 +23,7 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.dclare.Observed.Observers;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -76,6 +77,9 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
+        if (property instanceof Observed) {
+            trigger(((Observed<O, T>) property).observers(), object);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -137,5 +141,10 @@ public abstract class LeafTransaction extends Transaction {
         set(result, Newable.D_CONSTRUCTIONS, Set::add, Construction.of(reason));
         return result;
     }
+
+    protected <O> void trigger(Observers<O, ?> observers, O o) {
+    }
+
+    public abstract boolean isChanged();
 
 }

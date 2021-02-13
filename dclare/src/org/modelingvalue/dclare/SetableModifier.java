@@ -17,6 +17,8 @@ package org.modelingvalue.dclare;
 
 public enum SetableModifier {
 
+    symmetricOpposite(),
+
     containment(),
 
     mandatory(),

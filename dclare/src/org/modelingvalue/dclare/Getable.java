@@ -38,7 +38,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id.hashCode() ^ getClass().hashCode();
     }
 
     @SuppressWarnings("rawtypes")

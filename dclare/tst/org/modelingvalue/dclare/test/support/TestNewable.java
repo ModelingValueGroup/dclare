@@ -24,10 +24,13 @@ import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Newable;
+import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
+
+    public static final Observed<TestMutable, String> n = Observed.of("n", null);
 
     @SafeVarargs
     public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
@@ -48,7 +51,7 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
-        return tx.construct(reason, () -> new TestNewable(clazz.counter().getAndIncrement(), clazz));
+        return tx.construct(reason, () -> new TestNewable(clazz.uniqueInt(), clazz));
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -87,7 +90,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public String toString() {
-        Object id = dMatchingIdentity();
+        Object id = n.get(this);
         return id != null ? super.toString() + ":" + id : super.toString();
     }
 
