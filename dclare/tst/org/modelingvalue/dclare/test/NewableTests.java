@@ -241,7 +241,7 @@ public class NewableTests {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "unused"})
     private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
 
         // OO
