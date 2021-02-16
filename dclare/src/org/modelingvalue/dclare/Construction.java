@@ -143,7 +143,6 @@ public class Construction extends IdentifiedByArray {
         private final Object                    identity;
         private final Set<Construction>         constructions;
 
-        private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
         private Set<Object>                     matchedReasonTypes = Set.of();
         private Set<Object>                     reasonTypes;
@@ -176,7 +175,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean haveCyclicReason(MatchInfo other) {
-            return other.sourcesAndAncestors().contains(newable());
+            return other != null && other.sourcesAndAncestors().contains(newable());
         }
 
         public boolean areUnidentified(MatchInfo other) {
@@ -184,7 +183,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean hasDirectReasonToExist() {
-            return isOld() || constructions().anyMatch(Construction::isNotObserved);
+            return constructions().anyMatch(Construction::isNotObserved);
         }
 
         public boolean hasUnidentifiedSource() {
@@ -234,14 +233,6 @@ public class Construction extends IdentifiedByArray {
                 notObservedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
             }
             return notObservedSources;
-        }
-
-        public boolean isOld() {
-            if (isOld == null) {
-                UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
-                isOld = utx.startState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
-            }
-            return isOld;
         }
 
         @Override

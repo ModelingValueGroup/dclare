@@ -100,7 +100,7 @@ public class ImperativeTransaction extends LeafTransaction {
             universeTransaction().put(actionId, () -> {
                 try {
                     finalPre.diff(finalState, ALL_OBJECTS, ALL_SETTABLES).forEachOrdered(s -> {
-                        if (s.getKey() instanceof Mutable) {
+                        if (s.getKey() instanceof Mutable && !(s.getKey() instanceof Universe)) {
                             Action.of(actionId, o -> {
                                 for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
                                     d.getKey().set(o, d.getValue().b());

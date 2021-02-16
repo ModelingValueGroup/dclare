@@ -19,13 +19,13 @@ import org.modelingvalue.collections.Set;
 
 public interface Newable extends Mutable {
 
-    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.doNotCheckConsistency);
 
-    Observed<Newable, Boolean>           D_OBSOLETE           = Observed.of("D_OBSOLETE", Boolean.FALSE, SetableModifier.synthetic, SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Newable>           D_MATCHED            = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
 
     Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_CONSTRUCTIONS.set(n, cs -> {
                                                                   for (Construction c : cs) {
-                                                                      if (c.object() instanceof Newable && ((Newable) c.object()).dIsObsolete()) {
+                                                                      if (c.object() != null && c.object().dIsObsolete()) {
                                                                           cs = cs.remove(c);
                                                                       }
                                                                   }
@@ -51,9 +51,13 @@ public interface Newable extends Mutable {
         return D_CONSTRUCTIONS.current(this);
     }
 
+    default Newable dMatched() {
+        return D_MATCHED.current(this);
+    }
+
     @Override
     default boolean dIsObsolete() {
-        return D_OBSOLETE.current(this);
+        return dMatched() != null;
     }
 
     @Override

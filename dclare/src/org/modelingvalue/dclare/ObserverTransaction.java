@@ -90,6 +90,7 @@ public class ObserverTransaction extends ActionTransaction {
             changed.init(FALSE);
             backwards.init(FALSE);
             try {
+                observe(mutable(), observer().constructed());
                 doRun(pre, universeTransaction);
             } catch (Throwable t) {
                 do {
@@ -239,51 +240,16 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable);
-            if (setable.hasNewables() && !Objects.equals(pre, post)) {
-                Object[] prePost = matchNewables((Observed<O, T>) setable, pre, post);
-                if (!Objects.equals(pre, (T) prePost[0])) {
-                    super.set(object, setable, pre, (T) prePost[0]);
-                }
-                pre = (T) prePost[0];
-                post = (T) prePost[1];
-            }
             if (!Objects.equals(pre, post)) {
-                post = rippleOut(object, (Observed<O, T>) setable, pre, post);
+                T start = universeTransaction().startState().get(object, setable);
+                if (setable.hasNewables()) {
+                    post = matchNewables((Observed<O, T>) setable, start, pre, post);
+                } else {
+                    post = rippleOut((Observed<O, T>) setable, start, pre, post);
+                }
             }
         }
         super.set(object, setable, pre, post);
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        T start = universeTransaction().startState().get(object, observed);
-        if (!Objects.equals(pre, start)) {
-            if (Objects.equals(start, post)) {
-                backwards.set(TRUE);
-                post = pre;
-            } else if (start instanceof Mergeable) {
-                T result = ((Mergeable<T>) start).merge(pre, post);
-                if (!result.equals(post)) {
-                    backwards.set(TRUE);
-                    post = result;
-                }
-            }
-        }
-        if (observed.containment()) {
-            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
-                backwards.set(TRUE);
-                post = pre;
-            } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-                ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
-                ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
-                if (!result.equals(post)) {
-                    backwards.set(TRUE);
-                    post = result;
-                }
-            }
-        }
-        return post;
     }
 
     @SuppressWarnings("rawtypes")
@@ -347,7 +313,8 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = supplier.get();
+                O start = (O) universeTransaction().startState().get(mutable(), observer().constructed()).get(reason);
+                result = start != null ? start : supplier.get();
                 if (TRACE_MATCHING) {
                     O finalResult = result;
                     runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + reason + "=>" + finalResult + ")"));
@@ -358,87 +325,112 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private <T, O> T rippleOut(Observed<O, T> observed, T start, T pre, T post) {
+        if (!Objects.equals(pre, start)) {
+            if (Objects.equals(start, post)) {
+                backwards.set(TRUE);
+                post = pre;
+            } else if (start instanceof Mergeable) {
+                T result = ((Mergeable<T>) start).merge(pre, post);
+                if (!result.equals(post)) {
+                    backwards.set(TRUE);
+                    post = result;
+                }
+            }
+        }
+        if (observed.containment()) {
+            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
+                backwards.set(TRUE);
+                post = pre;
+            } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
+                ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
+                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
+                if (!result.equals(post)) {
+                    backwards.set(TRUE);
+                    post = result;
+                }
+            }
+        }
+        return post;
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private <O, T> Object[] matchNewables(Observed<O, T> observed, T pre, T post) {
+    private <O, T> T matchNewables(Observed<O, T> observed, T start, T pre, T post) {
         merge();
         if (observed.isMany()) {
-            return manyMatch((ContainingCollection<Object>) pre, (ContainingCollection<Object>) post, constructions.merge());
+            return (T) manyMatch(observed, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
         } else {
-            return singleMatch(pre, post, constructions.merge());
+            return (T) singleMatch(observed, start, pre, post);
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private Object[] singleMatch(Object before, Object after, Map<Reason, Newable> cons) {
-        if (before instanceof Newable && (((Newable) before).dIsObsolete() || becameObsolete((Newable) before, cons))) {
-            before = after;
-        } else if (after instanceof Newable) {
-            if (((Mutable) after).dIsObsolete()) {
-                after = before;
-            } else if (before instanceof Newable) {
-                MatchInfo post = MatchInfo.of((Newable) after);
+    private Object singleMatch(Observed observed, Object start, Object before, Object after) {
+        if (after instanceof Newable) {
+            Newable matched = ((Newable) after).dMatched();
+            if (matched instanceof Newable) {
+                after = matched;
+            } else if (before instanceof Newable && !((Newable) before).dIsObsolete()) {
                 MatchInfo pre = MatchInfo.of((Newable) before);
+                MatchInfo post = MatchInfo.of((Newable) after);
                 if (pre.haveSameType(post)) {
-                    if (!post.hasDirectReasonToExist() && (pre.haveCyclicReason(post) || !pre.isOld())) {
+                    if (!(Objects.equals(after, start) || post.hasDirectReasonToExist()) && (!Objects.equals(before, start) || pre.haveCyclicReason(post))) {
                         makeTheSame(pre, post);
                         after = before;
-                    } else if (!pre.hasDirectReasonToExist() && (post.haveCyclicReason(pre) || !post.isOld())) {
+                    } else if (!(Objects.equals(before, start) || pre.hasDirectReasonToExist()) && (!Objects.equals(after, start) || post.haveCyclicReason(pre))) {
                         makeTheSame(post, pre);
-                        before = after;
                     }
                 }
             }
         }
-        return new Object[]{before, after};
+        return after;
     }
 
-    @SuppressWarnings("rawtypes")
-    private Object[] manyMatch(ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> cons) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
         List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(MatchInfo::of).toList();
+        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(MatchInfo::of).toList();
         for (MatchInfo pre : preList) {
-            if (pre.newable().dIsObsolete() || becameObsolete(pre.newable(), cons)) {
+            if (pre.newable().dIsObsolete()) {
                 before = before.remove(pre.newable());
                 preList = preList.remove(pre);
             }
         }
-        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(MatchInfo::of).toList();
         if (!(after instanceof List) && !postList.isEmpty() && !preList.isEmpty()) {
             preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
             postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
         }
         for (MatchInfo post : postList) {
-            if (post.newable().dIsObsolete()) {
-                after = after.remove(post.newable());
+            Newable matched = post.newable().dMatched();
+            if (matched != null) {
+                after = after.replace(post.newable(), matched);
                 before = before.remove(post.newable());
+                before = before.addUnique(matched);
             } else {
                 for (MatchInfo pre : preList) {
                     if (pre.haveSameType(post)) {
-                        if (!post.hasDirectReasonToExist() && (pre.haveCyclicReason(post) || (!pre.isOld() && pre.haveSameIdentity(post)))) {
+                        if (!(start.contains(post.newable()) || post.hasDirectReasonToExist()) && ((!start.contains(pre.newable()) && pre.haveSameIdentity(post)) || pre.haveCyclicReason(post))) {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
                             before = before.remove(post.newable());
-                        } else if (!pre.hasDirectReasonToExist() && (post.haveCyclicReason(pre) || (!post.isOld() && post.haveSameIdentity(pre)))) {
+                            before = before.addUnique(pre.newable());
+                        } else if (!(start.contains(pre.newable()) || pre.hasDirectReasonToExist()) && ((!start.contains(post.newable()) && post.haveSameIdentity(pre)) || post.haveCyclicReason(pre))) {
                             makeTheSame(post, pre);
                             before = before.remove(pre.newable());
+                            before = before.addUnique(post.newable());
                         }
                     }
                 }
             }
         }
-        return new Object[]{before, after};
-    }
-
-    private boolean becameObsolete(Newable removed, Map<Reason, Newable> cons) {
-        boolean obsolete = removed.dConstructions().anyMatch(c -> mutable().equals(c.object()) && observer().equals(c.observer())) && !cons.anyMatch(e -> e.getValue().equals(removed));
-        if (obsolete) {
-            super.set(removed, Newable.D_OBSOLETE, state().get(removed, Newable.D_OBSOLETE), Boolean.TRUE);
-        }
-        return obsolete;
+        return Objects.equals(before, after) ? before : rippleOut(observed, start, before, after);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo pre, MatchInfo post) {
-        super.set(post.newable(), Newable.D_OBSOLETE, state().get(post.newable(), Newable.D_OBSOLETE), Boolean.TRUE);
+        super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + "==" + post.newable() + ")"));
         }

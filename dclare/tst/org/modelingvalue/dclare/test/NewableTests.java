@@ -55,12 +55,12 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "false");
-        System.setProperty("TRACE_UNIVERSE", "false");
-        System.setProperty("TRACE_ACTIONS", "false");
+        System.setProperty("TRACE_MATCHING", "true");
+        System.setProperty("TRACE_UNIVERSE", "true");
+        System.setProperty("TRACE_ACTIONS", "true");
     }
 
-    static final int     MANY_NR            = 20;
+    static final int     MANY_NR            = 10;
     static final boolean PRINT_RESULT_STATE = false;
 
     @Test
@@ -269,7 +269,7 @@ public class NewableTests {
         TestNewableClass FBM = TestNewableClass.of("FBM", n::get, n, ots, fts, moom);
 
         Observed<TestMutable, TestNewable> mcls = Observed.of("mcls", null, synthetic);
-        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of(), synthetic);
+        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of());
         TestNewableClass OBT = TestNewableClass.of("OBT", n::get, n, mcls, _otr);
 
         Observed<TestMutable, TestNewable> otr = Observed.of("otr", null, () -> _otr);
@@ -469,7 +469,7 @@ public class NewableTests {
 
         });
 
-        Concurrent<Set<TestNewable>> added1 = run(utx, "add", c -> {
+        Concurrent<Set<TestNewable>> added = run(utx, "add", c -> {
 
             if (oo2fb) { // add OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -545,10 +545,10 @@ public class NewableTests {
 
         });
 
-        Concurrent<Set<TestNewable>> added2 = run(utx, "change", c -> {
+        run(utx, "change", c -> {
             State result = LeafTransaction.getCurrent().state();
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(added1.merge()));
+            assertTrue(objects.containsAll(added.merge()));
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
             if (oo2fb) { // change OO
@@ -564,8 +564,8 @@ public class NewableTests {
                 TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
                 TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
 
-                //opp.set(rf3, rf4);
-                //opp.set(rf4, rf3);
+                opp.set(rf3, rf4);
+                opp.set(rf4, rf3);
             }
 
             if (fb2oo) { // change FB
@@ -584,11 +584,7 @@ public class NewableTests {
 
         });
 
-        Concurrent<Set<TestNewable>> added3 = run(utx, "back", c -> {
-            State result = LeafTransaction.getCurrent().state();
-            Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(added2.merge()));
-            //assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 42 : 32, objects.size());
+        run(utx, "back", c -> {
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -603,8 +599,8 @@ public class NewableTests {
                 TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
                 TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
 
-                //opp.set(rf3, (TestNewable) null);
-                //opp.set(rf4, (TestNewable) null);
+                opp.set(rf3, (TestNewable) null);
+                opp.set(rf4, (TestNewable) null);
             }
 
             if (fb2oo) { // change FB
@@ -626,11 +622,9 @@ public class NewableTests {
         run(utx, "remove", c -> {
             State result = LeafTransaction.getCurrent().state();
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(added3.merge()));
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
-            Set<TestNewable> adds = added1.result().addAll(added2.result()).addAll(added3.result());
-            for (TestNewable add : adds) {
+            for (TestNewable add : added.merge()) {
                 add.dDelete();
             }
         });

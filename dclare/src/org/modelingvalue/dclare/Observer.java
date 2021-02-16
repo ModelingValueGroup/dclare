@@ -198,7 +198,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 if (d.b() != null) {
                     Newable.D_CONSTRUCTIONS.set(d.b(), Set::add, cons);
                 }
-            }), SetableModifier.doNotCheckConsistency, SetableModifier.synthetic);
+            }), SetableModifier.doNotCheckConsistency);
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + super.toString();
         }
     }
 
