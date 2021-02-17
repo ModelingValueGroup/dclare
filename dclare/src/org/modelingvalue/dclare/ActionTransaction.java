@@ -30,7 +30,6 @@ import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.Observed.Observers;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
@@ -81,17 +80,19 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
-    protected <O> void trigger(Observers<O, ?> observers, O o) {
+    protected <O> void trigger(Observed<O, ?> observed, O o) {
         if (o instanceof Mutable) {
             setChanged((Mutable) o);
         }
         Mutable source = mutable();
-        for (Entry<Observer, Set<Mutable>> e : get(o, observers)) {
-            Observer observer = e.getKey();
-            for (Mutable m : e.getValue()) {
-                Mutable target = m.resolve((Mutable) o);
-                if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, Direction.forward);
+        for (Direction direction : Direction.FORWARD_BACKWARD) {
+            for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers(direction))) {
+                Observer observer = e.getKey();
+                for (Mutable m : e.getValue()) {
+                    Mutable target = m.resolve((Mutable) o);
+                    if (!cls().equals(observer) || !source.equals(target)) {
+                        trigger(target, observer, direction);
+                    }
                 }
             }
         }

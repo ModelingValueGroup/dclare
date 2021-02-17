@@ -15,6 +15,9 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Direction.backward;
+import static org.modelingvalue.dclare.Direction.forward;
+
 import java.time.Instant;
 import java.util.function.Consumer;
 
@@ -43,7 +46,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public final Traces                         traces;
     private final ExceptionSetable              exception;
-    private final Observerds                    observeds;
+    private final Observerds[]                  observeds;
     private final Constructed                   constructed;
 
     protected long                              runCount     = -1;
@@ -56,13 +59,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     protected Observer(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
         traces = new Traces(Pair.of(this, "TRACES"));
-        observeds = Observerds.of(this);
+        observeds = new Observerds[]{new Observerds(this, forward), new Observerds(this, backward)};
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
     }
 
-    public Observerds observeds() {
-        return observeds;
+    public Observerds observeds(Direction direction) {
+        return observeds[direction.nr];
     }
 
     public ExceptionSetable exception() {
@@ -94,7 +97,9 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     public void deObserve(O mutable) {
-        observeds.setDefault(mutable);
+        for (int ia = 0; ia < 2; ia++) {
+            observeds[ia].setDefault(mutable);
+        }
         for (Direction dir : Direction.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);
@@ -120,15 +125,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
-        public static Observerds of(Observer observer) {
-            return new Observerds(observer);
-        }
-
         @SuppressWarnings("unchecked")
-        private Observerds(Observer observer) {
-            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
+        private Observerds(Observer observer, Direction direction) {
+            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
+                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
                         Mutable o = a.resolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));

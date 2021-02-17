@@ -15,6 +15,9 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Direction.backward;
+import static org.modelingvalue.dclare.Direction.forward;
+
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
@@ -56,7 +59,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private final boolean                             mandatory;
     private final boolean                             checkMandatory;
-    private final Observers<O, T>                     observers;
+    private final Observers<O, T>[]                   observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
@@ -65,8 +68,7 @@ public class Observed<O, T> extends Setable<O, T> {
         super(id, def, opposite, scope, changed, modifiers);
         this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
         this.checkMandatory = !hasModifier(modifiers, SetableModifier.doNotCheckMandatory);
-        this.observers = new Observers<>(id);
-        this.observers.observed = this;
+        this.observers = new Observers[]{new Observers<>(this, forward), new Observers<>(this, backward)};
     }
 
     @SuppressWarnings("rawtypes")
@@ -81,8 +83,8 @@ public class Observed<O, T> extends Setable<O, T> {
         return true;
     }
 
-    public Observers<O, T> observers() {
-        return observers;
+    public Observers<O, T> observers(Direction direction) {
+        return observers[direction.nr];
     }
 
     public boolean mandatory() {
@@ -102,22 +104,31 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     public int getNrOfObservers(O object) {
-        return LeafTransaction.getCurrent().get(object, observers).size();
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return tx.get(object, observers[forward.nr]).size() + tx.get(object, observers[backward.nr]).size();
     }
 
     @SuppressWarnings("rawtypes")
     public static final class Observers<O, T> extends Setable<O, DefaultMap<Observer, Set<Mutable>>> {
 
-        private Observed<O, T> observed; // can not be made final because it has to be set after construction
+        private final Observed<O, T> observed; // can not be made final because it has to be set after construction
+        private final Direction      direction;
 
-        private Observers(Object id) {
-            super(id, Observer.OBSERVER_MAP, null, null, null, SetableModifier.doNotCheckConsistency);
+        @SuppressWarnings("unchecked")
+        private Observers(Observed observed, Direction direction) {
+            super(Pair.of(observed, direction), Observer.OBSERVER_MAP, null, null, null, SetableModifier.doNotCheckConsistency);
             // changed can not be passed as arg above because it references 'observed'
             changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx.universeTransaction(), o, a);
+            this.observed = observed;
+            this.direction = direction;
         }
 
         public Observed<O, T> observed() {
             return observed;
+        }
+
+        public Direction direction() {
+            return direction;
         }
 
         @Override

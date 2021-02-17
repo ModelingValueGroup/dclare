@@ -55,12 +55,12 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "true");
-        System.setProperty("TRACE_UNIVERSE", "true");
-        System.setProperty("TRACE_ACTIONS", "true");
+        System.setProperty("TRACE_MATCHING", "false");
+        System.setProperty("TRACE_UNIVERSE", "false");
+        System.setProperty("TRACE_ACTIONS", "false");
     }
 
-    static final int     MANY_NR            = 10;
+    static final int     MANY_NR            = 20;
     static final boolean PRINT_RESULT_STATE = false;
 
     @Test
@@ -546,8 +546,11 @@ public class NewableTests {
         });
 
         run(utx, "change", c -> {
-            State result = LeafTransaction.getCurrent().state();
-            Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(added.merge()));
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
@@ -585,6 +588,13 @@ public class NewableTests {
         });
 
         run(utx, "back", c -> {
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertTrue(objects.containsAll(added.merge()));
+            assertEquals((oo2fb && fb2oo) ? (oo2fb ? 55 : 58) : (oo2fb || fb2oo) ? (oo2fb ? 42 : 45) : 32, objects.size());
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -620,8 +630,11 @@ public class NewableTests {
         });
 
         run(utx, "remove", c -> {
-            State result = LeafTransaction.getCurrent().state();
-            Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
             for (TestNewable add : added.merge()) {
