@@ -170,7 +170,7 @@ public class ObserverTransaction extends ActionTransaction {
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             DefaultMap<Observed, Set<Mutable>> observeds = sources.addAll(targets, Set::addAll);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
-                    observeds.filter(e -> e.getKey().checkConsistency()).flatMap(e -> e.getValue().map(m -> {
+                    observeds.filter(e -> e.getKey().checkConsistency).flatMap(e -> e.getValue().map(m -> {
                         m = m.resolve(mutable);
                         return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
                     })).toMap(e -> e), //
