@@ -29,7 +29,7 @@ public abstract class Leaf implements TransactionClass, Feature {
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id.hashCode() ^ getClass().hashCode();
     }
 
     @Override
