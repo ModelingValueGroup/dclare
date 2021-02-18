@@ -397,7 +397,7 @@ public class ObserverTransaction extends ActionTransaction {
                         }
                     }
                 }
-            } else if (constructed.contains(after)) {
+            } else if (after.equals(start) && constructed.contains(after)) {
                 before = after;
             } else if (start instanceof Newable && ((Newable) start).dNewableType().equals(((Newable) after).dNewableType())) {
                 backwards.set(TRUE);
@@ -444,7 +444,7 @@ public class ObserverTransaction extends ActionTransaction {
                         }
                     }
                 }
-                if (matched == null && constructed.contains(post.newable())) {
+                if (matched == null && start.contains(post.newable()) && constructed.contains(post.newable())) {
                     before = before.addUnique(post.newable());
                 }
             }
