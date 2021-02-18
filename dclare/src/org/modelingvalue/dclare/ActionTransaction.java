@@ -81,7 +81,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <O> void trigger(Observed<O, ?> observed, O o) {
-        if (o instanceof Mutable) {
+        if (o instanceof Mutable && observed.checkConsistency) {
             setChanged((Mutable) o);
         }
         Mutable source = mutable();

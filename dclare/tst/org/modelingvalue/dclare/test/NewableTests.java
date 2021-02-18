@@ -55,12 +55,12 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("TRACE_MATCHING", "false");
-        System.setProperty("TRACE_UNIVERSE", "false");
-        System.setProperty("TRACE_ACTIONS", "false");
+        System.setProperty("TRACE_MATCHING", "true");
+        System.setProperty("TRACE_UNIVERSE", "true");
+        System.setProperty("TRACE_ACTIONS", "true");
     }
 
-    static final int     MANY_NR            = 20;
+    static final int     MANY_NR            = 10;
     static final boolean PRINT_RESULT_STATE = false;
 
     @Test

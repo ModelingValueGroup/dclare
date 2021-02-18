@@ -15,11 +15,25 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 
 public interface Newable extends Mutable {
 
-    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), (t, o, b, a) -> {
+                                                                  Setable.<Set<Construction>, Construction> diff(b, a,                                                                                                                      //
+                                                                          add -> {
+                                                                              if (add.isObserved()) {
+                                                                                  add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                              }
+                                                                          },                                                                                                                                                                //
+                                                                          rem -> {
+                                                                              if (rem.isObserved()) {                                                                                                                                       //
+                                                                                  rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
+                                                                              }
+                                                                          });
+                                                              }, SetableModifier.doNotCheckConsistency);
 
     Observed<Newable, Newable>           D_MATCHED            = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
 
