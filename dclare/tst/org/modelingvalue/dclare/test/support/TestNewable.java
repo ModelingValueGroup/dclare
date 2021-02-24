@@ -85,7 +85,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public Collection<? extends Observer<?>> dMutableObservers() {
-        return dConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
+        return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
     }
 
     @Override
@@ -105,7 +105,7 @@ public class TestNewable extends TestMutable implements Newable {
                 Consumer<TestNewable> finalCons = observers[i];
                 Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
                     Mutable t = ((Triple<Mutable, ?, ?>) LeafTransaction.getCurrent().leaf().id()).a();
-                    if (!t.dIsObsolete() && n.dConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
+                    if (!t.dIsObsolete() && n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
                         finalCons.accept(n);
                     }
                 });

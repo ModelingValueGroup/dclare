@@ -319,16 +319,21 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                O start = (O) universeTransaction().startState().get(mutable(), observer().constructed()).get(reason);
-                result = start != null ? start : supplier.get();
-                if (TRACE_MATCHING) {
-                    O finalResult = result;
-                    runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + reason + "=>" + finalResult + ")"));
+                O pre = (O) parent().beginState().get(mutable(), observer().constructed()).get(reason);
+                if (pre != null) {
+                    result = pre;
+                } else {
+                    result = supplier.get();
                 }
             }
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
         }
+    }
+
+    @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -365,40 +370,37 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Object matchNewables(Mutable object, Observed observed, Object start, Object pre, Object post) {
         merge();
-        Object old = universeTransaction().preState().get(object, observed);
-        Set<Newable> constructed = constructions.merge().toValues().toSet();
+        Map<Reason, Newable> constructed = constructions.merge();
         if (observed.isMany()) {
-            return manyMatch(observed, (ContainingCollection<Object>) old, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post, constructed);
+            return manyMatch(observed, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post, constructed);
         } else {
-            return singleMatch(observed, old, start, pre, post, constructed);
+            return singleMatch(object, observed, start, pre, post, constructed);
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private Object singleMatch(Observed observed, Object old, Object start, Object before, Object after, Set<Newable> constructed) {
+    private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after, Map<Reason, Newable> constructed) {
         if (after instanceof Newable) {
+            MatchInfo post = MatchInfo.of((Newable) after, constructed);
             Newable matched = ((Newable) after).dMatched();
-            if (matched instanceof Newable) {
+            if (matched != null) {
                 after = matched;
                 before = matched;
             } else if (before instanceof Newable) {
+                MatchInfo pre = MatchInfo.of((Newable) before, constructed);
                 if (((Newable) before).dIsObsolete()) {
                     before = after;
-                } else {
-                    MatchInfo pre = MatchInfo.of((Newable) before);
-                    MatchInfo post = MatchInfo.of((Newable) after);
-                    if (pre.haveSameType(post)) {
-                        if (!(Objects.equals(after, old) || post.hasDirectReasonToExist()) && (!Objects.equals(before, old) || pre.haveCyclicReason(post))) {
-                            makeTheSame(pre, post);
-                            after = before;
-                        } else if (!(Objects.equals(before, old) || pre.hasDirectReasonToExist()) && (!Objects.equals(after, old) || post.haveCyclicReason(pre))) {
-                            makeTheSame(post, pre);
-                            before = after;
-                        }
+                } else if (pre.haveSameType(post)) {
+                    if (!(post.isOld() || post.hasDirectConstruction()) /* && (!pre.isOld() || pre.haveCyclicReason(post)) */) {
+                        makeTheSame(pre, post);
+                        after = before;
+                    } else if (!(pre.isOld() || pre.hasDirectConstruction()) /* && (!post.isOld() || post.haveCyclicReason(pre)) */) {
+                        makeTheSame(post, pre);
+                        before = after;
                     }
                 }
-            } else if (after.equals(start) && constructed.contains(after)) {
-                before = after;
+            } else if (after.equals(start) && constructed.toValues().anyMatch(after::equals)) {
+                before = start;
             } else if (start instanceof Newable && ((Newable) start).dNewableType().equals(((Newable) after).dNewableType())) {
                 backwards.set(TRUE);
                 after = before;
@@ -408,9 +410,9 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> old, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Set<Newable> constructed) {
-        List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(MatchInfo::of).toList();
-        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(MatchInfo::of).toList();
+    private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
+        List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, constructed)).toList();
+        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
         for (MatchInfo pre : preList) {
             if (pre.newable().dIsObsolete()) {
                 before = before.remove(pre.newable());
@@ -430,13 +432,13 @@ public class ObserverTransaction extends ActionTransaction {
             } else {
                 for (MatchInfo pre : preList) {
                     if (pre.haveSameType(post)) {
-                        if (!(old.contains(post.newable()) || post.hasDirectReasonToExist()) && ((!old.contains(pre.newable()) && pre.haveSameIdentity(post)) || pre.haveCyclicReason(post))) {
+                        if (!(post.isOld() || post.hasDirectConstruction()) && ((/* !pre.isOld() && */ pre.haveSameIdentity(post)) || pre.haveCyclicReason(post))) {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
                             before = before.remove(post.newable());
                             before = before.addUnique(pre.newable());
                             matched = pre.newable();
-                        } else if (!(old.contains(pre.newable()) || pre.hasDirectReasonToExist()) && ((!old.contains(post.newable()) && post.haveSameIdentity(pre)) || post.haveCyclicReason(pre))) {
+                        } else if (!(pre.isOld() || pre.hasDirectConstruction()) && ((/* !post.isOld() && */ post.haveSameIdentity(pre)) || post.haveCyclicReason(pre))) {
                             makeTheSame(post, pre);
                             before = before.remove(pre.newable());
                             before = before.addUnique(post.newable());
@@ -458,7 +460,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + "==" + post.newable() + ")"));
         }
-        for (Construction cons : post.constructions()) {
+        for (Construction cons : post.derivedConstructions()) {
             Mutable obj = cons.object();
             Constructed set = cons.observer().constructed();
             super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));

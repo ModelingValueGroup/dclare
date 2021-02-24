@@ -37,7 +37,7 @@ import org.modelingvalue.dclare.ex.NonDeterministicException;
 @SuppressWarnings("rawtypes")
 public class ConstantState {
     private static final Context<Boolean>                            WEAK    = Context.of(false);
-    private static final Object                                      NULL    = new Object() {
+    public static final Object                                       NULL    = new Object() {
                                                                                  @Override
                                                                                  public String toString() {
                                                                                      return "null";

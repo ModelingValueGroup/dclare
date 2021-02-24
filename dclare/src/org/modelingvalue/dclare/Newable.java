@@ -21,30 +21,34 @@ import org.modelingvalue.collections.Set;
 
 public interface Newable extends Mutable {
 
-    Observed<Newable, Set<Construction>> D_CONSTRUCTIONS      = Observed.of("D_CONSTRUCTIONS", Set.of(), (t, o, b, a) -> {
-                                                                  Setable.<Set<Construction>, Construction> diff(b, a,                                                                                                                      //
-                                                                          add -> {
-                                                                              if (add.isObserved()) {
-                                                                                  add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
-                                                                              }
-                                                                          },                                                                                                                                                                //
-                                                                          rem -> {
-                                                                              if (rem.isObserved()) {                                                                                                                                       //
-                                                                                  rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
-                                                                              }
-                                                                          });
-                                                              }, SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Set<Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", Set.of(), (t, o, b, a) -> {
+                                                                     Setable.<Set<Construction>, Construction> diff(b, a,                                                                                                                             //
+                                                                             add -> {
+                                                                                 if (ObserverTransaction.TRACE_MATCHING) {
+                                                                                     t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + add.object() + "." + add.observer() + " (" + add.reason() + "=>" + o + ")"));
+                                                                                 }
+                                                                                 add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                             },                                                                                                                                                                       //
+                                                                             rem -> {
+                                                                                 if (ObserverTransaction.TRACE_MATCHING) {
+                                                                                     t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + rem.object() + "." + rem.observer() + " (" + rem.reason() + "=<" + o + ")"));
+                                                                                 }
+                                                                                 rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
+                                                                             });
+                                                                 }, SetableModifier.doNotCheckConsistency);
 
-    Observed<Newable, Newable>           D_MATCHED            = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
+    Constant<Newable, Construction>      D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
 
-    Observer<Newable>                    D_CONSTRUCTIONS_RULE = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_CONSTRUCTIONS.set(n, cs -> {
-                                                                  for (Construction c : cs) {
-                                                                      if (c.object() != null && c.object().dIsObsolete()) {
-                                                                          cs = cs.remove(c);
-                                                                      }
-                                                                  }
-                                                                  return cs;
-                                                              }));
+    Observed<Newable, Newable>           D_MATCHED               = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_CONSTRUCTIONS_RULE    = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_DERIVED_CONSTRUCTIONS.set(n, cs -> {
+                                                                     for (Construction c : cs) {
+                                                                         if (c.object().dIsObsolete()) {
+                                                                             cs = cs.remove(c);
+                                                                         }
+                                                                     }
+                                                                     return cs;
+                                                                 }));
 
     Object dIdentity();
 
@@ -61,12 +65,22 @@ public interface Newable extends Mutable {
     @SuppressWarnings("rawtypes")
     Comparable dSortKey();
 
+    default Set<Construction> dDerivedConstructions() {
+        return D_DERIVED_CONSTRUCTIONS.current(this);
+    }
+
+    default Construction dDirectConstruction() {
+        return D_DIRECT_CONSTRUCTION.isSet(this) ? D_DIRECT_CONSTRUCTION.get(this) : null;
+    }
+
     default Set<Construction> dConstructions() {
-        return D_CONSTRUCTIONS.current(this);
+        Set<Construction> derived = dDerivedConstructions();
+        Construction direct = dDirectConstruction();
+        return direct != null ? derived.add(direct) : derived;
     }
 
     default Newable dMatched() {
-        return D_MATCHED.current(this);
+        return D_MATCHED.get(this);
     }
 
     @Override

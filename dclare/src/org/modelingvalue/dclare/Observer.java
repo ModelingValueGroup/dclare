@@ -194,10 +194,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 Construction cons = Construction.of(o, observer, e.getKey());
                 Pair<Newable, Newable> d = e.getValue();
                 if (d.a() != null) {
-                    Newable.D_CONSTRUCTIONS.set(d.a(), Set::remove, cons);
+                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.a(), Set::remove, cons);
                 }
                 if (d.b() != null) {
-                    Newable.D_CONSTRUCTIONS.set(d.b(), Set::add, cons);
+                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.b(), Set::add, cons);
                 }
             }), SetableModifier.doNotCheckConsistency);
         }

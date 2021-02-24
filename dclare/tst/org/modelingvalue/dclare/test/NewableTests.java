@@ -55,13 +55,15 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
+        System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "100");
+
         System.setProperty("TRACE_MATCHING", "true");
         System.setProperty("TRACE_UNIVERSE", "true");
         System.setProperty("TRACE_ACTIONS", "true");
     }
 
     static final int     MANY_NR            = 10;
-    static final boolean PRINT_RESULT_STATE = false;
+    static final boolean PRINT_RESULT_STATE = true;
 
     @Test
     public void singleBidirectional() {
@@ -121,27 +123,27 @@ public class NewableTests {
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
+            TestNewable a0 = c.create(A);
+            TestNewable b0 = c.create(B);
             TestNewable a1 = c.create(A);
             TestNewable b1 = c.create(B);
+            TestNewable a2 = c.create(A);
             TestNewable b2 = c.create(B);
             TestNewable a3 = c.create(A);
-            TestNewable ax = c.create(A);
-            TestNewable ay = c.create(A);
-            TestNewable bx = c.create(B);
-            TestNewable by = c.create(B);
-            TestNewable au = c.create(A);
-            TestNewable av = c.create(A);
-            TestNewable bu = c.create(B);
-            TestNewable bv = c.create(B);
-            cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by, au, av, bu, bv));
-            n.set(a1, "x");
-            n.set(b1, "x");
-            n.set(b2, "y");
-            n.set(a3, "z");
-            n.set(au, "w");
-            n.set(av, "w");
-            n.set(bu, "w");
-            n.set(bv, "w");
+            TestNewable b3 = c.create(B);
+            TestNewable a4 = c.create(A);
+            TestNewable b4 = c.create(B);
+            TestNewable a5 = c.create(A);
+            TestNewable b5 = c.create(B);
+            cs.set(universe, Set.of(a0, b0, a1, b1, a2, b2, a3, b3, a4, b4, a5, b5));
+            n.set(a0, "x");
+            n.set(b0, "x");
+            n.set(a1, "y");
+            n.set(b1, "z");
+            n.set(a4, "w");
+            n.set(b4, "w");
+            n.set(a5, "w");
+            n.set(b5, "w");
 
             TestNewable ac1 = c.create(AC);
             TestNewable bc1 = c.create(BC);
@@ -149,16 +151,15 @@ public class NewableTests {
             TestNewable bc2 = c.create(BC);
             TestNewable bc3 = c.create(BC);
             TestNewable bc4 = c.create(BC);
-            acs.set(a1, Set.of(ac1, ac2));
-            bcs.set(b1, Set.of(bc1, bc2));
-            bcs.set(b2, Set.of(bc3, bc4));
+            acs.set(a0, Set.of(ac1, ac2));
+            bcs.set(b0, Set.of(bc1, bc2));
+            bcs.set(b1, Set.of(bc3, bc4));
             n.set(ac1, "p");
             n.set(bc1, "p");
             n.set(ac2, "q");
             n.set(bc2, "q");
             n.set(bc3, "r");
             n.set(bc4, "s");
-
         });
 
         run(utx, "changeName", c -> {
@@ -179,7 +180,7 @@ public class NewableTests {
             assertTrue(objects.containsAll(created.result()));
             assertEquals(22, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
-            assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 2));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
@@ -295,15 +296,14 @@ public class NewableTests {
             rlopp.set(rl, rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft));
         });
 
-        FAT.observe(ft -> {
-            if (left.get(ft) == null) {
-                left.set(ft, create("L", ft, ROL));
-            }
-        }, ft -> {
-            if (right.get(ft) == null) {
-                right.set(ft, create("R", ft, ROL));
-            }
-        });
+        FAT.observe(//
+                ft -> left.set(ft, create("L", ft, ROL)), //
+                ft -> right.set(ft, create("R", ft, ROL)), //
+                ft -> {
+                    String ln = n.get(left.get(ft));
+                    String rn = n.get(right.get(ft));
+                    n.set(ft, "~".equals(ln) ? rn : ln + "_" + rn);
+                });
 
         // Universe
 
@@ -327,7 +327,6 @@ public class NewableTests {
                     rl -> n.set(rl, n.get(rf)), //
                     rl -> otr.set(rl, typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
             )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create("4", rf, FAT, //
-                    ft -> n.set(ft, opp.get(rf) == null ? n.get(rf) : n.get(opp.get(rf)) + "_" + n.get(rf)), //
                     ft -> right.set(ft, mrol.get(rf)), //
                     ft -> left.set(ft, opp.get(rf) == null ? create("5", rf, ROL, //
                             rl -> n.set(rl, "~"), //
@@ -537,8 +536,6 @@ public class NewableTests {
                 otr.set(rl2, ot2);
                 otr.set(rl3, ot3);
                 otr.set(rl4, ot4);
-                otr.set(rl3, ot3);
-                otr.set(rl4, ot4);
                 otr.set(rl5, ot4);
                 otr.set(rl6, ot3);
             }
@@ -582,7 +579,14 @@ public class NewableTests {
                 TestNewable ft1 = factTypes.filter(ft -> Objects.equals(n.get(ft), "x_y")).findAny().get();
                 TestNewable ft2 = factTypes.filter(ft -> Objects.equals(n.get(ft), "z")).findAny().get();
                 TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "w")).findAny().get();
+                TestNewable rl1 = left.get(ft1);
+                TestNewable rl2 = right.get(ft1);
+                TestNewable rl3 = left.get(ft2);
+                TestNewable rl4 = right.get(ft2);
+                TestNewable rl5 = left.get(ft3);
+                TestNewable rl6 = right.get(ft3);
 
+                n.set(rl5, "v");
             }
 
         });
@@ -594,7 +598,7 @@ public class NewableTests {
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(added.merge()));
-            assertEquals((oo2fb && fb2oo) ? (oo2fb ? 55 : 58) : (oo2fb || fb2oo) ? (oo2fb ? 42 : 45) : 32, objects.size());
+            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -623,8 +627,15 @@ public class NewableTests {
                 Set<TestNewable> factTypes = fts.get(fbm);
                 TestNewable ft1 = factTypes.filter(ft -> Objects.equals(n.get(ft), "x_y")).findAny().get();
                 TestNewable ft2 = factTypes.filter(ft -> Objects.equals(n.get(ft), "z")).findAny().get();
-                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "w")).findAny().get();
+                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "v_w")).findAny().get();
+                TestNewable rl1 = left.get(ft1);
+                TestNewable rl2 = right.get(ft1);
+                TestNewable rl3 = left.get(ft2);
+                TestNewable rl4 = right.get(ft2);
+                TestNewable rl5 = left.get(ft3);
+                TestNewable rl6 = right.get(ft3);
 
+                n.set(rl5, "~");
             }
 
         });
@@ -653,7 +664,7 @@ public class NewableTests {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.result()));
             assertEquals(32, objects.size());
-            assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 2));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 

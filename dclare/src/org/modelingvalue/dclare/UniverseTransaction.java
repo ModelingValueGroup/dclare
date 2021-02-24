@@ -520,7 +520,7 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    public State startState() {
+    protected State startState() {
         return startState;
     }
 
