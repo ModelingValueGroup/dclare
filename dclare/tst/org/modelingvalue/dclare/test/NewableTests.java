@@ -309,14 +309,14 @@ public class NewableTests {
 
         FAT.observe(//
                 ft -> {
-                    // if (left.get(ft) == null) {
-                    // left.set(ft, create("L", ft, ROL));
-                    // }
+                    if (left.get(ft) == null) {
+                        left.set(ft, create("L", ft, ROL));
+                    }
                 }, //
                 ft -> {
-                    // if (right.get(ft) == null) {
-                    // right.set(ft, create("R", ft, ROL));
-                    // }
+                    if (right.get(ft) == null) {
+                        right.set(ft, create("R", ft, ROL));
+                    }
                 }, //
                 ft -> {
                     String ln = n.get(left.get(ft));

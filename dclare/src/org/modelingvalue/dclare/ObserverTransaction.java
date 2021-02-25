@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
@@ -421,13 +422,17 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
-        Set<MatchInfo> preList = before == null ? Set.of() : before.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toSet();
-        Set<MatchInfo> postList = after == null ? Set.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toSet();
+        List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, constructed)).toList();
+        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
         for (MatchInfo pre : preList) {
-            if (!postList.contains(pre) && pre.newable().dIsObsolete()) {
+            if (pre.newable().dIsObsolete()) {
                 before = before.remove(pre.newable());
                 preList = preList.remove(pre);
             }
+        }
+        if (!(after instanceof List) && !postList.isEmpty() && !preList.isEmpty()) {
+            preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
+            postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
         }
         for (MatchInfo post : postList) {
             Newable matched = post.newable().dMatched();
@@ -437,7 +442,7 @@ public class ObserverTransaction extends ActionTransaction {
                 before = before.addUnique(matched);
             } else {
                 for (MatchInfo pre : preList) {
-                    if (!postList.contains(pre) && pre.haveSameType(post)) {
+                    if (pre.haveSameType(post)) {
                         if (!post.isCarvedInStone() && pre.areTheSame(post)) {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
