@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
@@ -380,48 +379,55 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after, Map<Reason, Newable> constructed) {
-        if (after instanceof Newable) {
-            MatchInfo post = MatchInfo.of((Newable) after, constructed);
-            Newable matched = ((Newable) after).dMatched();
+        MatchInfo pre = before instanceof Newable ? MatchInfo.of((Newable) before, constructed) : null;
+        MatchInfo post = after instanceof Newable ? MatchInfo.of((Newable) after, constructed) : null;
+        if (post != null) {
+            Newable matched = post.newable().dMatched();
             if (matched != null) {
                 after = matched;
                 before = matched;
-            } else if (before instanceof Newable) {
-                MatchInfo pre = MatchInfo.of((Newable) before, constructed);
-                if (((Newable) before).dIsObsolete()) {
+            } else if (pre != null) {
+                if (pre.newable().dIsObsolete()) {
                     before = after;
                 } else if (pre.haveSameType(post)) {
-                    if (!(post.isOld() || post.hasDirectConstruction()) /* && (!pre.isOld() || pre.haveCyclicReason(post)) */) {
+                    if (constructed.anyMatch(e -> e.getValue().equals(post.newable()))) {
                         makeTheSame(pre, post);
                         after = before;
-                    } else if (!(pre.isOld() || pre.hasDirectConstruction()) /* && (!post.isOld() || post.haveCyclicReason(pre)) */) {
+                    } else if (!post.isCarvedInStone() && pre.areTheSame(post)) {
+                        makeTheSame(pre, post);
+                        after = before;
+                    } else if (!pre.isCarvedInStone() && post.areTheSame(pre)) {
                         makeTheSame(post, pre);
                         before = after;
                     }
                 }
-            } else if (after.equals(start) && constructed.toValues().anyMatch(after::equals)) {
-                before = start;
-            } else if (start instanceof Newable && ((Newable) start).dNewableType().equals(((Newable) after).dNewableType())) {
-                backwards.set(TRUE);
-                after = before;
             }
         }
-        return Objects.equals(before, after) ? before : rippleOut(observed, start, before, after);
+        after = Objects.equals(before, after) ? before : rippleOut(observed, start, before, after);
+        if (after instanceof Newable && observed.containment() && !Objects.equals(start, after) && !Objects.equals(before, after)) {
+            Pair<Mutable, Setable<Mutable, ?>> pair = state().get((Newable) after, Mutable.D_PARENT_CONTAINING);
+            if (pair != null) {
+                for (Construction cons : post.derivedConstructions()) {
+                    if (!mutable().equals(cons.object()) || !observer().equals(cons.observer())) {
+                        Mutable obj = cons.object();
+                        Constructed set = cons.observer().constructed();
+                        super.set(obj, set, state().get(obj, set), current().get(obj, set).removeKey(cons.reason()));
+                    }
+                }
+            }
+        }
+        return after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
-        List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, constructed)).toList();
-        List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
+        Set<MatchInfo> preList = before == null ? Set.of() : before.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toSet();
+        Set<MatchInfo> postList = after == null ? Set.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toSet();
         for (MatchInfo pre : preList) {
-            if (pre.newable().dIsObsolete()) {
+            if (!postList.contains(pre) && pre.newable().dIsObsolete()) {
                 before = before.remove(pre.newable());
                 preList = preList.remove(pre);
             }
-        }
-        if (!(after instanceof List) && !postList.isEmpty() && !preList.isEmpty()) {
-            preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
-            postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
         }
         for (MatchInfo post : postList) {
             Newable matched = post.newable().dMatched();
@@ -431,23 +437,20 @@ public class ObserverTransaction extends ActionTransaction {
                 before = before.addUnique(matched);
             } else {
                 for (MatchInfo pre : preList) {
-                    if (pre.haveSameType(post)) {
-                        if (!(post.isOld() || post.hasDirectConstruction()) && ((/* !pre.isOld() && */ pre.haveSameIdentity(post)) || pre.haveCyclicReason(post))) {
+                    if (!postList.contains(pre) && pre.haveSameType(post)) {
+                        if (!post.isCarvedInStone() && pre.areTheSame(post)) {
                             makeTheSame(pre, post);
                             after = after.replace(post.newable(), pre.newable());
                             before = before.remove(post.newable());
                             before = before.addUnique(pre.newable());
                             matched = pre.newable();
-                        } else if (!(pre.isOld() || pre.hasDirectConstruction()) && ((/* !post.isOld() && */ post.haveSameIdentity(pre)) || post.haveCyclicReason(pre))) {
+                        } else if (!pre.isCarvedInStone() && post.areTheSame(pre)) {
                             makeTheSame(post, pre);
                             before = before.remove(pre.newable());
                             before = before.addUnique(post.newable());
                             matched = pre.newable();
                         }
                     }
-                }
-                if (matched == null && start.contains(post.newable()) && constructed.contains(post.newable())) {
-                    before = before.addUnique(post.newable());
                 }
             }
         }
@@ -456,19 +459,21 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo pre, MatchInfo post) {
-        super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
-        if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + "==" + post.newable() + ")"));
+        if (!pre.areConflicting(post)) {
+            super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
+            if (TRACE_MATCHING) {
+                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + post.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
+            }
+            for (Construction cons : post.derivedConstructions()) {
+                Mutable obj = cons.object();
+                Constructed set = cons.observer().constructed();
+                super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
+            }
+            constructions.set((map, n) -> {
+                Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
+                return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;
+            }, post.newable());
         }
-        for (Construction cons : post.derivedConstructions()) {
-            Mutable obj = cons.object();
-            Constructed set = cons.observer().constructed();
-            super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
-        }
-        constructions.set((map, n) -> {
-            Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
-            return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;
-        }, post.newable());
     }
 
 }

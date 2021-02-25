@@ -322,6 +322,10 @@ public class Setable<O, T> extends Getable<O, T> {
         return checkConsistency && (scope != null || isReference());
     }
 
+    public boolean plumming() {
+        return !checkConsistency || synthetic;
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
         Set<ConsistencyError> errors = Set.of();

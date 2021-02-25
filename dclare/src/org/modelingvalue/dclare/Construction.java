@@ -164,7 +164,7 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean haveSameIdentity(MatchInfo other) {
+        private boolean haveSameIdentity(MatchInfo other) {
             if (!other.reasonTypes().isEmpty() && !matchedReasonTypes.anyMatch(other.reasonTypes()::contains) && //
                     (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
                 matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
@@ -175,6 +175,10 @@ public class Construction extends IdentifiedByArray {
             }
         }
 
+        public boolean areTheSame(MatchInfo other) {
+            return haveCyclicReason(other) || haveSameIdentity(other);
+        }
+
         public boolean haveCyclicReason(MatchInfo other) {
             return other.sourcesAndAncestors().contains(newable());
         }
@@ -183,7 +187,19 @@ public class Construction extends IdentifiedByArray {
             return identity() == null && other.hasUnidentifiedSource();
         }
 
-        public boolean hasDirectConstruction() {
+        public boolean areConflicting(MatchInfo other) {
+            Set<Newable> presa = sourcesAndAncestors();
+            Set<Newable> postsa = other.sourcesAndAncestors();
+            Set<Object> pretypes = presa.removeAll(postsa).map(Newable::dNewableType).toSet();
+            Set<Object> posttypes = postsa.removeAll(presa).map(Newable::dNewableType).toSet();
+            return pretypes.anyMatch(posttypes::contains);
+        }
+
+        public boolean isCarvedInStone() {
+            return isOld() || hasDirectConstruction();
+        }
+
+        private boolean hasDirectConstruction() {
             return newable.dDirectConstruction() != null;
         }
 
@@ -216,16 +232,16 @@ public class Construction extends IdentifiedByArray {
             return constructions;
         }
 
-        private Set<Newable> sourcesAndAncestors() {
+        public Set<Newable> sourcesAndAncestors() {
             if (sourcesAndAncestors == null) {
                 sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
             }
             return sourcesAndAncestors;
         }
 
-        private Map<Mutable, Set<Construction>> sources() {
+        public Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
-                if (constructed.filter(e -> e.getValue().equals(newable)).findAny().isPresent()) {
+                if (constructed.anyMatch(e -> e.getValue().equals(newable))) {
                     sources = Construction.sources(LeafTransaction.getCurrent().mutable(), Map.of());
                 } else {
                     Construction direct = newable.dDirectConstruction();
@@ -251,7 +267,7 @@ public class Construction extends IdentifiedByArray {
             return notObservedSources;
         }
 
-        public boolean isOld() {
+        private boolean isOld() {
             if (isOld == null) {
                 UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
                 isOld = utx.preState().get(newable, Mutable.D_PARENT_CONTAINING) != null;

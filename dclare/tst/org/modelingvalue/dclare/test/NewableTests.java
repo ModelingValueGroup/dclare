@@ -55,14 +55,14 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
-        System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "100");
+        System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "1000");
 
         System.setProperty("TRACE_MATCHING", "true");
         System.setProperty("TRACE_UNIVERSE", "true");
         System.setProperty("TRACE_ACTIONS", "true");
     }
 
-    static final int     MANY_NR            = 10;
+    static final int     MANY_NR            = 20;
     static final boolean PRINT_RESULT_STATE = true;
 
     @Test
@@ -82,6 +82,9 @@ public class NewableTests {
     public State bidirectional() {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
+
+        Observed<TestMutable, TestNewable> acr = Observed.of("ac", null, containment);
+        Observed<TestMutable, TestNewable> bcr = Observed.of("bc", null, containment);
 
         Observed<TestMutable, Set<TestNewable>> acs = Observed.of("acs", Set.of(), containment);
         Observed<TestMutable, Set<TestNewable>> bcs = Observed.of("bcs", Set.of(), containment);
@@ -104,11 +107,13 @@ public class NewableTests {
 
         A.observe(a -> br.set(a, create("1", a, B, //
                 b -> n.set(b, n.get(a)), //
-                b -> bcs.set(b, acs.get(a).map(br::get).toSet())//
+                b -> bcs.set(b, acs.get(a).map(br::get).toSet()), //
+                b -> bcr.set(b, acr.get(a) != null ? br.get(acr.get(a)) : null) //
         )));
         B.observe(b -> ar.set(b, create("2", b, A, //
                 a -> n.set(a, n.get(b)), //
-                a -> acs.set(a, bcs.get(b).map(ar::get).toSet())//
+                a -> acs.set(a, bcs.get(b).map(ar::get).toSet()), //
+                a -> acr.set(a, bcr.get(b) != null ? ar.get(bcr.get(b)) : null) //
         )));
 
         AC.observe(ac -> br.set(ac, create("3", ac, BC, //
@@ -151,15 +156,21 @@ public class NewableTests {
             TestNewable bc2 = c.create(BC);
             TestNewable bc3 = c.create(BC);
             TestNewable bc4 = c.create(BC);
+            TestNewable ac5 = c.create(AC);
+            TestNewable bc5 = c.create(BC);
             acs.set(a0, Set.of(ac1, ac2));
             bcs.set(b0, Set.of(bc1, bc2));
             bcs.set(b1, Set.of(bc3, bc4));
+            acr.set(a0, ac5);
+            bcr.set(b0, bc5);
             n.set(ac1, "p");
             n.set(bc1, "p");
             n.set(ac2, "q");
             n.set(bc2, "q");
             n.set(bc3, "r");
             n.set(bc4, "s");
+            n.set(ac5, "t");
+            n.set(bc5, "t");
         });
 
         run(utx, "changeName", c -> {
@@ -178,7 +189,7 @@ public class NewableTests {
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.result()));
-            assertEquals(22, objects.size());
+            assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 2));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
@@ -297,12 +308,20 @@ public class NewableTests {
         });
 
         FAT.observe(//
-                ft -> left.set(ft, create("L", ft, ROL)), //
-                ft -> right.set(ft, create("R", ft, ROL)), //
+                ft -> {
+                    // if (left.get(ft) == null) {
+                    // left.set(ft, create("L", ft, ROL));
+                    // }
+                }, //
+                ft -> {
+                    // if (right.get(ft) == null) {
+                    // right.set(ft, create("R", ft, ROL));
+                    // }
+                }, //
                 ft -> {
                     String ln = n.get(left.get(ft));
                     String rn = n.get(right.get(ft));
-                    n.set(ft, "~".equals(ln) ? rn : ln + "_" + rn);
+                    n.set(ft, "~".equals(ln) ? rn : ln != null && rn != null ? ln + "_" + rn : null);
                 });
 
         // Universe
@@ -381,6 +400,7 @@ public class NewableTests {
                 TestNewable rf6 = c.create(REF);
                 TestNewable rf7 = c.create(REF);
                 refs.set(cl1, Set.of(rf1, rf5));
+
                 refs.set(cl2, Set.of(rf2));
                 refs.set(cl3, Set.of(rf3));
                 refs.set(cl4, Set.of(rf4, rf6, rf7));
@@ -469,6 +489,14 @@ public class NewableTests {
         });
 
         Concurrent<Set<TestNewable>> added = run(utx, "add", c -> {
+
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertTrue(objects.containsAll(created.merge()));
+            assertEquals(32, objects.size());
 
             if (oo2fb) { // add OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -657,14 +685,14 @@ public class NewableTests {
         State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
         }
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.result()));
             assertEquals(32, objects.size());
-            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 3));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
