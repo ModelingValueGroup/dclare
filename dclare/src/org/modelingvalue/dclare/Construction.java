@@ -190,8 +190,8 @@ public class Construction extends IdentifiedByArray {
         public boolean areConflicting(MatchInfo other) {
             Set<Newable> presa = sourcesAndAncestors();
             Set<Newable> postsa = other.sourcesAndAncestors();
-            Set<Object> pretypes = presa.removeAll(postsa).map(Newable::dNewableType).toSet();
-            Set<Object> posttypes = postsa.removeAll(presa).map(Newable::dNewableType).toSet();
+            Set<Object> pretypes = presa.exclude(postsa::contains).map(Newable::dNewableType).toSet();
+            Set<Object> posttypes = postsa.exclude(presa::contains).map(Newable::dNewableType).toSet();
             return pretypes.anyMatch(posttypes::contains);
         }
 
