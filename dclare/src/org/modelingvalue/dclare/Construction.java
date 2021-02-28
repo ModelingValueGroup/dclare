@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Optional;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -84,8 +86,9 @@ public class Construction extends IdentifiedByArray {
         if (isObserved()) {
             sources = sources(object(), sources);
             for (int i = 0; i < super.size(); i++) {
-                if (super.get(i) instanceof Mutable) {
-                    sources = sources((Mutable) super.get(i), sources);
+                Object object = super.get(i);
+                if (object instanceof Mutable && object != Mutable.THIS) {
+                    sources = sources((Mutable) object, sources);
                 }
             }
         }
@@ -94,7 +97,7 @@ public class Construction extends IdentifiedByArray {
 
     private static Map<Mutable, Set<Construction>> sources(Mutable mutable, Map<Mutable, Set<Construction>> sources) {
         if (!sources.containsKey(mutable)) {
-            if (mutable instanceof Newable) {
+            if (mutable instanceof Newable && LeafTransaction.getCurrent().universeTransaction().preState().get(mutable, Mutable.D_PARENT_CONTAINING) == null) {
                 Set<Construction> cons = ((Newable) mutable).dConstructions();
                 sources = sources.put(mutable, cons);
                 return sources.putAll(sources(cons, sources));
@@ -164,7 +167,11 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        private boolean haveSameIdentity(MatchInfo other) {
+        public boolean shouldBeTheSame(MatchInfo other) {
+            return haveCyclicReason(other) || haveSameIdentity(other);
+        }
+
+        public boolean haveSameIdentity(MatchInfo other) {
             if (!other.reasonTypes().isEmpty() && !matchedReasonTypes.anyMatch(other.reasonTypes()::contains) && //
                     (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
                 matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
@@ -175,24 +182,12 @@ public class Construction extends IdentifiedByArray {
             }
         }
 
-        public boolean areTheSame(MatchInfo other) {
-            return haveCyclicReason(other) || haveSameIdentity(other);
-        }
-
         public boolean haveCyclicReason(MatchInfo other) {
             return other.sourcesAndAncestors().contains(newable());
         }
 
         public boolean areUnidentified(MatchInfo other) {
             return identity() == null && other.hasUnidentifiedSource();
-        }
-
-        public boolean areConflicting(MatchInfo other) {
-            Set<Newable> presa = sourcesAndAncestors();
-            Set<Newable> postsa = other.sourcesAndAncestors();
-            Set<Object> pretypes = presa.exclude(postsa::contains).map(Newable::dNewableType).toSet();
-            Set<Object> posttypes = postsa.exclude(presa::contains).map(Newable::dNewableType).toSet();
-            return pretypes.anyMatch(posttypes::contains);
         }
 
         public boolean isCarvedInStone() {
@@ -227,7 +222,13 @@ public class Construction extends IdentifiedByArray {
 
         public Set<Construction> derivedConstructions() {
             if (constructions == null) {
-                constructions = newable.dDerivedConstructions();
+                Set<Construction> cons = newable.dDerivedConstructions();
+                Optional<Entry<Reason, Newable>> opt = constructed.filter(e -> e.getValue().equals(newable)).findAny();
+                if (opt.isPresent()) {
+                    ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
+                    cons = cons.add(Construction.of(tx.mutable(), tx.observer(), opt.get().getKey()));
+                }
+                constructions = cons;
             }
             return constructions;
         }
@@ -241,13 +242,9 @@ public class Construction extends IdentifiedByArray {
 
         public Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
-                if (constructed.anyMatch(e -> e.getValue().equals(newable))) {
-                    sources = Construction.sources(LeafTransaction.getCurrent().mutable(), Map.of());
-                } else {
-                    Construction direct = newable.dDirectConstruction();
-                    Set<Construction> derived = derivedConstructions();
-                    sources = Construction.sources(direct != null ? derived.add(direct) : derived, Map.of());
-                }
+                Construction direct = newable.dDirectConstruction();
+                Set<Construction> derived = derivedConstructions();
+                sources = Construction.sources(direct != null ? derived.add(direct) : derived, Map.of());
             }
             return sources;
         }

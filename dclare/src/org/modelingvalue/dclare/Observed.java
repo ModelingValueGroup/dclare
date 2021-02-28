@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
@@ -60,6 +61,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final boolean                             mandatory;
     private final boolean                             checkMandatory;
     private final Observers<O, T>[]                   observers;
+    private ToBeMatched<O, T>                         toBeMatched;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
@@ -81,6 +83,17 @@ public class Observed<O, T> extends Setable<O, T> {
     @Override
     protected boolean isHandlingChange() {
         return true;
+    }
+
+    protected ToBeMatched<O, T> toBeMatched() {
+        if (toBeMatched == null) {
+            SetableModifier[] mods = new SetableModifier[]{SetableModifier.doNotCheckConsistency};
+            if (containment()) {
+                mods = Setable.addModifier(mods, SetableModifier.containment);
+            }
+            toBeMatched = new ToBeMatched<O, T>(this, mods);
+        }
+        return toBeMatched;
     }
 
     public Observers<O, T> observers(Direction direction) {
@@ -129,6 +142,25 @@ public class Observed<O, T> extends Setable<O, T> {
 
         public Direction direction() {
             return direction;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + super.toString();
+        }
+
+    }
+
+    protected static final class ToBeMatched<O, T> extends Setable<O, List<T>> {
+
+        @SuppressWarnings("unchecked")
+        private ToBeMatched(Observed<O, T> observed, SetableModifier[] modifiers) {
+            super(observed, List.of(), null, null, null, modifiers);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected Observed<O, T> observed() {
+            return (Observed<O, T>) id();
         }
 
         @Override

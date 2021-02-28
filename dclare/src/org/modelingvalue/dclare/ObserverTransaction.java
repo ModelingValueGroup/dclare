@@ -32,6 +32,7 @@ import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
+import org.modelingvalue.dclare.Observed.ToBeMatched;
 import org.modelingvalue.dclare.Observer.Constructed;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
@@ -319,12 +320,7 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                O pre = (O) parent().beginState().get(mutable(), observer().constructed()).get(reason);
-                if (pre != null) {
-                    result = pre;
-                } else {
-                    result = supplier.get();
-                }
+                result = supplier.get();
             }
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
@@ -337,7 +333,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private <T, O> T rippleOut(Observed<O, T> observed, T start, T pre, T post) {
+    private <T, O> T rippleOut(Setable<O, T> setable, T start, T pre, T post) {
         if (!Objects.equals(pre, start)) {
             if (Objects.equals(start, post)) {
                 backwards.set(TRUE);
@@ -350,7 +346,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        if (observed.containment()) {
+        if (setable.containment()) {
             if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
                 backwards.set(TRUE);
                 post = pre;
@@ -380,54 +376,38 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after, Map<Reason, Newable> constructed) {
-        MatchInfo pre = before instanceof Newable ? MatchInfo.of((Newable) before, constructed) : null;
-        MatchInfo post = after instanceof Newable ? MatchInfo.of((Newable) after, constructed) : null;
-        if (post != null) {
-            Newable matched = post.newable().dMatched();
-            if (matched != null) {
-                after = matched;
-                before = matched;
-            } else if (pre != null) {
-                if (pre.newable().dIsObsolete()) {
-                    before = after;
-                } else if (pre.haveSameType(post)) {
-                    if (constructed.anyMatch(e -> e.getValue().equals(post.newable()))) {
-                        makeTheSame(pre, post);
-                        after = before;
-                    } else if (!post.isCarvedInStone() && pre.areTheSame(post)) {
-                        makeTheSame(pre, post);
-                        after = before;
-                    } else if (!pre.isCarvedInStone() && post.areTheSame(pre)) {
-                        makeTheSame(post, pre);
-                        before = after;
-                    }
-                }
-            }
+        ToBeMatched<Mutable, Object> toBeMatched = observed.toBeMatched();
+        List<Object> startList = universeTransaction().startState().get(object, toBeMatched);
+        if (start != null) {
+            startList = startList.addUnique((Newable) start);
         }
-        after = Objects.equals(before, after) ? before : rippleOut(observed, start, before, after);
-        if (after instanceof Newable && observed.containment() && !Objects.equals(start, after) && !Objects.equals(before, after)) {
-            Pair<Mutable, Setable<Mutable, ?>> pair = state().get((Newable) after, Mutable.D_PARENT_CONTAINING);
-            if (pair != null) {
-                for (Construction cons : post.derivedConstructions()) {
-                    if (!mutable().equals(cons.object()) || !observer().equals(cons.observer())) {
-                        Mutable obj = cons.object();
-                        Constructed set = cons.observer().constructed();
-                        super.set(obj, set, state().get(obj, set), current().get(obj, set).removeKey(cons.reason()));
-                    }
-                }
-            }
+        List<Object> preList = toBeMatched.get(object);
+        if (before != null) {
+            preList = preList.addUnique((Newable) before);
         }
-        return after;
+        List<Object> postList = (List<Object>) manyMatch(toBeMatched, startList, preList, after != null ? List.of(after) : List.of(), constructed);
+        Object afterResult = postList.last();
+        postList = postList.isEmpty() ? postList : postList.removeLast();
+        super.set(object, toBeMatched, postList);
+        return afterResult;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
+    private ContainingCollection<Object> manyMatch(Setable setable, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
+        List<MatchInfo> oldList = start == null ? List.of() : start.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
         List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, constructed)).toList();
         List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
+        ContainingCollection<Object> beforeResult = before;
+        ContainingCollection<Object> afterResult = after;
         for (MatchInfo pre : preList) {
-            if (pre.newable().dIsObsolete()) {
-                before = before.remove(pre.newable());
+            Newable matched = pre.newable().dMatched();
+            if (matched != null) {
                 preList = preList.remove(pre);
+                if (after.contains(matched)) {
+                    beforeResult = afterResult.replace(pre.newable(), matched);
+                } else {
+                    beforeResult = beforeResult.remove(pre.newable());
+                }
             }
         }
         if (!(after instanceof List) && !postList.isEmpty() && !preList.isEmpty()) {
@@ -437,48 +417,55 @@ public class ObserverTransaction extends ActionTransaction {
         for (MatchInfo post : postList) {
             Newable matched = post.newable().dMatched();
             if (matched != null) {
-                after = after.replace(post.newable(), matched);
-                before = before.remove(post.newable());
-                before = before.addUnique(matched);
+                afterResult = afterResult.replace(post.newable(), matched);
+                beforeResult = beforeResult.remove(post.newable());
+                beforeResult = beforeResult.addUnique(matched);
             } else {
                 for (MatchInfo pre : preList) {
                     if (pre.haveSameType(post)) {
-                        if (!post.isCarvedInStone() && pre.areTheSame(post)) {
+                        if (!post.isCarvedInStone() && pre.shouldBeTheSame(post)) {
                             makeTheSame(pre, post);
-                            after = after.replace(post.newable(), pre.newable());
-                            before = before.remove(post.newable());
-                            before = before.addUnique(pre.newable());
+                            afterResult = afterResult.replace(post.newable(), pre.newable());
+                            beforeResult = beforeResult.remove(post.newable());
+                            beforeResult = beforeResult.addUnique(pre.newable());
                             matched = pre.newable();
-                        } else if (!pre.isCarvedInStone() && post.areTheSame(pre)) {
+                        } else if (!pre.isCarvedInStone() && post.shouldBeTheSame(pre)) {
                             makeTheSame(post, pre);
-                            before = before.remove(pre.newable());
-                            before = before.addUnique(post.newable());
+                            beforeResult = beforeResult.remove(pre.newable());
+                            beforeResult = beforeResult.addUnique(post.newable());
                             matched = pre.newable();
                         }
                     }
                 }
             }
+            if (matched == null && !post.isCarvedInStone() && !start.contains(post.newable()) && !before.contains(post.newable())) {
+                Optional<MatchInfo> old = oldList.filter(o -> o.haveSameType(post) && o.shouldBeTheSame(post)).findAny();
+                if (old.isPresent()) {
+                    makeTheSame(old.get(), post);
+                    afterResult = afterResult.remove(post.newable());
+                    backwards.set(TRUE);
+                }
+            }
         }
-        return Objects.equals(before, after) ? before : rippleOut(observed, start, before, after);
+        return Objects.equals(beforeResult, afterResult) ? beforeResult : rippleOut(setable, start, beforeResult, afterResult);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo pre, MatchInfo post) {
-        if (!pre.areConflicting(post)) {
-            super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
-            if (TRACE_MATCHING) {
-                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + post.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
-            }
-            for (Construction cons : post.derivedConstructions()) {
-                Mutable obj = cons.object();
-                Constructed set = cons.observer().constructed();
-                super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
-            }
-            constructions.set((map, n) -> {
-                Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
-                return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;
-            }, post.newable());
+        super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
+        if (TRACE_MATCHING) {
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + pre.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
         }
+        for (Construction cons : post.derivedConstructions()) {
+            Mutable obj = cons.object();
+            Constructed set = cons.observer().constructed();
+            super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
+            trigger(obj, cons.observer(), Direction.forward);
+        }
+        constructions.set((map, n) -> {
+            Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
+            return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;
+        }, post.newable());
     }
 
 }

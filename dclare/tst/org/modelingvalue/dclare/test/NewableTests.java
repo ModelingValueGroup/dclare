@@ -83,17 +83,17 @@ public class NewableTests {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
 
-        Observed<TestMutable, TestNewable> acr = Observed.of("ac", null, containment);
-        Observed<TestMutable, TestNewable> bcr = Observed.of("bc", null, containment);
+        Observed<TestMutable, TestNewable> acr = Observed.of("acr", null, containment);
+        Observed<TestMutable, TestNewable> bcr = Observed.of("bcr", null, containment);
 
         Observed<TestMutable, Set<TestNewable>> acs = Observed.of("acs", Set.of(), containment);
         Observed<TestMutable, Set<TestNewable>> bcs = Observed.of("bcs", Set.of(), containment);
 
-        Observed<TestMutable, TestNewable> ar = Observed.of("a", null, synthetic);
-        Observed<TestMutable, TestNewable> br = Observed.of("b", null, synthetic);
+        Observed<TestMutable, TestNewable> ar = Observed.of("ar", null, mandatory);
+        Observed<TestMutable, TestNewable> br = Observed.of("br", null, mandatory);
 
-        TestNewableClass A = TestNewableClass.of("A", n::get, n, acs, br);
-        TestNewableClass B = TestNewableClass.of("B", n::get, n, bcs, ar);
+        TestNewableClass A = TestNewableClass.of("A", n::get, n, acs, acr, br);
+        TestNewableClass B = TestNewableClass.of("B", n::get, n, bcs, bcr, ar);
         TestNewableClass AC = TestNewableClass.of("AC", n::get, n, br);
         TestNewableClass BC = TestNewableClass.of("BC", n::get, n, ar);
 
@@ -183,7 +183,7 @@ public class NewableTests {
         State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
         }
 
         result.run(() -> {
@@ -310,12 +310,12 @@ public class NewableTests {
         FAT.observe(//
                 ft -> {
                     if (left.get(ft) == null) {
-                        left.set(ft, create("L", ft, ROL));
+                        //left.set(ft, create("L", ft, ROL));
                     }
                 }, //
                 ft -> {
                     if (right.get(ft) == null) {
-                        right.set(ft, create("R", ft, ROL));
+                        //right.set(ft, create("R", ft, ROL));
                     }
                 }, //
                 ft -> {
@@ -400,7 +400,6 @@ public class NewableTests {
                 TestNewable rf6 = c.create(REF);
                 TestNewable rf7 = c.create(REF);
                 refs.set(cl1, Set.of(rf1, rf5));
-
                 refs.set(cl2, Set.of(rf2));
                 refs.set(cl3, Set.of(rf3));
                 refs.set(cl4, Set.of(rf4, rf6, rf7));
@@ -492,7 +491,7 @@ public class NewableTests {
 
             State state = LeafTransaction.getCurrent().state();
             if (PRINT_RESULT_STATE) {
-                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.merge()));
@@ -573,7 +572,7 @@ public class NewableTests {
         run(utx, "change", c -> {
             State state = LeafTransaction.getCurrent().state();
             if (PRINT_RESULT_STATE) {
-                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(added.merge()));
@@ -622,11 +621,11 @@ public class NewableTests {
         run(utx, "back", c -> {
             State state = LeafTransaction.getCurrent().state();
             if (PRINT_RESULT_STATE) {
-                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(added.merge()));
             assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
+            assertTrue(objects.containsAll(added.merge()));
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -671,7 +670,7 @@ public class NewableTests {
         run(utx, "remove", c -> {
             State state = LeafTransaction.getCurrent().state();
             if (PRINT_RESULT_STATE) {
-                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
@@ -690,8 +689,8 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(created.result()));
             assertEquals(32, objects.size());
+            assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 3));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
