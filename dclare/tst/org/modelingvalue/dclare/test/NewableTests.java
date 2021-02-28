@@ -57,13 +57,13 @@ public class NewableTests {
     static {
         System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "1000");
 
-        System.setProperty("TRACE_MATCHING", "true");
-        System.setProperty("TRACE_UNIVERSE", "true");
-        System.setProperty("TRACE_ACTIONS", "true");
+        System.setProperty("TRACE_MATCHING", "false");
+        System.setProperty("TRACE_UNIVERSE", "false");
+        System.setProperty("TRACE_ACTIONS", "false");
     }
 
     static final int     MANY_NR            = 20;
-    static final boolean PRINT_RESULT_STATE = true;
+    static final boolean PRINT_RESULT_STATE = false;
 
     @Test
     public void singleBidirectional() {
