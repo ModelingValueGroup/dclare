@@ -398,7 +398,6 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Setable setable, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after, Map<Reason, Newable> constructed) {
-        List<MatchInfo> oldList = start == null ? List.of() : start.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
         List<MatchInfo> preList = before == null ? List.of() : before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, constructed)).toList();
         List<MatchInfo> postList = after == null ? List.of() : after.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
         ContainingCollection<Object> beforeResult = before;
@@ -440,14 +439,6 @@ public class ObserverTransaction extends ActionTransaction {
                             matched = pre.newable();
                         }
                     }
-                }
-            }
-            if (matched == null && !post.isCarvedInStone() && !start.contains(post.newable()) && !before.contains(post.newable())) {
-                Optional<MatchInfo> old = oldList.filter(o -> o.haveSameType(post) && o.shouldBeTheSame(post)).findAny();
-                if (old.isPresent()) {
-                    makeTheSame(old.get(), post);
-                    afterResult = afterResult.remove(post.newable());
-                    backwards.set(TRUE);
                 }
             }
         }
