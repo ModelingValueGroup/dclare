@@ -66,7 +66,7 @@ public interface Newable extends Mutable {
     Comparable dSortKey();
 
     default Set<Construction> dDerivedConstructions() {
-        return D_DERIVED_CONSTRUCTIONS.current(this);
+        return D_DERIVED_CONSTRUCTIONS.get(this);
     }
 
     default Construction dDirectConstruction() {

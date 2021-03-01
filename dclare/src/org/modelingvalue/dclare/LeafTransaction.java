@@ -66,7 +66,7 @@ public abstract class LeafTransaction extends Transaction {
         return state().get(object, property);
     }
 
-    public <O, T> T current(O object, Getable<O, T> property) {
+    protected <O, T> T current(O object, Getable<O, T> property) {
         return current().get(object, property);
     }
 

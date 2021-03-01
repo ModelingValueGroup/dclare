@@ -46,6 +46,7 @@ import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.test.support.TestImperative;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestNewable;
@@ -62,24 +63,25 @@ public class NewableTests {
         System.setProperty("TRACE_ACTIONS", "false");
     }
 
-    static final int     MANY_NR            = 20;
+    static final int     MANY_NR            = 64;
     static final boolean PRINT_RESULT_STATE = false;
 
     @Test
     public void singleBidirectional() {
-        bidirectional();
+        bidirectional(TestImperative.of());
     }
 
     @Test
     public void manyBidirectional() {
-        State state = bidirectional();
+        TestImperative imperative = TestImperative.of();
+        State state = bidirectional(imperative);
         int i = 0;
         while (i++ < MANY_NR) {
-            compareStates(state, bidirectional());
+            compareStates(state, bidirectional(imperative));
         }
     }
 
-    public State bidirectional() {
+    public State bidirectional(TestImperative imperative) {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
 
@@ -123,7 +125,7 @@ public class NewableTests {
                 ac -> n.set(ac, n.get(bc))//
         )));
 
-        TestUniverse universe = TestUniverse.of("universe", U);
+        TestUniverse universe = TestUniverse.of("universe", U, imperative);
         UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
@@ -200,61 +202,70 @@ public class NewableTests {
 
     @Test
     public void oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(false, false, true, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, false, true, true, imperative));
     }
 
     @Test
     public void oo2fb_oo() {
-        compareStates(oofb(false, false, true, true), oofb(true, false, true, false));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, false, true, false, imperative));
     }
 
     @Test
     public void fb2oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(false, true, false, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, true, false, true, imperative));
     }
 
     @Test
     public void oo2fb_oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(true, false, true, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, false, true, true, imperative));
     }
 
     @Test
     public void fb2oo_oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(false, true, true, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, true, true, true, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(true, true, true, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, true, true, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_oo() {
-        compareStates(oofb(false, false, true, true), oofb(true, true, true, false));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, true, false, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_fb() {
-        compareStates(oofb(false, false, true, true), oofb(true, true, false, true));
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, false, true, imperative));
     }
 
     @Test
     public void testAll() {
-        State state = oofb(false, false, true, true);
+        TestImperative imperative = TestImperative.of();
+        State state = oofb(false, false, true, true, imperative);
         int i = 0;
         while (i++ < MANY_NR) {
-            compareStates(state, oofb(true, false, true, false));
-            compareStates(state, oofb(false, true, false, true));
-            compareStates(state, oofb(true, false, true, true));
-            compareStates(state, oofb(false, true, true, true));
-            compareStates(state, oofb(true, true, true, true));
-            compareStates(state, oofb(true, true, true, false));
-            compareStates(state, oofb(true, true, false, true));
+            compareStates(state, oofb(true, false, true, false, imperative));
+            compareStates(state, oofb(false, true, false, true, imperative));
+            compareStates(state, oofb(true, false, true, true, imperative));
+            compareStates(state, oofb(false, true, true, true, imperative));
+            compareStates(state, oofb(true, true, true, true, imperative));
+            compareStates(state, oofb(true, true, true, false, imperative));
+            compareStates(state, oofb(true, true, false, true, imperative));
         }
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
+    private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative) {
 
         // OO
 
@@ -372,7 +383,7 @@ public class NewableTests {
 
         // Instances
 
-        TestUniverse universe = TestUniverse.of("universe", U);
+        TestUniverse universe = TestUniverse.of("universe", U, imperative);
         UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
@@ -495,6 +506,10 @@ public class NewableTests {
             }
             Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.merge()));
+            if (objects.size() != 32) {
+                System.err.println("!!!!!! oo2fb=" + oo2fb + " fb2oo=" + fb2oo + " ooIn=" + ooIn + " fbIn=" + fbIn);
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
             assertEquals(32, objects.size());
 
             if (oo2fb) { // add OO

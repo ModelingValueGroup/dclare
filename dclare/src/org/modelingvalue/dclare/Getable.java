@@ -72,10 +72,6 @@ public abstract class Getable<O, T> implements Feature, Internable {
         return currentLeaf(object).pre(object, this);
     }
 
-    public T current(O object) {
-        return currentLeaf(object).current(object, this);
-    }
-
     protected LeafTransaction currentLeaf(O object) {
         LeafTransaction current = LeafTransaction.getCurrent();
         if (current == null) {

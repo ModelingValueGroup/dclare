@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.ConcurrentModificationException;
 import java.util.Objects;
 
 import org.modelingvalue.collections.DefaultMap;
@@ -45,7 +44,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final State[]                                   state                      = new State[1];
 
     private int                                             nrOffMergeConflicts;
-    private State                                           beginState;
 
     @SuppressWarnings("unchecked")
 
@@ -81,7 +79,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @Override
     protected State run(State pre) {
         TraceTimer.traceBegin("compound");
-        beginState = pre;
         state[0] = pre;
         try {
             if (parent() == null) {
@@ -109,7 +106,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             return state[0];
         } finally {
             nrOffMergeConflicts = 0;
-            beginState = null;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -244,13 +240,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         }
         return state;
-    }
-
-    protected final State beginState() {
-        if (beginState == null) {
-            throw new ConcurrentModificationException();
-        }
-        return beginState;
     }
 
     protected State lastState() {

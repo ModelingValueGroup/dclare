@@ -28,27 +28,20 @@ import org.modelingvalue.dclare.UniverseTransaction;
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
 
-    public static TestUniverse of(Object id, TestMutableClass clazz) {
+    public static TestUniverse of(Object id, TestMutableClass clazz, TestImperative scheduler) {
         return new TestUniverse(id, u -> {
-        }, clazz);
+        }, clazz, scheduler);
     }
 
-    private final BlockingQueue<Boolean>  idleQueue = new LinkedBlockingQueue<>(1);
-    private final AtomicInteger           counter   = new AtomicInteger(0);
-    private final BlockingQueue<Runnable> queue     = new LinkedBlockingQueue<>();
-    private Thread                        waitForEndThread;
-    private final Thread                  imperativeThread;
-    private ImperativeTransaction         imperativeTransaction;
+    private final TestImperative         scheduler;
+    private final BlockingQueue<Boolean> idleQueue = new LinkedBlockingQueue<>(1);
+    private final AtomicInteger          counter   = new AtomicInteger(0);
+    private Thread                       waitForEndThread;
+    private ImperativeTransaction        imperativeTransaction;
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz) {
+    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
-        imperativeThread = new Thread(() -> {
-            while (true) {
-                take().run();
-            }
-        }, "TestUniverse.imperativeThread");
-        imperativeThread.setDaemon(true);
-        imperativeThread.start();
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -56,10 +49,10 @@ public class TestUniverse extends TestMutable implements Universe {
         Universe.super.init();
         UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
         imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
-            if (last && queue.isEmpty()) {
+            if (last && scheduler.isEmpty()) {
                 idle();
             }
-        }, this::put, false);
+        }, scheduler, false);
         utx.dummy();
         waitForEndThread = new Thread(() -> {
             try {
@@ -84,22 +77,6 @@ public class TestUniverse extends TestMutable implements Universe {
                 imperativeTransaction.universeTransaction().dummy();
             }
         });
-    }
-
-    private void put(Runnable action) {
-        try {
-            queue.put(action);
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-    }
-
-    private Runnable take() {
-        try {
-            return queue.take();
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
     }
 
     private void idle() {
