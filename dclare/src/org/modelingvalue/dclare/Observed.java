@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
@@ -152,11 +151,11 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     // TODO: Why not Observed iso Setable?
-    protected static final class ToBeMatched<O, T> extends Setable<O, List<T>> {
+    protected static final class ToBeMatched<O, T> extends Observed<O, Set<T>> {
 
         @SuppressWarnings("unchecked")
         private ToBeMatched(Observed<O, T> observed, SetableModifier[] modifiers) {
-            super(observed, List.of(), null, null, null, modifiers);
+            super(observed, Set.of(), null, null, null, modifiers);
         }
 
         @SuppressWarnings("unchecked")
