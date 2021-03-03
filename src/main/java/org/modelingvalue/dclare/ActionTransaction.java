@@ -22,17 +22,22 @@ import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
 
+    private static final boolean TRACE_ACTIONS = Boolean.getBoolean("TRACE_ACTIONS");
+
     private final CurrentState currentSate = new CurrentState();
-    private State              preState;
+    private       State        preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -47,6 +52,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         ((Action<Mutable>) action()).run(mutable());
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
@@ -54,7 +60,14 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         currentSate.init(state);
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
-            return currentSate.result();
+            State result = currentSate.result();
+            if (TRACE_ACTIONS) {
+                Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).toMap(e -> e);
+                if (!diff.isEmpty()) {
+                    System.err.println("DCLARE: " + parent().indent("    ") + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                }
+            }
+            return result;
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
@@ -63,6 +76,31 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             preState = null;
             TraceTimer.traceEnd(traceId());
         }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    protected <O> void trigger(Observed<O, ?> observed, O o) {
+        if (o instanceof Mutable && observed.checkConsistency) {
+            setChanged((Mutable) o);
+        }
+        Mutable source = mutable();
+        for (Direction direction : Direction.FORWARD_BACKWARD) {
+            for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers(direction))) {
+                Observer observer = e.getKey();
+                for (Mutable m : e.getValue()) {
+                    Mutable target = m.resolve(o);
+                    if (!cls().equals(observer) || !source.equals(target)) {
+                        trigger(target, observer, direction);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean isChanged() {
+        return !preState.equals(currentSate.merge());
     }
 
     protected String traceId() {
@@ -131,15 +169,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    public <O> void clear(O object) {
-        super.clear(object);
-        currentSate.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
-    }
-
-    @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
-        byte cnr = get(universe, Mutable.D_CHANGE_NR);
+        byte     cnr      = get(universe, Mutable.D_CHANGE_NR);
         while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
             changed = dParent(changed);
         }

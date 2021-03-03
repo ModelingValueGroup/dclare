@@ -18,17 +18,17 @@ package org.modelingvalue.dclare.test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.SetableModifier.containment;
-import static org.modelingvalue.dclare.SetableModifier.doNotCheckMandatory;
 import static org.modelingvalue.dclare.SetableModifier.mandatory;
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 import static org.modelingvalue.dclare.SetableModifier.synthetic;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
+import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -39,13 +39,14 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.dclare.Construction;
+import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.test.support.TestImperative;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestNewable;
@@ -55,40 +56,46 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
+        System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "1000");
+
         System.setProperty("TRACE_MATCHING", "false");
         System.setProperty("TRACE_UNIVERSE", "false");
-        System.setProperty("TRACE_OBSERVERS", "false");
+        System.setProperty("TRACE_ACTIONS", "false");
     }
 
+    static final int     MANY_NR            = 64;
     static final boolean PRINT_RESULT_STATE = false;
 
     @Test
     public void singleBidirectional() {
-        a_b();
+        bidirectional(TestImperative.of());
     }
 
     @Test
     public void manyBidirectional() {
-        State state = a_b();
+        TestImperative imperative = TestImperative.of();
+        State state = bidirectional(imperative);
         int i = 0;
-        while (i++ < 100) {
-            compareStates(state, a_b());
+        while (i++ < MANY_NR) {
+            compareStates(state, bidirectional(imperative));
         }
     }
 
-    public State a_b() {
+    public State bidirectional(TestImperative imperative) {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
 
-        Observed<TestMutable, String> n = Observed.of("n", null);
+        Observed<TestMutable, TestNewable> acr = Observed.of("acr", null, containment);
+        Observed<TestMutable, TestNewable> bcr = Observed.of("bcr", null, containment);
+
         Observed<TestMutable, Set<TestNewable>> acs = Observed.of("acs", Set.of(), containment);
         Observed<TestMutable, Set<TestNewable>> bcs = Observed.of("bcs", Set.of(), containment);
 
-        Observed<TestMutable, TestNewable> ar = Observed.of("a", null, synthetic);
-        Observed<TestMutable, TestNewable> br = Observed.of("b", null, synthetic);
+        Observed<TestMutable, TestNewable> ar = Observed.of("ar", null, mandatory);
+        Observed<TestMutable, TestNewable> br = Observed.of("br", null, mandatory);
 
-        TestNewableClass A = TestNewableClass.of("A", n::get, n, acs, br);
-        TestNewableClass B = TestNewableClass.of("B", n::get, n, bcs, ar);
+        TestNewableClass A = TestNewableClass.of("A", n::get, n, acs, acr, br);
+        TestNewableClass B = TestNewableClass.of("B", n::get, n, bcs, bcr, ar);
         TestNewableClass AC = TestNewableClass.of("AC", n::get, n, br);
         TestNewableClass BC = TestNewableClass.of("BC", n::get, n, ar);
 
@@ -102,11 +109,13 @@ public class NewableTests {
 
         A.observe(a -> br.set(a, create("1", a, B, //
                 b -> n.set(b, n.get(a)), //
-                b -> bcs.set(b, acs.get(a).map(br::get).toSet())//
+                b -> bcs.set(b, acs.get(a).map(br::get).toSet()), //
+                b -> bcr.set(b, acr.get(a) != null ? br.get(acr.get(a)) : null) //
         )));
         B.observe(b -> ar.set(b, create("2", b, A, //
                 a -> n.set(a, n.get(b)), //
-                a -> acs.set(a, bcs.get(b).map(ar::get).toSet())//
+                a -> acs.set(a, bcs.get(b).map(ar::get).toSet()), //
+                a -> acr.set(a, bcr.get(b) != null ? ar.get(bcr.get(b)) : null) //
         )));
 
         AC.observe(ac -> br.set(ac, create("3", ac, BC, //
@@ -116,33 +125,32 @@ public class NewableTests {
                 ac -> n.set(ac, n.get(bc))//
         )));
 
-        TestUniverse universe = TestUniverse.of("universe", U);
+        TestUniverse universe = TestUniverse.of("universe", U, imperative);
         UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
+            TestNewable a0 = c.create(A);
+            TestNewable b0 = c.create(B);
             TestNewable a1 = c.create(A);
             TestNewable b1 = c.create(B);
+            TestNewable a2 = c.create(A);
             TestNewable b2 = c.create(B);
             TestNewable a3 = c.create(A);
-            TestNewable ax = c.create(A);
-            TestNewable ay = c.create(A);
-            TestNewable bx = c.create(B);
-            TestNewable by = c.create(B);
-            TestNewable au = c.create(A);
-            TestNewable av = c.create(A);
-            TestNewable bu = c.create(B);
-            TestNewable bv = c.create(B);
-            cs.set(universe, Set.of(a1, a3, b1, b2, ax, ay, bx, by, au, av, bu, bv));
-            cs.set(universe, Set.of(a1, b1));
-            n.set(a1, "x");
-            n.set(b1, "x");
-            n.set(b2, "y");
-            n.set(a3, "z");
-            n.set(au, "w");
-            n.set(av, "w");
-            n.set(bu, "w");
-            n.set(bv, "w");
+            TestNewable b3 = c.create(B);
+            TestNewable a4 = c.create(A);
+            TestNewable b4 = c.create(B);
+            TestNewable a5 = c.create(A);
+            TestNewable b5 = c.create(B);
+            cs.set(universe, Set.of(a0, b0, a1, b1, a2, b2, a3, b3, a4, b4, a5, b5));
+            n.set(a0, "x");
+            n.set(b0, "x");
+            n.set(a1, "y");
+            n.set(b1, "z");
+            n.set(a4, "w");
+            n.set(b4, "w");
+            n.set(a5, "w");
+            n.set(b5, "w");
 
             TestNewable ac1 = c.create(AC);
             TestNewable bc1 = c.create(BC);
@@ -150,16 +158,21 @@ public class NewableTests {
             TestNewable bc2 = c.create(BC);
             TestNewable bc3 = c.create(BC);
             TestNewable bc4 = c.create(BC);
-            acs.set(a1, Set.of(ac1, ac2));
-            bcs.set(b1, Set.of(bc1, bc2));
-            bcs.set(b2, Set.of(bc3, bc4));
+            TestNewable ac5 = c.create(AC);
+            TestNewable bc5 = c.create(BC);
+            acs.set(a0, Set.of(ac1, ac2));
+            bcs.set(b0, Set.of(bc1, bc2));
+            bcs.set(b1, Set.of(bc3, bc4));
+            acr.set(a0, ac5);
+            bcr.set(b0, bc5);
             n.set(ac1, "p");
             n.set(bc1, "p");
             n.set(ac2, "q");
             n.set(bc2, "q");
             n.set(bc3, "r");
             n.set(bc4, "s");
-
+            n.set(ac5, "t");
+            n.set(bc5, "t");
         });
 
         run(utx, "changeName", c -> {
@@ -168,19 +181,19 @@ public class NewableTests {
             }
         });
 
-        utx.stop();
+        run(utx, "stop", c -> utx.stop());
         State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
         }
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
             assertTrue(objects.containsAll(created.result()));
-            assertEquals(22, objects.size());
+            assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
-            assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 2));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
@@ -189,63 +202,70 @@ public class NewableTests {
 
     @Test
     public void oo_fb() {
-        oofb(false, false, true, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, false, true, true, imperative));
     }
 
     @Test
     public void oo2fb_oo() {
-        oofb(true, false, true, false);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, false, true, false, imperative));
     }
 
     @Test
     public void fb2oo_fb() {
-        oofb(false, true, false, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, true, false, true, imperative));
     }
 
     @Test
     public void oo2fb_oo_fb() {
-        oofb(true, false, true, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, false, true, true, imperative));
     }
 
     @Test
     public void fb2oo_oo_fb() {
-        oofb(false, true, true, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(false, true, true, true, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_oo_fb() {
-        oofb(true, true, true, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, true, true, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_oo() {
-        oofb(true, true, true, false);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, true, false, imperative));
     }
 
     @Test
     public void oo2fb_fb2oo_fb() {
-        oofb(true, true, false, true);
+        TestImperative imperative = TestImperative.of();
+        compareStates(oofb(false, false, true, true, imperative), oofb(true, true, false, true, imperative));
     }
 
     @Test
     public void testAll() {
-        State state = oofb(false, false, true, true);
+        TestImperative imperative = TestImperative.of();
+        State state = oofb(false, false, true, true, imperative);
         int i = 0;
-        while (i++ < 20) {
-            compareStates(state, oofb(true, false, true, false));
-            compareStates(state, oofb(false, true, false, true));
-            compareStates(state, oofb(true, false, true, true));
-            compareStates(state, oofb(false, true, true, true));
-            compareStates(state, oofb(true, true, true, true));
-            compareStates(state, oofb(true, true, true, false));
-            compareStates(state, oofb(true, true, false, true));
+        while (i++ < MANY_NR) {
+            compareStates(state, oofb(true, false, true, false, imperative));
+            compareStates(state, oofb(false, true, false, true, imperative));
+            compareStates(state, oofb(true, false, true, true, imperative));
+            compareStates(state, oofb(false, true, true, true, imperative));
+            compareStates(state, oofb(true, true, true, true, imperative));
+            compareStates(state, oofb(true, true, true, false, imperative));
+            compareStates(state, oofb(true, true, false, true, imperative));
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn) {
-
-        Observed<TestMutable, String> n = Observed.of("n", null, mandatory, doNotCheckMandatory);
+    @SuppressWarnings({"unchecked", "unused"})
+    private State oofb(boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative) {
 
         // OO
 
@@ -258,7 +278,8 @@ public class NewableTests {
         TestNewableClass CLS = TestNewableClass.of("CLS", n::get, n, refs, mobt);
 
         Observed<TestMutable, TestNewable> typ = Observed.of("typ", null);
-        Observed<TestMutable, TestNewable> opp = Observed.of("opp", null);
+
+        Observed<TestMutable, TestNewable> opp = Observed.of("opp", null, symmetricOpposite);
         Observed<TestMutable, TestNewable> mrol = Observed.of("mrol", null, synthetic);
         Observed<TestMutable, TestNewable> mfat = Observed.of("mfat", null, synthetic);
         TestNewableClass REF = TestNewableClass.of("REF", n::get, n, typ, opp, mrol, mfat);
@@ -271,12 +292,12 @@ public class NewableTests {
         TestNewableClass FBM = TestNewableClass.of("FBM", n::get, n, ots, fts, moom);
 
         Observed<TestMutable, TestNewable> mcls = Observed.of("mcls", null, synthetic);
-        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of(), synthetic);
+        Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of());
         TestNewableClass OBT = TestNewableClass.of("OBT", n::get, n, mcls, _otr);
 
         Observed<TestMutable, TestNewable> otr = Observed.of("otr", null, () -> _otr);
         Observed<TestMutable, TestNewable> mref = Observed.of("mref", null, synthetic);
-        Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory);
+        Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory, symmetricOpposite);
         TestNewableClass ROL = TestNewableClass.of("ROL", n::get, n, otr, mref, rlopp);
 
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
@@ -288,7 +309,7 @@ public class NewableTests {
             TestNewable rt = otr.get(rr);
             String ln = n.get(lr);
             String rn = n.get(rr);
-            return Quadruple.of(ln, lt, rn, rt);
+            return Set.of(Pair.of(ln, lt), Pair.of(rn, rt));
         };
         TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
 
@@ -297,15 +318,22 @@ public class NewableTests {
             rlopp.set(rl, rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft));
         });
 
-        FAT.observe(ft -> {
-            if (left.get(ft) == null) {
-                left.set(ft, create("L", ft, ROL));
-            }
-        }, ft -> {
-            if (right.get(ft) == null) {
-                right.set(ft, create("R", ft, ROL));
-            }
-        });
+        FAT.observe(//
+                ft -> {
+                    if (left.get(ft) == null) {
+                        //left.set(ft, create("L", ft, ROL));
+                    }
+                }, //
+                ft -> {
+                    if (right.get(ft) == null) {
+                        //right.set(ft, create("R", ft, ROL));
+                    }
+                }, //
+                ft -> {
+                    String ln = n.get(left.get(ft));
+                    String rn = n.get(right.get(ft));
+                    n.set(ft, "~".equals(ln) ? rn : ln != null && rn != null ? ln + "_" + rn : null);
+                });
 
         // Universe
 
@@ -329,7 +357,6 @@ public class NewableTests {
                     rl -> n.set(rl, n.get(rf)), //
                     rl -> otr.set(rl, typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
             )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create("4", rf, FAT, //
-                    ft -> n.set(ft, opp.get(rf) == null ? n.get(rf) : n.get(opp.get(rf)) + "_" + n.get(rf)), //
                     ft -> right.set(ft, mrol.get(rf)), //
                     ft -> left.set(ft, opp.get(rf) == null ? create("5", rf, ROL, //
                             rl -> n.set(rl, "~"), //
@@ -345,9 +372,9 @@ public class NewableTests {
             )));
             OBT.observe(ot -> mcls.set(ot, create("7", ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
-                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()) //
+                    cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).map(mref::get).notNull().toSet()) //
             )));
-            ROL.observe(rl -> mref.set(rl, !"~".equals(n.get(rl)) ? create("8", rl, REF, //
+            ROL.observe(rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create("8", rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
                     rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
                     rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
@@ -356,7 +383,7 @@ public class NewableTests {
 
         // Instances
 
-        TestUniverse universe = TestUniverse.of("universe", U);
+        TestUniverse universe = TestUniverse.of("universe", U, imperative);
         UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
@@ -471,18 +498,215 @@ public class NewableTests {
 
         });
 
-        utx.stop();
+        Concurrent<Set<TestNewable>> added = run(utx, "add", c -> {
+
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertTrue(objects.containsAll(created.merge()));
+            if (objects.size() != 32) {
+                System.err.println("!!!!!! oo2fb=" + oo2fb + " fb2oo=" + fb2oo + " ooIn=" + ooIn + " fbIn=" + fbIn);
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
+            assertEquals(32, objects.size());
+
+            if (oo2fb) { // add OO
+                TestNewable oom = ooms.get(universe).get(0);
+                Set<TestNewable> classes = cls.get(oom);
+                TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                TestNewable cl2 = classes.filter(cl -> Objects.equals(n.get(cl), "B")).findAny().get();
+                TestNewable cl3 = classes.filter(cl -> Objects.equals(n.get(cl), "C")).findAny().get();
+                TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
+
+                TestNewable rf1 = c.create(REF);
+                TestNewable rf2 = c.create(REF);
+                TestNewable rf3 = c.create(REF);
+                TestNewable rf4 = c.create(REF);
+                refs.set(cl1, Set::add, rf1);
+                refs.set(cl2, Set::add, rf2);
+                refs.set(cl3, Set::add, rf3);
+                refs.set(cl4, Set::add, rf4);
+                n.set(rf1, "p");
+                n.set(rf2, "q");
+                n.set(rf3, "r");
+                n.set(rf4, "s");
+                opp.set(rf1, rf2);
+                opp.set(rf2, rf1);
+                typ.set(rf1, cl2);
+                typ.set(rf2, cl1);
+                typ.set(rf3, cl4);
+                typ.set(rf4, cl3);
+            }
+
+            if (fb2oo) { // add FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> objectTypes = ots.get(fbm);
+                TestNewable ot1 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "A")).findAny().get();
+                TestNewable ot2 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "B")).findAny().get();
+                TestNewable ot3 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "C")).findAny().get();
+                TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+
+                TestNewable ft1 = c.create(FAT);
+                TestNewable ft2 = c.create(FAT);
+                TestNewable ft3 = c.create(FAT);
+                fts.set(fbm, Set::addAll, Set.of(ft1, ft2, ft3));
+                n.set(ft1, "x_y");
+                n.set(ft2, "z");
+                n.set(ft3, "w");
+
+                TestNewable rl1 = c.create(ROL);
+                TestNewable rl2 = c.create(ROL);
+                TestNewable rl3 = c.create(ROL);
+                TestNewable rl4 = c.create(ROL);
+                TestNewable rl5 = c.create(ROL);
+                TestNewable rl6 = c.create(ROL);
+                left.set(ft1, rl1);
+                right.set(ft1, rl2);
+                left.set(ft2, rl3);
+                right.set(ft2, rl4);
+                left.set(ft3, rl5);
+                right.set(ft3, rl6);
+                n.set(rl1, "x");
+                n.set(rl2, "y");
+                n.set(rl3, "~");
+                n.set(rl4, "z");
+                n.set(rl5, "~");
+                n.set(rl6, "w");
+                otr.set(rl1, ot1);
+                otr.set(rl2, ot2);
+                otr.set(rl3, ot3);
+                otr.set(rl4, ot4);
+                otr.set(rl5, ot4);
+                otr.set(rl6, ot3);
+            }
+
+        });
+
+        run(utx, "change", c -> {
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertTrue(objects.containsAll(added.merge()));
+            assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
+
+            if (oo2fb) { // change OO
+                TestNewable oom = ooms.get(universe).get(0);
+                Set<TestNewable> classes = cls.get(oom);
+                TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                TestNewable cl2 = classes.filter(cl -> Objects.equals(n.get(cl), "B")).findAny().get();
+                TestNewable cl3 = classes.filter(cl -> Objects.equals(n.get(cl), "C")).findAny().get();
+                TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
+                Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
+                TestNewable rf1 = refferences.filter(rf -> Objects.equals(n.get(rf), "p")).findAny().get();
+                TestNewable rf2 = refferences.filter(rf -> Objects.equals(n.get(rf), "q")).findAny().get();
+                TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
+
+                opp.set(rf3, rf4);
+                opp.set(rf4, rf3);
+            }
+
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> objectTypes = ots.get(fbm);
+                TestNewable ot1 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "A")).findAny().get();
+                TestNewable ot2 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "B")).findAny().get();
+                TestNewable ot3 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "C")).findAny().get();
+                TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+                Set<TestNewable> factTypes = fts.get(fbm);
+                TestNewable ft1 = factTypes.filter(ft -> Objects.equals(n.get(ft), "x_y")).findAny().get();
+                TestNewable ft2 = factTypes.filter(ft -> Objects.equals(n.get(ft), "z")).findAny().get();
+                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "w")).findAny().get();
+                TestNewable rl1 = left.get(ft1);
+                TestNewable rl2 = right.get(ft1);
+                TestNewable rl3 = left.get(ft2);
+                TestNewable rl4 = right.get(ft2);
+                TestNewable rl5 = left.get(ft3);
+                TestNewable rl6 = right.get(ft3);
+
+                n.set(rl5, "v");
+            }
+
+        });
+
+        run(utx, "back", c -> {
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
+            assertTrue(objects.containsAll(added.merge()));
+
+            if (oo2fb) { // change OO
+                TestNewable oom = ooms.get(universe).get(0);
+                Set<TestNewable> classes = cls.get(oom);
+                TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                TestNewable cl2 = classes.filter(cl -> Objects.equals(n.get(cl), "B")).findAny().get();
+                TestNewable cl3 = classes.filter(cl -> Objects.equals(n.get(cl), "C")).findAny().get();
+                TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
+                Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
+                TestNewable rf1 = refferences.filter(rf -> Objects.equals(n.get(rf), "p")).findAny().get();
+                TestNewable rf2 = refferences.filter(rf -> Objects.equals(n.get(rf), "q")).findAny().get();
+                TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
+
+                opp.set(rf3, (TestNewable) null);
+                opp.set(rf4, (TestNewable) null);
+            }
+
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> objectTypes = ots.get(fbm);
+                TestNewable ot1 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "A")).findAny().get();
+                TestNewable ot2 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "B")).findAny().get();
+                TestNewable ot3 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "C")).findAny().get();
+                TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+                Set<TestNewable> factTypes = fts.get(fbm);
+                TestNewable ft1 = factTypes.filter(ft -> Objects.equals(n.get(ft), "x_y")).findAny().get();
+                TestNewable ft2 = factTypes.filter(ft -> Objects.equals(n.get(ft), "z")).findAny().get();
+                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "v_w")).findAny().get();
+                TestNewable rl1 = left.get(ft1);
+                TestNewable rl2 = right.get(ft1);
+                TestNewable rl3 = left.get(ft2);
+                TestNewable rl4 = right.get(ft2);
+                TestNewable rl5 = left.get(ft3);
+                TestNewable rl6 = right.get(ft3);
+
+                n.set(rl5, "~");
+            }
+
+        });
+
+        run(utx, "remove", c -> {
+            State state = LeafTransaction.getCurrent().state();
+            if (PRINT_RESULT_STATE) {
+                System.err.println(state.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            }
+            Set<TestNewable> objects = state.getObjects(TestNewable.class).toSet();
+            assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
+
+            for (TestNewable add : added.merge()) {
+                add.dDelete();
+            }
+        });
+
+        run(utx, "stop", c -> utx.stop());
         State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.synthetic() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
         }
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertTrue(objects.containsAll(created.result()));
             assertEquals(32, objects.size());
-            assertTrue(objects.allMatch(o -> o.dConstructions().size() > 0 && o.dConstructions().size() <= 2));
+            assertTrue(objects.containsAll(created.result()));
+            assertTrue(objects.allMatch(o -> o.dConstructions().size() >= 1 && o.dConstructions().size() <= 3));
             assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
@@ -493,17 +717,21 @@ public class NewableTests {
         return newable.dConstructions().map(Construction::reason).map(Construction.Reason::type).toList();
     }
 
-    private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> init) {
-        Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
-        utx.put(id, () -> {
-            AtomicInteger conter = new AtomicInteger(0);
-            init.accept(c -> {
-                TestNewable newable = create(id + conter.getAndIncrement(), c);
-                created.set(Set::add, newable);
-                return newable;
+    private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> action) {
+        if (!utx.isKilled()) {
+            TestUniverse u = (TestUniverse) utx.universe();
+            Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
+            u.schedule(() -> {
+                action.accept(c -> {
+                    TestNewable newable = create(id + u.uniqueInt(), c);
+                    created.set(Set::add, newable);
+                    return newable;
+                });
             });
-        });
-        return created;
+            return created;
+        } else {
+            return Concurrent.of(Set.of());
+        }
     }
 
     @FunctionalInterface
@@ -526,7 +754,7 @@ public class NewableTests {
                 if (!s.synthetic()) {
                     Object av = as.get(() -> s.get(an));
                     Object bv = bs.get(() -> s.get(bn));
-                    assertTrue(equals(as, av, bs, bv, done), s + " = " + av + " <> " + bv);
+                    assertTrue(equals(as, av, bs, bv, done), s + " = " + as.get(() -> "" + av) + " <> " + bs.get(() -> "" + bv));
                 }
             }
         }

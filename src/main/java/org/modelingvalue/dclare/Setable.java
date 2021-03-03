@@ -77,7 +77,15 @@ public class Setable<O, T> extends Getable<O, T> {
         this.containment = hasModifier(modifiers, SetableModifier.containment);
         this.synthetic = hasModifier(modifiers, SetableModifier.synthetic);
         this.changed = changed;
-        this.opposite = opposite;
+        if (hasModifier(modifiers, SetableModifier.symmetricOpposite)) {
+            if (opposite != null) {
+                throw new Error("The setable " + this + " is already a symetric-opposite");
+            } else {
+                this.opposite = () -> this;
+            }
+        } else {
+            this.opposite = opposite;
+        }
         this.scope = scope;
         if (containment && opposite != null) {
             throw new Error("The containment setable " + this + " has an opposite");
@@ -86,8 +94,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public static boolean hasModifier(SetableModifier[] modifiers, SetableModifier modifier) {
-        for (int i = 0; i < modifiers.length; i++) {
-            if (modifiers[i] == modifier) {
+        for (SetableModifier setableModifier : modifiers) {
+            if (setableModifier == modifier) {
                 return true;
             }
         }
@@ -95,8 +103,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public static SetableModifier[] addModifier(SetableModifier[] modifiers, SetableModifier modifier) {
-        for (int i = 0; i < modifiers.length; i++) {
-            if (modifiers[i] == modifier) {
+        for (SetableModifier setableModifier : modifiers) {
+            if (setableModifier == modifier) {
                 return modifiers;
             }
         }
@@ -177,11 +185,11 @@ public class Setable<O, T> extends Getable<O, T> {
         return scope != null ? scope.get() : null;
     }
 
-    protected final boolean isHandlingChange() {
+    protected boolean isHandlingChange() {
         return changed != null || containment || opposite != null;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
         init(postValue);
         if (changed != null) {
@@ -312,6 +320,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean checkConsistency() {
         return checkConsistency && (scope != null || isReference());
+    }
+
+    public boolean plumming() {
+        return !checkConsistency || synthetic;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

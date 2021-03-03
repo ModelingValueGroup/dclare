@@ -38,7 +38,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id.hashCode() ^ getClass().hashCode();
     }
 
     @SuppressWarnings("rawtypes")
@@ -70,10 +70,6 @@ public abstract class Getable<O, T> implements Feature, Internable {
 
     public T pre(O object) {
         return currentLeaf(object).pre(object, this);
-    }
-
-    public T current(O object) {
-        return currentLeaf(object).current(object, this);
     }
 
     protected LeafTransaction currentLeaf(O object) {

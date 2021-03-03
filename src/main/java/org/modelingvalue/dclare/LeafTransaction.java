@@ -66,7 +66,7 @@ public abstract class LeafTransaction extends Transaction {
         return state().get(object, property);
     }
 
-    public <O, T> T current(O object, Getable<O, T> property) {
+    protected <O, T> T current(O object, Getable<O, T> property) {
         return current().get(object, property);
     }
 
@@ -76,6 +76,9 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
+        if (property instanceof Observed) {
+            trigger((Observed<O, T>) property, object);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -133,9 +136,20 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        O result = (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        set(result, Newable.D_CONSTRUCTIONS, Set::add, Construction.of(reason));
-        return result;
+        return (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> {
+            O o = supplier.get();
+            Newable.D_DIRECT_CONSTRUCTION.set(o, Construction.of(reason));
+            return o;
+        });
     }
+
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return construct(reason, supplier);
+    }
+
+    protected <O> void trigger(Observed<O, ?> observed, O o) {
+    }
+
+    public abstract boolean isChanged();
 
 }

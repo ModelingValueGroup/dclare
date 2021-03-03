@@ -15,31 +15,85 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
-    public static TestUniverse of(Object id, TestMutableClass clazz) {
+
+    public static TestUniverse of(Object id, TestMutableClass clazz, TestImperative scheduler) {
         return new TestUniverse(id, u -> {
-        }, clazz);
+        }, clazz, scheduler);
     }
 
-    public static TestUniverse of(Object id, Consumer<Universe> init, TestMutableClass clazz) {
-        return new TestUniverse(id, init, clazz);
-    }
+    private final TestImperative         scheduler;
+    private final BlockingQueue<Boolean> idleQueue = new LinkedBlockingQueue<>(1);
+    private final AtomicInteger          counter   = new AtomicInteger(0);
+    private Thread                       waitForEndThread;
+    private ImperativeTransaction        imperativeTransaction;
 
-    private final Consumer<Universe> init;
-
-    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz) {
+    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
-        this.init = init;
+        this.scheduler = scheduler;
     }
 
     @Override
     public void init() {
         Universe.super.init();
-        init.accept(this);
+        UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
+        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
+            if (last && scheduler.isEmpty()) {
+                idle();
+            }
+        }, scheduler, false);
+        utx.dummy();
+        waitForEndThread = new Thread(() -> {
+            try {
+                utx.waitForEnd();
+            } finally {
+                idle();
+            }
+        }, "TestUniverse.waitForEndThread");
+        waitForEndThread.setDaemon(true);
+        waitForEndThread.start();
     }
+
+    public int uniqueInt() {
+        return counter.getAndIncrement();
+    }
+
+    public void schedule(Runnable action) {
+        waitForIdle();
+        imperativeTransaction.schedule(() -> {
+            action.run();
+            if (!imperativeTransaction.isChanged()) {
+                imperativeTransaction.universeTransaction().dummy();
+            }
+        });
+    }
+
+    private void idle() {
+        try {
+            idleQueue.clear();
+            idleQueue.put(Boolean.TRUE);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    private void waitForIdle() {
+        try {
+            idleQueue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
 }

@@ -16,7 +16,6 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -32,27 +31,28 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
-    private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
-    private static final UnaryOperator<Byte>              INCREMENT     = c -> ++c;
+    private static final boolean                            TRACE_MUTABLE              = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final int                                MAX_NR_OFF_MERGE_CONFLICTS = Integer.getInteger("MAX_NR_OFF_MERGE_CONFLICTS", 4);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
-    private final Concurrent<Set<Mutable>>[]              triggeredChildren;
+    private final Concurrent<Map<Observer, Set<Mutable>>>[] triggeredActions;
+    private final Concurrent<Set<Mutable>>[]                triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions       = new Set[1];
+    private final Set<Action<?>>[]                          actions                    = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children      = new Set[1];
-    private final State[]                                 state         = new State[1];
+    private final Set<Mutable>[]                            children                   = new Set[1];
+    private final State[]                                   state                      = new State[1];
 
-    private Mutable                                       mutable;
+    private int                                             nrOffMergeConflicts;
 
     @SuppressWarnings("unchecked")
 
     protected MutableTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
-        triggeredActions = Concurrent.of();
+        triggeredActions = new Concurrent[2];
         triggeredChildren = new Concurrent[2];
         for (int ia = 0; ia < 2; ia++) {
+            triggeredActions[ia] = Concurrent.of();
             triggeredChildren[ia] = Concurrent.of();
         }
     }
@@ -62,8 +62,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return (Mutable) cls();
     }
 
-    private boolean hasQueued(State state, Direction dir) {
-        return !state.get(mutable, dir.actions).isEmpty() || !state.get(mutable, dir.children).isEmpty();
+    protected boolean hasQueued(State state, Mutable object, Direction dir) {
+        return !state.get(object, dir.actions).isEmpty() || !state.get(object, dir.children).isEmpty();
     }
 
     private void move(Mutable object, Direction from, Direction to) {
@@ -79,46 +79,33 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @Override
     protected State run(State pre) {
         TraceTimer.traceBegin("compound");
-        this.mutable = mutable();
         state[0] = pre;
         try {
-
-            if (this == universeTransaction()) {
-                move(mutable, Direction.forward, Direction.scheduled);
-                universeTransaction().setOldState(state[0]);
-                state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
+            if (parent() == null) {
+                move(mutable(), Direction.backward, Direction.scheduled);
             }
             while (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable, Direction.scheduled.actions, Set.of(), actions);
+                state[0] = state[0].set(mutable(), Direction.scheduled.actions, Set.of(), actions);
                 if (!actions[0].isEmpty()) {
                     run(actions[0], Direction.scheduled.actions);
                 } else {
-                    state[0] = state[0].set(mutable, Direction.scheduled.children, Set.of(), children);
+                    state[0] = state[0].set(mutable(), Direction.scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
                         run(children[0], Direction.scheduled.children);
-                    } else if (hasQueued(state[0], Direction.backward)) {
-                        if (this != universeTransaction()) {
-                            state[0] = state[0].set(parent().mutable, Direction.backward.children, Set::add, mutable);
-                            break;
-                        } else {
-                            if (TRACE_MUTABLE || UniverseTransaction.TRACE_UNIVERSE) {
-                                System.err.println("DCLARE: " + indent("    ") + mutable + " BACKWARD");
-                            }
-                            move(mutable, Direction.backward, Direction.scheduled);
-                            universeTransaction().setOldState(state[0]);
-                            state[0] = state[0].set(universeTransaction().universe(), Mutable.D_CHANGE_NR, INCREMENT);
-                        }
                     } else {
+                        if (parent() != null && hasQueued(state[0], mutable(), Direction.backward)) {
+                            state[0] = state[0].set(parent().mutable(), Direction.backward.children, Set::add, mutable());
+                        }
                         break;
                     }
                 }
             }
             return state[0];
         } catch (Throwable t) {
-            universeTransaction().handleException(new TransactionException(mutable, t));
+            universeTransaction().handleException(new TransactionException(mutable(), t));
             return state[0];
         } finally {
-            mutable = null;
+            nrOffMergeConflicts = 0;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -128,7 +115,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         if (TRACE_MUTABLE) {
-            System.err.println("DCLARE: " + indent("    ") + mutable + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
+            System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
         try {
             state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
@@ -140,11 +127,15 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         return r;
                     })));
         } catch (NotMergeableException nme) {
-            for (TransactionClass t : todo.random()) {
-                state[0] = t.run(state[0], this);
+            if (++nrOffMergeConflicts > MAX_NR_OFF_MERGE_CONFLICTS) {
+                throw nme;
+            } else {
+                for (TransactionClass t : todo.random()) {
+                    state[0] = t.run(state[0], this);
+                }
             }
         }
-        move(mutable, Direction.forward, Direction.scheduled);
+        move(mutable(), Direction.forward, Direction.scheduled);
     }
 
     private State merge(State base, State[] branches) {
@@ -152,20 +143,20 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             return base;
         } else {
             TraceTimer.traceBegin("merge");
-            triggeredActions.init(Map.of());
             for (int ia = 0; ia < 2; ia++) {
+                triggeredActions[ia].init(Map.of());
                 triggeredChildren[ia].init(Set.of());
             }
             try {
                 State state = base.merge(this, branches, branches.length);
-                state = trigger(state, triggeredActions.result(), Direction.forward);
                 for (int ia = 0; ia < 2; ia++) {
+                    state = trigger(state, triggeredActions[ia].result(), Direction.FORWARD_BACKWARD[ia]);
                     state = triggerMutables(state, triggeredChildren[ia].result(), Direction.FORWARD_BACKWARD[ia]);
                 }
                 return state;
             } finally {
-                triggeredActions.clear();
                 for (int ia = 0; ia < 2; ia++) {
+                    triggeredActions[ia].clear();
                     triggeredChildren[ia].clear();
                 }
                 TraceTimer.traceEnd("merge");
@@ -194,8 +185,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     Object branchValue = State.get(psb, observedProp);
                     if (!Objects.equals(branchValue, baseValue)) {
                         Map<Observer, Set<Mutable>> addedObservers = observers.removeAll(State.get(psb, os), Set::removeAll).//
-                                toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.resolve((Mutable) o)).toSet()));
-                        triggeredActions.change(ts -> ts.addAll(addedObservers, Set::addAll));
+                                toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.resolve(o)).toSet()));
+                        triggeredActions[os.direction().nr].change(ts -> ts.addAll(addedObservers, Set::addAll));
                     }
                 }
             }
@@ -243,7 +234,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             state = state.set(object, direction.actions, Set::add, action);
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
-        while (parent != null && !mutable.equals(object)) {
+        while (parent != null && !mutable().equals(object)) {
             state = state.set(parent, direction.children, Set::add, object);
             object = parent;
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);

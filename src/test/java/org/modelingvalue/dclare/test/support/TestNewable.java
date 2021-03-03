@@ -24,10 +24,13 @@ import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Newable;
+import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
+
+    public static final Observed<TestMutable, String> n = Observed.of("n", null);
 
     @SafeVarargs
     public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
@@ -48,7 +51,7 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
-        return tx.construct(reason, () -> new TestNewable(clazz.counter().getAndIncrement(), clazz));
+        return tx.construct(reason, () -> new TestNewable(clazz.uniqueInt(), clazz));
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -82,12 +85,12 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public Collection<? extends Observer<?>> dMutableObservers() {
-        return dConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
+        return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
     }
 
     @Override
     public String toString() {
-        Object id = dMatchingIdentity();
+        Object id = n.get(this);
         return id != null ? super.toString() + ":" + id : super.toString();
     }
 
@@ -102,7 +105,7 @@ public class TestNewable extends TestMutable implements Newable {
                 Consumer<TestNewable> finalCons = observers[i];
                 Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
                     Mutable t = ((Triple<Mutable, ?, ?>) LeafTransaction.getCurrent().leaf().id()).a();
-                    if (!t.dIsObsolete() && n.dConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
+                    if (!t.dIsObsolete() && n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
                         finalCons.accept(n);
                     }
                 });

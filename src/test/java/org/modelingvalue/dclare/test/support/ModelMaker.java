@@ -210,7 +210,7 @@ public class ModelMaker {
         xyzzy = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
         plugConst = Constant.of("plugConst", u -> xyzzy, SetableModifier.containment);
         universeClass = TestMutableClass.of("Universe-" + name, plugConst);
-        universe = TestUniverse.of("universe-" + name, universeClass);
+        universe = TestUniverse.of("universe-" + name, universeClass, TestImperative.of());
         pool = newPool();
         tx = UniverseTransaction.of(universe, pool);
 

@@ -102,15 +102,14 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
+    public boolean isChanged() {
+        return false;
+    }
+
+    @Override
     public void stop() {
         super.stop();
         state = null;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        return (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
     }
 
 }

@@ -15,6 +15,9 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Direction.backward;
+import static org.modelingvalue.dclare.Direction.forward;
+
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
@@ -56,50 +59,44 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private final boolean                             mandatory;
     private final boolean                             checkMandatory;
-    private final Observers<O, T>                     observers;
+    private final Observers<O, T>[]                   observers;
+    private ToBeMatched<O, T>                         toBeMatched;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    @SuppressWarnings("unchecked")
-    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        this(id, def, opposite, scope, new Observers<>(id), changed, modifiers);
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Observers<O, T> observers, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        super(id, def, opposite, scope, (l, o, p, n) -> {
-            if (changed != null) {
-                changed.accept(l, o, p, n);
-            }
-            if (o instanceof Mutable) {
-                l.setChanged((Mutable) o);
-            }
-            Mutable source = l.mutable();
-            for (Entry<Observer, Set<Mutable>> e : l.get(o, observers)) {
-                Observer observer = e.getKey();
-                for (Mutable m : e.getValue()) {
-                    Mutable target = m.resolve((Mutable) o);
-                    if (!l.cls().equals(observer) || !source.equals(target)) {
-                        l.trigger(target, observer, Direction.forward);
-                    }
-                }
-            }
-        }, modifiers);
+    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, def, opposite, scope, changed, modifiers);
         this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
         this.checkMandatory = !hasModifier(modifiers, SetableModifier.doNotCheckMandatory);
-        this.observers = observers;
-        observers.observed = this;
+        this.observers = new Observers[]{new Observers<>(this, forward), new Observers<>(this, backward)};
     }
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
+        if (checkConsistency && utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
             throw new TooManyObserversException(object, this, observers, utx);
         }
     }
 
-    public Observers<O, T> observers() {
-        return observers;
+    @Override
+    protected boolean isHandlingChange() {
+        return true;
+    }
+
+    protected ToBeMatched<O, T> toBeMatched() {
+        if (toBeMatched == null) {
+            SetableModifier[] mods = new SetableModifier[]{SetableModifier.doNotCheckConsistency};
+            if (containment()) {
+                mods = Setable.addModifier(mods, SetableModifier.containment);
+            }
+            toBeMatched = new ToBeMatched<>(this, mods);
+        }
+        return toBeMatched;
+    }
+
+    public Observers<O, T> observers(Direction direction) {
+        return observers[direction.nr];
     }
 
     public boolean mandatory() {
@@ -119,22 +116,51 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     public int getNrOfObservers(O object) {
-        return LeafTransaction.getCurrent().get(object, observers).size();
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return tx.get(object, observers[forward.nr]).size() + tx.get(object, observers[backward.nr]).size();
     }
 
     @SuppressWarnings("rawtypes")
     public static final class Observers<O, T> extends Setable<O, DefaultMap<Observer, Set<Mutable>>> {
 
-        private Observed<O, T> observed; // can not be made final because it has to be set after construction
+        private final Observed<O, T> observed; // can not be made final because it has to be set after construction
+        private final Direction      direction;
 
-        private Observers(Object id) {
-            super(id, Observer.OBSERVER_MAP, null, null, null, SetableModifier.doNotCheckConsistency);
+        @SuppressWarnings("unchecked")
+        private Observers(Observed observed, Direction direction) {
+            super(Pair.of(observed, direction), Observer.OBSERVER_MAP, null, null, null, SetableModifier.doNotCheckConsistency);
             // changed can not be passed as arg above because it references 'observed'
             changed = (tx, o, b, a) -> observed.checkTooManyObservers(tx.universeTransaction(), o, a);
+            this.observed = observed;
+            this.direction = direction;
         }
 
         public Observed<O, T> observed() {
             return observed;
+        }
+
+        public Direction direction() {
+            return direction;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + super.toString();
+        }
+
+    }
+
+    // TODO: Why not Observed iso Setable?
+    protected static final class ToBeMatched<O, T> extends Observed<O, Set<T>> {
+
+        @SuppressWarnings("unchecked")
+        private ToBeMatched(Observed<O, T> observed, SetableModifier[] modifiers) {
+            super(observed, Set.of(), null, null, null, modifiers);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected Observed<O, T> observed() {
+            return (Observed<O, T>) id();
         }
 
         @Override

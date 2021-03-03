@@ -16,15 +16,10 @@
 package org.modelingvalue.dclare;
 
 public enum SetableModifier {
-
-    containment(),
-
-    mandatory(),
-
-    synthetic(),
-
-    doNotCheckMandatory(),
-
-    doNotCheckConsistency();
-
+    symmetricOpposite,
+    containment,
+    mandatory,
+    synthetic,
+    doNotCheckMandatory,
+    doNotCheckConsistency
 }

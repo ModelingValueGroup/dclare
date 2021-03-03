@@ -44,6 +44,7 @@ public class State implements Serializable {
     public static final Predicate<Object>                               ALL_OBJECTS        = __ -> true;
     public static final Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
     public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
+    public static final BinaryOperator<String>                          CONCAT_COMMA       = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
     private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
@@ -201,7 +202,7 @@ public class State implements Serializable {
 
     @Override
     public String toString() {
-        return "State" + "[" + universeTransaction.getClass().getSimpleName() + getProperties(universeTransaction.universe()).toString().substring(3) + "]";
+        return "State" + "[" + universeTransaction.getClass().getSimpleName() + getProperties(universeTransaction.universe()).toString() + "]";
     }
 
     public String asString() {
@@ -289,12 +290,29 @@ public class State implements Serializable {
                 StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT) + "}", CONCAT));
     }
 
+    public String shortDiffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff, Object self) {
+        return get(() -> diff.reduce("", (s1, e1) -> (s1.isEmpty() ? "" : s1 + ",") + (self.equals(e1.getKey()) ? "" : StringUtil.toString(e1.getKey()) + "{") + //
+                e1.getValue().reduce("", (s2, e2) -> (s2.isEmpty() ? "" : s2 + ",") + StringUtil.toString(e2.getKey()) + "=" + //
+                        shortValueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT_COMMA) + (self.equals(e1.getKey()) ? "" : "}"), CONCAT_COMMA));
+    }
+
     @SuppressWarnings("unchecked")
     private static String valueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
             return "\n          <+ " + ((Set) a).removeAll((Set) b) + "\n          +> " + ((Set) b).removeAll((Set) a);
         } else {
             return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String shortValueDiffString(Object a, Object b) {
+        if (a instanceof Set && b instanceof Set) {
+            Set removed = ((Set) a).removeAll((Set) b);
+            Set added = ((Set) b).removeAll((Set) a);
+            return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+        } else {
+            return StringUtil.toString(a) + "->" + StringUtil.toString(b);
         }
     }
 

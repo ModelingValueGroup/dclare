@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Optional;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -84,8 +86,9 @@ public class Construction extends IdentifiedByArray {
         if (isObserved()) {
             sources = sources(object(), sources);
             for (int i = 0; i < super.size(); i++) {
-                if (super.get(i) instanceof Mutable) {
-                    sources = sources((Mutable) super.get(i), sources);
+                Object object = super.get(i);
+                if (object instanceof Mutable && object != Mutable.THIS) {
+                    sources = sources((Mutable) object, sources);
                 }
             }
         }
@@ -94,7 +97,7 @@ public class Construction extends IdentifiedByArray {
 
     private static Map<Mutable, Set<Construction>> sources(Mutable mutable, Map<Mutable, Set<Construction>> sources) {
         if (!sources.containsKey(mutable)) {
-            if (mutable instanceof Newable) {
+            if (mutable instanceof Newable && LeafTransaction.getCurrent().universeTransaction().preState().get(mutable, Mutable.D_PARENT_CONTAINING) == null) {
                 Set<Construction> cons = ((Newable) mutable).dConstructions();
                 sources = sources.put(mutable, cons);
                 return sources.putAll(sources(cons, sources));
@@ -140,55 +143,59 @@ public class Construction extends IdentifiedByArray {
     public static final class MatchInfo {
 
         private final Newable                   newable;
-        private final Object                    identity;
-        private final Set<Construction>         constructions;
+        private final Map<Reason, Newable>      constructed;
 
+        private Object                          identity;
+        private Set<Construction>               constructions;
+        private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     types;
+        private Set<Object>                     matchedReasonTypes = Set.of();
+        private Set<Object>                     reasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
 
-        public static MatchInfo of(Newable newable) {
-            return new MatchInfo(newable);
+        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructed) {
+            return new MatchInfo(newable, constructed);
         }
 
-        private MatchInfo(Newable newable) {
+        private MatchInfo(Newable newable, Map<Reason, Newable> constructed) {
             this.newable = newable;
-            this.identity = newable.dMatchingIdentity();
-            this.constructions = newable.dConstructions();
+            this.constructed = constructed;
         }
 
-        public boolean hasSameType(MatchInfo other) {
+        public boolean haveSameType(MatchInfo other) {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean areTheSame(MatchInfo other) {
-            if (!other.types().isEmpty() && !types().anyMatch(other.types()::contains) && (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                types = types().addAll(other.types());
-                other.types = Set.of();
+        public boolean shouldBeTheSame(MatchInfo other) {
+            return haveCyclicReason(other) || haveSameIdentity(other);
+        }
+
+        public boolean haveSameIdentity(MatchInfo other) {
+            if (!other.reasonTypes().isEmpty() && matchedReasonTypes.noneMatch(other.reasonTypes()::contains) && //
+                    (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
+                matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
+                other.reasonTypes = Set.of();
                 return true;
             } else {
-                return other.sourcesAndAncestors().contains(newable());
+                return false;
             }
         }
 
-        private Set<Newable> sourcesAndAncestors() {
-            if (sourcesAndAncestors == null) {
-                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
-            }
-            return sourcesAndAncestors;
+        public boolean haveCyclicReason(MatchInfo other) {
+            return other.sourcesAndAncestors().contains(newable());
         }
 
         public boolean areUnidentified(MatchInfo other) {
             return identity() == null && other.hasUnidentifiedSource();
         }
 
-        public boolean hasDirectReasonToExist() {
-            return constructions().anyMatch(Construction::isNotObserved);
+        public boolean isCarvedInStone() {
+            return isOld() || hasDirectConstruction();
         }
 
-        public boolean hasIndirectReasonToExist() {
-            return constructions().anyMatch(Construction::isObserved);
+        private boolean hasDirectConstruction() {
+            return newable.dDirectConstruction() != null;
         }
 
         public boolean hasUnidentifiedSource() {
@@ -203,26 +210,50 @@ public class Construction extends IdentifiedByArray {
             return newable;
         }
 
-        public Object identity() {
-            return identity;
+        private Object identity() {
+            if (identity == null) {
+                identity = newable.dMatchingIdentity();
+                if (identity == null) {
+                    identity = ConstantState.NULL;
+                }
+            }
+            return identity == ConstantState.NULL ? null : identity;
         }
 
-        public Set<Construction> constructions() {
+        public Set<Construction> derivedConstructions() {
+            if (constructions == null) {
+                Set<Construction> cons = newable.dDerivedConstructions();
+                Optional<Entry<Reason, Newable>> opt = constructed.filter(e -> e.getValue().equals(newable)).findAny();
+                if (opt.isPresent()) {
+                    ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
+                    cons = cons.add(Construction.of(tx.mutable(), tx.observer(), opt.get().getKey()));
+                }
+                constructions = cons;
+            }
             return constructions;
+        }
+
+        public Set<Newable> sourcesAndAncestors() {
+            if (sourcesAndAncestors == null) {
+                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
+            }
+            return sourcesAndAncestors;
         }
 
         public Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
-                sources = Construction.sources(constructions, Map.of());
+                Construction direct = newable.dDirectConstruction();
+                Set<Construction> derived = derivedConstructions();
+                sources = Construction.sources(direct != null ? derived.add(direct) : derived, Map.of());
             }
             return sources;
         }
 
-        private Set<Object> types() {
-            if (types == null) {
-                types = constructions.map(Construction::reason).map(Reason::type).toSet();
+        public Set<Object> reasonTypes() {
+            if (reasonTypes == null) {
+                reasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
             }
-            return types;
+            return reasonTypes;
         }
 
         private Set<Newable> notObservedSources() {
@@ -231,6 +262,14 @@ public class Construction extends IdentifiedByArray {
                 notObservedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
             }
             return notObservedSources;
+        }
+
+        private boolean isOld() {
+            if (isOld == null) {
+                UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
+                isOld = utx.preState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
+            }
+            return isOld;
         }
 
         @Override

@@ -13,36 +13,50 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.test.support;
 
-import java.util.function.Supplier;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Consumer;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.QuadConsumer;
-
-@SuppressWarnings("unused")
-public class NonCheckingObserved<O, T> extends Observed<O, T> {
-
-    public static <C, V> Observed<C, V> of(Object id, V def, SetableModifier... modifiers) {
-        return new NonCheckingObserved<>(id, def, null, null, null, modifiers);
+public class TestImperative implements Consumer<Runnable> {
+    public static TestImperative of() {
+        return new TestImperative();
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
-        return new NonCheckingObserved<>(id, def, null, null, changed, modifiers);
+    @SuppressWarnings("FieldCanBeLocal")
+    private final Thread                  imperativeThread;
+    private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+
+    protected TestImperative() {
+        imperativeThread = new Thread(() -> {
+            while (true) {
+                take().run();
+            }
+        }, "TestUniverse.imperativeThread");
+        imperativeThread.setDaemon(true);
+        imperativeThread.start();
     }
 
-    public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
-        return new NonCheckingObserved<>(id, def, opposite, null, null, modifiers);
-    }
-
-    protected NonCheckingObserved(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        super(id, def, opposite, scope, changed, addModifier(modifiers, SetableModifier.doNotCheckConsistency));
-    }
-
-    @SuppressWarnings("rawtypes")
     @Override
-    protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+    public void accept(Runnable action) {
+        try {
+            queue.put(action);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    private Runnable take() {
+        try {
+            return queue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    public boolean isEmpty() {
+        return queue.isEmpty();
     }
 
 }
