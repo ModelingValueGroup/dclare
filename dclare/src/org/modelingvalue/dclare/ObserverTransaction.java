@@ -136,7 +136,7 @@ public class ObserverTransaction extends ActionTransaction {
         } else if (backwards.result().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Direction.backward);
         }
-        DefaultMap preSources = super.set(mutable(), observer.observeds(Direction.forward), observeds);
+        DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
             observer.instances++;
         } else if (!preSources.isEmpty() && observeds.isEmpty()) {

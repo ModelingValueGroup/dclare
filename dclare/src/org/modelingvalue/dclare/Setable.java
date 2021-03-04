@@ -58,18 +58,18 @@ public class Setable<O, T> extends Getable<O, T> {
         return new Setable<>(id, def, opposite, scope, null, modifiers);
     }
 
-    protected QuadConsumer<LeafTransaction, O, T, T>  changed;
-    private final boolean                             containment;
-    private final Supplier<Setable<?, ?>>             opposite;
-    private final Supplier<Setable<O, Set<?>>>        scope;
+    private final QuadConsumer<LeafTransaction, O, T, T> changed;
+    private final boolean                                containment;
+    private final Supplier<Setable<?, ?>>                opposite;
+    private final Supplier<Setable<O, Set<?>>>           scope;
     @SuppressWarnings("rawtypes")
-    private final Constant<T, Entry<Setable, Object>> internal;
-    protected final boolean                           checkConsistency;
-    private final boolean                             synthetic;
+    private final Constant<T, Entry<Setable, Object>>    internal;
+    protected final boolean                              checkConsistency;
+    private final boolean                                synthetic;
 
-    private Boolean                                   isMany;
-    private Boolean                                   isReference;
-    private Boolean                                   hasNewables;
+    private Boolean                                      isMany;
+    private Boolean                                      isReference;
+    private Boolean                                      hasNewables;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
@@ -210,11 +210,10 @@ public class Setable<O, T> extends Getable<O, T> {
                     }
                 }
             }, removed -> {
+                for (Direction dir : Direction.values()) {
+                    dir.children.set((Mutable) object, Set::remove, removed);
+                }
                 if (!MOVING.get()) {
-                    removed.dDeactivate();
-                    for (Direction dir : Direction.values()) {
-                        dir.children.set((Mutable) object, Set::remove, removed);
-                    }
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);
                 }
             });

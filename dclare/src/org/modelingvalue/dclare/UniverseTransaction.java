@@ -404,6 +404,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private void clear(LeafTransaction tx, Mutable orphan) {
+        orphan.dDeactivate();
         tx.clear(orphan);
         for (Mutable child : orphan.dChildren()) {
             clear(tx, child);
