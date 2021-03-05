@@ -321,12 +321,12 @@ public class NewableTests {
         FAT.observe(//
                 ft -> {
                     if (left.get(ft) == null) {
-                        //left.set(ft, create("L", ft, ROL));
+                        left.set(ft, create("L", ft, ROL));
                     }
                 }, //
                 ft -> {
                     if (right.get(ft) == null) {
-                        //right.set(ft, create("R", ft, ROL));
+                        right.set(ft, create("R", ft, ROL));
                     }
                 }, //
                 ft -> {
@@ -608,7 +608,7 @@ public class NewableTests {
         run(utx, "back", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            // assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
+            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
             assertTrue(objects.containsAll(added.merge()));
 
             if (oo2fb) { // change OO
@@ -651,7 +651,7 @@ public class NewableTests {
 
         });
 
-        run(utx, "checkType", c -> {
+        run(utx, "checkAndSetTypeBack", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
@@ -661,26 +661,11 @@ public class NewableTests {
                 TestNewable oom = ooms.get(universe).get(0);
                 Set<TestNewable> classes = cls.get(oom);
                 TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
                 Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
                 TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
 
                 assertEquals(cl1, typ.get(rf3));
-            }
-
-        });
-
-        run(utx, "setTypeBack", c -> {
-            state[0] = checkState(state[0]);
-            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
-            assertTrue(objects.containsAll(added.merge()));
-
-            if (oo2fb) { // change OO
-                TestNewable oom = ooms.get(universe).get(0);
-                Set<TestNewable> classes = cls.get(oom);
-                TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
-                Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
-                TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
 
                 typ.set(rf3, cl4);
             }

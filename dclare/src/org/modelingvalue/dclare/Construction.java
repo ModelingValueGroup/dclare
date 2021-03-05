@@ -168,7 +168,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean shouldBeTheSame(MatchInfo other) {
-            return haveCyclicReason(other) || haveSameIdentity(other);
+            return other.derivedConstructions().isEmpty() || haveCyclicReason(other) || haveSameIdentity(other);
         }
 
         public boolean haveSameIdentity(MatchInfo other) {
