@@ -139,7 +139,6 @@ public class Observed<O, T> extends Setable<O, T> {
 
     }
 
-    // TODO: Why not Observed iso Setable?
     protected static final class ToBeMatched<O, T> extends Observed<O, Set<T>> {
 
         @SuppressWarnings("unchecked")

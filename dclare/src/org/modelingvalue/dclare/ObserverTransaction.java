@@ -33,7 +33,6 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.Observed.ToBeMatched;
-import org.modelingvalue.dclare.Observer.Constructed;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -435,13 +434,10 @@ public class ObserverTransaction extends ActionTransaction {
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + pre.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
         }
-        for (Construction cons : post.derivedConstructions()) {
-            Mutable obj = cons.object();
-            Constructed set = cons.observer().constructed();
-            super.set(obj, set, state().get(obj, set), current().get(obj, set).put(cons.reason(), pre.newable()));
-            // TODO: Why is this necessary?
-            trigger(obj, cons.observer(), Direction.forward);
-        }
+        Set<Construction> preCons = state().get(pre.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        Set<Construction> postCons = state().get(post.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        super.set(pre.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.addAll(postCons));
+        super.set(post.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Set.of());
         constructions.set((map, n) -> {
             Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
             return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;

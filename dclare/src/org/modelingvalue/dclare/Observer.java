@@ -25,6 +25,7 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
@@ -182,23 +183,26 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public static class Constructed extends Observed<Mutable, Map<Construction.Reason, Newable>> {
+    public static class Constructed extends Observed<Mutable, Map<Reason, Newable>> {
 
         public static Constructed of(Observer observer) {
             return new Constructed(observer);
         }
 
         private Constructed(Observer observer) {
-            super(observer, Map.of(), null, null, (tx, o, pre, post) -> pre.diff(post).forEachOrdered(e -> {
-                Construction cons = Construction.of(o, observer, e.getKey());
-                Pair<Newable, Newable> d = e.getValue();
-                if (d.a() != null) {
-                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.a(), Set::remove, cons);
+            super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
+                for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
+                    Construction cons = Construction.of(o, observer, reason);
+                    Newable before = pre.get(reason);
+                    if (before != null) {
+                        Newable.D_DERIVED_CONSTRUCTIONS.set(before, Set::remove, cons);
+                    }
+                    Newable after = post.get(reason);
+                    if (after != null) {
+                        Newable.D_DERIVED_CONSTRUCTIONS.set(after, Set::add, cons);
+                    }
                 }
-                if (d.b() != null) {
-                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.b(), Set::add, cons);
-                }
-            }), SetableModifier.doNotCheckConsistency);
+            }, SetableModifier.doNotCheckConsistency);
         }
 
         @Override
