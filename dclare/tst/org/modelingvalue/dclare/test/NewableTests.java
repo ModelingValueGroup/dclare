@@ -649,12 +649,28 @@ public class NewableTests {
                 typ.set(rf3, cl1);
             }
 
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> objectTypes = ots.get(fbm);
+                TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+
+                TestNewable ft4 = c.create(FAT);
+                fts.set(fbm, Set::add, ft4);
+                TestNewable rl7 = c.create(ROL);
+                TestNewable rl8 = c.create(ROL);
+                left.set(ft4, rl7);
+                right.set(ft4, rl8);
+                n.set(rl7, "~");
+                n.set(rl8, "dd");
+                otr.set(rl7, ot4);
+            }
+
         });
 
         run(utx, "checkAndSetTypeBack", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
+            assertEquals((oo2fb && fb2oo) ? 62 : oo2fb ? 45 : fb2oo ? 49 : 32, objects.size());
             assertTrue(objects.containsAll(added.merge()));
 
             if (oo2fb) { // change OO
@@ -668,6 +684,14 @@ public class NewableTests {
                 assertEquals(cl1, typ.get(rf3));
 
                 typ.set(rf3, cl4);
+            }
+
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> factTypes = fts.get(fbm);
+                TestNewable ft4 = factTypes.filter(ft -> Objects.equals(n.get(right.get(ft)), "dd")).findAny().get();
+
+                fts.set(fbm, Set::remove, ft4);
             }
 
         });
