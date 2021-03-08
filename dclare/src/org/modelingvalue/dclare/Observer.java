@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
@@ -194,12 +195,14 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Construction cons = Construction.of(o, observer, reason);
                     Newable before = pre.get(reason);
-                    if (before != null) {
-                        Newable.D_DERIVED_CONSTRUCTIONS.set(before, Set::remove, cons);
-                    }
                     Newable after = post.get(reason);
-                    if (after != null) {
-                        Newable.D_DERIVED_CONSTRUCTIONS.set(after, Set::add, cons);
+                    if (!Objects.equals(before, after)) {
+                        if (before != null) {
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(before, Set::remove, cons);
+                        }
+                        if (after != null) {
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(after, Set::add, cons);
+                        }
                     }
                 }
             }, SetableModifier.doNotCheckConsistency);

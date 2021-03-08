@@ -413,12 +413,10 @@ public class ObserverTransaction extends ActionTransaction {
                                 afterResult = afterResult.replace(post.newable(), pre.newable());
                                 beforeResult = beforeResult.remove(post.newable());
                                 beforeResult = beforeResult.addUnique(pre.newable());
-                                matched = pre.newable();
                             } else if (!pre.isCarvedInStone() && post.shouldBeTheSame(pre)) {
                                 makeTheSame(post, pre);
                                 beforeResult = beforeResult.remove(pre.newable());
                                 beforeResult = beforeResult.addUnique(post.newable());
-                                matched = pre.newable();
                             }
                         }
                     }
