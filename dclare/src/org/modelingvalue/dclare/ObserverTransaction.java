@@ -389,7 +389,7 @@ public class ObserverTransaction extends ActionTransaction {
                 if (matched != null) {
                     preList = preList.remove(pre);
                     if (after.contains(matched)) {
-                        beforeResult = afterResult.replace(pre.newable(), matched);
+                        beforeResult = beforeResult.replace(pre.newable(), matched);
                     } else {
                         beforeResult = beforeResult.remove(pre.newable());
                     }
