@@ -85,14 +85,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             setChanged((Mutable) o);
         }
         Mutable source = mutable();
-        for (Direction direction : Direction.FORWARD_BACKWARD) {
-            for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers(direction))) {
-                Observer observer = e.getKey();
-                for (Mutable m : e.getValue()) {
-                    Mutable target = m.resolve(o);
-                    if (!cls().equals(observer) || !source.equals(target)) {
-                        trigger(target, observer, direction);
-                    }
+        for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers())) {
+            Observer observer = e.getKey();
+            for (Mutable m : e.getValue()) {
+                Mutable target = m.resolve(o);
+                if (!cls().equals(observer) || !source.equals(target)) {
+                    trigger(target, observer, Direction.forward);
                 }
             }
         }

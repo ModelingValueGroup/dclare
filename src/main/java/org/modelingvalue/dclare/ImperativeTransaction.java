@@ -15,20 +15,21 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.State.ALL_OBJECTS;
-import static org.modelingvalue.dclare.State.ALL_SETTABLES;
-
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
+
+    @SuppressWarnings("rawtypes")
+    private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
     public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, firstHandler, diffHandler, keepTransaction);
@@ -37,19 +38,23 @@ public class ImperativeTransaction extends LeafTransaction {
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
-    @SuppressWarnings("rawtypes")
-    private Set<Pair<Object, Setable>>                        setted;
-    private State                                             pre;
-    private State                                             state;
     private final TriConsumer<State, State, Boolean>          diffHandler;
     private final Consumer<State>                             firstHandler;
     private final Pair<ImperativeTransaction, String>         actionId  = Pair.of(this, "$toDClare");
+
+    private State                                             pre;
+    private State                                             state;
+    @SuppressWarnings("rawtypes")
+    private DefaultMap<Object, Set<Setable>>                  setted;
+    @SuppressWarnings("rawtypes")
+    private DefaultMap<Object, Set<Setable>>                  allSetted;
 
     protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
-        this.setted = Set.of();
+        this.setted = SETTED_MAP;
+        this.allSetted = SETTED_MAP;
         this.firstHandler = firstHandler;
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
@@ -93,22 +98,25 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void extern2intern() {
         if (pre != state) {
-            State finalPre = pre;
             CHANGE_NR.set(this, (BiFunction<Long, Integer, Long>) Long::sum, 1);
             State finalState = state;
-            pre = finalState;
+            DefaultMap<Object, Set<Setable>> finalSetted = setted;
+            pre = state;
+            setted = SETTED_MAP;
             universeTransaction().put(actionId, () -> {
                 try {
-                    finalPre.diff(finalState, ALL_OBJECTS, ALL_SETTABLES).forEachOrdered(s -> {
-                        if (s.getKey() instanceof Mutable && !(s.getKey() instanceof Universe)) {
+                    finalSetted.forEachOrdered(e -> {
+                        if (e.getKey() instanceof Mutable && !(e.getKey() instanceof Universe)) {
                             Action.of(actionId, o -> {
-                                for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
-                                    d.getKey().set(o, d.getValue().b());
+                                DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());
+                                for (Setable p : e.getValue()) {
+                                    p.set(e.getKey(), props.get(p));
                                 }
-                            }).trigger((Mutable) s.getKey());
+                            }).trigger((Mutable) e.getKey());
                         } else {
-                            for (Entry<Setable, Pair<Object, Object>> d : s.getValue()) {
-                                d.getKey().set(s.getKey(), d.getValue().b());
+                            DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());
+                            for (Setable p : e.getValue()) {
+                                p.set(e.getKey(), props.get(p));
                             }
                         }
                     });
@@ -126,10 +134,16 @@ public class ImperativeTransaction extends LeafTransaction {
             State finalState = state;
             boolean last = post.get(this, CHANGE_NR).equals(finalState.get(this, CHANGE_NR));
             if (last) {
-                setted = Set.of();
+                allSetted = SETTED_MAP;
             } else {
-                for (Pair<Object, Setable> slot : setted) {
-                    post = post.set(slot.a(), slot.b(), finalState.get(slot.a(), slot.b()));
+                for (Entry<Object, Set<Setable>> e : allSetted) {
+                    Object object = e.getKey();
+                    DefaultMap<Setable, Object> postProps = post.getProperties(object);
+                    DefaultMap<Setable, Object> stateProps = finalState.getProperties(object);
+                    for (Setable setable : e.getValue()) {
+                        postProps = State.setProperties(postProps, setable, stateProps.get(setable));
+                    }
+                    post = post.set(object, postProps);
                 }
             }
             state = post;
@@ -178,16 +192,18 @@ public class ImperativeTransaction extends LeafTransaction {
         return oldNew[0];
     }
 
+    @SuppressWarnings("rawtypes")
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
-            setted = setted.add(Pair.of(object, property));
+            Set<Setable> set = Set.of(property);
+            allSetted = allSetted.add(object, set, Set::addAll);
+            setted = setted.add(object, set, Set::addAll);
             if (first) {
                 if (firstHandler != null) {
                     firstHandler.accept(pre);
                 }
                 universeTransaction().dummy();
             }
-            changed(object, property, preValue, postValue);
         }
     }
 

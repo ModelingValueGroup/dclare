@@ -15,10 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Direction.backward;
-import static org.modelingvalue.dclare.Direction.forward;
-
 import java.time.Instant;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.modelingvalue.collections.Collection;
@@ -28,6 +26,7 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
@@ -46,7 +45,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public final Traces                         traces;
     private final ExceptionSetable              exception;
-    private final Observerds[]                  observeds;
+    private final Observerds                    observeds;
     private final Constructed                   constructed;
 
     protected long                              runCount     = -1;
@@ -59,13 +58,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     protected Observer(Object id, Consumer<O> action, Direction initDirection) {
         super(id, action, initDirection);
         traces = new Traces(Pair.of(this, "TRACES"));
-        observeds = new Observerds[]{new Observerds(this, forward), new Observerds(this, backward)};
+        observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
     }
 
-    public Observerds observeds(Direction direction) {
-        return observeds[direction.nr];
+    public Observerds observeds() {
+        return observeds;
     }
 
     public ExceptionSetable exception() {
@@ -97,9 +96,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     public void deObserve(O mutable) {
-        for (int ia = 0; ia < 2; ia++) {
-            observeds[ia].setDefault(mutable);
-        }
+        observeds.setDefault(mutable);
         for (Direction dir : Direction.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);
@@ -126,10 +123,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
         @SuppressWarnings("unchecked")
-        private Observerds(Observer observer, Direction direction) {
-            super(Pair.of(observer, direction), Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
+        private Observerds(Observer observer) {
+            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers(direction);
+                    Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
                         Mutable o = a.resolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));
@@ -141,9 +138,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             }, SetableModifier.doNotCheckConsistency);
         }
 
+        public Observer observer() {
+            return (Observer) id();
+        }
+
         @Override
         public String toString() {
-            return getClass().getSimpleName() + ":" + super.toString().substring(4);
+            return getClass().getSimpleName() + ":" + super.toString();
         }
 
     }
@@ -183,23 +184,28 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public static class Constructed extends Observed<Mutable, Map<Construction.Reason, Newable>> {
+    public static class Constructed extends Observed<Mutable, Map<Reason, Newable>> {
 
         public static Constructed of(Observer observer) {
             return new Constructed(observer);
         }
 
         private Constructed(Observer observer) {
-            super(observer, Map.of(), null, null, (tx, o, pre, post) -> pre.diff(post).forEachOrdered(e -> {
-                Construction cons = Construction.of(o, observer, e.getKey());
-                Pair<Newable, Newable> d = e.getValue();
-                if (d.a() != null) {
-                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.a(), Set::remove, cons);
+            super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
+                for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
+                    Construction cons = Construction.of(o, observer, reason);
+                    Newable before = pre.get(reason);
+                    Newable after = post.get(reason);
+                    if (!Objects.equals(before, after)) {
+                        if (before != null) {
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(before, Set::remove, cons);
+                        }
+                        if (after != null) {
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(after, Set::add, cons);
+                        }
+                    }
                 }
-                if (d.b() != null) {
-                    Newable.D_DERIVED_CONSTRUCTIONS.set(d.b(), Set::add, cons);
-                }
-            }), SetableModifier.doNotCheckConsistency);
+            }, SetableModifier.doNotCheckConsistency);
         }
 
         @Override
