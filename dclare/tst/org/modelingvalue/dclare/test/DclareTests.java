@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.modelingvalue.dclare.UniverseTransaction.MAX_IN_IN_QUEUE;
 import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_CHANGES;
+import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_FORWARD_CHANGES;
 import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_HISTORY;
 import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_OBSERVED;
 import static org.modelingvalue.dclare.UniverseTransaction.MAX_NR_OF_OBSERVERS;
@@ -225,7 +226,7 @@ public class DclareTests {
                 }
             }
         });
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, MAX_IN_IN_QUEUE, 1000000000, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
+        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, MAX_IN_IN_QUEUE, 1000000000, MAX_NR_OF_CHANGES, MAX_NR_OF_FORWARD_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
         universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
         State result = universeTransaction.waitForEnd();

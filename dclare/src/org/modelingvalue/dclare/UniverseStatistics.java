@@ -23,21 +23,23 @@ public class UniverseStatistics {
     private final int                 maxInInQueue;
     private final int                 maxTotalNrOfChanges;
     private final int                 maxNrOfChanges;
+    private final int                 maxNrOfForwardChanges;
     private final int                 maxNrOfObserved;
     private final int                 maxNrOfObservers;
     private final int                 maxNrOfHistory;
     //
-    private       boolean             debugging;
-    private       int                 totalChanges;
-    private       long                runCount;
-    private       long                totalChangesEver;
+    private boolean                   debugging;
+    private int                       totalChanges;
+    private long                      runCount;
+    private long                      forwardCount;
+    private long                      totalChangesEver;
 
-
-    public UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
+    public UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfForwardChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         this.tx = tx;
         this.maxInInQueue = maxInInQueue;
         this.maxTotalNrOfChanges = maxTotalNrOfChanges;
         this.maxNrOfChanges = maxNrOfChanges;
+        this.maxNrOfForwardChanges = maxNrOfForwardChanges;
         this.maxNrOfObserved = maxNrOfObserved;
         this.maxNrOfObservers = maxNrOfObservers;
         this.maxNrOfHistory = maxNrOfHistory;
@@ -48,12 +50,14 @@ public class UniverseStatistics {
         this.maxInInQueue = o.maxInInQueue;
         this.maxTotalNrOfChanges = o.maxTotalNrOfChanges;
         this.maxNrOfChanges = o.maxNrOfChanges;
+        this.maxNrOfForwardChanges = o.maxNrOfForwardChanges;
         this.maxNrOfObserved = o.maxNrOfObserved;
         this.maxNrOfObservers = o.maxNrOfObservers;
         this.maxNrOfHistory = o.maxNrOfHistory;
         this.debugging = o.debugging;
         this.totalChanges = o.totalChanges;
         this.runCount = o.runCount;
+        this.forwardCount = o.forwardCount;
         this.totalChangesEver = o.totalChangesEver;
     }
 
@@ -64,12 +68,20 @@ public class UniverseStatistics {
         runCount++;
     }
 
+    void completeForward() {
+        forwardCount++;
+    }
+
     public int maxInInQueue() {
         return maxInInQueue;
     }
 
     public int maxTotalNrOfChanges() {
         return maxTotalNrOfChanges;
+    }
+
+    public int maxNrOfForwardChanges() {
+        return maxNrOfForwardChanges;
     }
 
     public int maxNrOfChanges() {
@@ -100,6 +112,10 @@ public class UniverseStatistics {
         return runCount;
     }
 
+    public long forwardCount() {
+        return forwardCount;
+    }
+
     public int bumpAndGetTotalChanges() {
         if (totalChanges > maxTotalNrOfChanges) {
             synchronized (tx) {
@@ -122,11 +138,7 @@ public class UniverseStatistics {
 
     @Override
     public String toString() {
-        return "UniverseStats:\n" +
-                "  debugging         = " + debugging + "\n" +
-                "  runCount          = " + runCount + "\n" +
-                "  totalChanges      = " + totalChanges + "\n" +
-                "  totalChangesEver  = " + totalChangesEver;
+        return "UniverseStats:\n" + "  debugging         = " + debugging + "\n" + "  runCount          = " + runCount + "\n" + "  forwardCount       = " + forwardCount + "\n" + "  totalChanges      = " + totalChanges + "\n" + "  totalChangesEver  = " + totalChangesEver;
     }
 
     @Override
@@ -138,20 +150,12 @@ public class UniverseStatistics {
             return false;
         }
         UniverseStatistics that = (UniverseStatistics) o;
-        return maxInInQueue == that.maxInInQueue &&
-                maxTotalNrOfChanges == that.maxTotalNrOfChanges &&
-                maxNrOfChanges == that.maxNrOfChanges &&
-                maxNrOfObserved == that.maxNrOfObserved &&
-                maxNrOfObservers == that.maxNrOfObservers &&
-                maxNrOfHistory == that.maxNrOfHistory &&
-                debugging == that.debugging &&
-                totalChanges == that.totalChanges &&
-                runCount == that.runCount &&
-                totalChangesEver == that.totalChangesEver;
+        return maxInInQueue == that.maxInInQueue && maxTotalNrOfChanges == that.maxTotalNrOfChanges && maxNrOfChanges == that.maxNrOfChanges && maxNrOfForwardChanges == that.maxNrOfForwardChanges && maxNrOfObserved == that.maxNrOfObserved && maxNrOfObservers == that.maxNrOfObservers && //
+                maxNrOfHistory == that.maxNrOfHistory && debugging == that.debugging && totalChanges == that.totalChanges && runCount == that.runCount && forwardCount == that.forwardCount && totalChangesEver == that.totalChangesEver;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, totalChangesEver);
+        return Objects.hash(maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfForwardChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, forwardCount, totalChangesEver);
     }
 }

@@ -76,14 +76,9 @@ public class ObserverTransaction extends ActionTransaction {
         Observer<?> observer = observer();
         Pair<Instant, Throwable> throwable = null;
         // check if the universe is still in the same transaction, if not: reset my state
-        long rootCount = universeTransaction.stats().runCount();
-        if (observer.runCount != rootCount) {
-            observer.runCount = rootCount;
-            observer.changes = 0;
-            observer.stopped = false;
-        }
+        observer.startTransaction(universeTransaction.stats());
         // check if we should do the work...
-        if (!observer.stopped && !universeTransaction.isKilled()) {
+        if (!observer.isStopped() && !universeTransaction.isKilled()) {
             observeds.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
@@ -137,9 +132,9 @@ public class ObserverTransaction extends ActionTransaction {
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
-            observer.instances++;
+            observer.addInstance();
         } else if (!preSources.isEmpty() && observeds.isEmpty()) {
-            observer.instances--;
+            observer.removeInstance();
         }
     }
 
@@ -155,12 +150,13 @@ public class ObserverTransaction extends ActionTransaction {
         UniverseTransaction universeTransaction = universeTransaction();
         Observer<?> observer = observer();
         Mutable mutable = mutable();
-        int totalChanges = universeTransaction.stats().bumpAndGetTotalChanges();
+        UniverseStatistics stats = universeTransaction.stats();
+        int totalChanges = stats.bumpAndGetTotalChanges();
         int changesPerInstance = observer.countChangesPerInstance();
-        if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() || totalChanges > universeTransaction.stats().maxTotalNrOfChanges()) {
-            universeTransaction.stats().setDebugging(true);
+        if (changesPerInstance > stats.maxNrOfChanges() || totalChanges > stats.maxTotalNrOfChanges()) {
+            stats.setDebugging(true);
         }
-        if (universeTransaction.stats().debugging()) {
+        if (stats.debugging()) {
             State result = merge();
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
@@ -172,9 +168,9 @@ public class ObserverTransaction extends ActionTransaction {
                         return Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b());
                     })).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
-            if (changesPerInstance > universeTransaction.stats().maxNrOfChanges() * 2) {
+            if (changesPerInstance > stats.maxNrOfChanges() * 2) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
-            } else if (totalChanges > universeTransaction.stats().maxTotalNrOfChanges() + universeTransaction.stats().maxNrOfChanges()) {
+            } else if (totalChanges > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges()) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }
@@ -184,7 +180,7 @@ public class ObserverTransaction extends ActionTransaction {
         State result = merge();
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
-            observer.stopped = true;
+            observer.stop();
             throw new TooManyChangesException(result, last, changes);
         }
     }
@@ -247,7 +243,7 @@ public class ObserverTransaction extends ActionTransaction {
                 } else {
                     post = (T) singleMatch((Mutable) object, (Observed) setable, start, pre, post);
                 }
-            } else if (!Objects.equals(pre, post)) {
+            } else {
                 post = rippleOut((Observed<O, T>) setable, start, pre, post);
             }
         }
@@ -329,30 +325,36 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <T, O> T rippleOut(Observed<O, T> observed, T start, T pre, T post) {
-        if (!Objects.equals(pre, start)) {
-            if (Objects.equals(start, post)) {
-                backwards.set(TRUE);
-                post = pre;
-            } else if (start instanceof Mergeable) {
-                T result = ((Mergeable<T>) start).merge(pre, post);
-                if (!result.equals(post)) {
+        if (!Objects.equals(pre, post)) {
+            if (!Objects.equals(pre, start)) {
+                if (Objects.equals(start, post)) {
                     backwards.set(TRUE);
-                    post = result;
+                    return pre;
+                } else if (start instanceof Mergeable) {
+                    T result = ((Mergeable<T>) start).merge(pre, post);
+                    if (!result.equals(post)) {
+                        backwards.set(TRUE);
+                        return result;
+                    }
                 }
             }
-        }
-        if (observed.containment()) {
-            if (pre instanceof Mutable && !pre.equals(post) && isActive((Mutable) pre)) {
-                backwards.set(TRUE);
-                post = pre;
-            } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-                ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
-                ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
-                if (!result.equals(post)) {
+            if (observed.containment()) {
+                if (pre instanceof Mutable && isActive((Mutable) pre)) {
                     backwards.set(TRUE);
-                    post = result;
+                    return pre;
+                } else if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                    ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
+                    ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
+                    T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isActive((Mutable) o)));
+                    if (!result.equals(post)) {
+                        backwards.set(TRUE);
+                        return result;
+                    }
                 }
+            }
+            if (observer().forwardChangesPerInstance() > universeTransaction().stats().maxNrOfForwardChanges()) {
+                backwards.set(TRUE);
+                return pre;
             }
         }
         return post;
@@ -422,7 +424,7 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             }
-            return Objects.equals(beforeResult, afterResult) ? beforeResult : rippleOut(observed, start, beforeResult, afterResult);
+            return rippleOut(observed, start, beforeResult, afterResult);
         }
     }
 
