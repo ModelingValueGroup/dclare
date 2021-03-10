@@ -48,10 +48,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Observerds                    observeds;
     private final Constructed                   constructed;
 
-    protected long                              runCount     = -1;
-    protected int                               instances;
-    protected int                               changes;
-    protected boolean                           stopped;
+    private long                                runCount     = -1;
+    private long                                forwardCount = -1;
+    private int                                 instances;
+    private int                                 changes;
+    private int                                 forwardChanges;
+    private boolean                             stopped;
+
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
@@ -73,11 +76,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Constructed constructed() {
         return constructed;
-    }
-
-    public int countChangesPerInstance() {
-        ++changes;
-        return changesPerInstance();
     }
 
     @Override
@@ -103,7 +101,27 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
     }
 
-    public int changesPerInstance() {
+    protected final void startTransaction(UniverseStatistics stats) {
+        long runCount = stats.runCount();
+        if (this.runCount != runCount) {
+            this.runCount = runCount;
+            this.changes = 0;
+            this.stopped = false;
+        }
+        long forwardCount = stats.forwardCount();
+        if (this.forwardCount != forwardCount) {
+            this.forwardCount = forwardCount;
+            this.forwardChanges = 0;
+        }
+    }
+
+    protected final int countChangesPerInstance() {
+        ++changes;
+        ++forwardChanges;
+        return changesPerInstance();
+    }
+
+    protected final int changesPerInstance() {
         int i = instances;
         if (i <= 0) {
             instances = 1;
@@ -111,6 +129,32 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         } else {
             return changes / i;
         }
+    }
+
+    protected final int forwardChangesPerInstance() {
+        int i = instances;
+        if (i <= 0) {
+            instances = 1;
+            return forwardChanges;
+        } else {
+            return forwardChanges / i;
+        }
+    }
+
+    protected final void addInstance() {
+        instances++;
+    }
+
+    protected final void removeInstance() {
+        instances--;
+    }
+
+    protected final boolean isStopped() {
+        return stopped;
+    }
+
+    protected final void stop() {
+        stopped = true;
     }
 
     public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
