@@ -19,6 +19,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -82,10 +83,15 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public <O> void clear(O object) {
-        for (Entry<Setable, Object> e : state().getProperties(object)) {
-            set(object, e.getKey(), e.getKey().getDefault());
+    public void clear(Mutable object) {
+        for (Setable setable : toBeCleared(object)) {
+            set(object, setable, setable.getDefault());
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Collection<Setable> toBeCleared(Mutable object) {
+        return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
     }
 
     protected abstract void setChanged(Mutable changed);

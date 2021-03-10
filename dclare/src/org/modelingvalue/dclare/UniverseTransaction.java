@@ -388,12 +388,10 @@ public class UniverseTransaction extends MutableTransaction {
     @SuppressWarnings("rawtypes")
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        State st = tx.state();
         Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preState()//
-                .diff(st, o -> {
+                .diff(tx.state(), o -> {
                     if (o instanceof Mutable && !(o instanceof Universe)) {
-                        DefaultMap<Setable, Object> properties = st.getProperties(o);
-                        return !properties.isEmpty() && properties.get(Mutable.D_PARENT_CONTAINING) == null && mustBeCleared((Mutable) o);
+                        return tx.get((Mutable) o, Mutable.D_PARENT_CONTAINING) == null && !tx.toBeCleared((Mutable) o).isEmpty();
                     } else {
                         return false;
                     }
@@ -409,10 +407,6 @@ public class UniverseTransaction extends MutableTransaction {
         for (Mutable child : orphan.dChildren()) {
             clear(tx, child);
         }
-    }
-
-    protected boolean mustBeCleared(Mutable orphan) {
-        return true;
     }
 
     public boolean isStopped(State state) {
