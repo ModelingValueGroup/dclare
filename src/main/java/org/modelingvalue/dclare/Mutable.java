@@ -179,4 +179,9 @@ public interface Mutable extends TransactionClass {
         return false;
     }
 
+    @SuppressWarnings("rawtypes")
+    default boolean dToBeCleared(Setable setable) {
+        return true;
+    }
+
 }
