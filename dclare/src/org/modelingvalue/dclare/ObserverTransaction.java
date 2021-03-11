@@ -362,17 +362,21 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after) {
-        ToBeMatched<Mutable, Newable> toBeMatched = observed.toBeMatched();
-        Set<Newable> startSet = universeTransaction().startState().get(object, toBeMatched);
-        Set<Newable> startTotal = start instanceof Newable ? startSet.add((Newable) start) : startSet;
-        Set<Newable> preSet = toBeMatched.get(object);
-        Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
-        Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
-        Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
-        List<Newable> sorted = postResult.sortedBy(Newable::dSortKey).toList();
-        Object afterResult = observed.containment() ? sorted.first() : sorted.last();
-        super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
-        return afterResult;
+        if (before instanceof Newable || after instanceof Newable) {
+            ToBeMatched<Mutable, Newable> toBeMatched = observed.toBeMatched();
+            Set<Newable> startSet = universeTransaction().startState().get(object, toBeMatched);
+            Set<Newable> startTotal = start instanceof Newable ? startSet.add((Newable) start) : startSet;
+            Set<Newable> preSet = toBeMatched.get(object);
+            Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
+            Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
+            Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
+            List<Newable> sorted = postResult.sortedBy(Newable::dSortKey).toList();
+            Object afterResult = observed.containment() ? sorted.first() : sorted.last();
+            super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
+            return afterResult;
+        } else {
+            return rippleOut(observed, start, before, after);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
