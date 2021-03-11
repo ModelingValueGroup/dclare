@@ -363,6 +363,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after) {
+        if (before instanceof Newable || after instanceof Newable) {
         ToBeMatched<Mutable, Newable> toBeMatched = observed.toBeMatched();
         Set<Newable>                  startSet    = universeTransaction().startState().get(object, toBeMatched);
         Set<Newable>                  startTotal  = start instanceof Newable ? startSet.add((Newable) start) : startSet;
@@ -374,6 +375,9 @@ public class ObserverTransaction extends ActionTransaction {
         Object                        afterResult = observed.containment() ? sorted.first() : sorted.last();
         super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
         return afterResult;
+        } else {
+            return rippleOut(observed, start, before, after);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
