@@ -394,20 +394,14 @@ public class ObserverTransaction extends ActionTransaction {
             if (!(result instanceof List)) {
                 list = list.sortedBy(i -> i.newable().dSortKey()).toList();
             }
-            for (MatchInfo a : list) {
-                for (MatchInfo b : list) {
-                    if (!b.equals(a) && b.haveSameType(a)) {
-                        if (!a.isCarvedInStone() && b.shouldBeTheSame(a)) {
-                            makeTheSame(b, a);
-                            result = result.remove(a.newable());
-                            list = list.remove(a);
-                            b.mergeIn(a);
-                        } else if (!b.isCarvedInStone() && a.shouldBeTheSame(b)) {
-                            makeTheSame(a, b);
-                            result = result.remove(b.newable());
-                            list = list.remove(b);
-                            a.mergeIn(b);
-                        }
+            for (MatchInfo from : list) {
+                for (MatchInfo to : list) {
+                    if (!to.equals(from) && to.haveSameType(from) && !from.isCarvedInStone() && to.shouldBeTheSame(from)) {
+                        makeTheSame(to, from);
+                        result = result.remove(from.newable());
+                        list = list.remove(from);
+                        to.mergeIn(from);
+                        break;
                     }
                 }
             }
