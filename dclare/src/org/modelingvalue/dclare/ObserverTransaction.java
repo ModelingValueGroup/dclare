@@ -237,17 +237,20 @@ public class ObserverTransaction extends ActionTransaction {
         if (observing(object, setable)) {
             observe(object, (Observed<O, T>) setable);
             T start = universeTransaction().startState().get(object, setable);
-            if (setable.hasNewables()) {
-                if (setable.isMany()) {
-                    post = (T) manyMatch((Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
-                } else {
-                    post = (T) singleMatch((Mutable) object, (Observed) setable, start, pre, post);
-                }
+            if (pre instanceof Newable || post instanceof Newable) {
+                post = (T) singleMatch((Mutable) object, (Observed) setable, start, pre, post);
+            } else if (isNewableCollection(pre) || isNewableCollection(post)) {
+                post = (T) manyMatch((Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
             } else {
                 post = rippleOut((Observed<O, T>) setable, start, pre, post);
             }
         }
         super.set(object, setable, pre, post);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static <T> boolean isNewableCollection(T val) {
+        return val instanceof ContainingCollection && !((ContainingCollection) val).isEmpty() && ((ContainingCollection) val).get(0) instanceof Newable;
     }
 
     @SuppressWarnings("rawtypes")
@@ -362,21 +365,17 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after) {
-        if (before instanceof Newable || after instanceof Newable) {
-            ToBeMatched<Mutable, Newable> toBeMatched = observed.toBeMatched();
-            Set<Newable> startSet = universeTransaction().startState().get(object, toBeMatched);
-            Set<Newable> startTotal = start instanceof Newable ? startSet.add((Newable) start) : startSet;
-            Set<Newable> preSet = toBeMatched.get(object);
-            Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
-            Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
-            Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
-            List<Newable> sorted = postResult.sortedBy(Newable::dSortKey).toList();
-            Object afterResult = observed.containment() ? sorted.first() : sorted.last();
-            super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
-            return afterResult;
-        } else {
-            return rippleOut(observed, start, before, after);
-        }
+        ToBeMatched<Mutable, Newable> toBeMatched = observed.toBeMatched();
+        Set<Newable> startSet = universeTransaction().startState().get(object, toBeMatched);
+        Set<Newable> startTotal = start instanceof Newable ? startSet.add((Newable) start) : startSet;
+        Set<Newable> preSet = toBeMatched.get(object);
+        Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
+        Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
+        Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
+        List<Newable> sorted = postResult.sortedBy(Newable::dSortKey).toList();
+        Object afterResult = observed.containment() ? sorted.first() : sorted.last();
+        super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
+        return afterResult;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

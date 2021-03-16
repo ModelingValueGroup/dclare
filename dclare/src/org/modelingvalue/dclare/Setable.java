@@ -67,9 +67,7 @@ public class Setable<O, T> extends Getable<O, T> {
     protected final boolean                              checkConsistency;
     private final boolean                                synthetic;
 
-    private Boolean                                      isMany;
     private Boolean                                      isReference;
-    private Boolean                                      hasNewables;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
@@ -153,16 +151,8 @@ public class Setable<O, T> extends Getable<O, T> {
 
     }
 
-    public boolean isMany() {
-        return isMany != null && isMany;
-    }
-
     public boolean isReference() {
         return isReference != null && isReference;
-    }
-
-    public boolean hasNewables() {
-        return hasNewables != null && hasNewables;
     }
 
     @Override
@@ -233,8 +223,6 @@ public class Setable<O, T> extends Getable<O, T> {
             }
             if (element != null) {
                 isReference = element instanceof Mutable && !containment && this != Mutable.D_PARENT_CONTAINING;
-                hasNewables = element instanceof Newable && this != Mutable.D_PARENT_CONTAINING;
-                isMany = postValue instanceof ContainingCollection;
             }
         }
     }
