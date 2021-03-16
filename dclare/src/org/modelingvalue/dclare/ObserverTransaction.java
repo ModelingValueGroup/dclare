@@ -394,9 +394,9 @@ public class ObserverTransaction extends ActionTransaction {
             if (!(result instanceof List)) {
                 list = list.sortedBy(i -> i.newable().dSortKey()).toList();
             }
-            for (MatchInfo from : list) {
+            for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
                 for (MatchInfo to : list) {
-                    if (!to.equals(from) && to.haveSameType(from) && !from.isCarvedInStone() && to.shouldBeTheSame(from)) {
+                    if (!to.equals(from) && to.haveSameType(from) && to.shouldBeTheSame(from)) {
                         makeTheSame(to, from);
                         result = result.remove(from.newable());
                         list = list.remove(from);
