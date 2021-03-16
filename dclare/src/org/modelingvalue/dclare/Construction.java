@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import java.util.Optional;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -149,7 +148,7 @@ public class Construction extends IdentifiedByArray {
         private Set<Construction>               derivedConstructions;
         private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     reasonTypes;
+        private Set<Object>                     derivedReasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
 
@@ -167,25 +166,16 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean shouldBeTheSame(MatchInfo from) {
-            return from.derivedConstructions().isEmpty() || haveCyclicReason(from) || //
-                    (reasonTypes().isEmpty() && !from.reasonTypes().isEmpty() && //
-                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
+            return from.derivedConstructions().isEmpty() || from.sourcesAndAncestors().contains(newable()) || //
+                    (derivedReasonTypes().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
         public void mergeIn(MatchInfo from) {
             derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
-            reasonTypes = reasonTypes().addAll(from.reasonTypes());
+            derivedReasonTypes = derivedReasonTypes().addAll(from.derivedReasonTypes());
             sources = sources().addAll(from.sources());
             notObservedSources = notObservedSources().addAll(from.notObservedSources());
             sourcesAndAncestors = sourcesAndAncestors().addAll(from.sourcesAndAncestors());
-        }
-
-        public boolean haveCyclicReason(MatchInfo other) {
-            return other.sourcesAndAncestors().contains(newable());
-        }
-
-        public boolean areUnidentified(MatchInfo other) {
-            return identity() == null && other.hasUnidentifiedSource();
         }
 
         public boolean isCarvedInStone() {
@@ -198,10 +188,6 @@ public class Construction extends IdentifiedByArray {
 
         public boolean hasUnidentifiedSource() {
             return notObservedSources().anyMatch(n -> n.dMatchingIdentity() == null);
-        }
-
-        public Collection<Comparable> sourcesSortKeys() {
-            return notObservedSources().map(Newable::dSortKey).sorted();
         }
 
         public Newable newable() {
@@ -238,7 +224,7 @@ public class Construction extends IdentifiedByArray {
             return sourcesAndAncestors;
         }
 
-        public Map<Mutable, Set<Construction>> sources() {
+        private Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
                 Construction direct = newable.dDirectConstruction();
                 Set<Construction> derived = derivedConstructions();
@@ -247,11 +233,11 @@ public class Construction extends IdentifiedByArray {
             return sources;
         }
 
-        public Set<Object> reasonTypes() {
-            if (reasonTypes == null) {
-                reasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
+        private Set<Object> derivedReasonTypes() {
+            if (derivedReasonTypes == null) {
+                derivedReasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
             }
-            return reasonTypes;
+            return derivedReasonTypes;
         }
 
         private Set<Newable> notObservedSources() {
