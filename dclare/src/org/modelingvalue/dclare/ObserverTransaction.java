@@ -382,26 +382,28 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
         ContainingCollection<Object> result = rippleOut(observed, start, before, after);
-        for (Newable r : result.filter(Newable.class)) {
-            if (r.dIsObsolete()) {
-                result = result.remove(r);
+        if (result != null) {
+            for (Newable r : result.filter(Newable.class)) {
+                if (r.dIsObsolete()) {
+                    result = result.remove(r);
+                }
             }
-        }
-        if (observed.containment()) {
-            merge();
-            Map<Reason, Newable> constructed = constructions.merge();
-            List<MatchInfo> list = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
-            if (!(result instanceof List)) {
-                list = list.sortedBy(i -> i.newable().dSortKey()).toList();
-            }
-            for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
-                for (MatchInfo to : list) {
-                    if (!to.equals(from) && to.haveSameType(from) && to.shouldBeTheSame(from)) {
-                        makeTheSame(to, from);
-                        result = result.remove(from.newable());
-                        list = list.remove(from);
-                        to.mergeIn(from);
-                        break;
+            if (observed.containment()) {
+                merge();
+                Map<Reason, Newable> constructed = constructions.merge();
+                List<MatchInfo> list = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
+                if (!(result instanceof List)) {
+                    list = list.sortedBy(i -> i.newable().dSortKey()).toList();
+                }
+                for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
+                    for (MatchInfo to : list) {
+                        if (!to.equals(from) && to.haveSameType(from) && to.shouldBeTheSame(from)) {
+                            makeTheSame(to, from);
+                            result = result.remove(from.newable());
+                            list = list.remove(from);
+                            to.mergeIn(from);
+                            break;
+                        }
                     }
                 }
             }
