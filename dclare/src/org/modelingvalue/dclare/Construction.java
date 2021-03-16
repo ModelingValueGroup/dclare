@@ -166,18 +166,18 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean shouldBeTheSame(MatchInfo other) {
-            return other.derivedConstructions().isEmpty() || haveCyclicReason(other) || //
-                    (reasonTypes().isEmpty() && !other.reasonTypes().isEmpty() && //
-                            (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource()));
+        public boolean shouldBeTheSame(MatchInfo from) {
+            return from.derivedConstructions().isEmpty() || haveCyclicReason(from) || //
+                    (reasonTypes().isEmpty() && !from.reasonTypes().isEmpty() && //
+                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
-        public void makeTheSame(MatchInfo other) {
-            derivedConstructions = derivedConstructions().addAll(other.derivedConstructions());
-            reasonTypes = reasonTypes().addAll(other.reasonTypes());
-            sources = sources().addAll(other.sources());
-            notObservedSources = notObservedSources().addAll(other.notObservedSources());
-            sourcesAndAncestors = sourcesAndAncestors().addAll(other.sourcesAndAncestors());
+        public void mergeIn(MatchInfo from) {
+            derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
+            reasonTypes = reasonTypes().addAll(from.reasonTypes());
+            sources = sources().addAll(from.sources());
+            notObservedSources = notObservedSources().addAll(from.notObservedSources());
+            sourcesAndAncestors = sourcesAndAncestors().addAll(from.sourcesAndAncestors());
         }
 
         public boolean haveCyclicReason(MatchInfo other) {

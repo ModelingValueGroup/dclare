@@ -390,23 +390,23 @@ public class ObserverTransaction extends ActionTransaction {
         if (observed.containment()) {
             merge();
             Map<Reason, Newable> constructed = constructions.merge();
-            List<MatchInfo> postList = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
+            List<MatchInfo> list = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
             if (!(result instanceof List)) {
-                postList = postList.sortedBy(i -> i.newable().dSortKey()).toList();
+                list = list.sortedBy(i -> i.newable().dSortKey()).toList();
             }
-            for (MatchInfo a : postList) {
-                for (MatchInfo b : postList) {
+            for (MatchInfo a : list) {
+                for (MatchInfo b : list) {
                     if (!b.equals(a) && b.haveSameType(a)) {
                         if (!a.isCarvedInStone() && b.shouldBeTheSame(a)) {
                             makeTheSame(b, a);
                             result = result.remove(a.newable());
-                            postList = postList.remove(a);
-                            b.makeTheSame(a);
+                            list = list.remove(a);
+                            b.mergeIn(a);
                         } else if (!b.isCarvedInStone() && a.shouldBeTheSame(b)) {
                             makeTheSame(a, b);
                             result = result.remove(b.newable());
-                            postList = postList.remove(b);
-                            a.makeTheSame(b);
+                            list = list.remove(b);
+                            a.mergeIn(b);
                         }
                     }
                 }
@@ -416,20 +416,20 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void makeTheSame(MatchInfo pre, MatchInfo post) {
-        super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
-        if (!post.derivedConstructions().isEmpty()) {
+    private void makeTheSame(MatchInfo to, MatchInfo from) {
+        super.set(from.newable(), Newable.D_MATCHED, (Newable) null, to.newable());
+        if (!from.derivedConstructions().isEmpty()) {
             if (TRACE_MATCHING) {
-                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + pre.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
+                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + from.sourcesAndAncestors().toString().substring(3) + ")"));
             }
-            Set<Construction> preCons = state().get(pre.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-            Set<Construction> postCons = state().get(post.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-            super.set(pre.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.addAll(postCons));
-            super.set(post.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Set.of());
+            Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+            Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+            super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.addAll(postCons));
+            super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Set.of());
             constructions.set((map, n) -> {
                 Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
-                return found.isPresent() ? map.put(found.get().getKey(), pre.newable()) : map;
-            }, post.newable());
+                return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
+            }, from.newable());
         }
     }
 
