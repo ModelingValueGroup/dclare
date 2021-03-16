@@ -381,59 +381,44 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        ContainingCollection<Object> beforeResult = before;
-        ContainingCollection<Object> afterResult = after;
-        for (Newable pre : before.filter(Newable.class)) {
-            Newable matched = pre.dMatched();
-            if (matched != null) {
-                beforeResult = beforeResult.remove(pre);
+        ContainingCollection<Object> result = rippleOut(observed, start, before, after);
+        for (Newable r : result.filter(Newable.class)) {
+            if (r.dIsObsolete()) {
+                result = result.remove(r);
             }
         }
-        for (Newable post : after.filter(Newable.class)) {
-            Newable matched = post.dMatched();
-            if (matched != null) {
-                if (!afterResult.contains(matched)) {
-                    afterResult = afterResult.replace(post, matched);
-                } else {
-                    afterResult = afterResult.remove(post);
-                }
+        if (observed.containment()) {
+            merge();
+            Map<Reason, Newable> constructed = constructions.merge();
+            List<MatchInfo> postList = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
+            if (!(result instanceof List)) {
+                postList = postList.sortedBy(i -> i.newable().dSortKey()).toList();
             }
-        }
-        merge();
-        Map<Reason, Newable> constructed = constructions.merge();
-        List<MatchInfo> preList = beforeResult.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).filter(i -> !after.contains(i.newable()) || i.derivedConstructions().isEmpty()).toList();
-        if (!preList.isEmpty()) {
-            List<MatchInfo> postList = afterResult.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
-            if (!postList.isEmpty()) {
-                if (!(after instanceof List)) {
-                    preList = preList.sortedBy(i -> i.newable().dSortKey()).toList();
-                    postList = postList.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
-                }
-                for (MatchInfo post : postList) {
-                    for (MatchInfo pre : preList) {
-                        if (!pre.equals(post) && pre.haveSameType(post)) {
-                            if (!post.isCarvedInStone() && pre.shouldBeTheSame(post)) {
-                                makeTheSame(pre, post);
-                                afterResult = afterResult.replace(post.newable(), pre.newable());
-                                beforeResult = beforeResult.remove(post.newable());
-                                beforeResult = beforeResult.addUnique(pre.newable());
-                            } else if (!pre.isCarvedInStone() && post.shouldBeTheSame(pre)) {
-                                makeTheSame(post, pre);
-                                beforeResult = beforeResult.remove(pre.newable());
-                                beforeResult = beforeResult.addUnique(post.newable());
-                            }
+            for (MatchInfo a : postList) {
+                for (MatchInfo b : postList) {
+                    if (!b.equals(a) && b.haveSameType(a)) {
+                        if (!a.isCarvedInStone() && b.shouldBeTheSame(a)) {
+                            makeTheSame(b, a);
+                            result = result.remove(a.newable());
+                            postList = postList.remove(a);
+                            b.makeTheSame(a);
+                        } else if (!b.isCarvedInStone() && a.shouldBeTheSame(b)) {
+                            makeTheSame(a, b);
+                            result = result.remove(b.newable());
+                            postList = postList.remove(b);
+                            a.makeTheSame(b);
                         }
                     }
                 }
             }
         }
-        return rippleOut(observed, start, beforeResult, afterResult);
+        return result;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo pre, MatchInfo post) {
+        super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
         if (!post.derivedConstructions().isEmpty()) {
-            super.set(post.newable(), Newable.D_MATCHED, (Newable) null, pre.newable());
             if (TRACE_MATCHING) {
                 runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + pre.newable() + pre.sourcesAndAncestors().toString().substring(3) + "==" + post.newable() + post.sourcesAndAncestors().toString().substring(3) + ")"));
             }

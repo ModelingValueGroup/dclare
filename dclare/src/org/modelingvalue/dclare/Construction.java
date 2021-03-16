@@ -146,10 +146,9 @@ public class Construction extends IdentifiedByArray {
         private final Map<Reason, Newable>      constructed;
 
         private Object                          identity;
-        private Set<Construction>               constructions;
+        private Set<Construction>               derivedConstructions;
         private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     matchedReasonTypes = Set.of();
         private Set<Object>                     reasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
@@ -168,18 +167,17 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean shouldBeTheSame(MatchInfo other) {
-            return other.derivedConstructions().isEmpty() || haveCyclicReason(other) || haveSameIdentity(other);
+            return other.derivedConstructions().isEmpty() || haveCyclicReason(other) || //
+                    (reasonTypes().isEmpty() && !other.reasonTypes().isEmpty() && //
+                            (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource()));
         }
 
-        public boolean haveSameIdentity(MatchInfo other) {
-            if (!other.reasonTypes().isEmpty() && !matchedReasonTypes.anyMatch(other.reasonTypes()::contains) && //
-                    (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
-                other.reasonTypes = Set.of();
-                return true;
-            } else {
-                return false;
-            }
+        public void makeTheSame(MatchInfo other) {
+            derivedConstructions = derivedConstructions().addAll(other.derivedConstructions());
+            reasonTypes = reasonTypes().addAll(other.reasonTypes());
+            sources = sources().addAll(other.sources());
+            notObservedSources = notObservedSources().addAll(other.notObservedSources());
+            sourcesAndAncestors = sourcesAndAncestors().addAll(other.sourcesAndAncestors());
         }
 
         public boolean haveCyclicReason(MatchInfo other) {
@@ -221,16 +219,16 @@ public class Construction extends IdentifiedByArray {
         }
 
         public Set<Construction> derivedConstructions() {
-            if (constructions == null) {
+            if (derivedConstructions == null) {
                 Set<Construction> cons = newable.dDerivedConstructions();
                 Optional<Entry<Reason, Newable>> opt = constructed.filter(e -> e.getValue().equals(newable)).findAny();
                 if (opt.isPresent()) {
                     ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
                     cons = cons.add(Construction.of(tx.mutable(), tx.observer(), opt.get().getKey()));
                 }
-                constructions = cons;
+                derivedConstructions = cons;
             }
-            return constructions;
+            return derivedConstructions;
         }
 
         public Set<Newable> sourcesAndAncestors() {
