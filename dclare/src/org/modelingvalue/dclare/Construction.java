@@ -166,7 +166,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean shouldBeTheSame(MatchInfo from) {
-            return from.derivedConstructions().isEmpty() || from.sourcesAndAncestors().contains(newable()) || //
+            return from.sourcesAndAncestors().contains(newable()) || //
                     (derivedReasonTypes().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 

@@ -372,8 +372,16 @@ public class ObserverTransaction extends ActionTransaction {
         Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
         Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
         Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
-        List<Newable> sorted = postResult.sortedBy(Newable::dSortKey).toList();
-        Object afterResult = observed.containment() ? sorted.first() : sorted.last();
+        List<Newable> sorted = observed.containment() ? postResult.sortedBy(Newable::dSortKey).toList() : postResult.sortedByDesc(Newable::dSortKey).toList();
+        Object afterResult;
+        Set<Newable> constructed = constructions.merge().toValues().toSet();
+        List<Newable> found = sorted.filter(n -> constructed.contains(n) || !n.dConstructions().isEmpty()).toList();
+        if (found.isEmpty()) {
+            afterResult = sorted.first();
+        } else {
+            afterResult = found.first();
+            postResult = found.toSet();
+        }
         super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
         return afterResult;
     }
@@ -413,19 +421,17 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo to, MatchInfo from) {
         super.set(from.newable(), Newable.D_MATCHED, (Newable) null, to.newable());
-        if (!from.derivedConstructions().isEmpty()) {
-            if (TRACE_MATCHING) {
-                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + from.sourcesAndAncestors().toString().substring(3) + ")"));
-            }
-            Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-            Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-            super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.addAll(postCons));
-            super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Set.of());
-            constructions.set((map, n) -> {
-                Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
-                return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
-            }, from.newable());
+        if (TRACE_MATCHING) {
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + from.sourcesAndAncestors().toString().substring(3) + ")"));
         }
+        Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.addAll(postCons));
+        super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Set.of());
+        constructions.set((map, n) -> {
+            Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
+            return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
+        }, from.newable());
     }
 
 }

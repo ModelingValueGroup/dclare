@@ -31,19 +31,19 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
-    private static final boolean                          TRACE_MUTABLE              = Boolean.getBoolean("TRACE_MUTABLE");
-    private static final int                              MAX_NR_OFF_MERGE_CONFLICTS = Integer.getInteger("MAX_NR_OFF_MERGE_CONFLICTS", 4);
+    private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
+    // private static final int                           MAX_NR_OFF_MERGE_CONFLICTS = Integer.getInteger("MAX_NR_OFF_MERGE_CONFLICTS", 4);
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions                    = new Set[1];
+    private final Set<Action<?>>[]                        actions       = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children                   = new Set[1];
-    private final State[]                                 state                      = new State[1];
+    private final Set<Mutable>[]                          children      = new Set[1];
+    private final State[]                                 state         = new State[1];
 
-    private int                                           nrOffMergeConflicts;
+    // private int                                        nrOffMergeConflicts;
     private boolean                                       urgent;
 
     @SuppressWarnings("unchecked")
@@ -104,7 +104,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             return state[0];
         } finally {
             urgent = false;
-            nrOffMergeConflicts = 0;
+            // nrOffMergeConflicts = 0;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -126,13 +126,13 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         return r;
                     })));
         } catch (NotMergeableException nme) {
-            if (++nrOffMergeConflicts > MAX_NR_OFF_MERGE_CONFLICTS) {
-                throw nme;
-            } else {
-                for (TransactionClass t : todo.random()) {
-                    state[0] = t.run(state[0], this);
-                }
+            //if (++nrOffMergeConflicts > MAX_NR_OFF_MERGE_CONFLICTS) {
+            //    throw nme;
+            // } else {
+            for (TransactionClass t : todo.random()) {
+                state[0] = t.run(state[0], this);
             }
+            // }
         }
         if (hasQueued(state[0], mutable(), Direction.urgent)) {
             urgent = true;
