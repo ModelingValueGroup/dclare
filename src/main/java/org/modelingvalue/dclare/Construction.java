@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import java.util.Optional;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -146,11 +145,10 @@ public class Construction extends IdentifiedByArray {
         private final Map<Reason, Newable>      constructed;
 
         private Object                          identity;
-        private Set<Construction>               constructions;
+        private Set<Construction>               derivedConstructions;
         private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     matchedReasonTypes = Set.of();
-        private Set<Object>                     reasonTypes;
+        private Set<Object>                     derivedReasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
 
@@ -167,27 +165,17 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean shouldBeTheSame(MatchInfo other) {
-            return other.derivedConstructions().isEmpty() || haveCyclicReason(other) || haveSameIdentity(other);
+        public boolean shouldBeTheSame(MatchInfo from) {
+            return from.derivedConstructions().isEmpty() || from.sourcesAndAncestors().contains(newable()) || //
+                    (derivedReasonTypes().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
-        public boolean haveSameIdentity(MatchInfo other) {
-            if (!other.reasonTypes().isEmpty() && matchedReasonTypes.noneMatch(other.reasonTypes()::contains) && //
-                    (identity() != null ? identity().equals(other.identity()) : other.hasUnidentifiedSource())) {
-                matchedReasonTypes = matchedReasonTypes.addAll(other.reasonTypes());
-                other.reasonTypes = Set.of();
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        public boolean haveCyclicReason(MatchInfo other) {
-            return other.sourcesAndAncestors().contains(newable());
-        }
-
-        public boolean areUnidentified(MatchInfo other) {
-            return identity() == null && other.hasUnidentifiedSource();
+        public void mergeIn(MatchInfo from) {
+            derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
+            derivedReasonTypes = derivedReasonTypes().addAll(from.derivedReasonTypes());
+            sources = sources().addAll(from.sources());
+            notObservedSources = notObservedSources().addAll(from.notObservedSources());
+            sourcesAndAncestors = sourcesAndAncestors().addAll(from.sourcesAndAncestors());
         }
 
         public boolean isCarvedInStone() {
@@ -200,10 +188,6 @@ public class Construction extends IdentifiedByArray {
 
         public boolean hasUnidentifiedSource() {
             return notObservedSources().anyMatch(n -> n.dMatchingIdentity() == null);
-        }
-
-        public Collection<Comparable> sourcesSortKeys() {
-            return notObservedSources().map(Newable::dSortKey).sorted();
         }
 
         public Newable newable() {
@@ -221,16 +205,16 @@ public class Construction extends IdentifiedByArray {
         }
 
         public Set<Construction> derivedConstructions() {
-            if (constructions == null) {
+            if (derivedConstructions == null) {
                 Set<Construction> cons = newable.dDerivedConstructions();
                 Optional<Entry<Reason, Newable>> opt = constructed.filter(e -> e.getValue().equals(newable)).findAny();
                 if (opt.isPresent()) {
                     ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
                     cons = cons.add(Construction.of(tx.mutable(), tx.observer(), opt.get().getKey()));
                 }
-                constructions = cons;
+                derivedConstructions = cons;
             }
-            return constructions;
+            return derivedConstructions;
         }
 
         public Set<Newable> sourcesAndAncestors() {
@@ -240,7 +224,7 @@ public class Construction extends IdentifiedByArray {
             return sourcesAndAncestors;
         }
 
-        public Map<Mutable, Set<Construction>> sources() {
+        private Map<Mutable, Set<Construction>> sources() {
             if (sources == null) {
                 Construction direct = newable.dDirectConstruction();
                 Set<Construction> derived = derivedConstructions();
@@ -249,11 +233,11 @@ public class Construction extends IdentifiedByArray {
             return sources;
         }
 
-        public Set<Object> reasonTypes() {
-            if (reasonTypes == null) {
-                reasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
+        private Set<Object> derivedReasonTypes() {
+            if (derivedReasonTypes == null) {
+                derivedReasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
             }
-            return reasonTypes;
+            return derivedReasonTypes;
         }
 
         private Set<Newable> notObservedSources() {
