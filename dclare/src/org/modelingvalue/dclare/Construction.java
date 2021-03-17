@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.Optional;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -238,6 +239,10 @@ public class Construction extends IdentifiedByArray {
                 derivedReasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
             }
             return derivedReasonTypes;
+        }
+
+        public Collection<Comparable> sourcesSortKeys() {
+            return notObservedSources().map(Newable::dSortKey).sorted();
         }
 
         private Set<Newable> notObservedSources() {

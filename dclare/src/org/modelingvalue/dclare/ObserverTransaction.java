@@ -400,7 +400,7 @@ public class ObserverTransaction extends ActionTransaction {
                 Map<Reason, Newable> constructed = constructions.merge();
                 List<MatchInfo> list = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
                 if (!(result instanceof List)) {
-                    list = list.sortedBy(i -> i.newable().dSortKey()).toList();
+                    list = list.sortedBy(i -> i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
                 }
                 for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
                     for (MatchInfo to : list) {
