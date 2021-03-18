@@ -404,7 +404,18 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
                     for (MatchInfo to : list) {
-                        if (!to.equals(from) && to.haveSameType(from) && to.shouldBeTheSame(from)) {
+                        if (!to.equals(from) && to.haveSameType(from) && to.haveSameId(from)) {
+                            makeTheSame(to, from);
+                            result = result.remove(from.newable());
+                            list = list.remove(from);
+                            to.mergeIn(from);
+                            break;
+                        }
+                    }
+                }
+                for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
+                    for (MatchInfo to : list) {
+                        if (!to.equals(from) && to.haveSameType(from) && to.haveDerivationCycle(from)) {
                             makeTheSame(to, from);
                             result = result.remove(from.newable());
                             list = list.remove(from);
@@ -422,7 +433,7 @@ public class ObserverTransaction extends ActionTransaction {
     private void makeTheSame(MatchInfo to, MatchInfo from) {
         super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + from.sourcesAndAncestors().toString().substring(3) + ")"));
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + ":" + to.derivedConstructions().size() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + ":" + from.derivedConstructions().size() + from.sourcesAndAncestors().toString().substring(3) + ")"));
         }
         Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
         Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);

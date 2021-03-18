@@ -118,11 +118,6 @@ public class TestNewable extends TestMutable implements Newable {
             return (Set<? extends Observer<?>>) observers;
         }
 
-        @Override
-        public Object type() {
-            return get(null, 0);
-        }
-
     }
 
 }

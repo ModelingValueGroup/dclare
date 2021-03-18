@@ -136,8 +136,6 @@ public class Construction extends IdentifiedByArray {
             return e == Mutable.THIS ? thiz : e;
         }
 
-        public abstract Object type();
-
     }
 
     public static final class MatchInfo {
@@ -149,7 +147,6 @@ public class Construction extends IdentifiedByArray {
         private Set<Construction>               derivedConstructions;
         private Boolean                         isOld;
         private Map<Mutable, Set<Construction>> sources;
-        private Set<Object>                     derivedReasonTypes;
         private Set<Newable>                    notObservedSources;
         private Set<Newable>                    sourcesAndAncestors;
 
@@ -166,14 +163,16 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean shouldBeTheSame(MatchInfo from) {
-            return from.sourcesAndAncestors().contains(newable()) || //
-                    (derivedReasonTypes().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
+        public boolean haveDerivationCycle(MatchInfo from) {
+            return from.sourcesAndAncestors().contains(newable());
+        }
+
+        public boolean haveSameId(MatchInfo from) {
+            return derivedConstructions().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
         }
 
         public void mergeIn(MatchInfo from) {
             derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
-            derivedReasonTypes = derivedReasonTypes().addAll(from.derivedReasonTypes());
             sources = sources().addAll(from.sources());
             notObservedSources = notObservedSources().addAll(from.notObservedSources());
             sourcesAndAncestors = sourcesAndAncestors().addAll(from.sourcesAndAncestors());
@@ -232,13 +231,6 @@ public class Construction extends IdentifiedByArray {
                 sources = Construction.sources(direct != null ? derived.add(direct) : derived, Map.of());
             }
             return sources;
-        }
-
-        private Set<Object> derivedReasonTypes() {
-            if (derivedReasonTypes == null) {
-                derivedReasonTypes = derivedConstructions().map(Construction::reason).map(Reason::type).toSet();
-            }
-            return derivedReasonTypes;
         }
 
         public Collection<Comparable> sourcesSortKeys() {

@@ -39,7 +39,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
@@ -194,7 +193,6 @@ public class NewableTests {
             assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
         return result;
@@ -718,7 +716,6 @@ public class NewableTests {
             assertEquals(32, objects.size());
             assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
         });
 
         return result;
@@ -730,10 +727,6 @@ public class NewableTests {
             System.err.println(pre.diffString(post, o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
         }
         return post;
-    }
-
-    private static List<Object> reasonTypes(Newable newable) {
-        return newable.dConstructions().map(Construction::reason).map(Construction.Reason::type).toList();
     }
 
     private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> action) {
