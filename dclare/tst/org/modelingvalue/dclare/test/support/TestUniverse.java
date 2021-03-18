@@ -15,6 +15,11 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,6 +27,7 @@ import java.util.function.Consumer;
 
 import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 
@@ -36,8 +42,9 @@ public class TestUniverse extends TestMutable implements Universe {
     private final TestImperative         scheduler;
     private final BlockingQueue<Boolean> idleQueue = new LinkedBlockingQueue<>(1);
     private final AtomicInteger          counter   = new AtomicInteger(0);
-    private Thread                       waitForEndThread;
-    private ImperativeTransaction        imperativeTransaction;
+    private       Thread                 waitForEndThread;
+    private       ImperativeTransaction  imperativeTransaction;
+    private       Throwable              uncaught;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
@@ -57,6 +64,8 @@ public class TestUniverse extends TestMutable implements Universe {
         waitForEndThread = new Thread(() -> {
             try {
                 utx.waitForEnd();
+            } catch (Throwable t) {
+                uncaught = t;
             } finally {
                 idle();
             }
@@ -96,4 +105,21 @@ public class TestUniverse extends TestMutable implements Universe {
         }
     }
 
+    public Throwable getUncaught() {
+        return uncaught;
+    }
+
+    public State waitForEnd(UniverseTransaction universeTransaction) throws Throwable {
+        try {
+            State state = universeTransaction.waitForEnd();
+            assertNull(uncaught);
+            return state;
+        } catch (Error e) {
+            waitForEndThread.join(100);
+            assertFalse(waitForEndThread.isAlive(), "the waitForEndThread probably hangs");
+            assertNotNull(uncaught);
+            assertEquals(e.getCause(), uncaught.getCause());
+            throw e.getCause();
+        }
+    }
 }
