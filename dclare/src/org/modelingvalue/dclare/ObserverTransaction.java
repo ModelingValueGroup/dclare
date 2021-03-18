@@ -372,18 +372,15 @@ public class ObserverTransaction extends ActionTransaction {
         Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
         Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
         Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
-        List<Newable> sorted = observed.containment() ? postResult.sortedBy(Newable::dSortKey).toList() : postResult.sortedByDesc(Newable::dSortKey).toList();
-        Object afterResult;
-        Set<Newable> constructed = constructions.merge().toValues().toSet();
-        List<Newable> found = sorted.filter(n -> constructed.contains(n) || !n.dConstructions().isEmpty()).toList();
-        if (found.isEmpty()) {
-            afterResult = sorted.first();
-        } else {
-            afterResult = found.first();
-            postResult = found.toSet();
+        Set<Newable> local = constructions.merge().toValues().toSet();
+        if (postResult.anyMatch(n -> local.contains(n) || !n.dConstructions().isEmpty())) {
+            postResult = postResult.filter(n -> local.contains(n) || !n.dConstructions().isEmpty()).toSet();
         }
-        super.set(object, toBeMatched, preSet, afterResult != null ? postResult.remove(afterResult) : postResult);
-        return afterResult;
+        Object result = observed.containment() && before != null && postResult.contains(before) ? before : //
+                !observed.containment() && after != null && postResult.contains(after) ? after : //
+                        postResult.random().findFirst().orElse(null);
+        super.set(object, toBeMatched, preSet, result != null ? postResult.remove(result) : postResult);
+        return result;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
