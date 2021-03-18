@@ -420,7 +420,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void makeTheSame(MatchInfo to, MatchInfo from) {
-        super.set(from.newable(), Newable.D_MATCHED, (Newable) null, to.newable());
+        super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + to.sourcesAndAncestors().toString().substring(3) + "==" + from.newable() + from.sourcesAndAncestors().toString().substring(3) + ")"));
         }

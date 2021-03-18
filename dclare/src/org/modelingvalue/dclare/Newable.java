@@ -39,7 +39,7 @@ public interface Newable extends Mutable {
 
     Constant<Newable, Construction>      D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
 
-    Observed<Newable, Newable>           D_MATCHED               = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
+    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_MATCHED", Boolean.FALSE, SetableModifier.doNotCheckConsistency);
 
     Observer<Newable>                    D_CONSTRUCTIONS_RULE    = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_DERIVED_CONSTRUCTIONS.set(n, cs -> {
                                                                      for (Construction c : cs) {
@@ -79,13 +79,9 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
-    default Newable dMatched() {
-        return D_MATCHED.get(this);
-    }
-
     @Override
     default boolean dIsObsolete() {
-        return dMatched() != null;
+        return D_OBSOLETE.get(this);
     }
 
     @Override
