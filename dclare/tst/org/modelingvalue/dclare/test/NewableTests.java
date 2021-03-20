@@ -124,7 +124,7 @@ public class NewableTests {
         )));
 
         TestUniverse        universe = TestUniverse.of("universe", U, imperative);
-        UniverseTransaction utx      = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx      = UniverseTransaction.of(universe, THE_POOL, true);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
@@ -380,7 +380,7 @@ public class NewableTests {
         // Instances
 
         TestUniverse        universe = TestUniverse.of("universe", U, imperative);
-        UniverseTransaction utx      = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx      = UniverseTransaction.of(universe, THE_POOL, true);
         final State[]       state    = new State[]{utx.emptyState()};
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
@@ -731,13 +731,11 @@ public class NewableTests {
         if (!utx.isKilled()) {
             TestUniverse                 u       = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
-            u.schedule(() -> {
-                action.accept(c -> {
-                    TestNewable newable = create(id + u.uniqueInt(), c);
-                    created.set(Set::add, newable);
-                    return newable;
-                });
-            });
+            u.schedule(() -> action.accept(c -> {
+                TestNewable newable = create(id + u.uniqueInt(), c);
+                created.set(Set::add, newable);
+                return newable;
+            }));
             return created;
         } else {
             return Concurrent.of(Set.of());
@@ -757,7 +755,7 @@ public class NewableTests {
         HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
         for (Newable an : al) {
             Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
-            assertTrue(!bo.isEmpty());
+            assertTrue(bo.isPresent());
             Newable bn = bo.get();
             bl = bl.remove(bn);
             for (Setable s : an.dClass().dSetables()) {
@@ -781,10 +779,10 @@ public class NewableTests {
             if (done.containsKey(key)) {
                 result = done.get(key);
             } else {
-                if (equals(as, as.get(() -> an.dClass()), bs, bs.get(() -> bn.dClass()), done) && //
-                        equals(as, as.get(() -> an.dNewableType()), bs, bs.get(() -> bn.dNewableType()), done) && //
-                        equals(as, as.get(() -> an.dIdentity()), bs, bs.get(() -> bn.dIdentity()), done) && //
-                        equals(as, as.get(() -> an.dParent()), bs, bs.get(() -> bn.dParent()), done)) {
+                if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
+                        equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
+                        equals(as, as.get(an::dIdentity), bs, bs.get(bn::dIdentity), done) && //
+                        equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }
                 done.put(key, result);

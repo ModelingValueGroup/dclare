@@ -56,7 +56,7 @@ public class DclareTests {
         TestUniverse                        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", child), TestImperative.of());
         TestMutableClass                    clazz               = TestMutableClass.of("Object").observe(o -> target.set(o, source.get(o)));
         TestMutable                         object              = TestMutable.of("object", clazz);
-        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         universeTransaction.put("step1", () -> child.set(universe, object));
         universeTransaction.put("step2", () -> source.set(object, 10));
         universeTransaction.stop();
@@ -72,7 +72,7 @@ public class DclareTests {
         long                                     begin               = System.currentTimeMillis();
         Observed<TestUniverse, Set<TestMutable>> children            = Observed.of("children", Set.of(), SetableModifier.containment);
         TestUniverse                             universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", children), TestImperative.of());
-        UniverseTransaction                      universeTransaction = UniverseTransaction.of(universe, THE_POOL, 100, r -> currentTime.set(universe, System.currentTimeMillis()));
+        UniverseTransaction                      universeTransaction = UniverseTransaction.of(universe, THE_POOL, true, 100, r -> currentTime.set(universe, System.currentTimeMillis()));
         TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> {
             long time = currentTime.get(universe);
             if (time - begin > 1000) {
@@ -98,7 +98,7 @@ public class DclareTests {
         Observed<TestMutable, Integer>           total               = Observed.of("total", 0);
         int                                      length              = 5;
         TestUniverse                             universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", children), TestImperative.of());
-        UniverseTransaction                      universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction                      universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> {
             int i = (int) o.id();
             total.set(o, number.get(o) + (i > 0 ? total.get(TestMutable.of(i - 1, o.dClass())) : 0));
@@ -129,7 +129,7 @@ public class DclareTests {
 
         int                 length              = 30;
         TestUniverse        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", children), TestImperative.of());
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         TestMutableClass    clazz               = TestMutableClass.of("Object");
         universeTransaction.put("backwards", () -> {
             for (int i = 0; i < length; i++) {
@@ -174,7 +174,7 @@ public class DclareTests {
         TestMutable         ggc7                = TestMutable.of("ggc7", clazz);
         TestMutable         ggc8                = TestMutable.of("ggc8", clazz);
         TestUniverse        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", children), TestImperative.of());
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         universeTransaction.put("step1", () -> {
             qualifiedName.set(universe, "u");
             children.set(universe, Set.of(c1, c2));
@@ -198,7 +198,7 @@ public class DclareTests {
     @Test
     public void constants() {
         TestUniverse        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe"), TestImperative.of());
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         universeTransaction.put("step1", () -> Fibonacci.FIBONACCI.get(BigInteger.valueOf(10)));
         universeTransaction.put("step2", () -> Fibonacci.FIBONACCI.get(BigInteger.valueOf(100000)));
         universeTransaction.stop();
@@ -226,7 +226,7 @@ public class DclareTests {
                 }
             }
         });
-        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, MAX_IN_IN_QUEUE, 1000000000, MAX_NR_OF_CHANGES, MAX_NR_OF_FORWARD_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
+        UniverseTransaction universeTransaction = UniverseTransaction.of(universe, THE_POOL, true, MAX_IN_IN_QUEUE, 1000000000, MAX_NR_OF_CHANGES, MAX_NR_OF_FORWARD_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
         universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
@@ -240,7 +240,7 @@ public class DclareTests {
         Observed<TestUniverse, TestMutable> child               = Observed.of("child", null, SetableModifier.containment);
         Observed<TestUniverse, String>      mand                = Observed.of("mandatory", null, SetableModifier.mandatory);
         TestUniverse                        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", child), TestImperative.of());
-        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         TestMutableClass                    clazz               = TestMutableClass.of("Object", mand);
         universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
@@ -254,7 +254,7 @@ public class DclareTests {
         Observed<TestUniverse, TestMutable> child               = Observed.of("child", null, SetableModifier.containment);
         Observed<TestMutable, TestMutable>  ref                 = Observed.of("ref", null);
         TestUniverse                        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", child), TestImperative.of());
-        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction                 universeTransaction = UniverseTransaction.of(universe, THE_POOL, true);
         TestMutableClass                    clazz               = TestMutableClass.of("Object", ref);
         universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.put("orphan", () -> ref.set(TestMutable.of("object", clazz), TestMutable.of("orphan", clazz)));
