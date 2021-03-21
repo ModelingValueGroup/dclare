@@ -67,43 +67,41 @@ public class Construction extends IdentifiedByArray {
         return reason().size();
     }
 
-    public boolean isObserved() {
+    public boolean isDerived() {
         return super.size() == 3;
     }
 
-    public boolean isNotObserved() {
+    public boolean isNotDerived() {
         return super.size() != 3;
     }
 
-    private static Map<Mutable, Set<Construction>> sources(Set<Construction> cons, Map<Mutable, Set<Construction>> sources) {
+    private static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
         for (Construction c : cons) {
             sources = sources.addAll(c.sources(sources));
         }
         return sources;
     }
 
-    private Map<Mutable, Set<Construction>> sources(Map<Mutable, Set<Construction>> sources) {
-        if (isObserved()) {
-            sources = sources(object(), sources);
+    private Map<Newable, Set<Construction>> sources(Map<Newable, Set<Construction>> sources) {
+        if (isDerived()) {
+            if (object() instanceof Newable) {
+                sources = sources((Newable) object(), sources);
+            }
             for (int i = 0; i < super.size(); i++) {
                 Object object = super.get(i);
-                if (object instanceof Mutable && object != Mutable.THIS) {
-                    sources = sources((Mutable) object, sources);
+                if (object instanceof Newable && object != Mutable.THIS) {
+                    sources = sources((Newable) object, sources);
                 }
             }
         }
         return sources;
     }
 
-    private static Map<Mutable, Set<Construction>> sources(Mutable mutable, Map<Mutable, Set<Construction>> sources) {
-        if (!sources.containsKey(mutable)) {
-            if (mutable instanceof Newable && LeafTransaction.getCurrent().universeTransaction().preState().get(mutable, Mutable.D_PARENT_CONTAINING) == null) {
-                Set<Construction> cons = ((Newable) mutable).dConstructions();
-                sources = sources.put(mutable, cons);
-                return sources.putAll(sources(cons, sources));
-            } else {
-                return sources.put(mutable, Set.of());
-            }
+    private static Map<Newable, Set<Construction>> sources(Newable newable, Map<Newable, Set<Construction>> sources) {
+        if (!sources.containsKey(newable)) {
+            Set<Construction> cons = ((Newable) newable).dConstructions();
+            sources = sources.put(newable, cons);
+            return sources.putAll(sources(cons, sources));
         } else {
             return sources;
         }
@@ -140,15 +138,13 @@ public class Construction extends IdentifiedByArray {
 
     public static final class MatchInfo {
 
-        private final Newable                   newable;
-        private final Map<Reason, Newable>      constructed;
+        private final Newable              newable;
+        private final Map<Reason, Newable> constructed;
 
-        private Object                          identity;
-        private Set<Construction>               derivedConstructions;
-        private Boolean                         isOld;
-        private Map<Mutable, Set<Construction>> sources;
-        private Set<Newable>                    notObservedSources;
-        private Set<Newable>                    sourcesAndAncestors;
+        private Object                     identity;
+        private Set<Construction>          derivedConstructions;
+        private Boolean                    isOld;
+        private Set<Newable>               notDerivedSources;
 
         public static MatchInfo of(Newable newable, Map<Reason, Newable> constructed) {
             return new MatchInfo(newable, constructed);
@@ -163,31 +159,24 @@ public class Construction extends IdentifiedByArray {
             return newable().dNewableType().equals(other.newable().dNewableType());
         }
 
-        public boolean haveDerivationCycle(MatchInfo from) {
-            return from.sourcesAndAncestors().contains(newable());
-        }
-
         public boolean haveSameId(MatchInfo from) {
             return derivedConstructions().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
         }
 
         public void mergeIn(MatchInfo from) {
             derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
-            sources = sources().addAll(from.sources());
-            notObservedSources = notObservedSources().addAll(from.notObservedSources());
-            sourcesAndAncestors = sourcesAndAncestors().addAll(from.sourcesAndAncestors());
         }
 
         public boolean isCarvedInStone() {
             return isOld() || hasDirectConstruction();
         }
 
-        private boolean hasDirectConstruction() {
+        public boolean hasDirectConstruction() {
             return newable.dDirectConstruction() != null;
         }
 
         public boolean hasUnidentifiedSource() {
-            return notObservedSources().anyMatch(n -> n.dMatchingIdentity() == null);
+            return notDerivedSources().anyMatch(n -> n.dMatchingIdentity() == null);
         }
 
         public Newable newable() {
@@ -217,32 +206,17 @@ public class Construction extends IdentifiedByArray {
             return derivedConstructions;
         }
 
-        public Set<Newable> sourcesAndAncestors() {
-            if (sourcesAndAncestors == null) {
-                sourcesAndAncestors = sources().flatMap(s -> s.getKey().dAncestors(Newable.class)).toSet();
-            }
-            return sourcesAndAncestors;
-        }
-
-        private Map<Mutable, Set<Construction>> sources() {
-            if (sources == null) {
-                Construction direct = newable.dDirectConstruction();
-                Set<Construction> derived = derivedConstructions();
-                sources = Construction.sources(direct != null ? derived.add(direct) : derived, Map.of());
-            }
-            return sources;
-        }
-
         public Collection<Comparable> sourcesSortKeys() {
-            return notObservedSources().map(Newable::dSortKey).sorted();
+            return notDerivedSources().map(Newable::dSortKey).sorted();
         }
 
-        private Set<Newable> notObservedSources() {
-            if (notObservedSources == null) {
-                Set<Newable> set = sources().filter(e -> e.getValue().anyMatch(Construction::isNotObserved)).map(Entry::getKey).filter(Newable.class).toSet();
-                notObservedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
+        private Set<Newable> notDerivedSources() {
+            if (notDerivedSources == null) {
+                Map<Newable, Set<Construction>> sources = Construction.sources(derivedConstructions(), Map.of());
+                Set<Newable> set = sources.filter(e -> e.getValue().anyMatch(Construction::isNotDerived)).map(Entry::getKey).toSet();
+                notDerivedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
             }
-            return notObservedSources;
+            return notDerivedSources;
         }
 
         private boolean isOld() {

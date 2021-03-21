@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
 
@@ -39,16 +40,17 @@ public interface Newable extends Mutable {
 
     Constant<Newable, Construction>      D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
 
-    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_MATCHED", Boolean.FALSE, SetableModifier.doNotCheckConsistency);
-
-    Observer<Newable>                    D_CONSTRUCTIONS_RULE    = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_DERIVED_CONSTRUCTIONS.set(n, cs -> {
-                                                                     for (Construction c : cs) {
-                                                                         if (c.object().dIsObsolete()) {
-                                                                             cs = cs.remove(c);
+    @SuppressWarnings("rawtypes")
+    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_MATCHED", Boolean.FALSE, (t, o, b, a) -> {
+                                                                     if (a) {
+                                                                         for (Observer r : D_OBSERVERS.get(o)) {
+                                                                             for (Entry<Reason, Newable> e : r.constructed().get(o)) {
+                                                                                 Newable.D_OBSOLETE.set(e.getValue(), Boolean.TRUE);
+                                                                             }
+                                                                             r.constructed().setDefault(o);
                                                                          }
                                                                      }
-                                                                     return cs;
-                                                                 }));
+                                                                 }, SetableModifier.doNotCheckConsistency);
 
     Object dIdentity();
 
@@ -87,13 +89,11 @@ public interface Newable extends Mutable {
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
-        D_CONSTRUCTIONS_RULE.trigger(this);
     }
 
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
-        D_CONSTRUCTIONS_RULE.deObserve(this);
     }
 
     @Override
