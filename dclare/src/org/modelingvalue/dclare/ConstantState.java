@@ -132,7 +132,7 @@ public class ConstantState {
         public <V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
-            if (ist == null) {
+            if (ist == null || forced) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {
