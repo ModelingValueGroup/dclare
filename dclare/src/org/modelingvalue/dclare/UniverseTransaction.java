@@ -41,18 +41,26 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
-
-    private static final boolean CHECK_ORPHAN_STATE = Boolean.getBoolean("CHECK_ORPHAN_STATE");
-
-    private static final boolean TRACE_UNIVERSE = Boolean.getBoolean("TRACE_UNIVERSE");
-
-    public static final int MAX_IN_IN_QUEUE           = Integer.getInteger("MAX_IN_IN_QUEUE", 100);
-    public static final int MAX_TOTAL_NR_OF_CHANGES   = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", 10000);
-    public static final int MAX_NR_OF_CHANGES         = Integer.getInteger("MAX_NR_OF_CHANGES", 200);
-    public static final int MAX_NR_OF_FORWARD_CHANGES = Integer.getInteger("MAX_NR_OF_FORWARD_CHANGES", 16);
-    public static final int MAX_NR_OF_OBSERVED        = Integer.getInteger("MAX_NR_OF_OBSERVED", 1000);
-    public static final int MAX_NR_OF_OBSERVERS       = Integer.getInteger("MAX_NR_OF_OBSERVERS", 1000);
-    public static final int MAX_NR_OF_HISTORY         = Integer.getInteger("MAX_NR_OF_HISTORY", 64) + 3;
+    private static final boolean CHECK_ORPHAN_STATE                = Boolean.getBoolean("CHECK_ORPHAN_STATE");
+    private static final boolean TRACE_UNIVERSE                    = Boolean.getBoolean("TRACE_UNIVERSE");
+    //
+    public static final  int     MAX_TOTAL_NR_OF_CHANGES_DEFAULT   = 10000;
+    public static final  int     MAX_NR_OF_CHANGES_DEFAULT         = 16;
+    public static final  int     MAX_NR_OF_OBSERVED_DEFAULT        = 16;
+    public static final  int     MAX_NR_OF_OBSERVERS_DEFAULT       = 32;
+    //
+    public static final  int     MAX_IN_IN_QUEUE_DEFAULT           = 100;
+    public static final  int     MAX_NR_OF_FORWARD_CHANGES_DEFAULT = 16;
+    public static final  int     MAX_NR_OF_HISTORY_DEFAULT         = 64;
+    //
+    public static final  int     MAX_TOTAL_NR_OF_CHANGES           = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", MAX_TOTAL_NR_OF_CHANGES_DEFAULT);
+    public static final  int     MAX_NR_OF_CHANGES                 = Integer.getInteger("MAX_NR_OF_CHANGES", MAX_NR_OF_CHANGES_DEFAULT);
+    public static final  int     MAX_NR_OF_OBSERVED                = Integer.getInteger("MAX_NR_OF_OBSERVED", MAX_NR_OF_OBSERVED_DEFAULT);
+    public static final  int     MAX_NR_OF_OBSERVERS               = Integer.getInteger("MAX_NR_OF_OBSERVERS", MAX_NR_OF_OBSERVERS_DEFAULT);
+    //
+    public static final  int     MAX_IN_IN_QUEUE                   = Integer.getInteger("MAX_IN_IN_QUEUE", MAX_IN_IN_QUEUE_DEFAULT);
+    public static final  int     MAX_NR_OF_FORWARD_CHANGES         = Integer.getInteger("MAX_NR_OF_FORWARD_CHANGES", MAX_NR_OF_FORWARD_CHANGES_DEFAULT);
+    public static final  int     MAX_NR_OF_HISTORY                 = Integer.getInteger("MAX_NR_OF_HISTORY", MAX_NR_OF_HISTORY_DEFAULT) + 3;
 
     private static final UnaryOperator<Byte> INCREMENT = c -> ++c;
 
