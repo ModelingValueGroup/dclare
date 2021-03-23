@@ -15,11 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Optional;
-
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
@@ -75,36 +71,20 @@ public class Construction extends IdentifiedByArray {
         return super.size() != 3;
     }
 
-    private static Map<Newable, Set<Construction>> sources(Set<Construction> cons, Map<Newable, Set<Construction>> sources) {
-        for (Construction c : cons) {
-            sources = sources.addAll(c.sources(sources));
-        }
-        return sources;
-    }
-
-    private Map<Newable, Set<Construction>> sources(Map<Newable, Set<Construction>> sources) {
+    public Set<Newable> derivers() {
+        Set<Newable> result = Set.of();
         if (isDerived()) {
             if (object() instanceof Newable) {
-                sources = sources((Newable) object(), sources);
+                result = result.add((Newable) object());
             }
             for (int i = 0; i < super.size(); i++) {
                 Object object = super.get(i);
                 if (object instanceof Newable && object != Mutable.THIS) {
-                    sources = sources((Newable) object, sources);
+                    result = result.add((Newable) object);
                 }
             }
         }
-        return sources;
-    }
-
-    private static Map<Newable, Set<Construction>> sources(Newable newable, Map<Newable, Set<Construction>> sources) {
-        if (!sources.containsKey(newable)) {
-            Set<Construction> cons = ((Newable) newable).dConstructions();
-            sources = sources.put(newable, cons);
-            return sources.putAll(sources(cons, sources));
-        } else {
-            return sources;
-        }
+        return result;
     }
 
     public static abstract class Reason extends IdentifiedByArray {
@@ -138,21 +118,19 @@ public class Construction extends IdentifiedByArray {
 
     public static final class MatchInfo {
 
-        private final Newable              newable;
-        private final Map<Reason, Newable> constructed;
+        private final Newable     newable;
 
-        private Object                     identity;
-        private Set<Construction>          derivedConstructions;
-        private Boolean                    isOld;
-        private Set<Newable>               notDerivedSources;
+        private Object            identity;
+        private Set<Construction> derivedConstructions;
+        private Boolean           isOld;
+        private Set<Newable>      notDerivedSources;
 
-        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructed) {
-            return new MatchInfo(newable, constructed);
+        public static MatchInfo of(Newable newable) {
+            return new MatchInfo(newable);
         }
 
-        private MatchInfo(Newable newable, Map<Reason, Newable> constructed) {
+        private MatchInfo(Newable newable) {
             this.newable = newable;
-            this.constructed = constructed;
         }
 
         public boolean haveSameType(MatchInfo other) {
@@ -195,13 +173,7 @@ public class Construction extends IdentifiedByArray {
 
         public Set<Construction> derivedConstructions() {
             if (derivedConstructions == null) {
-                Set<Construction> cons = newable.dDerivedConstructions();
-                Optional<Entry<Reason, Newable>> opt = constructed.filter(e -> e.getValue().equals(newable)).findAny();
-                if (opt.isPresent()) {
-                    ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
-                    cons = cons.add(Construction.of(tx.mutable(), tx.observer(), opt.get().getKey()));
-                }
-                derivedConstructions = cons;
+                derivedConstructions = newable.dDerivedConstructions();
             }
             return derivedConstructions;
         }
@@ -212,9 +184,7 @@ public class Construction extends IdentifiedByArray {
 
         private Set<Newable> notDerivedSources() {
             if (notDerivedSources == null) {
-                Map<Newable, Set<Construction>> sources = Construction.sources(derivedConstructions(), Map.of());
-                Set<Newable> set = sources.filter(e -> e.getValue().anyMatch(Construction::isNotDerived)).map(Entry::getKey).toSet();
-                notDerivedSources = set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet();
+                notDerivedSources = newable.dNonDerivedSources();
             }
             return notDerivedSources;
         }

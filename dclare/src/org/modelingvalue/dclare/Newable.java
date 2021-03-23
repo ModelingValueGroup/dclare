@@ -38,10 +38,22 @@ public interface Newable extends Mutable {
                                                                              });
                                                                  }, SetableModifier.doNotCheckConsistency);
 
+    Observed<Newable, Set<Newable>>      D_SOURCES               = Observed.of("D_SOURCES", Set.of(), SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
+                                                                     Construction direct = n.dDirectConstruction();
+                                                                     if (direct != null) {
+                                                                         D_SOURCES.set(n, Set.of(n));
+                                                                     } else {
+                                                                         Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
+                                                                         D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                     }
+                                                                 });
+
     Constant<Newable, Construction>      D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
 
     @SuppressWarnings("rawtypes")
-    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_MATCHED", Boolean.FALSE, (t, o, b, a) -> {
+    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_OBSOLETE", Boolean.FALSE, (t, o, b, a) -> {
                                                                      if (a) {
                                                                          for (Observer r : D_OBSERVERS.get(o)) {
                                                                              for (Entry<Reason, Newable> e : r.constructed().get(o)) {
@@ -81,6 +93,10 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
+    default Set<Newable> dNonDerivedSources() {
+        return D_SOURCES.get(this);
+    }
+
     @Override
     default boolean dIsObsolete() {
         return D_OBSOLETE.get(this);
@@ -89,11 +105,13 @@ public interface Newable extends Mutable {
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
+        D_SOURCES_RULE.trigger(this);
     }
 
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
+        D_SOURCES_RULE.deObserve(this);
     }
 
     @Override

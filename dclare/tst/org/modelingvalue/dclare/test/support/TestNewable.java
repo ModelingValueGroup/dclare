@@ -85,7 +85,7 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     public Collection<? extends Observer<?>> dMutableObservers() {
-        return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers);
+        return Collection.concat(Newable.super.dMutableObservers(), dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
     }
 
     @Override

@@ -45,9 +45,9 @@ public class UniverseTransaction extends MutableTransaction {
     private static final boolean TRACE_UNIVERSE                    = Boolean.getBoolean("TRACE_UNIVERSE");
     //
     public static final  int     MAX_TOTAL_NR_OF_CHANGES_DEFAULT   = 10000;
-    public static final  int     MAX_NR_OF_CHANGES_DEFAULT         = 16;
-    public static final  int     MAX_NR_OF_OBSERVED_DEFAULT        = 16;
-    public static final  int     MAX_NR_OF_OBSERVERS_DEFAULT       = 32;
+    public static final  int     MAX_NR_OF_CHANGES_DEFAULT         = 200;
+    public static final  int     MAX_NR_OF_OBSERVED_DEFAULT        = 1000;
+    public static final  int     MAX_NR_OF_OBSERVERS_DEFAULT       = 1000;
     //
     public static final  int     MAX_IN_IN_QUEUE_DEFAULT           = 100;
     public static final  int     MAX_NR_OF_FORWARD_CHANGES_DEFAULT = 16;

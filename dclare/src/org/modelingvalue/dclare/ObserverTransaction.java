@@ -393,26 +393,55 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
             if (observed.containment()) {
-                merge();
-                Map<Reason, Newable> constructed = constructions.merge();
-                List<MatchInfo> list = result.filter(Newable.class).map(n -> MatchInfo.of(n, constructed)).toList();
-                if (!(result instanceof List)) {
-                    list = list.sortedBy(i -> i.hasDirectConstruction() ? i.newable().dSortKey() : i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
-                }
-                for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
-                    for (MatchInfo to : list) {
-                        if (!to.equals(from) && to.haveSameType(from) && to.haveSameId(from)) {
-                            makeTheSame(to, from);
-                            result = result.remove(from.newable());
-                            list = list.remove(from);
-                            to.mergeIn(from);
-                            break;
-                        }
-                    }
+                Observer observer = D_MATCH_OBSERVER.get(observed);
+                if (observer.observeds().get(mutable()).isEmpty()) {
+                    observer.trigger(mutable());
                 }
             }
         }
         return result;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private final static Constant<Observed, Observer> D_MATCH_OBSERVER = Constant.of("D_MATCH_OBSERVER", observed -> Observer.of(Pair.of("MATCH", observed), mutable -> {
+        ObserverTransaction tx = (ObserverTransaction) LeafTransaction.getCurrent();
+        tx.match(observed, mutable);
+    }));
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void match(Observed observed, Mutable mutable) {
+        ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
+        ContainingCollection<Object> post = pre;
+        Observed single = observed instanceof ToBeMatched ? ((ToBeMatched) observed).observed() : null;
+        Object preSingle = single != null ? single.get(mutable) : null;
+        Object postSingle = preSingle;
+        if (preSingle instanceof Newable) {
+            post = post.add(preSingle);
+        }
+        if (post != null && post.size() > 1) {
+            List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
+            if (!(post instanceof List)) {
+                list = list.sortedBy(i -> i.hasDirectConstruction() ? i.newable().dSortKey() : i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
+            }
+            for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
+                for (MatchInfo to : list) {
+                    if (!to.equals(from) && to.haveSameType(from) && to.haveSameId(from)) {
+                        makeTheSame(to, from);
+                        post = post.remove(from.newable());
+                        list = list.remove(from);
+                        to.mergeIn(from);
+                        break;
+                    }
+                }
+            }
+            if (single != null) {
+                if (postSingle == null || !post.contains(postSingle)) {
+                    postSingle = post.random().findFirst().orElse(null);
+                }
+                super.set(mutable, single, preSingle, postSingle);
+            }
+            super.set(mutable, observed, pre, postSingle != null ? post.remove(postSingle) : post);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
