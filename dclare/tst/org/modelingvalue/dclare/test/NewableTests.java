@@ -194,6 +194,7 @@ public class NewableTests {
             assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
+            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
         });
 
         return result;
@@ -717,6 +718,7 @@ public class NewableTests {
             assertEquals(32, objects.size());
             assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
+            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
         });
 
         return result;

@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
@@ -124,6 +123,7 @@ public class Construction extends IdentifiedByArray {
         private Set<Construction> derivedConstructions;
         private Boolean           isOld;
         private Set<Newable>      notDerivedSources;
+        private Comparable        sortKey;
 
         public static MatchInfo of(Newable newable) {
             return new MatchInfo(newable);
@@ -133,12 +133,9 @@ public class Construction extends IdentifiedByArray {
             this.newable = newable;
         }
 
-        public boolean haveSameType(MatchInfo other) {
-            return newable().dNewableType().equals(other.newable().dNewableType());
-        }
-
-        public boolean haveSameId(MatchInfo from) {
-            return derivedConstructions().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
+        public boolean mustBeTheSame(MatchInfo from) {
+            return newable().dNewableType().equals(from.newable().dNewableType()) && //
+                    derivedConstructions().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
         }
 
         public void mergeIn(MatchInfo from) {
@@ -178,8 +175,11 @@ public class Construction extends IdentifiedByArray {
             return derivedConstructions;
         }
 
-        public Collection<Comparable> sourcesSortKeys() {
-            return notDerivedSources().map(Newable::dSortKey).sorted();
+        public Comparable sortKey() {
+            if (sortKey == null) {
+                sortKey = notDerivedSources().map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
+            }
+            return sortKey;
         }
 
         private Set<Newable> notDerivedSources() {

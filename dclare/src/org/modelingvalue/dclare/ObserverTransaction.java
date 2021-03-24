@@ -385,17 +385,15 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
+        Observer observer = D_MATCH_OBSERVER.get(observed);
+        if (observer.observeds().get(mutable()).isEmpty()) {
+            observer.trigger(mutable());
+        }
         ContainingCollection<Object> result = rippleOut(observed, start, before, after);
         if (result != null) {
             for (Newable r : result.filter(Newable.class)) {
                 if (r.dIsObsolete()) {
                     result = result.remove(r);
-                }
-            }
-            if (observed.containment()) {
-                Observer observer = D_MATCH_OBSERVER.get(observed);
-                if (observer.observeds().get(mutable()).isEmpty()) {
-                    observer.trigger(mutable());
                 }
             }
         }
@@ -421,11 +419,11 @@ public class ObserverTransaction extends ActionTransaction {
         if (post != null && post.size() > 1) {
             List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
             if (!(post instanceof List)) {
-                list = list.sortedBy(i -> i.hasDirectConstruction() ? i.newable().dSortKey() : i.sourcesSortKeys().findFirst().orElse(i.newable().dSortKey())).toList();
+                list = list.sortedBy(MatchInfo::sortKey).toList();
             }
             for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
                 for (MatchInfo to : list) {
-                    if (!to.equals(from) && to.haveSameType(from) && to.haveSameId(from)) {
+                    if (!to.equals(from) && to.mustBeTheSame(from)) {
                         makeTheSame(to, from);
                         post = post.remove(from.newable());
                         list = list.remove(from);
@@ -448,7 +446,9 @@ public class ObserverTransaction extends ActionTransaction {
     private void makeTheSame(MatchInfo to, MatchInfo from) {
         super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to.newable() + ":" + to.derivedConstructions().size() + "==" + from.newable() + ":" + from.derivedConstructions().size() + ")"));
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + //
+                    to.newable() + ":" + to.derivedConstructions().size() + to.newable().dNonDerivedSources().toString().substring(3) + "==" + //
+                    from.newable() + ":" + from.derivedConstructions().size() + from.newable().dNonDerivedSources().toString().substring(3) + ")"));
         }
         Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
         Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
