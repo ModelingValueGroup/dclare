@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
 
@@ -36,18 +37,31 @@ public interface Newable extends Mutable {
                                                                                  rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
                                                                              }), SetableModifier.doNotCheckConsistency);
 
+    Observed<Newable, Set<Newable>>      D_SOURCES               = Observed.of("D_SOURCES", Set.of(), SetableModifier.doNotCheckConsistency);
+
+    Observer<Newable>                    D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
+                                                                     Construction direct = n.dDirectConstruction();
+                                                                     if (direct != null) {
+                                                                         D_SOURCES.set(n, Set.of(n));
+                                                                     } else {
+                                                                         Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
+                                                                         D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                     }
+                                                                 });
+
     Constant<Newable, Construction>      D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
 
-    Observed<Newable, Newable>           D_MATCHED               = Observed.of("D_MATCHED", null, SetableModifier.doNotCheckConsistency);
-
-    Observer<Newable>                    D_CONSTRUCTIONS_RULE    = Observer.of("D_CONSTRUCTIONS_RULE", n -> D_DERIVED_CONSTRUCTIONS.set(n, cs -> {
-                                                                     for (Construction c : cs) {
-                                                                         if (c.object().dIsObsolete()) {
-                                                                             cs = cs.remove(c);
+    @SuppressWarnings("rawtypes")
+    Observed<Newable, Boolean>           D_OBSOLETE              = Observed.of("D_OBSOLETE", Boolean.FALSE, (t, o, b, a) -> {
+                                                                     if (a) {
+                                                                         for (Observer r : D_OBSERVERS.get(o)) {
+                                                                             for (Entry<Reason, Newable> e : r.constructed().get(o)) {
+                                                                                 Newable.D_OBSOLETE.set(e.getValue(), Boolean.TRUE);
+                                                                             }
+                                                                             r.constructed().setDefault(o);
                                                                          }
                                                                      }
-                                                                     return cs;
-                                                                 }));
+                                                                 }, SetableModifier.doNotCheckConsistency);
 
     Object dIdentity();
 
@@ -78,25 +92,25 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
-    default Newable dMatched() {
-        return D_MATCHED.get(this);
+    default Set<Newable> dNonDerivedSources() {
+        return D_SOURCES.get(this);
     }
 
     @Override
     default boolean dIsObsolete() {
-        return dMatched() != null;
+        return D_OBSOLETE.get(this);
     }
 
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
-        D_CONSTRUCTIONS_RULE.trigger(this);
+        D_SOURCES_RULE.trigger(this);
     }
 
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
-        D_CONSTRUCTIONS_RULE.deObserve(this);
+        D_SOURCES_RULE.deObserve(this);
     }
 
     @Override

@@ -20,6 +20,7 @@ import java.util.Objects;
 @SuppressWarnings("unused")
 public class UniverseStatistics {
     private final UniverseTransaction tx;
+    private final boolean             devMode;
     private final int                 maxInInQueue;
     private final int                 maxTotalNrOfChanges;
     private final int                 maxNrOfChanges;
@@ -28,25 +29,27 @@ public class UniverseStatistics {
     private final int                 maxNrOfObservers;
     private final int                 maxNrOfHistory;
     //
-    private boolean                   debugging;
-    private int                       totalChanges;
-    private long                      runCount;
-    private long                      forwardCount;
-    private long                      totalChangesEver;
+    private       boolean             debugging;
+    private       int                 totalChanges;
+    private       long                runCount;
+    private       long                forwardCount;
+    private       long                totalChangesEver;
 
-    public UniverseStatistics(UniverseTransaction tx, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfForwardChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
+    public UniverseStatistics(UniverseTransaction tx, int maxInInQueue, boolean devMode, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfForwardChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         this.tx = tx;
+        this.devMode = devMode;
         this.maxInInQueue = maxInInQueue;
-        this.maxTotalNrOfChanges = maxTotalNrOfChanges;
-        this.maxNrOfChanges = maxNrOfChanges;
+        this.maxTotalNrOfChanges = devMode ? maxTotalNrOfChanges : Integer.MAX_VALUE;
+        this.maxNrOfChanges = devMode ? maxNrOfChanges : Integer.MAX_VALUE;
         this.maxNrOfForwardChanges = maxNrOfForwardChanges;
-        this.maxNrOfObserved = maxNrOfObserved;
-        this.maxNrOfObservers = maxNrOfObservers;
+        this.maxNrOfObserved = devMode ? maxNrOfObserved : Integer.MAX_VALUE;
+        this.maxNrOfObservers = devMode ? maxNrOfObservers : Integer.MAX_VALUE;
         this.maxNrOfHistory = maxNrOfHistory;
     }
 
     public UniverseStatistics(UniverseStatistics o) {
         this.tx = o.tx;
+        this.devMode = o.devMode;
         this.maxInInQueue = o.maxInInQueue;
         this.maxTotalNrOfChanges = o.maxTotalNrOfChanges;
         this.maxNrOfChanges = o.maxNrOfChanges;
@@ -150,12 +153,12 @@ public class UniverseStatistics {
             return false;
         }
         UniverseStatistics that = (UniverseStatistics) o;
-        return maxInInQueue == that.maxInInQueue && maxTotalNrOfChanges == that.maxTotalNrOfChanges && maxNrOfChanges == that.maxNrOfChanges && maxNrOfForwardChanges == that.maxNrOfForwardChanges && maxNrOfObserved == that.maxNrOfObserved && maxNrOfObservers == that.maxNrOfObservers && //
+        return devMode == that.devMode && maxInInQueue == that.maxInInQueue && maxTotalNrOfChanges == that.maxTotalNrOfChanges && maxNrOfChanges == that.maxNrOfChanges && maxNrOfForwardChanges == that.maxNrOfForwardChanges && maxNrOfObserved == that.maxNrOfObserved && maxNrOfObservers == that.maxNrOfObservers && //
                 maxNrOfHistory == that.maxNrOfHistory && debugging == that.debugging && totalChanges == that.totalChanges && runCount == that.runCount && forwardCount == that.forwardCount && totalChangesEver == that.totalChangesEver;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfForwardChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, forwardCount, totalChangesEver);
+        return Objects.hash(devMode, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfForwardChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, forwardCount, totalChangesEver);
     }
 }

@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
@@ -39,7 +39,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction;
 import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
@@ -56,7 +55,10 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 public class NewableTests {
 
     static {
+        System.setProperty("MAX_NR_OF_CHANGES", "16");
         System.setProperty("MAX_TOTAL_NR_OF_CHANGES", "1000");
+        System.setProperty("MAX_NR_OF_OBSERVED", "20");
+        System.setProperty("MAX_NR_OF_OBSERVERS", "16");
 
         System.setProperty("TRACE_MATCHING", "false");
         System.setProperty("TRACE_UNIVERSE", "false");
@@ -71,14 +73,12 @@ public class NewableTests {
         bidirectional(TestImperative.of());
     }
 
-    @Test
+    @RepeatedTest(MANY_NR / 2)
     public void manyBidirectional() {
         TestImperative imperative = TestImperative.of();
         State state = bidirectional(imperative);
-        int i = 0;
-        while (i++ < MANY_NR) {
-            compareStates(state, bidirectional(imperative));
-        }
+        compareStates(state, bidirectional(imperative));
+        compareStates(state, bidirectional(imperative));
     }
 
     public State bidirectional(TestImperative imperative) {
@@ -126,7 +126,7 @@ public class NewableTests {
         )));
 
         TestUniverse universe = TestUniverse.of("universe", U, imperative);
-        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL, true);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
@@ -194,7 +194,7 @@ public class NewableTests {
             assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
+            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
         });
 
         return result;
@@ -248,12 +248,11 @@ public class NewableTests {
         compareStates(oofb(false, false, true, true, imperative), oofb(true, true, false, true, imperative));
     }
 
-    @Test
+    @RepeatedTest(MANY_NR / 2)
     public void testAll() {
         TestImperative imperative = TestImperative.of();
         State state = oofb(false, false, true, true, imperative);
-        int i = 0;
-        while (i++ < MANY_NR) {
+        for (int i = 0; i < 2; i++) {
             compareStates(state, oofb(true, false, true, false, imperative));
             compareStates(state, oofb(false, true, false, true, imperative));
             compareStates(state, oofb(true, false, true, true, imperative));
@@ -300,18 +299,10 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory, symmetricOpposite);
         TestNewableClass ROL = TestNewableClass.of("ROL", n::get, n, otr, mref, rlopp);
 
+        Observed<TestMutable, Set<Pair<String, TestNewable>>> ftid = Observed.of("ftid", null);
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
         Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
-        Function<TestNewable, Object> ftId = ft -> {
-            TestNewable lr = left.get(ft);
-            TestNewable rr = right.get(ft);
-            TestNewable lt = otr.get(lr);
-            TestNewable rt = otr.get(rr);
-            String ln = n.get(lr);
-            String rn = n.get(rr);
-            return Set.of(Pair.of(ln, lt), Pair.of(rn, rt));
-        };
-        TestNewableClass FAT = TestNewableClass.of("FAT", ftId, n, left, right);
+        TestNewableClass FAT = TestNewableClass.of("FAT", ftid::get, n, ftid, left, right);
 
         ROL.observe(rl -> {
             TestNewable ft = (TestNewable) rl.dParent();
@@ -333,6 +324,15 @@ public class NewableTests {
                     String ln = n.get(left.get(ft));
                     String rn = n.get(right.get(ft));
                     n.set(ft, "~".equals(ln) ? rn : ln != null && rn != null ? ln + "_" + rn : null);
+                }, //
+                ft -> {
+                    TestNewable lr = left.get(ft);
+                    TestNewable rr = right.get(ft);
+                    TestNewable lt = otr.get(lr);
+                    TestNewable rt = otr.get(rr);
+                    String ln = n.get(lr);
+                    String rn = n.get(rr);
+                    ftid.set(ft, Set.of(Pair.of(ln, lt), Pair.of(rn, rt)));
                 });
 
         // Universe
@@ -384,7 +384,7 @@ public class NewableTests {
         // Instances
 
         TestUniverse universe = TestUniverse.of("universe", U, imperative);
-        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL);
+        UniverseTransaction utx = UniverseTransaction.of(universe, THE_POOL, true);
         final State[] state = new State[]{utx.emptyState()};
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
@@ -718,7 +718,7 @@ public class NewableTests {
             assertEquals(32, objects.size());
             assertTrue(objects.containsAll(created.result()));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> reasonTypes(o).size() == reasonTypes(o).toSet().size()));
+            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
         });
 
         return result;
@@ -732,21 +732,15 @@ public class NewableTests {
         return post;
     }
 
-    private static List<Object> reasonTypes(Newable newable) {
-        return newable.dConstructions().map(Construction::reason).map(Construction.Reason::type).toList();
-    }
-
     private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> action) {
         if (!utx.isKilled()) {
             TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
-            u.schedule(() -> {
-                action.accept(c -> {
-                    TestNewable newable = create(id + u.uniqueInt(), c);
-                    created.set(Set::add, newable);
-                    return newable;
-                });
-            });
+            u.schedule(() -> action.accept(c -> {
+                TestNewable newable = create(id + u.uniqueInt(), c);
+                created.set(Set::add, newable);
+                return newable;
+            }));
             return created;
         } else {
             return Concurrent.of(Set.of());
@@ -766,7 +760,7 @@ public class NewableTests {
         HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
         for (Newable an : al) {
             Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
-            assertTrue(!bo.isEmpty());
+            assertTrue(bo.isPresent());
             Newable bn = bo.get();
             bl = bl.remove(bn);
             for (Setable s : an.dClass().dSetables()) {
@@ -790,10 +784,10 @@ public class NewableTests {
             if (done.containsKey(key)) {
                 result = done.get(key);
             } else {
-                if (equals(as, as.get(() -> an.dClass()), bs, bs.get(() -> bn.dClass()), done) && //
-                        equals(as, as.get(() -> an.dNewableType()), bs, bs.get(() -> bn.dNewableType()), done) && //
-                        equals(as, as.get(() -> an.dIdentity()), bs, bs.get(() -> bn.dIdentity()), done) && //
-                        equals(as, as.get(() -> an.dParent()), bs, bs.get(() -> bn.dParent()), done)) {
+                if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
+                        equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
+                        equals(as, as.get(an::dIdentity), bs, bs.get(bn::dIdentity), done) && //
+                        equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }
                 done.put(key, result);

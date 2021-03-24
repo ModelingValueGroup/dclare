@@ -21,23 +21,21 @@ import org.modelingvalue.collections.util.Pair;
 
 public enum Direction implements Internable {
 
-    forward(0),
+    urgent(0),
 
-    backward(1),
+    forward(1),
 
-    scheduled(2);
+    backward(2),
 
-    public static final Direction[] FORWARD_SCHEDULED = new Direction[]{Direction.forward, Direction.scheduled};
+    scheduled(3);
 
-    public static final Direction[] FORWARD_BACKWARD  = new Direction[]{Direction.forward, Direction.backward};
-
-    public final Queued<Action<?>>  actions;
-    public final Queued<Mutable>    children;
-    public final int                nr;
+    public final Queued<Action<?>> actions;
+    public final Queued<Mutable>   children;
+    public final int               nr;
 
     Direction(int nr) {
-        actions = new Queued<>(true);
-        children = new Queued<>(false);
+        actions = new Queued<>(true, nr);
+        children = new Queued<>(false, nr);
         this.nr = nr;
     }
 
@@ -45,7 +43,7 @@ public enum Direction implements Internable {
 
         private final boolean actions;
 
-        private Queued(boolean actions) {
+        private Queued(boolean actions, int nr) {
             super(Pair.of(Direction.this, actions), Set.of(), null, null, null, SetableModifier.doNotCheckConsistency);
             this.actions = actions;
         }
