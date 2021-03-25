@@ -409,34 +409,44 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void match(Observed observed, Mutable mutable) {
         ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
-        ContainingCollection<Object> post = pre;
-        Observed single = observed instanceof ToBeMatched ? ((ToBeMatched) observed).observed() : null;
-        Object preSingle = single != null ? single.get(mutable) : null;
-        Object postSingle = preSingle;
-        if (preSingle instanceof Newable) {
-            post = post.add(preSingle);
-        }
-        if (post != null && post.size() > 1) {
-            List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
-            if (!(post instanceof List)) {
-                list = list.sortedBy(MatchInfo::sortKey).toList();
+        if (pre != null) {
+            Observed singleton = observed instanceof ToBeMatched ? ((ToBeMatched) observed).observed() : null;
+            Object preSingle = singleton != null ? singleton.get(mutable) : null;
+            ContainingCollection<Object> post = pre;
+            Object postSingle = preSingle;
+            if (preSingle instanceof Newable) {
+                post = post.add(preSingle);
             }
-            for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
-                for (MatchInfo to : list) {
-                    if (!to.equals(from) && to.mustBeTheSame(from)) {
-                        makeTheSame(to, from);
-                        post = post.remove(from.newable());
-                        list = list.remove(from);
-                        to.mergeIn(from);
-                        break;
+            if (post.size() > 1) {
+                List<MatchInfo> all = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
+                List<MatchInfo> fromList = all.exclude(MatchInfo::isCarvedInStone).toList();
+                List<MatchInfo> toList = all.filter(MatchInfo::isCarvedInStone).toList();
+                if (!fromList.isEmpty() && !toList.isEmpty()) {
+                    if (!(post instanceof List)) {
+                        fromList = fromList.sortedBy(MatchInfo::sortKey).toList();
+                        toList = toList.sortedBy(MatchInfo::sortKey).toList();
+                    }
+                    for (MatchInfo from : fromList) {
+                        for (MatchInfo to : toList) {
+                            if (to.mustBeTheSame(from)) {
+                                makeTheSame(to, from);
+                                post = post.remove(from.newable());
+                                toList = toList.remove(from);
+                                to.mergeIn(from);
+                                break;
+                            }
+                        }
+                        if (toList.isEmpty()) {
+                            break;
+                        }
                     }
                 }
             }
-            if (single != null) {
+            if (singleton != null) {
                 if (postSingle == null || !post.contains(postSingle)) {
                     postSingle = post.random().findFirst().orElse(null);
                 }
-                super.set(mutable, single, preSingle, postSingle);
+                super.set(mutable, singleton, preSingle, postSingle);
             }
             super.set(mutable, observed, pre, postSingle != null ? post.remove(postSingle) : post);
         }
