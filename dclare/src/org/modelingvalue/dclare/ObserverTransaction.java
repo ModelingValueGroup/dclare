@@ -240,7 +240,7 @@ public class ObserverTransaction extends ActionTransaction {
             if (pre instanceof Newable || post instanceof Newable) {
                 post = (T) singleMatch((Mutable) object, (Observed) setable, start, pre, post);
             } else if (isNewableCollection(pre) || isNewableCollection(post)) {
-                post = (T) manyMatch((Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
+                post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
             } else {
                 post = rippleOut((Observed<O, T>) setable, start, pre, post);
             }
@@ -371,7 +371,7 @@ public class ObserverTransaction extends ActionTransaction {
         Set<Newable> preSet = toBeMatched.get(object);
         Set<Newable> preTotal = before instanceof Newable ? preSet.add((Newable) before) : preSet;
         Set<Newable> postTotal = after instanceof Newable ? Set.of((Newable) after) : Set.of();
-        Set<Newable> postResult = (Set<Newable>) manyMatch(toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
+        Set<Newable> postResult = (Set<Newable>) manyMatch(object, toBeMatched, (Set) startTotal, (Set) preTotal, (Set) postTotal);
         Set<Newable> local = constructions.merge().toValues().toSet();
         if (postResult.anyMatch(n -> local.contains(n) || !n.dConstructions().isEmpty())) {
             postResult = postResult.filter(n -> local.contains(n) || !n.dConstructions().isEmpty()).toSet();
@@ -384,10 +384,10 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ContainingCollection<Object> manyMatch(Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
+    private ContainingCollection<Object> manyMatch(Mutable object, Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
         Observer observer = D_MATCH_OBSERVER.get(observed);
-        if (observer.observeds().get(mutable()).isEmpty()) {
-            observer.trigger(mutable());
+        if (observer.observeds().get(object).isEmpty()) {
+            observer.trigger(object);
         }
         ContainingCollection<Object> result = rippleOut(observed, start, before, after);
         if (result != null) {
