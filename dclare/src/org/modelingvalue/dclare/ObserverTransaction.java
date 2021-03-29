@@ -385,9 +385,11 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Mutable object, Observed observed, ContainingCollection<Object> start, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        Observer observer = D_MATCH_OBSERVER.get(observed);
-        if (observer.observeds().get(object).isEmpty()) {
-            observer.trigger(object);
+        if (observed.containment()) {
+            Observer observer = D_MATCH_OBSERVER.get(observed);
+            if (observer.observeds().get(object).isEmpty()) {
+                observer.trigger(object);
+            }
         }
         ContainingCollection<Object> result = rippleOut(observed, start, before, after);
         if (result != null) {
