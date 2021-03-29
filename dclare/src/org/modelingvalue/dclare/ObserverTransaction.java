@@ -417,26 +417,23 @@ public class ObserverTransaction extends ActionTransaction {
             if (preSingle instanceof Newable) {
                 post = post.add(preSingle);
             }
+            for (Newable r : post.filter(Newable.class)) {
+                if (r.dIsObsolete()) {
+                    post = post.remove(r);
+                }
+            }
             if (post.size() > 1) {
-                List<MatchInfo> all = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
-                List<MatchInfo> fromList = all.exclude(MatchInfo::isCarvedInStone).toList();
-                List<MatchInfo> toList = all.filter(MatchInfo::isCarvedInStone).toList();
-                if (!fromList.isEmpty() && !toList.isEmpty()) {
-                    if (!(post instanceof List)) {
-                        fromList = fromList.sortedBy(MatchInfo::sortKey).toList();
-                        toList = toList.sortedBy(MatchInfo::sortKey).toList();
-                    }
-                    for (MatchInfo from : fromList) {
-                        for (MatchInfo to : toList) {
-                            if (to.mustBeTheSame(from)) {
-                                makeTheSame(to, from);
-                                post = post.remove(from.newable());
-                                toList = toList.remove(from);
-                                to.mergeIn(from);
-                                break;
-                            }
-                        }
-                        if (toList.isEmpty()) {
+                List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n)).toList();
+                if (!(post instanceof List)) {
+                    list = list.sortedBy(MatchInfo::sortKey).toList();
+                }
+                for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
+                    for (MatchInfo to : list) {
+                        if (!to.equals(from) && to.mustBeTheSame(from)) {
+                            makeTheSame(to, from);
+                            post = post.remove(from.newable());
+                            list = list.remove(from);
+                            to.mergeIn(from);
                             break;
                         }
                     }
@@ -457,8 +454,8 @@ public class ObserverTransaction extends ActionTransaction {
         super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (TRACE_MATCHING) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + //
-                    to.newable() + ":" + to.derivedConstructions().size() + to.newable().dNonDerivedSources().toString().substring(3) + "==" + //
-                    from.newable() + ":" + from.derivedConstructions().size() + from.newable().dNonDerivedSources().toString().substring(3) + ")"));
+                    to.newable() + ":" + to.directions().toString().substring(3) + to.newable().dNonDerivedSources().toString().substring(3) + "==" + //
+                    from.newable() + ":" + from.directions().toString().substring(3) + from.newable().dNonDerivedSources().toString().substring(3) + ")"));
         }
         Set<Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
         Set<Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);

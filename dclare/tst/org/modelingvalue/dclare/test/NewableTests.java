@@ -107,21 +107,24 @@ public class NewableTests {
             cs.set(u, as.addAll(as.map(br::get)));
         });
 
-        A.observe(a -> br.set(a, create("1", a, B, //
+        String a2bDir = "a2b";
+        String b2aDir = "b2a";
+
+        A.observe(a -> br.set(a, create(a2bDir, "1", a, B, //
                 b -> n.set(b, n.get(a)), //
                 b -> bcs.set(b, acs.get(a).map(br::get).toSet()), //
                 b -> bcr.set(b, acr.get(a) != null ? br.get(acr.get(a)) : null) //
         )));
-        B.observe(b -> ar.set(b, create("2", b, A, //
+        B.observe(b -> ar.set(b, create(b2aDir, "2", b, A, //
                 a -> n.set(a, n.get(b)), //
                 a -> acs.set(a, bcs.get(b).map(ar::get).toSet()), //
                 a -> acr.set(a, bcr.get(b) != null ? ar.get(bcr.get(b)) : null) //
         )));
 
-        AC.observe(ac -> br.set(ac, create("3", ac, BC, //
+        AC.observe(ac -> br.set(ac, create(a2bDir, "3", ac, BC, //
                 bc -> n.set(bc, n.get(ac))//
         )));
-        BC.observe(bc -> ar.set(bc, create("4", bc, AC, //
+        BC.observe(bc -> ar.set(bc, create(b2aDir, "4", bc, AC, //
                 ac -> n.set(ac, n.get(bc))//
         )));
 
@@ -304,6 +307,8 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
         TestNewableClass FAT = TestNewableClass.of("FAT", ftid::get, n, ftid, left, right);
 
+        String fbDir = "fb";
+
         ROL.observe(rl -> {
             TestNewable ft = (TestNewable) rl.dParent();
             rlopp.set(rl, rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft));
@@ -312,12 +317,12 @@ public class NewableTests {
         FAT.observe(//
                 ft -> {
                     if (left.get(ft) == null) {
-                        left.set(ft, create("L", ft, ROL));
+                        left.set(ft, create(fbDir, "L", ft, ROL));
                     }
                 }, //
                 ft -> {
                     if (right.get(ft) == null) {
-                        right.set(ft, create("R", ft, ROL));
+                        right.set(ft, create(fbDir, "R", ft, ROL));
                     }
                 }, //
                 ft -> {
@@ -344,37 +349,41 @@ public class NewableTests {
         // Transformation
 
         if (oo2fb) {
+            String oo2fbDir = "oo2fb";
+
             U.observe(u -> fbms.set(u, ooms.get(u).map(mfbm::get).toSet()));
-            OOM.observe(oo -> mfbm.set(oo, create("1", oo, FBM, //
+            OOM.observe(oo -> mfbm.set(oo, create(oo2fbDir, "1", oo, FBM, //
                     fb -> n.set(fb, n.get(oo)), //
                     fb -> ots.set(fb, cls.get(oo).map(mobt::get).toSet()), //
                     fb -> fts.set(fb, cls.get(oo).flatMap(refs::get).map(mfat::get).notNull().toSet()) //
             )));
-            CLS.observe(cl -> mobt.set(cl, create("2", cl, OBT, //
+            CLS.observe(cl -> mobt.set(cl, create(oo2fbDir, "2", cl, OBT, //
                     ot -> n.set(ot, n.get(cl)) //
             )));
-            REF.observe(rf -> mrol.set(rf, create("3", rf, ROL, //
+            REF.observe(rf -> mrol.set(rf, create(oo2fbDir, "3", rf, ROL, //
                     rl -> n.set(rl, n.get(rf)), //
                     rl -> otr.set(rl, typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
-            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create("4", rf, FAT, //
+            )), rf -> mfat.set(rf, opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? create(oo2fbDir, "4", rf, FAT, //
                     ft -> right.set(ft, mrol.get(rf)), //
-                    ft -> left.set(ft, opp.get(rf) == null ? create("5", rf, ROL, //
+                    ft -> left.set(ft, opp.get(rf) == null ? create(oo2fbDir, "5", rf, ROL, //
                             rl -> n.set(rl, "~"), //
                             rl -> otr.set(rl, mobt.get((TestNewable) rf.dParent()))) : mrol.get(opp.get(rf))) //
             ) : null));
         }
 
         if (fb2oo) {
+            String fb2ooDir = "fb2oo";
+
             U.observe(u -> ooms.set(u, fbms.get(u).map(moom::get).toSet()));
-            FBM.observe(fb -> moom.set(fb, create("6", fb, OOM, //
+            FBM.observe(fb -> moom.set(fb, create(fb2ooDir, "6", fb, OOM, //
                     oo -> n.set(oo, n.get(fb)), //
                     oo -> cls.set(oo, ots.get(fb).map(mcls::get).toSet()) //
             )));
-            OBT.observe(ot -> mcls.set(ot, create("7", ot, CLS, //
+            OBT.observe(ot -> mcls.set(ot, create(fb2ooDir, "7", ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
                     cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).map(mref::get).notNull().toSet()) //
             )));
-            ROL.observe(rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create("8", rl, REF, //
+            ROL.observe(rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create(fb2ooDir, "8", rl, REF, //
                     rf -> n.set(rf, n.get(rl)), //
                     rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
                     rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
@@ -737,7 +746,7 @@ public class NewableTests {
             TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
             u.schedule(() -> action.accept(c -> {
-                TestNewable newable = create(id + u.uniqueInt(), c);
+                TestNewable newable = create("INIT", id + u.uniqueInt(), c);
                 created.set(Set::add, newable);
                 return newable;
             }));

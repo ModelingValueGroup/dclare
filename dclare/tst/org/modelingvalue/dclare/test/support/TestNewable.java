@@ -33,21 +33,15 @@ public class TestNewable extends TestMutable implements Newable {
     public static final Observed<TestMutable, String> n = Observed.of("n", null);
 
     @SafeVarargs
-    public static TestNewable create(Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(Object direction, Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason}, observers));
+        return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason}, observers));
     }
 
     @SafeVarargs
-    public static TestNewable create(Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(Object direction, Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason1, reason2}, observers));
-    }
-
-    @SafeVarargs
-    public static TestNewable create(Object reason1, Object reason2, Object reason3, TestNewableClass clazz, Consumer<TestNewable>... observers) {
-        LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{reason1, reason2, reason3}, observers));
+        return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason1, reason2}, observers));
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
@@ -96,11 +90,13 @@ public class TestNewable extends TestMutable implements Newable {
 
     private static class TestReason extends Construction.Reason {
 
-        private Set<Observer<?>> observers = Set.of();
+        private final Object           direction;
+        private final Set<Observer<?>> observers;
 
         @SuppressWarnings("unchecked")
-        private TestReason(Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
+        private TestReason(Object direction, Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
             super(thiz, id);
+            Set<Observer<?>> obs = Set.of();
             for (int i = 0; i < observers.length; i++) {
                 Consumer<TestNewable> finalCons = observers[i];
                 Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
@@ -109,13 +105,20 @@ public class TestNewable extends TestMutable implements Newable {
                         finalCons.accept(n);
                     }
                 });
-                this.observers = this.observers.add(observer);
+                obs = obs.add(observer);
             }
+            this.observers = obs;
+            this.direction = direction;
         }
 
         @SuppressWarnings("unchecked")
         public Set<? extends Observer<?>> observers() {
             return (Set<? extends Observer<?>>) observers;
+        }
+
+        @Override
+        public Object direction() {
+            return direction;
         }
 
     }
