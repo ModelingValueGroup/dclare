@@ -59,10 +59,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Constructed                   constructed;
 
     private long                                runCount     = -1;
-    private long                                forwardCount = -1;
     private int                                 instances;
     private int                                 changes;
-    private int                                 forwardChanges;
     private boolean                             stopped;
 
     @SuppressWarnings("rawtypes")
@@ -123,16 +121,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             this.changes = 0;
             this.stopped = false;
         }
-        long forwardCount = stats.forwardCount();
-        if (this.forwardCount != forwardCount) {
-            this.forwardCount = forwardCount;
-            this.forwardChanges = 0;
-        }
     }
 
     protected final int countChangesPerInstance() {
         ++changes;
-        ++forwardChanges;
         return changesPerInstance();
     }
 
@@ -143,16 +135,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             return changes;
         } else {
             return changes / i;
-        }
-    }
-
-    protected final int forwardChangesPerInstance() {
-        int i = instances;
-        if (i <= 0) {
-            instances = 1;
-            return forwardChanges;
-        } else {
-            return forwardChanges / i;
         }
     }
 
