@@ -22,8 +22,9 @@ import org.modelingvalue.collections.util.StringUtil;
 public abstract class Transaction {
 
     private final UniverseTransaction universeTransaction;
-    private TransactionClass          cls;
+    private Direction                 direction;
     private MutableTransaction        parent;
+    private TransactionClass          cls;
 
     protected Transaction(UniverseTransaction universeTransaction) {
         this.universeTransaction = universeTransaction;
@@ -51,16 +52,21 @@ public abstract class Transaction {
         return cls != null;
     }
 
+    public Direction direction() {
+        return direction;
+    }
+
     public UniverseTransaction universeTransaction() {
         return universeTransaction;
     }
 
-    public void start(TransactionClass cls, MutableTransaction parent) {
+    public void start(Direction direction, TransactionClass cls, MutableTransaction parent) {
         if (this.cls != null) {
             throw new ConcurrentModificationException();
         }
         this.cls = cls;
         this.parent = parent;
+        this.direction = direction;
     }
 
     public void stop() {
@@ -69,6 +75,7 @@ public abstract class Transaction {
         }
         cls = null;
         parent = null;
+        direction = null;
     }
 
     public int depth() {

@@ -16,32 +16,50 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class Action<O extends Mutable> extends Leaf {
 
+    protected static final Function<Mutable, Direction> DEFAULT_DIRECTION_FUNCTION = m -> m.dDirection();
+
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
-        }, Direction.forward);
+        }, Priority.forward);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action, Direction.forward);
+        return new Action<>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new Action<>(id, action, initDirection);
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new Action<>(id, action, initPriority);
     }
 
-    private final Consumer<O> action;
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
+        return new Action<>(id, action, direction, Priority.forward);
+    }
 
-    protected Action(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, initDirection);
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
+        return new Action<>(id, action, direction, initPriority);
+    }
+
+    private final Consumer<O>            action;
+    private final Function<O, Direction> direction;
+
+    @SuppressWarnings("unchecked")
+    protected Action(Object id, Consumer<O> action, Priority initPriority) {
+        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
+    }
+
+    protected Action(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        super(id, initPriority);
         this.action = action;
+        this.direction = direction;
     }
 
     @Override
-    public ActionTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().actionTransactions.get().open(this, parent);
+    public ActionTransaction openTransaction(Direction direction, MutableTransaction parent) {
+        return parent.universeTransaction().actionTransactions.get().open(direction, this, parent);
     }
 
     @Override
@@ -54,12 +72,23 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     public void trigger(O mutable) {
-        LeafTransaction.getCurrent().trigger(mutable, this, initDirection());
+        LeafTransaction.getCurrent().trigger(mutable, this, initPriority());
     }
 
     @Override
     public ActionTransaction newTransaction(UniverseTransaction universeTransaction) {
         return new ActionTransaction(universeTransaction);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Direction direction(MutableTransaction parent) {
+        return direction((O) parent.cls());
+        // return parent.direction() == DEFAULT_DIRECTION ? direction((O) parent.cls()) : parent.direction();
+    }
+
+    protected Direction direction(O mutable) {
+        return direction.apply(mutable);
     }
 
 }

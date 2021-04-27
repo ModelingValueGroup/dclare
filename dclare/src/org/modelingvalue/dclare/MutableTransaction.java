@@ -25,26 +25,26 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.Direction.Queued;
 import org.modelingvalue.dclare.Observed.Observers;
+import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
-    private static final boolean                          TRACE_MUTABLE = Boolean.getBoolean("TRACE_MUTABLE");
-    // private static final int                           MAX_NR_OFF_MERGE_CONFLICTS = Integer.getInteger("MAX_NR_OFF_MERGE_CONFLICTS", 4);
+    private static final boolean                          TRACE_MUTABLE  = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final boolean                          RUN_SEQUENTIAL = Boolean.getBoolean("RUN_SEQUENTIAL");
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions       = new Set[1];
+    private final Set<Action<?>>[]                        actions        = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children      = new Set[1];
-    private final State[]                                 state         = new State[1];
+    private final Set<Mutable>[]                          children       = new Set[1];
+    private final State[]                                 state          = new State[1];
 
-    // private int                                        nrOffMergeConflicts;
     private boolean                                       urgent;
+    private Set<State>                                    states;
 
     @SuppressWarnings("unchecked")
 
@@ -59,11 +59,11 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return (Mutable) cls();
     }
 
-    protected boolean hasQueued(State state, Mutable object, Direction dir) {
+    protected boolean hasQueued(State state, Mutable object, Priority dir) {
         return !state.get(object, dir.actions).isEmpty() || !state.get(object, dir.children).isEmpty();
     }
 
-    private void move(Mutable object, Direction from, Direction to) {
+    private void move(Mutable object, Priority from, Priority to) {
         state[0] = state[0].set(object, from.actions, Set.of(), actions);
         state[0] = state[0].set(object, to.actions, Set::addAll, actions[0]);
         state[0] = state[0].set(object, from.children, Set.of(), children);
@@ -78,21 +78,22 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         urgent = parent() != null && parent().urgent;
         TraceTimer.traceBegin("compound");
         state[0] = pre;
+        states = Set.of(pre);
         try {
             if (parent() == null) {
-                move(mutable(), Direction.backward, Direction.scheduled);
+                move(mutable(), Priority.backward, Priority.scheduled);
             }
             while (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable(), Direction.scheduled.actions, Set.of(), actions);
+                state[0] = state[0].set(mutable(), Priority.scheduled.actions, Set.of(), actions);
                 if (!actions[0].isEmpty()) {
-                    run(actions[0], Direction.scheduled.actions);
+                    run(actions[0], Priority.scheduled.actions, states);
                 } else {
-                    state[0] = state[0].set(mutable(), Direction.scheduled.children, Set.of(), children);
+                    state[0] = state[0].set(mutable(), Priority.scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
-                        run(children[0], Direction.scheduled.children);
+                        run(children[0], Priority.scheduled.children, states);
                     } else {
-                        if (parent() != null && hasQueued(state[0], mutable(), Direction.backward)) {
-                            state[0] = state[0].set(parent().mutable(), Direction.backward.children, Set::add, mutable());
+                        if (parent() != null && hasQueued(state[0], mutable(), Priority.backward)) {
+                            state[0] = state[0].set(parent().mutable(), Priority.backward.children, Set::add, mutable());
                         }
                         break;
                     }
@@ -103,8 +104,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             universeTransaction().handleException(new TransactionException(mutable(), t));
             return state[0];
         } finally {
+            states = null;
             urgent = false;
-            // nrOffMergeConflicts = 0;
             state[0] = null;
             actions[0] = null;
             children[0] = null;
@@ -112,36 +113,47 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
-    private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
+    private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued, Set<State> states) {
         if (TRACE_MUTABLE) {
             System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
-        try {
-            state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
-                    (s, t) -> new State[]{t.run(s[0], this)}, //
-                    (a, b) -> {
-                        State[] r = new State[a.length + b.length];
-                        System.arraycopy(a, 0, r, 0, a.length);
-                        System.arraycopy(b, 0, r, a.length, b.length);
-                        return r;
-                    })));
-        } catch (NotMergeableException nme) {
-            //if (++nrOffMergeConflicts > MAX_NR_OFF_MERGE_CONFLICTS) {
-            //    throw nme;
-            // } else {
-            for (TransactionClass t : todo.random()) {
-                state[0] = t.run(state[0], this);
+        if (RUN_SEQUENTIAL) {
+            runSequential(todo);
+        } else {
+            try {
+                runParallel(todo);
+            } catch (NotMergeableException nme) {
+                runSequential(todo);
             }
-            // }
         }
-        if (hasQueued(state[0], mutable(), Direction.urgent)) {
+        this.states = states.add(state[0]);
+        if (parent() != null && this.states == states) {
+            state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
+        } else if (hasQueued(state[0], mutable(), Priority.urgent)) {
             urgent = true;
-            move(mutable(), Direction.urgent, Direction.scheduled);
+            move(mutable(), Priority.urgent, Priority.scheduled);
         } else if (parent() == null || !parent().urgent) {
             urgent = false;
-            move(mutable(), Direction.forward, Direction.scheduled);
-        } else if (hasQueued(state[0], mutable(), Direction.forward)) {
-            state[0] = state[0].set(parent().mutable(), Direction.forward.children, Set::add, mutable());
+            move(mutable(), Priority.forward, Priority.scheduled);
+        } else if (hasQueued(state[0], mutable(), Priority.forward)) {
+            state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
+        }
+    }
+
+    private <T extends TransactionClass> void runParallel(Set<T> todo) {
+        state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
+                (s, t) -> new State[]{t.run(s[0], t.direction(this), this)}, //
+                (a, b) -> {
+                    State[] r = new State[a.length + b.length];
+                    System.arraycopy(a, 0, r, 0, a.length);
+                    System.arraycopy(b, 0, r, a.length, b.length);
+                    return r;
+                })));
+    }
+
+    private <T extends TransactionClass> void runSequential(Set<T> todo) {
+        for (TransactionClass t : todo.random()) {
+            state[0] = t.run(state[0], t.direction(this), this);
         }
     }
 
@@ -155,9 +167,9 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             triggeredChildren[1].init(Set.of());
             try {
                 State state = base.merge(this, branches, branches.length);
-                state = trigger(state, triggeredActions.result(), Direction.forward);
-                state = triggerMutables(state, triggeredChildren[0].result(), Direction.forward);
-                state = triggerMutables(state, triggeredChildren[1].result(), Direction.backward);
+                state = trigger(state, triggeredActions.result(), Priority.forward);
+                state = triggerMutables(state, triggeredChildren[0].result(), Priority.forward);
+                state = triggerMutables(state, triggeredChildren[1].result(), Priority.backward);
                 return state;
             } finally {
                 triggeredActions.clear();
@@ -189,14 +201,14 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     Object branchValue = State.get(psb, observedProp);
                     if (!Objects.equals(branchValue, baseValue)) {
                         Map<Observer, Set<Mutable>> addedObservers = observers.removeAll(State.get(psb, os), Set::removeAll).//
-                                toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.resolve((Mutable) o)).toSet()));
+                                toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) o)).toSet()));
                         triggeredActions.change(ts -> ts.addAll(addedObservers, Set::addAll));
                     }
                 }
             }
         } else if (p.getKey() instanceof Queued) {
             Queued<Mutable> ds = (Queued) p.getKey();
-            if (ds.children() && ds.direction() != Direction.scheduled) {
+            if (ds.children() && ds.priority() != Priority.scheduled) {
                 Set<Mutable> depth = (Set<Mutable>) p.getValue();
                 depth = depth.removeAll(State.get(ps, ds));
                 if (!depth.isEmpty()) {
@@ -206,7 +218,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         if (!Objects.equals(branchParent, baseParent)) {
                             Set<Mutable> addedDepth = depth.removeAll(State.get(psb, ds));
                             if (!addedDepth.isEmpty()) {
-                                triggeredChildren[ds.direction().nr - 1].change(ts -> ts.addAll(addedDepth));
+                                triggeredChildren[ds.priority().nr - 1].change(ts -> ts.addAll(addedDepth));
                             }
                         }
                     }
@@ -216,30 +228,30 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private State trigger(State state, Map<Observer, Set<Mutable>> leafs, Direction direction) {
+    private State trigger(State state, Map<Observer, Set<Mutable>> leafs, Priority priority) {
         for (Entry<Observer, Set<Mutable>> e : leafs) {
             for (Mutable m : e.getValue()) {
-                state = trigger(state, m, e.getKey(), direction);
+                state = trigger(state, m, e.getKey(), priority);
             }
         }
         return state;
     }
 
-    private State triggerMutables(State state, Set<Mutable> mutables, Direction direction) {
+    private State triggerMutables(State state, Set<Mutable> mutables, Priority priority) {
         for (Mutable mutable : mutables) {
-            state = trigger(state, mutable, null, direction);
+            state = trigger(state, mutable, null, priority);
         }
         return state;
     }
 
-    protected <O extends Mutable> State trigger(State state, O target, Action<O> action, Direction direction) {
+    protected <O extends Mutable> State trigger(State state, O target, Action<O> action, Priority priority) {
         Mutable object = target;
         if (action != null) {
-            state = state.set(object, direction.actions, Set::add, action);
+            state = state.set(object, priority.actions, Set::add, action);
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         while (parent != null && !mutable().equals(object)) {
-            state = state.set(parent, direction.children, Set::add, object);
+            state = state.set(parent, priority.children, Set::add, object);
             object = parent;
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         }

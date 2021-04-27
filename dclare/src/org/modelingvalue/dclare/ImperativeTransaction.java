@@ -57,7 +57,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.allSetted = SETTED_MAP;
         this.firstHandler = firstHandler;
         this.diffHandler = diffHandler;
-        super.start(cls, universeTransaction);
+        super.start(TransactionClass.DEFAULT_DIRECTION, cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
             LeafTransaction.getContext().setOnThread(this);
             try {

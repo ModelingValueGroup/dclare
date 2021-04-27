@@ -18,11 +18,13 @@ package org.modelingvalue.dclare;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
@@ -36,11 +38,19 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
-        return new Observer<>(id, action, Direction.forward);
+        return new Observer<M>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new Observer<>(id, action, initDirection);
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
+        return new Observer<M>(id, action, direction, Priority.forward);
+    }
+
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new Observer<M>(id, action, initPriority);
+    }
+
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
+        return new Observer<M>(id, action, direction, initPriority);
     }
 
     public final Traces                         traces;
@@ -58,8 +68,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    protected Observer(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    @SuppressWarnings("unchecked")
+    protected Observer(Object id, Consumer<O> action, Priority initPriority) {
+        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
+    }
+
+    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        super(id, action, direction, initPriority);
         traces = new Traces(Pair.of(this, "TRACES"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
@@ -79,8 +94,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @Override
-    public ObserverTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().observerTransactions.get().open(this, parent);
+    public ObserverTransaction openTransaction(Direction direction, MutableTransaction parent) {
+        return parent.universeTransaction().observerTransactions.get().open(direction, this, parent);
     }
 
     @Override
@@ -95,7 +110,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public void deObserve(O mutable) {
         observeds.setDefault(mutable);
-        for (Direction dir : Direction.values()) {
+        for (Priority dir : Priority.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);
         }
@@ -172,10 +187,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
-                        Mutable o = a.resolve(mutable);
+                        Mutable o = a.dResolve(mutable);
                         tx.set(o, obs, (m, e) -> m.add(e, Set::addAll), observer.entry(mutable, o));
                     }, r -> {
-                        Mutable o = r.resolve(mutable);
+                        Mutable o = r.dResolve(mutable);
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
@@ -242,10 +257,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                     Newable after = post.get(reason);
                     if (!Objects.equals(before, after)) {
                         if (before != null) {
-                            Newable.D_DERIVED_CONSTRUCTIONS.set(before, Set::remove, cons);
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
                         }
                         if (after != null) {
-                            Newable.D_DERIVED_CONSTRUCTIONS.set(after, Set::add, cons);
+                            Newable.D_DERIVED_CONSTRUCTIONS.set(after, QualifiedSet::put, cons);
                         }
                     }
                 }

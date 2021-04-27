@@ -195,10 +195,10 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    Direction.forward.children.set((Mutable) object, Set::add, added);
+                    Priority.forward.children.set((Mutable) object, Set::add, added);
                 }
             }, removed -> {
-                for (Direction dir : Direction.values()) {
+                for (Priority dir : Priority.values()) {
                     dir.children.set((Mutable) object, Set::remove, removed);
                 }
                 if (!MOVING.get()) {

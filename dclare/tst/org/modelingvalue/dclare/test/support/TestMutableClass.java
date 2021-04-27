@@ -22,6 +22,7 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Observer;
@@ -61,8 +62,14 @@ public class TestMutableClass implements MutableClass {
     @SafeVarargs
     @SuppressWarnings("unchecked")
     public final TestMutableClass observe(Consumer<TestMutable>... actions) {
+        return observe(Observer.DEFAULT_DIRECTION, actions);
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
+    public final TestMutableClass observe(Direction direction, Consumer<TestMutable>... actions) {
         for (int i = 0; i < actions.length; i++) {
-            Observer<?> of = Observer.of(Pair.of(this, counter.getAndIncrement()), actions[i]);
+            Observer<?> of = Observer.of(Pair.of(this, counter.getAndIncrement()), actions[i], m -> direction);
             observers = observers.add(of);
         }
         return this;

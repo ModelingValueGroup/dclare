@@ -21,15 +21,15 @@ import java.util.function.Consumer;
 public class NonInternableObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action) {
-        return new NonInternableObserver<>(id, action, Direction.forward);
+        return new NonInternableObserver<>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new NonInternableObserver<>(id, action, initDirection);
+    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new NonInternableObserver<>(id, action, initPriority);
     }
 
-    protected NonInternableObserver(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    protected NonInternableObserver(Object id, Consumer<O> action, Priority initPriority) {
+        super(id, action, initPriority);
     }
 
     @Override

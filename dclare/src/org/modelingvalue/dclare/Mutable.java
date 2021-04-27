@@ -147,8 +147,8 @@ public interface Mutable extends TransactionClass {
     }
 
     @Override
-    default MutableTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().mutableTransactions.get().open(this, parent);
+    default MutableTransaction openTransaction(Direction direction, MutableTransaction parent) {
+        return parent.universeTransaction().mutableTransactions.get().open(direction, this, parent);
     }
 
     @Override
@@ -162,16 +162,16 @@ public interface Mutable extends TransactionClass {
     }
 
     @Override
-    default State run(State state, MutableTransaction parent) {
+    default State run(State state, Direction direction, MutableTransaction parent) {
         Pair<Mutable, Setable<Mutable, ?>> pair = state.get(this, D_PARENT_CONTAINING);
         if (pair != null && parent.mutable().equals(pair.a())) {
-            return TransactionClass.super.run(state, parent);
+            return TransactionClass.super.run(state, direction, parent);
         } else {
             return state;
         }
     }
 
-    default Mutable resolve(Mutable self) {
+    default Mutable dResolve(Mutable self) {
         return this;
     }
 
@@ -182,6 +182,10 @@ public interface Mutable extends TransactionClass {
     @SuppressWarnings("rawtypes")
     default boolean dToBeCleared(Setable setable) {
         return true;
+    }
+
+    default Direction dDirection() {
+        return Action.DEFAULT_DIRECTION;
     }
 
 }

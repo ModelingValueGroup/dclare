@@ -17,13 +17,13 @@ package org.modelingvalue.dclare;
 
 public class ReadOnly extends Leaf {
 
-    protected ReadOnly(Object id, Direction initDirection) {
-        super(id, initDirection);
+    protected ReadOnly(Object id, Priority initPriority) {
+        super(id, initPriority);
     }
 
     @Override
-    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(this, parent);
+    public ReadOnlyTransaction openTransaction(Direction direction, MutableTransaction parent) {
+        return parent.universeTransaction().readOnlys.get().open(direction, this, parent);
     }
 
     @Override

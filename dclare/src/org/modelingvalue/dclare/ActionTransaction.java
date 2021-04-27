@@ -64,7 +64,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             if (TRACE_ACTIONS) {
                 Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).toMap(e -> e);
                 if (!diff.isEmpty()) {
-                    System.err.println("DCLARE: " + parent().indent("    ") + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                    System.err.println("DCLARE: " + parent().indent("    ") + direction() + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
                 }
             }
             return result;
@@ -88,9 +88,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers())) {
             Observer observer = e.getKey();
             for (Mutable m : e.getValue()) {
-                Mutable target = m.resolve((Mutable) o);
+                Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, Direction.forward);
+                    trigger(target, observer, triggerPriority(target, observer));
                 }
             }
         }
@@ -196,6 +196,13 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public ActionInstance actionInstance() {
         return ActionInstance.of(mutable(), action());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private final Priority triggerPriority(Mutable target, Observer triggered) {
+        //        Direction direction = triggered.direction(target);
+        //        return direction != Observer.DEFAULT_DIRECTION && !direction().equals(direction) ? Priority.backward : Priority.forward;
+        return Priority.forward;
     }
 
 }

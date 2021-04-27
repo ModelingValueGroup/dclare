@@ -17,7 +17,7 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.util.Reusable;
 
-public class ReusableTransaction<C extends TransactionClass, T extends Transaction> extends Reusable<UniverseTransaction, C, T, MutableTransaction> {
+public class ReusableTransaction<C extends TransactionClass, T extends Transaction> extends Reusable<UniverseTransaction, Direction, C, T, MutableTransaction> {
 
     @SuppressWarnings("unchecked")
     public ReusableTransaction(UniverseTransaction universeTransaction) {

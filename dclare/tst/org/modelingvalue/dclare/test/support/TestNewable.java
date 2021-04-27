@@ -21,6 +21,7 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Triple;
 import org.modelingvalue.dclare.Construction;
+import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.LeafTransaction;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Newable;
@@ -33,13 +34,13 @@ public class TestNewable extends TestMutable implements Newable {
     public static final Observed<TestMutable, String> n = Observed.of("n", null);
 
     @SafeVarargs
-    public static TestNewable create(Object direction, Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(Direction direction, Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason}, observers));
     }
 
     @SafeVarargs
-    public static TestNewable create(Object direction, Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(Direction direction, Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason1, reason2}, observers));
     }
@@ -78,6 +79,11 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     @Override
+    public Direction dDirection() {
+        return dClass().direction();
+    }
+
+    @Override
     public Collection<? extends Observer<?>> dMutableObservers() {
         return Collection.concat(Newable.super.dMutableObservers(), dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
     }
@@ -90,11 +96,11 @@ public class TestNewable extends TestMutable implements Newable {
 
     private static class TestReason extends Construction.Reason {
 
-        private final Object           direction;
+        private final Direction        direction;
         private final Set<Observer<?>> observers;
 
         @SuppressWarnings("unchecked")
-        private TestReason(Object direction, Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
+        private TestReason(Direction direction, Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
             super(thiz, id);
             Set<Observer<?>> obs = Set.of();
             for (int i = 0; i < observers.length; i++) {
@@ -104,7 +110,7 @@ public class TestNewable extends TestMutable implements Newable {
                     if (!t.dIsObsolete() && n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
                         finalCons.accept(n);
                     }
-                });
+                }, m -> direction);
                 obs = obs.add(observer);
             }
             this.observers = obs;
@@ -117,7 +123,7 @@ public class TestNewable extends TestMutable implements Newable {
         }
 
         @Override
-        public Object direction() {
+        public Direction direction() {
             return direction;
         }
 

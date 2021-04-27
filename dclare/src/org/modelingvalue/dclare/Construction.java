@@ -15,6 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Optional;
+
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
@@ -113,26 +117,28 @@ public class Construction extends IdentifiedByArray {
             return e == Mutable.THIS ? thiz : e;
         }
 
-        public abstract Object direction();
+        public abstract Direction direction();
 
     }
 
     public static final class MatchInfo {
 
-        private final Newable newable;
+        private final Newable              newable;
+        private final Map<Reason, Newable> constructions;
 
-        private Object        identity;
-        private Boolean       isCarvedInStone;
-        private Set<Newable>  notDerivedSources;
-        private Comparable    sortKey;
-        private Set<Object>   directions;
+        private Object                     identity;
+        private Boolean                    isCarvedInStone;
+        private Set<Newable>               notDerivedSources;
+        private Comparable                 sortKey;
+        private Set<Direction>             directions;
 
-        public static MatchInfo of(Newable newable) {
-            return new MatchInfo(newable);
+        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions) {
+            return new MatchInfo(newable, constructions);
         }
 
-        private MatchInfo(Newable newable) {
+        private MatchInfo(Newable newable, Map<Reason, Newable> constructions) {
             this.newable = newable;
+            this.constructions = constructions;
         }
 
         public boolean mustBeTheSame(MatchInfo from) {
@@ -145,9 +151,14 @@ public class Construction extends IdentifiedByArray {
             directions = directions().addAll(from.directions());
         }
 
-        public Set<Object> directions() {
+        public Set<Direction> directions() {
             if (directions == null) {
-                directions = newable.dConstructions().map(Construction::reason).map(Reason::direction).toSet();
+                Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
+                Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
+                if (local.isPresent()) {
+                    reasons = reasons.add(local.get());
+                }
+                directions = reasons.map(Reason::direction).toSet();
             }
             return directions;
         }
@@ -205,6 +216,10 @@ public class Construction extends IdentifiedByArray {
         @Override
         public String toString() {
             return newable.toString();
+        }
+
+        public String asString() {
+            return newable() + ":" + directions().toString().substring(3) + newable().dNonDerivedSources().toString().substring(3);
         }
 
     }

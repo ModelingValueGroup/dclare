@@ -53,7 +53,7 @@ public final class This implements Mutable, Internable, Serializable {
     }
 
     @Override
-    public final Mutable resolve(Mutable self) {
+    public final Mutable dResolve(Mutable self) {
         return self;
     }
 
