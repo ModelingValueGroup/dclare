@@ -22,8 +22,8 @@ public class ReadOnly extends Leaf {
     }
 
     @Override
-    public ReadOnlyTransaction openTransaction(Direction direction, MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(direction, this, parent);
+    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().readOnlys.get().open(this, parent);
     }
 
     @Override

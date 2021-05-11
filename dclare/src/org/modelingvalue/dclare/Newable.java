@@ -23,17 +23,18 @@ import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
 
+    @SuppressWarnings("unchecked")
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.<Direction, Construction> of(c -> c.reason().direction()), (t, o, b, a) -> {
-                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                                                //
+                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                                                                         //
                                                                                                  add -> {
                                                                                                      if (ObserverTransaction.TRACE_MATCHING) {
-                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + t.direction() + "::" + add.object() + "." + add.observer() + " (" + add.reason() + "=>" + o + ")"));
+                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + add.observer().direction(add.object()) + "::" + add.object() + "." + add.observer() + " (" + add.reason() + "=>" + o + ")"));
                                                                                                      }
                                                                                                      add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
-                                                                                                 },                                                                                                                                                                                              //
+                                                                                                 },                                                                                                                                                                                                                       //
                                                                                                  rem -> {
                                                                                                      if (ObserverTransaction.TRACE_MATCHING) {
-                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + t.direction() + "::" + rem.object() + "." + rem.observer() + " (" + rem.reason() + "=<" + o + ")"));
+                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + rem.observer().direction(rem.object()) + "::" + rem.object() + "." + rem.observer() + " (" + rem.reason() + "=<" + o + ")"));
                                                                                                      }
                                                                                                      rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
                                                                                                  });

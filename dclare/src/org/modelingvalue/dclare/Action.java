@@ -58,8 +58,8 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     @Override
-    public ActionTransaction openTransaction(Direction direction, MutableTransaction parent) {
-        return parent.universeTransaction().actionTransactions.get().open(direction, this, parent);
+    public ActionTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().actionTransactions.get().open(this, parent);
     }
 
     @Override
@@ -78,13 +78,6 @@ public class Action<O extends Mutable> extends Leaf {
     @Override
     public ActionTransaction newTransaction(UniverseTransaction universeTransaction) {
         return new ActionTransaction(universeTransaction);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Direction direction(MutableTransaction parent) {
-        return direction((O) parent.cls());
-        // return parent.direction() == DEFAULT_DIRECTION ? direction((O) parent.cls()) : parent.direction();
     }
 
     protected Direction direction(O mutable) {

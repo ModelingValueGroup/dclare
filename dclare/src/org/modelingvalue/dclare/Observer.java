@@ -92,8 +92,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @Override
-    public ObserverTransaction openTransaction(Direction direction, MutableTransaction parent) {
-        return parent.universeTransaction().observerTransactions.get().open(direction, this, parent);
+    public ObserverTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().observerTransactions.get().open(this, parent);
     }
 
     @Override

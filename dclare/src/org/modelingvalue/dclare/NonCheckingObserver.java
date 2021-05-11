@@ -35,8 +35,8 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
     }
 
     @Override
-    public NonCheckingObserver.NonCheckingTransaction openTransaction(Direction direction, MutableTransaction parent) {
-        return parent.universeTransaction().nonCheckingTransactions.get().open(direction, this, parent);
+    public NonCheckingObserver.NonCheckingTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().nonCheckingTransactions.get().open(this, parent);
     }
 
     @Override

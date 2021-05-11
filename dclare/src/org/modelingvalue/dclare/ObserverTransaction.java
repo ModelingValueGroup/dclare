@@ -482,7 +482,7 @@ public class ObserverTransaction extends ActionTransaction {
     private void makeTheSame(MatchInfo to, MatchInfo from) {
         super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (TRACE_MATCHING) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + direction() + "::" + mutable() + "." + observer() + //
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + "." + observer() + //
                     " (" + to.asString() + "==" + from.asString() + ")"));
         }
         QualifiedSet<Direction, Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);

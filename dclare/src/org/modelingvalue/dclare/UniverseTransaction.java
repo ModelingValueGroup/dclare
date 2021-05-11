@@ -145,7 +145,7 @@ public class UniverseTransaction extends MutableTransaction {
         this.cycle = cycle != null ? Action.of("$cycle", o -> cycle.accept(this)) : null;
         this.inQueue = new LinkedBlockingQueue<>(maxInInQueue);
         this.universeStatistics = new UniverseStatistics(this, maxInInQueue, devMode, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
-        start(TransactionClass.DEFAULT_DIRECTION, universe, null);
+        start(universe, null);
         preState = emptyState;
         pool.execute(() -> mainLoop(start));
         init();

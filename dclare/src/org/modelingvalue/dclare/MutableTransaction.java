@@ -142,7 +142,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void runParallel(Set<T> todo) {
         state[0] = state[0].get(() -> merge(state[0], todo.random().reduce(state, //
-                (s, t) -> new State[]{t.run(s[0], t.direction(this), this)}, //
+                (s, t) -> new State[]{t.run(s[0], this)}, //
                 (a, b) -> {
                     State[] r = new State[a.length + b.length];
                     System.arraycopy(a, 0, r, 0, a.length);
@@ -153,7 +153,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void runSequential(Set<T> todo) {
         for (TransactionClass t : todo.random()) {
-            state[0] = t.run(state[0], t.direction(this), this);
+            state[0] = t.run(state[0], this);
         }
     }
 

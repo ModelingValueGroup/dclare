@@ -24,8 +24,8 @@ public interface TransactionClass {
         }
     };
 
-    default State run(State state, Direction direction, MutableTransaction parent) {
-        Transaction tx = openTransaction(direction, parent);
+    default State run(State state, MutableTransaction parent) {
+        Transaction tx = openTransaction(parent);
         try {
             return tx.run(state);
         } finally {
@@ -33,14 +33,10 @@ public interface TransactionClass {
         }
     }
 
-    Transaction openTransaction(Direction direction, MutableTransaction parent);
+    Transaction openTransaction(MutableTransaction parent);
 
     void closeTransaction(Transaction tx);
 
     Transaction newTransaction(UniverseTransaction universeTransaction);
-
-    default Direction direction(MutableTransaction parent) {
-        return parent.direction();
-    }
 
 }

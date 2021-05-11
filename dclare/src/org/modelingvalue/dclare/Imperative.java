@@ -30,7 +30,7 @@ public class Imperative extends Leaf {
     }
 
     @Override
-    public Transaction openTransaction(Direction direction, MutableTransaction parent) {
+    public Transaction openTransaction(MutableTransaction parent) {
         throw new UnsupportedOperationException();
     }
 

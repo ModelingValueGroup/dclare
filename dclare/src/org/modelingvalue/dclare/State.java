@@ -224,7 +224,7 @@ public class State implements Serializable {
     }
 
     public <R> R get(Supplier<R> supplier) {
-        ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(TransactionClass.DEFAULT_DIRECTION, universeTransaction);
+        ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {
             return tx.get(supplier, this);
         } finally {
@@ -233,7 +233,7 @@ public class State implements Serializable {
     }
 
     public void run(Runnable action) {
-        ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(TransactionClass.DEFAULT_DIRECTION, universeTransaction);
+        ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {
             tx.run(action, this);
         } finally {
