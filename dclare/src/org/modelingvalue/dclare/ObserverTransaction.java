@@ -389,7 +389,8 @@ public class ObserverTransaction extends ActionTransaction {
     private Object singleMatch(Mutable object, Observed observed, Object start, Object before, Object after) {
         if (before != null && after != null && !before.equals(after)) {
             Map<Reason, Newable> cons = constructions.merge();
-            if (observed.containment() && before instanceof Newable && after instanceof Newable) {
+            if (observed.containment() && before instanceof Newable && after instanceof Newable && //
+                    ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
                 MatchInfo pre = MatchInfo.of((Newable) before, cons);
                 MatchInfo post = MatchInfo.of((Newable) after, cons);
                 if (!pre.directions().isEmpty() && !post.directions().isEmpty() && !pre.directions().anyMatch(post.directions()::contains)) {
