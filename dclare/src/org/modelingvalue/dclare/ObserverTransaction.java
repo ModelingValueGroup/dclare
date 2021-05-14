@@ -33,7 +33,6 @@ import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
-import org.modelingvalue.dclare.Observed.ToBeMatched;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -443,14 +442,7 @@ public class ObserverTransaction extends ActionTransaction {
     private void match(Observed observed, Mutable mutable) {
         ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
         if (pre != null) {
-            Observed singleton = observed instanceof ToBeMatched ? ((ToBeMatched) observed).observed() : null;
-            Object preSingle = singleton != null ? singleton.get(mutable) : null;
-            ContainingCollection<Object> post = pre;
-            Object postSingle = preSingle;
-            if (preSingle instanceof Newable) {
-                post = post.add(preSingle);
-            }
-            post = removeObsolete(post, Set.of());
+            ContainingCollection<Object> post = removeObsolete(pre, Set.of());
             if (post.size() > 1) {
                 List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n, Map.of())).toList();
                 if (!(post instanceof List)) {
@@ -468,13 +460,7 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             }
-            if (singleton != null) {
-                if (postSingle == null || !post.contains(postSingle)) {
-                    postSingle = post.random().findFirst().orElse(null);
-                }
-                super.set(mutable, singleton, preSingle, postSingle);
-            }
-            super.set(mutable, observed, pre, postSingle != null ? post.remove(postSingle) : post);
+            super.set(mutable, observed, pre, post);
         }
     }
 

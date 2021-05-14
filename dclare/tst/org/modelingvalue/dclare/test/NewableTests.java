@@ -797,7 +797,7 @@ public class NewableTests {
             } else {
                 if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
                         equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
-                        equals(as, as.get(an::dIdentity), bs, bs.get(bn::dIdentity), done) && //
+                        equals(as, as.get(an::dMatchingIdentity), bs, bs.get(bn::dMatchingIdentity), done) && //
                         equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }
