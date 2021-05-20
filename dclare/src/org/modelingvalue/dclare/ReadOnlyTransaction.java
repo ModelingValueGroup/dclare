@@ -77,7 +77,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+    public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         throw new UnsupportedOperationException();
     }
 

@@ -184,9 +184,9 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        T[] oldNew = (T[]) new Object[2];
-        boolean first = pre == state;
+    public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        T[]     oldNew = (T[]) new Object[2];
+        boolean first  = pre == state;
         state = state.set(object, property, oper, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
