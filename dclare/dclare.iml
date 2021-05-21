@@ -17,5 +17,6 @@
     <orderEntry type="library" scope="TEST" name="gen: junit-jupiter-engine" level="project" />
     <orderEntry type="library" scope="TEST" name="gen: junit-platform-engine" level="project" />
     <orderEntry type="library" scope="TEST" name="gen: junit-jupiter-api" level="project" />
+    <orderEntry type="library" scope="TEST" name="gen: junit-jupiter-params" level="project" />
   </component>
 </module>
