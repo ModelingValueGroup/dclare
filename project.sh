@@ -21,12 +21,12 @@ dependencies=(
   "org.modelingvalue   immutable-collections   1.5.0       jar jds-"
   "org.modelingvalue   mvgjson                 1.1.6       jar jds-"
 
-  "org.junit.jupiter   junit-jupiter-api       5.7.0       jar jdst"
-  "org.junit.jupiter   junit-jupiter-engine    5.7.0       jar jdst"
-  "org.junit.jupiter   junit-jupiter-params    5.7.0       jar jdst"
-  "org.junit.platform  junit-platform-commons  1.7.0       jar jdst"
-  "org.junit.platform  junit-platform-engine   1.7.0       jar jdst"
-  "org.junit.platform  junit-platform-launcher 1.7.0       jar jdst"
+  "org.junit.jupiter   junit-jupiter-api       5.7.2       jar jdst"
+  "org.junit.jupiter   junit-jupiter-engine    5.7.2       jar jdst"
+  "org.junit.jupiter   junit-jupiter-params    5.7.2       jar jdst"
+  "org.junit.platform  junit-platform-commons  1.7.2       jar jdst"
+  "org.junit.platform  junit-platform-engine   1.7.2       jar jdst"
+  "org.junit.platform  junit-platform-launcher 1.7.2       jar jdst"
   "org.opentest4j      opentest4j              1.2.0       jar jdst"
   "org.apiguardian     apiguardian-api         1.1.0       jar jdst"
 )
