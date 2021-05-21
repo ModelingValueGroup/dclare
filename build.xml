@@ -11,7 +11,6 @@
   <property name="compiler.args" value=""/>
   <property name="compiler.max.memory" value="700m"/>
   <patternset id="ignored.files">
-    <exclude name="**/*.hprof/**"/>
     <exclude name="**/*.pyc/**"/>
     <exclude name="**/*.pyo/**"/>
     <exclude name="**/*.rbc/**"/>
@@ -112,6 +111,7 @@
       <include name="../Home!/jdk.management.agent"/>
       <include name="../Home!/jdk.management.jfr"/>
       <include name="../Home!/jdk.naming.dns"/>
+      <include name="../Home!/jdk.naming.ldap"/>
       <include name="../Home!/jdk.naming.rmi"/>
       <include name="../Home!/jdk.net"/>
       <include name="../Home!/jdk.pack"/>
@@ -143,6 +143,9 @@
   <path id="library.gen:_junit-jupiter-engine.classpath">
     <pathelement location="${basedir}/lib/junit-jupiter-engine.jar"/>
   </path>
+  <path id="library.gen:_junit-jupiter-params.classpath">
+    <pathelement location="${basedir}/lib/junit-jupiter-params.jar"/>
+  </path>
   <path id="library.gen:_junit-platform-commons.classpath">
     <pathelement location="${basedir}/lib/junit-platform-commons.jar"/>
   </path>
@@ -158,6 +161,7 @@
   <path id="library.gen:_opentest4j.classpath">
     <pathelement location="${basedir}/lib/opentest4j.jar"/>
   </path>
+  <!-- Global Libraries -->
   <!-- Modules -->
   <import file="${basedir}/dclare/module_dclare.xml"/>
   <target name="init" description="Build initialization">

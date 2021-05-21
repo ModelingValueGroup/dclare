@@ -59,7 +59,7 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
 
-    public abstract <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
+    public abstract <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 

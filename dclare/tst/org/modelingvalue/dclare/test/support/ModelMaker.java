@@ -35,6 +35,7 @@ import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Constant;
+import org.modelingvalue.dclare.DclareConfig;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
@@ -206,13 +207,13 @@ public class ModelMaker {
     private final        UniverseTransaction                tx;
 
     public ModelMaker(String name, boolean isRobot) {
-        this.name = name;
-        xyzzy = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
-        plugConst = Constant.of("plugConst", u -> xyzzy, SetableModifier.containment);
+        this.name     = name;
+        xyzzy         = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
+        plugConst     = Constant.of("plugConst", u -> xyzzy, SetableModifier.containment);
         universeClass = TestMutableClass.of("Universe-" + name, plugConst);
-        universe = TestUniverse.of("universe-" + name, universeClass, TestImperative.of());
-        pool = newPool();
-        tx = UniverseTransaction.of(universe, pool, true);
+        universe      = TestUniverse.of("universe-" + name, universeClass, TestImperative.of());
+        pool          = newPool();
+        tx            = new UniverseTransaction(universe, pool, new DclareConfig().withDevMode(true));
 
         CommunicationHelper.add(this);
         CommunicationHelper.add(pool);

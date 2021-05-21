@@ -30,10 +30,6 @@ import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
-
-    private static final boolean                          TRACE_MUTABLE  = Boolean.getBoolean("TRACE_MUTABLE");
-    private static final boolean                          RUN_SEQUENTIAL = Boolean.getBoolean("RUN_SEQUENTIAL");
-
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
@@ -114,10 +110,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued, Set<State> states) {
-        if (TRACE_MUTABLE) {
+        if (universeTransaction().getConfig().isTraceMutable()) {
             System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
-        if (RUN_SEQUENTIAL) {
+        if (universeTransaction().getConfig().isRunSequential()) {
             runSequential(todo);
         } else {
             try {
@@ -233,7 +229,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({"rawtypes", "unchecked", "SameParameterValue"})
     private State trigger(State state, Map<Observer, Set<Mutable>> leafs, Priority priority) {
         for (Entry<Observer, Set<Mutable>> e : leafs) {
             for (Mutable m : e.getValue()) {
