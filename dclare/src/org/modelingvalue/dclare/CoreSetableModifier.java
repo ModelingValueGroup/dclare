@@ -15,58 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
-
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Internable;
-import org.modelingvalue.collections.util.Pair;
-
-public enum Priority implements Internable {
-
-    urgent(0),
-
-    forward(1),
-
-    backward(2),
-
-    scheduled(3);
-
-    public final Queued<Action<?>> actions;
-    public final Queued<Mutable>   children;
-    public final int               nr;
-
-    Priority(int nr) {
-        actions = new Queued<>(true, nr);
-        children = new Queued<>(false, nr);
-        this.nr = nr;
-    }
-
-    public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
-
-        private final boolean actions;
-
-        private Queued(boolean actions, int nr) {
-            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, doNotCheckConsistency);
-            this.actions = actions;
-        }
-
-        public Priority priority() {
-            return Priority.this;
-        }
-
-        public boolean actions() {
-            return actions;
-        }
-
-        public boolean children() {
-            return !actions;
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + super.toString().substring(4);
-        }
-
-    }
-
+public enum CoreSetableModifier implements SetableModifier {
+    symmetricOpposite,
+    containment,
+    mandatory,
+    synthetic,
+    doNotCheckMandatory,
+    doNotCheckConsistency;
 }

@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -176,7 +178,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, SetableModifier.doNotCheckConsistency);
+            }, doNotCheckConsistency);
         }
 
         public Observer observer() {
@@ -200,7 +202,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, null, null, null, SetableModifier.doNotCheckConsistency);
+            super(Pair.of(observer, "exception"), null, null, null, null, doNotCheckConsistency);
             this.observer = observer;
         }
 
@@ -234,9 +236,9 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private Constructed(Observer observer) {
             super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Construction cons = Construction.of(o, observer, reason);
-                    Newable before = pre.get(reason);
-                    Newable after = post.get(reason);
+                    Construction cons   = Construction.of(o, observer, reason);
+                    Newable      before = pre.get(reason);
+                    Newable      after  = post.get(reason);
                     if (!Objects.equals(before, after)) {
                         if (before != null) {
                             Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
@@ -246,7 +248,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         }
                     }
                 }
-            }, SetableModifier.doNotCheckConsistency);
+            }, doNotCheckConsistency);
         }
 
         @Override
