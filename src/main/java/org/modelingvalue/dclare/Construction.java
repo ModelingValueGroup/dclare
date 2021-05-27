@@ -15,6 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Optional;
+
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
@@ -113,41 +117,50 @@ public class Construction extends IdentifiedByArray {
             return e == Mutable.THIS ? thiz : e;
         }
 
+        public abstract Direction direction();
+
     }
 
     public static final class MatchInfo {
 
-        private final Newable     newable;
+        private final Newable              newable;
+        private final Map<Reason, Newable> constructions;
 
-        private Object            identity;
-        private Set<Construction> derivedConstructions;
-        private Boolean           isOld;
-        private Set<Newable>      notDerivedSources;
-        private Comparable        sortKey;
+        private Object                     identity;
+        private Boolean                    isCarvedInStone;
+        private Set<Newable>               notDerivedSources;
+        private Comparable                 sortKey;
+        private Set<Direction>             directions;
 
-        public static MatchInfo of(Newable newable) {
-            return new MatchInfo(newable);
+        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions) {
+            return new MatchInfo(newable, constructions);
         }
 
-        private MatchInfo(Newable newable) {
+        private MatchInfo(Newable newable, Map<Reason, Newable> constructions) {
             this.newable = newable;
+            this.constructions = constructions;
         }
 
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
-                    derivedConstructions().isEmpty() && (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
+                    !from.directions().anyMatch(directions()::contains) && //
+                    (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
         }
 
         public void mergeIn(MatchInfo from) {
-            derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
+            directions = directions().addAll(from.directions());
         }
 
-        public boolean isCarvedInStone() {
-            return isOld() || hasDirectConstruction();
-        }
-
-        public boolean hasDirectConstruction() {
-            return newable.dDirectConstruction() != null;
+        public Set<Direction> directions() {
+            if (directions == null) {
+                Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
+                Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
+                if (local.isPresent()) {
+                    reasons = reasons.add(local.get());
+                }
+                directions = reasons.map(Reason::direction).toSet();
+            }
+            return directions;
         }
 
         public boolean hasUnidentifiedSource() {
@@ -168,13 +181,6 @@ public class Construction extends IdentifiedByArray {
             return identity == ConstantState.NULL ? null : identity;
         }
 
-        public Set<Construction> derivedConstructions() {
-            if (derivedConstructions == null) {
-                derivedConstructions = newable.dDerivedConstructions();
-            }
-            return derivedConstructions;
-        }
-
         public Comparable sortKey() {
             if (sortKey == null) {
                 sortKey = notDerivedSources().map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
@@ -189,12 +195,12 @@ public class Construction extends IdentifiedByArray {
             return notDerivedSources;
         }
 
-        private boolean isOld() {
-            if (isOld == null) {
-                UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
-                isOld = utx.preState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
+        public boolean isCarvedInStone() {
+            if (isCarvedInStone == null) {
+                isCarvedInStone = newable.dDirectConstruction() != null || //
+                        LeafTransaction.getCurrent().universeTransaction().preState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
             }
-            return isOld;
+            return isCarvedInStone;
         }
 
         @Override
@@ -210,6 +216,10 @@ public class Construction extends IdentifiedByArray {
         @Override
         public String toString() {
             return newable.toString();
+        }
+
+        public String asString() {
+            return newable() + ":" + directions().toString().substring(3) + newable().dNonDerivedSources().toString().substring(3);
         }
 
     }

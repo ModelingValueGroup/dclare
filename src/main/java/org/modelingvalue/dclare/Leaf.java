@@ -20,11 +20,11 @@ import org.modelingvalue.collections.util.StringUtil;
 public abstract class Leaf implements TransactionClass, Feature {
 
     private final Object    id;
-    private final Direction initDirection;
+    private final Priority initPriority;
 
-    protected Leaf(Object id, Direction initDirection) {
+    protected Leaf(Object id, Priority initPriority) {
         this.id = id;
-        this.initDirection = initDirection;
+        this.initPriority = initPriority;
     }
 
     @Override
@@ -54,8 +54,8 @@ public abstract class Leaf implements TransactionClass, Feature {
         return id;
     }
 
-    protected Direction initDirection() {
-        return initDirection;
+    protected Priority initPriority() {
+        return initPriority;
     }
 
 }

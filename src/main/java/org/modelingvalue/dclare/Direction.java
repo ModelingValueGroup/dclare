@@ -15,56 +15,35 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
-import org.modelingvalue.collections.util.Pair;
 
-public enum Direction implements Internable {
+public interface Direction extends Internable {
 
-    urgent(0),
-
-    forward(1),
-
-    backward(2),
-
-    scheduled(3);
-
-    public final Queued<Action<?>> actions;
-    public final Queued<Mutable>   children;
-    public final int               nr;
-
-    Direction(int nr) {
-        actions = new Queued<>(true, nr);
-        children = new Queued<>(false, nr);
-        this.nr = nr;
+    static Direction of(Object id) {
+        return new DirectionImpl(id);
     }
 
-    public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
+    static final class DirectionImpl implements Direction {
+        private final Object id;
 
-        private final boolean actions;
-
-        private Queued(boolean actions, int nr) {
-            super(Pair.of(Direction.this, actions), Set.of(), null, null, null, SetableModifier.doNotCheckConsistency);
-            this.actions = actions;
+        private DirectionImpl(Object id) {
+            this.id = id;
         }
 
-        public Direction direction() {
-            return Direction.this;
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Direction.DirectionImpl && ((Direction.DirectionImpl) obj).id.equals(id);
         }
 
-        public boolean actions() {
-            return actions;
-        }
-
-        public boolean children() {
-            return !actions;
+        @Override
+        public int hashCode() {
+            return id.hashCode();
         }
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + super.toString().substring(4);
+            return id.toString();
         }
-
     }
 
 }

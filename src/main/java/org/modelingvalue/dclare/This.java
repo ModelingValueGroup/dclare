@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.Serializable;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Internable;
+import java.io.*;
 
 public final class This implements Mutable, Internable, Serializable {
 
@@ -53,8 +53,8 @@ public final class This implements Mutable, Internable, Serializable {
     }
 
     @Override
-    public final Mutable resolve(Object self) {
-        return (Mutable)self;
+    public final Mutable dResolve(Mutable self) {
+        return self;
     }
 
 }

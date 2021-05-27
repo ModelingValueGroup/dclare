@@ -18,6 +18,7 @@ package org.modelingvalue.dclare.test.support;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 
 import java.util.ArrayList;
 import java.util.function.Predicate;
@@ -35,10 +36,10 @@ import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Constant;
+import org.modelingvalue.dclare.DclareConfig;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.SetableModifier;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
@@ -55,8 +56,8 @@ public class ModelMaker {
     private static final Observed<TestMutable, Integer>                             source                                   = TestObserved.of("#source", ModelMaker::id, ModelMaker::desInt, SOURCE_DEFAULT);
     private static final Observed<TestMutable, Integer>                             target                                   = TestObserved.of("#target", ModelMaker::id, ModelMaker::desInt, TARGET_DEFAULT);
     private static final Observed<TestMutable, Integer>                             target2                                  = TestObserved.of("#target2", ModelMaker::id, ModelMaker::desInt, TARGET2_DEFAULT);
-    private static final Observed<TestMutable, TestMutable>                         extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, SetableModifier.containment);
-    private static final Observed<TestMutable, Set<TestMutable>>                    extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), SetableModifier.containment);
+    private static final Observed<TestMutable, TestMutable>                         extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, containment);
+    private static final Observed<TestMutable, Set<TestMutable>>                    extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), containment);
     private static final Observed<TestMutable, String>                              extraString                              = TestObserved.of("#extra\n\"String", ModelMaker::id, ModelMaker::desString, "default");
     private static final Observed<TestMutable, List<String>>                        aList                                    = TestObserved.of("#aList", ModelMaker::id, ModelMaker::desList, List.of());
     private static final Observed<TestMutable, Set<String>>                         aSet                                     = TestObserved.of("#aSet", ModelMaker::id, ModelMaker::desSet, Set.of());
@@ -206,13 +207,13 @@ public class ModelMaker {
     private final        UniverseTransaction                tx;
 
     public ModelMaker(String name, boolean isRobot) {
-        this.name = name;
-        xyzzy = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
-        plugConst = Constant.of("plugConst", u -> xyzzy, SetableModifier.containment);
+        this.name     = name;
+        xyzzy         = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
+        plugConst     = Constant.of("plugConst", u -> xyzzy, containment);
         universeClass = TestMutableClass.of("Universe-" + name, plugConst);
-        universe = TestUniverse.of("universe-" + name, universeClass, TestImperative.of());
-        pool = newPool();
-        tx = UniverseTransaction.of(universe, pool, true);
+        universe      = TestUniverse.of("universe-" + name, universeClass, TestImperative.of());
+        pool          = newPool();
+        tx            = new UniverseTransaction(universe, pool, new DclareConfig().withDevMode(true));
 
         CommunicationHelper.add(this);
         CommunicationHelper.add(pool);

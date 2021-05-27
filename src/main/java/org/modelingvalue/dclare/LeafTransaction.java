@@ -59,7 +59,7 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
 
-    public abstract <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
+    public abstract <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
@@ -96,17 +96,17 @@ public abstract class LeafTransaction extends Transaction {
 
     protected abstract void setChanged(Mutable changed);
 
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Direction direction) {
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
-        set(object, direction.actions, Set::add, action);
-        if (direction == Direction.forward) {
-            set(object, Direction.backward.actions, Set::remove, action);
+        set(object, priority.actions, Set::add, action);
+        if (priority == Priority.forward) {
+            set(object, Priority.backward.actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
-            set(container, direction.children, Set::add, object);
-            if (direction == Direction.forward && current(object, Direction.backward.actions).isEmpty() && current(object, Direction.backward.children).isEmpty()) {
-                set(container, Direction.backward.children, Set::remove, object);
+            set(container, priority.children, Set::add, object);
+            if (priority == Priority.forward && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
+                set(container, Priority.backward.children, Set::remove, object);
             }
             object = container;
             container = dParent(object);

@@ -23,15 +23,15 @@ import org.modelingvalue.collections.Set;
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action) {
-        return new NonCheckingObserver<>(id, action, Direction.forward);
+        return new NonCheckingObserver<>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new NonCheckingObserver<>(id, action, initDirection);
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new NonCheckingObserver<>(id, action, initPriority);
     }
 
-    protected NonCheckingObserver(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    protected NonCheckingObserver(Object id, Consumer<O> action, Priority initPriority) {
+        super(id, action, initPriority);
     }
 
     @Override

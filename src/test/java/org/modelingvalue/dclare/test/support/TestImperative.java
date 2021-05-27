@@ -20,16 +20,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 
 public class TestImperative implements Consumer<Runnable> {
+
     public static TestImperative of() {
         return new TestImperative();
     }
 
-    @SuppressWarnings("FieldCanBeLocal")
-    private final Thread                  imperativeThread;
     private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
 
     protected TestImperative() {
-        imperativeThread = new Thread(() -> {
+        Thread imperativeThread = new Thread(() -> {
             while (true) {
                 take().run();
             }

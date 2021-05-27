@@ -18,22 +18,25 @@ package org.modelingvalue.dclare.test.support;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestNewableClass extends TestMutableClass {
 
     @SafeVarargs
-    public static TestNewableClass of(Object id, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
-        return new TestNewableClass(id, identity, setables);
+    public static TestNewableClass of(Object id, Direction direction, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
+        return new TestNewableClass(id, direction, identity, setables);
     }
 
+    private final Direction                     direction;
     private final Function<TestNewable, Object> identity;
     private final AtomicInteger                 counter = new AtomicInteger(0);
 
-    protected TestNewableClass(Object id, Function<TestNewable, Object> identity, Setable... setables) {
+    protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, Setable... setables) {
         super(id, setables);
         this.identity = identity;
+        this.direction = direction;
     }
 
     public Function<TestNewable, Object> identity() {
@@ -42,6 +45,10 @@ public class TestNewableClass extends TestMutableClass {
 
     public int uniqueInt() {
         return counter.getAndIncrement();
+    }
+
+    public Direction direction() {
+        return direction;
     }
 
 }

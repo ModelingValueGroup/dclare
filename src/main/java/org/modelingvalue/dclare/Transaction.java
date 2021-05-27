@@ -22,8 +22,8 @@ import org.modelingvalue.collections.util.StringUtil;
 public abstract class Transaction {
 
     private final UniverseTransaction universeTransaction;
-    private TransactionClass          cls;
     private MutableTransaction        parent;
+    private TransactionClass          cls;
 
     protected Transaction(UniverseTransaction universeTransaction) {
         this.universeTransaction = universeTransaction;

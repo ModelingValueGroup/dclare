@@ -15,6 +15,9 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckMandatory;
+
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
@@ -57,16 +60,15 @@ public class Observed<O, T> extends Setable<O, T> {
     private final boolean                             mandatory;
     private final boolean                             checkMandatory;
     private final Observers<O, T>                     observers;
-    private ToBeMatched<O, T>                         toBeMatched;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory = hasModifier(modifiers, SetableModifier.mandatory);
-        this.checkMandatory = !hasModifier(modifiers, SetableModifier.doNotCheckMandatory);
-        this.observers = new Observers<>(this);
+        this.mandatory      = CoreSetableModifier.mandatory.in(modifiers);
+        this.checkMandatory = !doNotCheckMandatory.in(modifiers);
+        this.observers      = new Observers<>(this);
     }
 
     @SuppressWarnings("rawtypes")
@@ -79,17 +81,6 @@ public class Observed<O, T> extends Setable<O, T> {
     @Override
     protected boolean isHandlingChange() {
         return true;
-    }
-
-    protected ToBeMatched<O, T> toBeMatched() {
-        if (toBeMatched == null) {
-            SetableModifier[] mods = new SetableModifier[]{SetableModifier.doNotCheckConsistency};
-            if (containment()) {
-                mods = Setable.addModifier(mods, SetableModifier.containment);
-            }
-            toBeMatched = new ToBeMatched<>(this, mods);
-        }
-        return toBeMatched;
     }
 
     public Observers<O, T> observers() {
@@ -124,30 +115,11 @@ public class Observed<O, T> extends Setable<O, T> {
         private Observers(Observed observed) {
             super(observed, Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
                 observed.checkTooManyObservers(tx.universeTransaction(), o, a);
-            }, SetableModifier.doNotCheckConsistency);
+            }, doNotCheckConsistency);
         }
 
         @SuppressWarnings("unchecked")
         public Observed<O, T> observed() {
-            return (Observed<O, T>) id();
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + ":" + super.toString();
-        }
-
-    }
-
-    protected static final class ToBeMatched<O, T> extends Observed<O, Set<T>> {
-
-        @SuppressWarnings("unchecked")
-        private ToBeMatched(Observed<O, T> observed, SetableModifier[] modifiers) {
-            super(observed, Set.of(), null, null, null, modifiers);
-        }
-
-        @SuppressWarnings("unchecked")
-        protected Observed<O, T> observed() {
             return (Observed<O, T>) id();
         }
 

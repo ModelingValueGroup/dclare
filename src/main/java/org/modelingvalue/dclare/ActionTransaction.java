@@ -33,11 +33,8 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-
-    private static final boolean TRACE_ACTIONS = Boolean.getBoolean("TRACE_ACTIONS");
-
-    private final CurrentState currentSate = new CurrentState();
-    private       State        preState;
+    private final CurrentState   currentSate   = new CurrentState();
+    private State                preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -61,10 +58,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
             State result = currentSate.result();
-            if (TRACE_ACTIONS) {
+            if (universeTransaction().getConfig().isTraceActions()) {
                 Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).toMap(e -> e);
                 if (!diff.isEmpty()) {
-                    System.err.println("DCLARE: " + parent().indent("    ") + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                    System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
                 }
             }
             return result;
@@ -88,9 +85,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers())) {
             Observer observer = e.getKey();
             for (Mutable m : e.getValue()) {
-                Mutable target = m.resolve(o);
+                //noinspection ConstantConditions
+                Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, Direction.forward);
+                    trigger(target, observer, triggerPriority(target, observer));
                 }
             }
         }
@@ -128,7 +126,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @Override
-    public <O, T, E> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+    public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         return set(object, property, oper.apply(currentSate.get().get(object, property)));
     }
 
@@ -169,7 +167,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
-        byte     cnr      = get(universe, Mutable.D_CHANGE_NR);
+        byte cnr = get(universe, Mutable.D_CHANGE_NR);
         while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
             changed = dParent(changed);
         }
@@ -198,4 +196,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return ActionInstance.of(mutable(), action());
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression", "CommentedOutCode", "unused"})
+    private Priority triggerPriority(Mutable target, Observer triggered) {
+        //        Direction direction = triggered.direction(target);
+        //        return direction != Observer.DEFAULT_DIRECTION && !direction().equals(direction) ? Priority.backward : Priority.forward;
+        return Priority.forward;
+    }
 }

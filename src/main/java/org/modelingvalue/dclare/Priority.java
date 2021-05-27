@@ -15,28 +15,58 @@
 
 package org.modelingvalue.dclare;
 
-public interface TransactionClass {
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
 
-    public static final Direction DEFAULT_DIRECTION = new Direction() {
-        @Override
-        public String toString() {
-            return "DEFAULT";
-        }
-    };
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
 
-    default State run(State state, MutableTransaction parent) {
-        Transaction tx = openTransaction(parent);
-        try {
-            return tx.run(state);
-        } finally {
-            closeTransaction(tx);
-        }
+public enum Priority implements Internable {
+
+    urgent(0),
+
+    forward(1),
+
+    backward(2),
+
+    scheduled(3);
+
+    public final Queued<Action<?>> actions;
+    public final Queued<Mutable>   children;
+    public final int               nr;
+
+    Priority(int nr) {
+        actions = new Queued<>(true, nr);
+        children = new Queued<>(false, nr);
+        this.nr = nr;
     }
 
-    Transaction openTransaction(MutableTransaction parent);
+    public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
 
-    void closeTransaction(Transaction tx);
+        private final boolean actions;
 
-    Transaction newTransaction(UniverseTransaction universeTransaction);
+        private Queued(boolean actions, int nr) {
+            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, doNotCheckConsistency);
+            this.actions = actions;
+        }
+
+        public Priority priority() {
+            return Priority.this;
+        }
+
+        public boolean actions() {
+            return actions;
+        }
+
+        public boolean children() {
+            return !actions;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + super.toString().substring(4);
+        }
+
+    }
 
 }
