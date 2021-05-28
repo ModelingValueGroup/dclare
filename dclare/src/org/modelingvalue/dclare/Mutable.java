@@ -188,4 +188,11 @@ public interface Mutable extends TransactionClass {
         return Action.DEFAULT_DIRECTION;
     }
 
+    @SuppressWarnings("rawtypes")
+    default void dHandleRemoved(Mutable parent) {
+        for (Observer o : D_OBSERVERS.get(this)) {
+            o.constructed().setDefault(this);
+        }
+    }
+
 }

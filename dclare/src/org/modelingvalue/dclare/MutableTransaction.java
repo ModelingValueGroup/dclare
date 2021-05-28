@@ -34,10 +34,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions        = new Set[1];
+    private final Set<Action<?>>[]                        actions  = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children       = new Set[1];
-    private final State[]                                 state          = new State[1];
+    private final Set<Mutable>[]                          children = new Set[1];
+    private final State[]                                 state    = new State[1];
 
     private boolean                                       urgent;
     private Set<State>                                    states;

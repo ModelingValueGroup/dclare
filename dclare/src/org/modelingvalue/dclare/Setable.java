@@ -203,6 +203,7 @@ public class Setable<O, T> extends Getable<O, T> {
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);
+                    removed.dHandleRemoved((Mutable) object);
                 }
             });
         } else if (opposite != null) {

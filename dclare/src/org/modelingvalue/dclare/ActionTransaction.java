@@ -34,7 +34,7 @@ import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
     private final CurrentState currentSate = new CurrentState();
-    private       State        preState;
+    private State              preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -61,7 +61,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             if (universeTransaction().getConfig().isTraceActions()) {
                 Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).toMap(e -> e);
                 if (!diff.isEmpty()) {
-                    System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                    preState.run(() -> {
+                        System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                    });
                 }
             }
             return result;
@@ -167,7 +169,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
-        byte     cnr      = get(universe, Mutable.D_CHANGE_NR);
+        byte cnr = get(universe, Mutable.D_CHANGE_NR);
         while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
             changed = dParent(changed);
         }
