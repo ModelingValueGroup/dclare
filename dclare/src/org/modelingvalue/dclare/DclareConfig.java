@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
 public class DclareConfig {
@@ -59,10 +60,24 @@ public class DclareConfig {
 
     //============================================================================
     public DclareConfig() {
-        this(null, null, DEV_MODE, CHECK_ORPHAN_STATE, RUN_SEQUENTIAL, TRACE_UNIVERSE, TRACE_MUTABLE, TRACE_MATCHING, TRACE_ACTIONS, MAX_IN_IN_QUEUE, MAX_TOTAL_NR_OF_CHANGES, MAX_NR_OF_CHANGES, MAX_NR_OF_OBSERVED, MAX_NR_OF_OBSERVERS, MAX_NR_OF_HISTORY);
+        this.start               = null;
+        this.cycle               = null;
+        this.devMode             = DEV_MODE;
+        this.checkOrphanState    = CHECK_ORPHAN_STATE;
+        this.runSequential       = RUN_SEQUENTIAL;
+        this.traceUniverse       = TRACE_UNIVERSE;
+        this.traceMutable        = TRACE_MUTABLE;
+        this.traceMatching       = TRACE_MATCHING;
+        this.traceActions        = TRACE_ACTIONS;
+        this.maxInInQueue        = MAX_IN_IN_QUEUE;
+        this.maxTotalNrOfChanges = MAX_TOTAL_NR_OF_CHANGES;
+        this.maxNrOfChanges      = MAX_NR_OF_CHANGES;
+        this.maxNrOfObserved     = MAX_NR_OF_OBSERVED;
+        this.maxNrOfObservers    = MAX_NR_OF_OBSERVERS;
+        this.maxNrOfHistory      = MAX_NR_OF_HISTORY;
     }
 
-    private DclareConfig(State start, Consumer<UniverseTransaction> cycle, boolean devMode, boolean checkOrphanState, boolean runSequential, boolean traceUniverse, boolean traceMutable, boolean traceMatching, boolean traceActions, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
+    protected DclareConfig(State start, Consumer<UniverseTransaction> cycle, boolean devMode, boolean checkOrphanState, boolean runSequential, boolean traceUniverse, boolean traceMutable, boolean traceMatching, boolean traceActions, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
         this.start               = start;
         this.cycle               = cycle;
         this.devMode             = devMode;
@@ -80,69 +95,91 @@ public class DclareConfig {
         this.maxNrOfHistory      = maxNrOfHistory;
     }
 
+    protected DclareConfig create(State start, Consumer<UniverseTransaction> cycle, boolean devMode, boolean checkOrphanState, boolean runSequential, boolean traceUniverse, boolean traceMutable, boolean traceMatching, boolean traceActions, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
+        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+    }
+
+    //============================================================================
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        DclareConfig that = (DclareConfig) o;
+        return devMode == that.devMode && checkOrphanState == that.checkOrphanState && runSequential == that.runSequential && traceUniverse == that.traceUniverse && traceMutable == that.traceMutable && traceMatching == that.traceMatching && traceActions == that.traceActions && maxInInQueue == that.maxInInQueue && maxTotalNrOfChanges == that.maxTotalNrOfChanges && maxNrOfChanges == that.maxNrOfChanges && maxNrOfObserved == that.maxNrOfObserved && maxNrOfObservers == that.maxNrOfObservers && maxNrOfHistory == that.maxNrOfHistory && Objects.equals(start, that.start) && Objects.equals(cycle, that.cycle);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+    }
+
     //============================================================================
     // All these with***() methods are designed to give the JIT compiler a pleasant time.
     // The fields are all final to improve inlineability.
-    // All the with***() methods are probably not very efficient but that does not matter because they are not used frequently.
+    // All the with***() methods themselves are probably not very efficient but that does not matter because they are not used frequently.
     //
     public DclareConfig withStart(State start) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withCycle(Consumer<UniverseTransaction> cycle) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withDevMode(boolean devMode) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withCheckOrphanState(boolean checkOrphanState) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withRunSequential(boolean runSequential) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withTraceUniverse(boolean traceUniverse) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withTraceMutable(boolean traceMutable) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withTraceMatching(boolean traceMatching) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withTraceActions(boolean traceActions) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxInInQueue(int maxInInQueue) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxTotalNrOfChanges(int maxTotalNrOfChanges) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxNrOfChanges(int maxNrOfChanges) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxNrOfObserved(int maxNrOfObserved) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxNrOfObservers(int maxNrOfObservers) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     public DclareConfig withMaxNrOfHistory(int maxNrOfHistory) {
-        return new DclareConfig(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
+        return create(start, cycle, devMode, checkOrphanState, runSequential, traceUniverse, traceMutable, traceMatching, traceActions, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory);
     }
 
     //============================================================================

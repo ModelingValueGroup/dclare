@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
+
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
@@ -38,9 +40,8 @@ public interface Newable extends Mutable {
                                                                                                      }
                                                                                                      rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
                                                                                                  });
-                                                                                     }, SetableModifier.doNotCheckConsistency);
-
-    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), SetableModifier.doNotCheckConsistency);
+                                                                                     }, doNotCheckConsistency);
+    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), doNotCheckConsistency);
     Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
                                                                                          Construction direct = n.dDirectConstruction();
                                                                                          if (direct != null) {
@@ -50,7 +51,7 @@ public interface Newable extends Mutable {
                                                                                              D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
                                                                                          }
                                                                                      });
-    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, SetableModifier.doNotCheckConsistency);
+    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, doNotCheckConsistency);
     @SuppressWarnings("rawtypes")
     Observed<Newable, Boolean>                               D_OBSOLETE              = Observed.of("D_OBSOLETE", Boolean.FALSE, (t, o, b, a) -> {
                                                                                          if (a) {
@@ -61,7 +62,7 @@ public interface Newable extends Mutable {
                                                                                                  r.constructed().setDefault(o);
                                                                                              }
                                                                                          }
-                                                                                     }, SetableModifier.doNotCheckConsistency);
+                                                                                     }, doNotCheckConsistency);
 
     Object dIdentity();
 

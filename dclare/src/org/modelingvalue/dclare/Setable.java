@@ -15,7 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Arrays;
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
+import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -71,11 +73,11 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.checkConsistency = !hasModifier(modifiers, SetableModifier.doNotCheckConsistency);
-        this.containment = hasModifier(modifiers, SetableModifier.containment);
-        this.synthetic = hasModifier(modifiers, SetableModifier.synthetic);
-        this.changed = changed;
-        if (hasModifier(modifiers, SetableModifier.symmetricOpposite)) {
+        this.checkConsistency = !doNotCheckConsistency.in(modifiers);
+        this.containment      = CoreSetableModifier.containment.in(modifiers);
+        this.synthetic        = CoreSetableModifier.synthetic.in(modifiers);
+        this.changed          = changed;
+        if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
                 throw new Error("The setable " + this + " is already a symetric-opposite");
             } else {
@@ -89,26 +91,6 @@ public class Setable<O, T> extends Getable<O, T> {
             throw new Error("The containment setable " + this + " has an opposite");
         }
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
-    }
-
-    public static boolean hasModifier(SetableModifier[] modifiers, SetableModifier modifier) {
-        for (int i = 0; i < modifiers.length; i++) {
-            if (modifiers[i] == modifier) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static SetableModifier[] addModifier(SetableModifier[] modifiers, SetableModifier modifier) {
-        for (int i = 0; i < modifiers.length; i++) {
-            if (modifiers[i] == modifier) {
-                return modifiers;
-            }
-        }
-        modifiers = Arrays.copyOf(modifiers, modifiers.length + 1);
-        modifiers[modifiers.length - 1] = modifier;
-        return modifiers;
     }
 
     @SuppressWarnings("rawtypes")
