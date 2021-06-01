@@ -16,6 +16,8 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -35,12 +37,12 @@ public class ImperativeTransaction extends LeafTransaction {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, firstHandler, diffHandler, keepTransaction);
     }
 
-    private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
+    private final static Setable<ImperativeTransaction, Long> CHANGE_NR    = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
     private final TriConsumer<State, State, Boolean>          diffHandler;
     private final Consumer<State>                             firstHandler;
-    private final Pair<ImperativeTransaction, String>         actionId  = Pair.of(this, "$toDClare");
+    private final Pair<ImperativeTransaction, String>         actionId     = Pair.of(this, "$toDClare");
 
     private State                                             pre;
     private State                                             state;
@@ -48,6 +50,7 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  setted;
     @SuppressWarnings("rawtypes")
     private DefaultMap<Object, Set<Setable>>                  allSetted;
+    private Long                                              lastChangeNr = CHANGE_NR.getDefault();
 
     protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
@@ -98,7 +101,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void extern2intern() {
         if (pre != state) {
-            CHANGE_NR.set(this, (BiFunction<Long, Integer, Long>) Long::sum, 1);
+            CHANGE_NR.set(this, (BiFunction<Long, Long, Long>) Long::sum, 1l);
             State finalState = state;
             DefaultMap<Object, Set<Setable>> finalSetted = setted;
             pre = state;
@@ -132,8 +135,11 @@ public class ImperativeTransaction extends LeafTransaction {
     private void intern2extern(State post, boolean timeTraveling) {
         if (pre != post) {
             State finalState = state;
-            boolean last = post.get(this, CHANGE_NR).equals(finalState.get(this, CHANGE_NR));
+            Long postChangeNr = post.get(this, CHANGE_NR);
+            Long stateChangeNr = finalState.get(this, CHANGE_NR);
+            boolean last = postChangeNr.equals(stateChangeNr) && !postChangeNr.equals(lastChangeNr);
             if (last) {
+                lastChangeNr = postChangeNr;
                 allSetted = SETTED_MAP;
             } else {
                 for (Entry<Object, Set<Setable>> e : allSetted) {
@@ -155,6 +161,24 @@ public class ImperativeTransaction extends LeafTransaction {
                 pre = state;
             }
         }
+    }
+
+    public State waitForEnd() {
+        universeTransaction().waitForEnd();
+        BlockingQueue<Boolean> waitQueue = new LinkedBlockingQueue<>(1);
+        scheduler.accept(() -> {
+            try {
+                waitQueue.put(Boolean.TRUE);
+            } catch (InterruptedException e) {
+                throw new Error(e);
+            }
+        });
+        try {
+            waitQueue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+        return state;
     }
 
     @Override
@@ -185,8 +209,8 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        T[]     oldNew = (T[]) new Object[2];
-        boolean first  = pre == state;
+        T[] oldNew = (T[]) new Object[2];
+        boolean first = pre == state;
         state = state.set(object, property, oper, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];

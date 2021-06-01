@@ -26,44 +26,43 @@ import org.modelingvalue.dclare.Construction.Reason;
 public interface Newable extends Mutable {
     @SuppressWarnings("unchecked")
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.<Direction, Construction> of(c -> c.reason().direction()), (t, o, b, a) -> {
-        boolean traceMatching = t.universeTransaction().getConfig().isTraceMatching();
-        Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                                                                         //
-                add -> {
-                    if (traceMatching) {
-                        t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + add.observer().direction(add.object()) + "::" + add.object() + "." + add.observer() + " (" + add.reason() + "=>" + o + ")"));
-                    }
-                    add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
-                },                                                                                                                                                                                                                       //
-                rem -> {
-                    if (traceMatching) {
-                        t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + rem.observer().direction(rem.object()) + "::" + rem.object() + "." + rem.observer() + " (" + rem.reason() + "=<" + o + ")"));
-                    }
-                    rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
-                });
-    }, doNotCheckConsistency);
-
-    Observed<Newable, Set<Newable>> D_SOURCES             = Observed.of("D_SOURCES", Set.of(), doNotCheckConsistency);
-    Observer<Newable>               D_SOURCES_RULE        = Observer.of(D_SOURCES, n -> {
-        Construction direct = n.dDirectConstruction();
-        if (direct != null) {
-            D_SOURCES.set(n, Set.of(n));
-        } else {
-            Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
-            D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
-        }
-    });
-    Constant<Newable, Construction> D_DIRECT_CONSTRUCTION = Constant.of("D_DIRECT_CONSTRUCTION", null, doNotCheckConsistency);
+                                                                                         boolean traceMatching = t.universeTransaction().getConfig().isTraceMatching();
+                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                                                                         //
+                                                                                                 add -> {
+                                                                                                     if (traceMatching) {
+                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + add.observer().direction(add.object()) + "::" + add.object() + "." + add.observer() + " (" + add.reason() + "=>" + o + ")"));
+                                                                                                     }
+                                                                                                     add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                                                 },                                                                                                                                                                                                                       //
+                                                                                                 rem -> {
+                                                                                                     if (traceMatching) {
+                                                                                                         t.runNonObserving(() -> System.err.println("MATCH:  " + t.parent().indent("    ") + rem.observer().direction(rem.object()) + "::" + rem.object() + "." + rem.observer() + " (" + rem.reason() + "=<" + o + ")"));
+                                                                                                     }
+                                                                                                     rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o));
+                                                                                                 });
+                                                                                     }, doNotCheckConsistency);
+    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), doNotCheckConsistency);
+    Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
+                                                                                         Construction direct = n.dDirectConstruction();
+                                                                                         if (direct != null) {
+                                                                                             D_SOURCES.set(n, Set.of(n));
+                                                                                         } else {
+                                                                                             Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
+                                                                                             D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                                         }
+                                                                                     });
+    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, doNotCheckConsistency);
     @SuppressWarnings("rawtypes")
-    Observed<Newable, Boolean> D_OBSOLETE = Observed.of("D_OBSOLETE", Boolean.FALSE, (t, o, b, a) -> {
-        if (a) {
-            for (Observer r : D_OBSERVERS.get(o)) {
-                for (Entry<Reason, Newable> e : r.constructed().get(o)) {
-                    Newable.D_OBSOLETE.set(e.getValue(), Boolean.TRUE);
-                }
-                r.constructed().setDefault(o);
-            }
-        }
-    }, doNotCheckConsistency);
+    Observed<Newable, Boolean>                               D_OBSOLETE              = Observed.of("D_OBSOLETE", Boolean.FALSE, (t, o, b, a) -> {
+                                                                                         if (a) {
+                                                                                             for (Observer r : D_OBSERVERS.get(o)) {
+                                                                                                 for (Entry<Reason, Newable> e : r.constructed().get(o)) {
+                                                                                                     Newable.D_OBSOLETE.set(e.getValue(), Boolean.TRUE);
+                                                                                                 }
+                                                                                                 r.constructed().setDefault(o);
+                                                                                             }
+                                                                                         }
+                                                                                     }, doNotCheckConsistency);
 
     Object dIdentity();
 
@@ -90,7 +89,7 @@ public interface Newable extends Mutable {
 
     default QualifiedSet<Direction, Construction> dConstructions() {
         QualifiedSet<Direction, Construction> derived = dDerivedConstructions();
-        Construction                          direct  = dDirectConstruction();
+        Construction direct = dDirectConstruction();
         return direct != null ? derived.add(direct) : derived;
     }
 

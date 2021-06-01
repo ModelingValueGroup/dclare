@@ -34,10 +34,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredChildren;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions        = new Set[1];
+    private final Set<Action<?>>[]                        actions  = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children       = new Set[1];
-    private final State[]                                 state          = new State[1];
+    private final Set<Mutable>[]                          children = new Set[1];
+    private final State[]                                 state    = new State[1];
 
     private boolean                                       urgent;
     private Set<State>                                    states;
@@ -122,17 +122,19 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                 runSequential(todo);
             }
         }
-        this.states = states.add(state[0]);
-        if (parent() != null && this.states == states) {
-            state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
-        } else if (hasQueued(state[0], mutable(), Priority.urgent)) {
-            urgent = true;
-            move(mutable(), Priority.urgent, Priority.scheduled);
-        } else if (parent() == null || !parent().urgent) {
-            urgent = false;
-            move(mutable(), Priority.forward, Priority.scheduled);
-        } else if (hasQueued(state[0], mutable(), Priority.forward)) {
-            state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
+        if (!universeTransaction().isKilled()) {
+            this.states = states.add(state[0]);
+            if (parent() != null && this.states == states) {
+                state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
+            } else if (hasQueued(state[0], mutable(), Priority.urgent)) {
+                urgent = true;
+                move(mutable(), Priority.urgent, Priority.scheduled);
+            } else if (parent() == null || !parent().urgent) {
+                urgent = false;
+                move(mutable(), Priority.forward, Priority.scheduled);
+            } else if (hasQueued(state[0], mutable(), Priority.forward)) {
+                state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
+            }
         }
     }
 
@@ -149,7 +151,11 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void runSequential(Set<T> todo) {
         for (TransactionClass t : todo.random()) {
-            state[0] = t.run(state[0], this);
+            State result = t.run(state[0], this);
+            if (universeTransaction().isKilled()) {
+                return;
+            }
+            state[0] = result;
         }
     }
 

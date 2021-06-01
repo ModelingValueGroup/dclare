@@ -32,12 +32,13 @@ public interface Mutable extends TransactionClass {
 
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, doNotCheckConsistency) {
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        }
-    };
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, doNotCheckConsistency) {
+
+                                                                                       @SuppressWarnings("rawtypes")
+                                                                                       @Override
+                                                                                       protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+                                                                                       }
+                                                                                   };
 
     Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
@@ -49,7 +50,7 @@ public interface Mutable extends TransactionClass {
     Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable> D_PUSHING_CONSTANTS_RULE = Observer.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
         return D_PARENT_CONTAINING.get(this);
@@ -188,6 +189,13 @@ public interface Mutable extends TransactionClass {
 
     default Direction dDirection() {
         return Action.DEFAULT_DIRECTION;
+    }
+
+    @SuppressWarnings("rawtypes")
+    default void dHandleRemoved(Mutable parent) {
+        for (Observer o : D_OBSERVERS.get(this)) {
+            o.constructed().setDefault(this);
+        }
     }
 
 }

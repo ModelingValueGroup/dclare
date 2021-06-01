@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 
 import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -39,12 +40,14 @@ public class TestUniverse extends TestMutable implements Universe {
         }, clazz, scheduler);
     }
 
-    private final TestImperative         scheduler;
-    private final BlockingQueue<Boolean> idleQueue = new LinkedBlockingQueue<>(1);
-    private final AtomicInteger          counter   = new AtomicInteger(0);
-    private       Thread                 waitForEndThread;
-    private       ImperativeTransaction  imperativeTransaction;
-    private       Throwable              uncaught;
+    private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
+
+    private final TestImperative                     scheduler;
+    private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
+    private final AtomicInteger                      counter   = new AtomicInteger(0);
+    private Thread                                   waitForEndThread;
+    private ImperativeTransaction                    imperativeTransaction;
+    private Throwable                                uncaught;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
@@ -56,7 +59,7 @@ public class TestUniverse extends TestMutable implements Universe {
         Universe.super.init();
         UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
         imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
-            if (last && scheduler.isEmpty()) {
+            if (last) {
                 idle();
             }
         }, scheduler, false);
@@ -66,12 +69,12 @@ public class TestUniverse extends TestMutable implements Universe {
                 utx.waitForEnd();
             } catch (Throwable t) {
                 uncaught = t;
-            } finally {
                 idle();
             }
         }, "TestUniverse.waitForEndThread");
         waitForEndThread.setDaemon(true);
         waitForEndThread.start();
+        idle();
     }
 
     public int uniqueInt() {
@@ -80,17 +83,16 @@ public class TestUniverse extends TestMutable implements Universe {
 
     public void schedule(Runnable action) {
         waitForIdle();
-        imperativeTransaction.schedule(() -> {
-            action.run();
-            if (!imperativeTransaction.isChanged()) {
-                imperativeTransaction.universeTransaction().dummy();
-            }
-        });
+        if (!imperativeTransaction.universeTransaction().isKilled()) {
+            imperativeTransaction.schedule(() -> {
+                DUMMY.set(this, Long::sum, 1l);
+                action.run();
+            });
+        }
     }
 
     private void idle() {
         try {
-            idleQueue.clear();
             idleQueue.put(Boolean.TRUE);
         } catch (InterruptedException e) {
             throw new Error(e);
@@ -103,6 +105,10 @@ public class TestUniverse extends TestMutable implements Universe {
         } catch (InterruptedException e) {
             throw new Error(e);
         }
+    }
+
+    public State waitForEnd() {
+        return imperativeTransaction.waitForEnd();
     }
 
     public Throwable getUncaught() {
@@ -122,4 +128,5 @@ public class TestUniverse extends TestMutable implements Universe {
             throw e.getCause();
         }
     }
+
 }
