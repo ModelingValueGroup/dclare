@@ -234,8 +234,8 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
-            if (((Observed) setable).mandatory() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
-                throw new NullPointerException();
+            if (((Observed) setable).mandatory() && setable.checkConsistency && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
+                throw new NullPointerException(setable.toString());
             }
             observe(object, (Observed<O, T>) setable, sets);
             T start = startState.get(object, setable);
