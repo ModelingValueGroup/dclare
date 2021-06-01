@@ -74,9 +74,9 @@ public class Setable<O, T> extends Getable<O, T> {
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
         this.checkConsistency = !doNotCheckConsistency.in(modifiers);
-        this.containment      = CoreSetableModifier.containment.in(modifiers);
-        this.synthetic        = CoreSetableModifier.synthetic.in(modifiers);
-        this.changed          = changed;
+        this.containment = CoreSetableModifier.containment.in(modifiers);
+        this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
+        this.changed = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
                 throw new Error("The setable " + this + " is already a symetric-opposite");
