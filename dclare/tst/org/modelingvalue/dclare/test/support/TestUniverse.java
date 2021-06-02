@@ -40,6 +40,8 @@ public class TestUniverse extends TestMutable implements Universe {
     private final TestImperative                     scheduler;
     private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
     private final AtomicInteger                      counter   = new AtomicInteger(0);
+
+    private Thread                                   waitForEndThread;
     private ImperativeTransaction                    imperativeTransaction;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
@@ -57,6 +59,15 @@ public class TestUniverse extends TestMutable implements Universe {
             }
         }, scheduler, false);
         utx.dummy();
+        waitForEndThread = new Thread(() -> {
+            try {
+                utx.waitForEnd();
+            } catch (Throwable t) {
+                idle();
+            }
+        }, "TestUniverse.waitForEndThread");
+        waitForEndThread.setDaemon(true);
+        waitForEndThread.start();
         idle();
     }
 
