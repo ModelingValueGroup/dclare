@@ -231,7 +231,7 @@ public class DclareTests {
         assertEquals(1_111_112, result.getObjects(TestMutable.class).size());
     }
 
-    //@Test
+    @Test
     public void emptyMandatoryTest() {
         Observed<TestUniverse, TestMutable> child               = Observed.of("child", null, containment);
         Observed<TestUniverse, String>      mand                = Observed.of("mandatory", null, mandatory);
@@ -245,7 +245,7 @@ public class DclareTests {
         printState(universeTransaction, null);
     }
 
-    //@Test
+    @Test
     public void orphanReferenceTest() {
         Observed<TestUniverse, TestMutable> child               = Observed.of("child", null, containment);
         Observed<TestMutable, TestMutable>  ref                 = Observed.of("ref", null);
