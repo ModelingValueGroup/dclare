@@ -15,11 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,9 +40,9 @@ public class TestUniverse extends TestMutable implements Universe {
     private final TestImperative                     scheduler;
     private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
     private final AtomicInteger                      counter   = new AtomicInteger(0);
+
     private Thread                                   waitForEndThread;
     private ImperativeTransaction                    imperativeTransaction;
-    private Throwable                                uncaught;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
@@ -68,7 +63,6 @@ public class TestUniverse extends TestMutable implements Universe {
             try {
                 utx.waitForEnd();
             } catch (Throwable t) {
-                uncaught = t;
                 idle();
             }
         }, "TestUniverse.waitForEndThread");
@@ -111,20 +105,10 @@ public class TestUniverse extends TestMutable implements Universe {
         return imperativeTransaction.waitForEnd();
     }
 
-    public Throwable getUncaught() {
-        return uncaught;
-    }
-
     public State waitForEnd(UniverseTransaction universeTransaction) throws Throwable {
         try {
-            State state = universeTransaction.waitForEnd();
-            assertNull(uncaught);
-            return state;
+            return universeTransaction.waitForEnd();
         } catch (Error e) {
-            waitForEndThread.join(100);
-            assertFalse(waitForEndThread.isAlive(), "the waitForEndThread probably hangs");
-            assertNotNull(uncaught);
-            assertEquals(e.getCause(), uncaught.getCause());
             throw e.getCause();
         }
     }
