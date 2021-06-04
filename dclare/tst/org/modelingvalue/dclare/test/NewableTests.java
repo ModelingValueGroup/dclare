@@ -67,7 +67,7 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a constant
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = 4;
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
@@ -546,7 +546,6 @@ public class NewableTests {
         Concurrent<Set<TestNewable>> added = run(utx, "add", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-
             Set<TestNewable> news = created.merge();
             Set<TestNewable> lost = news.removeAll(objects);
             assertEquals(Set.of(), lost);
@@ -636,6 +635,10 @@ public class NewableTests {
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
+
+            //            Set<TestNewable> news = created.merge().addAll(added.merge());
+            //            System.err.println("!!!!!!!!!! " + objects.exclude(news::contains).filter(n -> n.dClass() == FAT).toSet());
+
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
             if (oo2fb) { // change OO
@@ -663,9 +666,9 @@ public class NewableTests {
         run(utx, "back", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
+            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);

@@ -236,10 +236,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private Constructed(Observer observer) {
             super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Construction cons   = Construction.of(o, observer, reason);
-                    Newable      before = pre.get(reason);
-                    Newable      after  = post.get(reason);
+                    Newable before = pre.get(reason);
+                    Newable after = post.get(reason);
                     if (!Objects.equals(before, after)) {
+                        Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
                             Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
                         }

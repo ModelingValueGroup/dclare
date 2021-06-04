@@ -143,7 +143,7 @@ public class Construction extends IdentifiedByArray {
 
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
-                    !from.directions().anyMatch(directions()::contains) && //
+                    from.directions().noneMatch(directions()::contains) && //
                     (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
         }
 
@@ -198,7 +198,7 @@ public class Construction extends IdentifiedByArray {
         public boolean isCarvedInStone() {
             if (isCarvedInStone == null) {
                 isCarvedInStone = newable.dDirectConstruction() != null || //
-                        LeafTransaction.getCurrent().universeTransaction().preState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
+                        (!directions().isEmpty() && LeafTransaction.getCurrent().universeTransaction().preState().get(newable, Mutable.D_PARENT_CONTAINING) != null);
             }
             return isCarvedInStone;
         }

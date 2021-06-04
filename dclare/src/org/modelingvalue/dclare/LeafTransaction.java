@@ -99,13 +99,13 @@ public abstract class LeafTransaction extends Transaction {
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
-        if (priority == Priority.forward) {
+        if (priority == Priority.forward || priority == Priority.urgent) {
             set(object, Priority.backward.actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            if (priority == Priority.forward && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
+            if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
                 set(container, Priority.backward.children, Set::remove, object);
             }
             object = container;

@@ -311,12 +311,12 @@ public class ObserverTransaction extends ActionTransaction {
             if (result == null) {
                 result = (O) startState.get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
-                    if (mutable() instanceof Newable && ((Newable) mutable()).dConstructions().isEmpty()) {
-                        return null;
-                    } else {
-                        result = supplier.get();
-                    }
+                    result = supplier.get();
                 }
+            }
+            if (universeTransaction().getConfig().isTraceMatching()) {
+                O finalResult = result;
+                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + "." + observer() + " (" + reason + "=>" + finalResult + ")"));
             }
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
@@ -382,35 +382,39 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Observed observed, Object start, Object before, Object after) {
-        if (before != null && after != null && !before.equals(after)) {
+        if (before instanceof Newable && after instanceof Newable && !before.equals(after) && //
+                ((Newable) before).dConstructions().isEmpty() && ((Newable) after).dConstructions().isEmpty()) {
+            before = null;
+            after = null;
+            backwards.set(TRUE);
+        } else if (before instanceof Newable && !before.equals(after) && ((Newable) before).dConstructions().isEmpty()) {
+            before = after;
+        } else if (after instanceof Newable && !after.equals(before) && ((Newable) after).dConstructions().isEmpty()) {
+            backwards.set(TRUE);
+            after = before;
+        }
+        if (observed.containment() && //
+                before instanceof Newable && after instanceof Newable && !before.equals(after) && //
+                ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
             Map<Reason, Newable> cons = constructions.merge();
-            if (observed.containment() && before instanceof Newable && after instanceof Newable && //
-                    ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
-                MatchInfo pre = MatchInfo.of((Newable) before, cons);
-                MatchInfo post = MatchInfo.of((Newable) after, cons);
-                if (!pre.directions().isEmpty() && !post.directions().isEmpty() && pre.directions().noneMatch(post.directions()::contains)) {
-                    if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
-                        if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
-                            makeTheSame(pre, post);
-                            return before;
-                        } else {
-                            makeTheSame(post, pre);
-                            return after;
-                        }
-                    } else if (!post.isCarvedInStone()) {
+            MatchInfo pre = MatchInfo.of((Newable) before, cons);
+            MatchInfo post = MatchInfo.of((Newable) after, cons);
+            if (pre.directions().noneMatch(post.directions()::contains)) {
+                if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
+                    if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
                         makeTheSame(pre, post);
                         return before;
-                    } else if (!pre.isCarvedInStone()) {
+                    } else {
                         makeTheSame(post, pre);
                         return after;
                     }
+                } else if (!post.isCarvedInStone()) {
+                    makeTheSame(pre, post);
+                    return before;
+                } else if (!pre.isCarvedInStone()) {
+                    makeTheSame(post, pre);
+                    return after;
                 }
-            }
-            ContainingCollection<Object> coll = removeObsolete(Set.of(before, after), cons.toValues().toSet());
-            if (coll.size() == 1) {
-                return coll.get(0);
-            } else if (coll.isEmpty()) {
-                return null;
             }
         }
         return rippleOut(observed, start, before, after);
@@ -424,8 +428,18 @@ public class ObserverTransaction extends ActionTransaction {
                 observer.trigger(object);
             }
         }
-        ContainingCollection<Object> result = rippleOut(observed, start, before, after);
-        return result != null ? removeObsolete(result, constructions.merge().toValues().toSet()) : result;
+        if (before != null) {
+            for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> n.dConstructions().isEmpty())) {
+                before = before.remove(n);
+            }
+        }
+        if (after != null) {
+            for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> n.dConstructions().isEmpty())) {
+                backwards.set(TRUE);
+                after = after.remove(n);
+            }
+        }
+        return rippleOut(observed, start, before, after);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
@@ -437,22 +451,20 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void match(Observed observed, Mutable mutable) {
         ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
-        if (pre != null) {
-            ContainingCollection<Object> post = removeObsolete(pre, Set.of());
-            if (post.size() > 1) {
-                List<MatchInfo> list = post.filter(Newable.class).map(n -> MatchInfo.of(n, Map.of())).toList();
-                if (!(post instanceof List)) {
-                    list = list.sortedBy(MatchInfo::sortKey).toList();
-                }
-                for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
-                    for (MatchInfo to : list) {
-                        if (!to.equals(from) && to.mustBeTheSame(from)) {
-                            makeTheSame(to, from);
-                            post = post.remove(from.newable());
-                            list = list.remove(from);
-                            to.mergeIn(from);
-                            break;
-                        }
+        ContainingCollection<Object> post = pre;
+        if (post != null && post.size() > 1) {
+            List<MatchInfo> list = post.filter(Newable.class).exclude(n -> n.dConstructions().isEmpty()).map(n -> MatchInfo.of(n, Map.of())).toList();
+            if (!(post instanceof List)) {
+                list = list.sortedBy(MatchInfo::sortKey).toList();
+            }
+            for (MatchInfo from : list.exclude(MatchInfo::isCarvedInStone)) {
+                for (MatchInfo to : list) {
+                    if (!to.equals(from) && to.mustBeTheSame(from)) {
+                        makeTheSame(to, from);
+                        post = post.remove(from.newable());
+                        list = list.remove(from);
+                        to.mergeIn(from);
+                        break;
                     }
                 }
             }
@@ -462,34 +474,18 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private void makeTheSame(MatchInfo to, MatchInfo from) {
-        super.set(from.newable(), Newable.D_OBSOLETE, Boolean.FALSE, Boolean.TRUE);
         if (universeTransaction().getConfig().isTraceMatching()) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + "." + observer() + //
                     " (" + to.asString() + "==" + from.asString() + ")"));
         }
-        QualifiedSet<Direction, Construction> preCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-        QualifiedSet<Direction, Construction> postCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-        super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, preCons, preCons.putAll(postCons));
-        super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, postCons, Newable.D_DERIVED_CONSTRUCTIONS.getDefault());
+        QualifiedSet<Direction, Construction> toCons = state().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        QualifiedSet<Direction, Construction> fromCons = state().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, toCons, toCons.putAll(fromCons));
+        super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, fromCons, Newable.D_DERIVED_CONSTRUCTIONS.getDefault());
         constructions.set((map, n) -> {
             Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
             return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
         }, from.newable());
-    }
-
-    @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private ContainingCollection<Object> removeObsolete(ContainingCollection<Object> result, Set<Newable> cons) {
-        boolean containsConstructed = result.filter(Newable.class).anyMatch(n -> constructed(n, cons));
-        for (Newable n : result.filter(Newable.class)) {
-            if (n.dIsObsolete() || (containsConstructed && !constructed(n, cons))) {
-                result = result.remove(n);
-            }
-        }
-        return result;
-    }
-
-    private boolean constructed(Newable n, Set<Newable> cons) {
-        return cons.contains(n) || !n.dConstructions().isEmpty();
     }
 
 }
