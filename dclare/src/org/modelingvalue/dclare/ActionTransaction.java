@@ -30,6 +30,7 @@ import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
@@ -91,6 +92,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, Priority.forward);
+                    for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
+                        set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
+                    }
                 }
             }
         }

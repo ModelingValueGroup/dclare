@@ -59,6 +59,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
+    private final PreConstructed                preConstructed;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -79,6 +80,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
+        preConstructed = PreConstructed.of(this);
     }
 
     public Observerds observeds() {
@@ -91,6 +93,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Constructed constructed() {
         return constructed;
+    }
+
+    public PreConstructed preConstructed() {
+        return preConstructed;
     }
 
     @Override
@@ -249,6 +255,23 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                     }
                 }
             }, doNotCheckConsistency);
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + super.toString();
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static class PreConstructed extends Setable<Mutable, Map<Reason, Newable>> {
+
+        public static PreConstructed of(Observer observer) {
+            return new PreConstructed(observer);
+        }
+
+        private PreConstructed(Observer observer) {
+            super(observer, Map.of(), null, null, null, doNotCheckConsistency);
         }
 
         @Override

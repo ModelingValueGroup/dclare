@@ -21,9 +21,11 @@ import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -190,6 +192,9 @@ public interface Mutable extends TransactionClass {
     @SuppressWarnings("rawtypes")
     default void dHandleRemoved(Mutable parent) {
         for (Observer o : D_OBSERVERS.get(this)) {
+            for (Entry<Reason, Newable> e : o.preConstructed().get(this)) {
+                Newable.D_SUPER_POSITION.setDefault(e.getValue());
+            }
             o.constructed().setDefault(this);
         }
     }

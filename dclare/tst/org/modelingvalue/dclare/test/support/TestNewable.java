@@ -107,7 +107,7 @@ public class TestNewable extends TestMutable implements Newable {
                 Consumer<TestNewable> finalCons = observers[i];
                 Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
                     Mutable t = ((Triple<Mutable, ?, ?>) LeafTransaction.getCurrent().leaf().id()).a();
-                    if (n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t))) {
+                    if (n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t) && !Newable.D_SUPER_POSITION.get(n).contains(c.reason().direction()))) {
                         finalCons.accept(n);
                     }
                 }, m -> direction);
