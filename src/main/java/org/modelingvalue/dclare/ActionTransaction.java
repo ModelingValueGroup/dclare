@@ -30,6 +30,7 @@ import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
@@ -90,7 +91,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 //noinspection ConstantConditions
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, triggerPriority(target, observer));
+                    trigger(target, observer, Priority.forward);
+                    for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
+                        set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
+                    }
                 }
             }
         }
@@ -198,10 +202,4 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return ActionInstance.of(mutable(), action());
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression", "CommentedOutCode", "unused"})
-    private Priority triggerPriority(Mutable target, Observer triggered) {
-        //        Direction direction = triggered.direction(target);
-        //        return direction != Observer.DEFAULT_DIRECTION && !direction().equals(direction) ? Priority.backward : Priority.forward;
-        return Priority.forward;
-    }
 }

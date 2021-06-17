@@ -50,6 +50,7 @@ import org.modelingvalue.dclare.Newable;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.test.support.TestImperative;
 import org.modelingvalue.dclare.test.support.TestMutable;
@@ -67,7 +68,7 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a constant
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = 8;
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
@@ -415,13 +416,11 @@ public class NewableTests {
             OBT.observe(fbDir, ot -> mcls.set(ot, create(fbDir, "7", ot, CLS, //
                     cl -> n.set(cl, n.get(ot)), //
                     cl -> refs.set(cl, _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()))));
-            ROL.observe(fbDir, rl -> {
-                mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create(fbDir, "8", rl, REF, //
-                        rf -> n.set(rf, n.get(rl)), //
-                        rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
-                        rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
-                ) : null);
-            });
+            ROL.observe(fbDir, rl -> mref.set(rl, otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create(fbDir, "8", rl, REF, //
+                    rf -> n.set(rf, n.get(rl)), //
+                    rf -> typ.set(rf, otr.get(rl) != null ? mcls.get(otr.get(rl)) : null), //
+                    rf -> opp.set(rf, mref.get(rlopp.get(rl))) //
+            ) : null));
         }
 
         // Instances
@@ -546,7 +545,7 @@ public class NewableTests {
         Concurrent<Set<TestNewable>> added = run(utx, "add", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             Set<TestNewable> news = created.merge();
             Set<TestNewable> lost = news.removeAll(objects);
             assertEquals(Set.of(), lost);
@@ -634,6 +633,7 @@ public class NewableTests {
         run(utx, "change", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
@@ -660,12 +660,13 @@ public class NewableTests {
 
         });
 
-        run(utx, "back", c -> {
+        run(utx, "changeBack", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
+            assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -691,7 +692,10 @@ public class NewableTests {
 
         run(utx, "setType", c -> {
             state[0] = checkState(state[0]);
-            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).filter(n -> n instanceof Universe || n.dParent() != null).toSet();
+            Set<TestNewable> supers = objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet();
+            assertEquals(Set.of(), supers.removeAll(objects));
+            assertEquals(Set.of(), supers);
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
@@ -727,6 +731,7 @@ public class NewableTests {
         run(utx, "checkAndSetTypeBack", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             assertEquals((oo2fb && fb2oo) ? 62 : oo2fb ? 45 : fb2oo ? 49 : 32, objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
@@ -757,6 +762,7 @@ public class NewableTests {
         run(utx, "remove", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
@@ -775,6 +781,7 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
+            assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
             assertEquals(32, objects.size());
             Set<TestNewable> lost = created.result().removeAll(objects);
             assertEquals(Set.of(), lost);

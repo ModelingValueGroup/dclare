@@ -47,7 +47,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     protected MutableTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
         triggeredActions = Concurrent.of();
-        triggeredChildren = new Concurrent[]{Concurrent.of(), Concurrent.of()};
+        triggeredChildren = new Concurrent[]{Concurrent.of(), Concurrent.of(), Concurrent.of()};
     }
 
     @Override
@@ -124,12 +124,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         if (!universeTransaction().isKilled()) {
             this.states = states.add(state[0]);
-            if (parent() != null && this.states == states) {
-                state[0] = state[0].set(parent().mutable(), Priority.forward.children, Set::add, mutable());
-            } else if (hasQueued(state[0], mutable(), Priority.urgent)) {
+            if (hasQueued(state[0], mutable(), Priority.urgent)) {
                 urgent = true;
                 move(mutable(), Priority.urgent, Priority.scheduled);
-            } else if (parent() == null || !parent().urgent) {
+            } else if (parent() == null || (!parent().urgent && this.states != states)) {
                 urgent = false;
                 move(mutable(), Priority.forward, Priority.scheduled);
             } else if (hasQueued(state[0], mutable(), Priority.forward)) {
@@ -167,16 +165,19 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             triggeredActions.init(Map.of());
             triggeredChildren[0].init(Set.of());
             triggeredChildren[1].init(Set.of());
+            triggeredChildren[2].init(Set.of());
             try {
                 State state = base.merge(this, branches, branches.length);
                 state = trigger(state, triggeredActions.result(), Priority.forward);
-                state = triggerMutables(state, triggeredChildren[0].result(), Priority.forward);
-                state = triggerMutables(state, triggeredChildren[1].result(), Priority.backward);
+                state = triggerMutables(state, triggeredChildren[0].result(), Priority.urgent);
+                state = triggerMutables(state, triggeredChildren[1].result(), Priority.forward);
+                state = triggerMutables(state, triggeredChildren[2].result(), Priority.backward);
                 return state;
             } finally {
                 triggeredActions.clear();
                 triggeredChildren[0].clear();
                 triggeredChildren[1].clear();
+                triggeredChildren[2].clear();
                 TraceTimer.traceEnd("merge");
             }
         }
@@ -220,7 +221,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         if (!Objects.equals(branchParent, baseParent)) {
                             Set<Mutable> addedDepth = depth.removeAll(State.get(psb, ds));
                             if (!addedDepth.isEmpty()) {
-                                triggeredChildren[ds.priority().nr - 1].change(ts -> ts.addAll(addedDepth));
+                                triggeredChildren[ds.priority().nr].change(ts -> ts.addAll(addedDepth));
                             }
                         }
                     }
@@ -263,4 +264,5 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     protected State lastState() {
         return state[0];
     }
+
 }
