@@ -44,17 +44,17 @@ public interface Newable extends Mutable {
     Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
                                                                                          Construction direct = n.dDirectConstruction();
                                                                                          if (direct != null) {
-                                                                                             D_SOURCES.set(n, Set.of(n));
+                                                                                             D_SOURCES.setNonObserving(n, Set.of(n));
                                                                                          } else {
                                                                                              Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
-                                                                                             D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                                             D_SOURCES.setNonObserving(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
                                                                                          }
                                                                                      });
 
     Observed<Newable, Set<Direction>>                        D_SUPER_POSITION        = Observed.of("D_SUPER_POSITION", Set.of(), doNotCheckConsistency);
 
     Observer<Newable>                                        D_SUPER_POSITION_RULE   = Observer.of("D_SUPER_POSITION_RULE", n -> {
-                                                                                         D_SUPER_POSITION.set(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
+                                                                                         D_SUPER_POSITION.setNonObserving(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
                                                                                      });
 
     @SuppressWarnings("rawtypes")

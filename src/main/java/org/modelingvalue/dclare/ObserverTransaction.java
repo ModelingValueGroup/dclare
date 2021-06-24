@@ -385,7 +385,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private boolean inputIsChanged() {
-        return gets.merge().removeAll(sets.merge(), Set::removeAll).anyMatch(e -> e.getValue().anyMatch(m -> {
+        return gets.merge().removeAll(sets.merge(), Set::removeAll).filter(e -> e.getKey().checkConsistency).anyMatch(e -> e.getValue().anyMatch(m -> {
             Mutable object = m.dResolve(mutable());
             return !Objects.equals(state().get(object, e.getKey()), startState.get(object, e.getKey()));
         }));
