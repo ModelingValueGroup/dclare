@@ -15,7 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 
 import java.util.function.BiFunction;
@@ -66,14 +65,14 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Supplier<Setable<O, Set<?>>>           scope;
     @SuppressWarnings("rawtypes")
     private final Constant<T, Entry<Setable, Object>>    internal;
-    protected final boolean                              checkConsistency;
+    private final boolean                                plumbing;
     private final boolean                                synthetic;
 
     private Boolean                                      isReference;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.checkConsistency = !doNotCheckConsistency.in(modifiers);
+        this.plumbing = CoreSetableModifier.plumbing.in(modifiers);
         this.containment = CoreSetableModifier.containment.in(modifiers);
         this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
         this.changed = changed;
@@ -216,16 +215,6 @@ public class Setable<O, T> extends Getable<O, T> {
         return currentLeaf(object).set(object, this, value);
     }
 
-    public T setNonObserving(O object, T value) {
-        LeafTransaction tx = currentLeaf(object);
-        return tx.getNonObserving(() -> tx.set(object, this, value));
-    }
-
-    public <E> T setNonObserving(O object, BiFunction<T, E, T> function, E element) {
-        LeafTransaction tx = currentLeaf(object);
-        return tx.getNonObserving(() -> tx.set(object, this, function, element));
-    }
-
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         return currentLeaf(object).set(object, this, function, element);
     }
@@ -292,11 +281,15 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return checkConsistency && (scope != null || isReference());
+        return !plumbing && (scope != null || isReference());
     }
 
-    public boolean plumming() {
-        return !checkConsistency || synthetic;
+    public boolean isTraced() {
+        return !plumbing && !synthetic;
+    }
+
+    public boolean isPlumbing() {
+        return plumbing;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

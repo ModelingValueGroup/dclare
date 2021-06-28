@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
-
 import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -184,7 +182,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, doNotCheckConsistency);
+            }, CoreSetableModifier.plumbing);
         }
 
         public Observer observer() {
@@ -208,7 +206,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, null, null, null, doNotCheckConsistency);
+            super(Pair.of(observer, "exception"), null, null, null, null, CoreSetableModifier.plumbing);
             this.observer = observer;
         }
 
@@ -254,7 +252,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         }
                     }
                 }
-            }, doNotCheckConsistency);
+            }, CoreSetableModifier.plumbing);
         }
 
         @Override
@@ -271,7 +269,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
 
         private PreConstructed(Observer observer) {
-            super(observer, Map.of(), null, null, null, doNotCheckConsistency);
+            super(observer, Map.of(), null, null, null, CoreSetableModifier.plumbing);
         }
 
         @Override

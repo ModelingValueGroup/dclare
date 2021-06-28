@@ -201,7 +201,7 @@ public class NewableTests {
         State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && s.isTraced() && s != n));
         }
 
         result.run(() -> {
@@ -776,7 +776,7 @@ public class NewableTests {
         State result = universe.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
-            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && s.isTraced() && s != n));
         }
 
         result.run(() -> {
@@ -801,7 +801,7 @@ public class NewableTests {
     private State checkState(State pre) {
         State post = LeafTransaction.getCurrent().state();
         if (PRINT_RESULT_STATE) {
-            System.err.println(pre.diffString(post, o -> o instanceof TestMutable, s -> s instanceof Observed && !s.plumming() && s != n));
+            System.err.println(pre.diffString(post, o -> o instanceof TestMutable, s -> s instanceof Observed && s.isTraced() && s != n));
         }
         return post;
     }
