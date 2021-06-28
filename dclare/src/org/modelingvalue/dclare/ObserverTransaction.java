@@ -408,7 +408,6 @@ public class ObserverTransaction extends ActionTransaction {
         if (before instanceof Newable && hasNoConstructions((Newable) before, cons)) {
             return after;
         } else if (after instanceof Newable && hasNoConstructions((Newable) after, cons)) {
-            backwards.set(TRUE);
             return before;
         } else if (before instanceof Newable && after instanceof Newable && //
                 ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
@@ -451,7 +450,6 @@ public class ObserverTransaction extends ActionTransaction {
         }
         if (after != null) {
             for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons))) {
-                backwards.set(TRUE);
                 after = after.remove(n);
             }
         }

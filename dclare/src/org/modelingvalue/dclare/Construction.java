@@ -144,7 +144,8 @@ public class Construction extends IdentifiedByArray {
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
                     from.directions().noneMatch(directions()::contains) && //
-                    (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
+                    (from.sources().contains(newable()) || //
+                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
         public void mergeIn(MatchInfo from) {
