@@ -46,8 +46,20 @@ public interface Newable extends Mutable {
                                                                                          if (direct != null) {
                                                                                              D_SOURCES.set(n, Set.of(n));
                                                                                          } else {
-                                                                                             Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
+                                                                                             Set<Newable> set = n.dDerivedConstructions().flatMap(Construction::derivers).flatMap(Newable::dSources).toSet();
                                                                                              D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                                         }
+                                                                                     });
+
+    Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
+
+    Observer<Newable>                                        D_DIRECTIONS_RULE       = Observer.of(D_DIRECTIONS, n -> {
+                                                                                         Construction direct = n.dDirectConstruction();
+                                                                                         if (direct != null) {
+                                                                                             D_DIRECTIONS.set(n, Set.of());
+                                                                                         } else {
+                                                                                             QualifiedSet<Direction, Construction> cons = n.dDerivedConstructions();
+                                                                                             D_DIRECTIONS.set(n, cons.toKeys().toSet().addAll(cons.flatMap(Construction::derivers).flatMap(Newable::dDirections)));
                                                                                          }
                                                                                      });
 
@@ -88,14 +100,19 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
-    default Set<Newable> dNonDerivedSources() {
+    default Set<Newable> dSources() {
         return D_SOURCES.get(this);
+    }
+
+    default Set<Direction> dDirections() {
+        return D_DIRECTIONS.get(this);
     }
 
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
         D_SOURCES_RULE.trigger(this);
+        D_DIRECTIONS_RULE.trigger(this);
         D_SUPER_POSITION_RULE.trigger(this);
     }
 
@@ -103,6 +120,7 @@ public interface Newable extends Mutable {
     default void dDeactivate() {
         Mutable.super.dDeactivate();
         D_SOURCES_RULE.deObserve(this);
+        D_DIRECTIONS_RULE.deObserve(this);
         D_SUPER_POSITION_RULE.deObserve(this);
     }
 

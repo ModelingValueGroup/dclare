@@ -210,7 +210,7 @@ public class NewableTests {
             assertEquals(24, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
+            assertTrue(objects.allMatch(o -> o.dSources().size() == 1));
         });
 
         return result;
@@ -786,7 +786,7 @@ public class NewableTests {
             Set<TestNewable> lost = created.result().removeAll(objects);
             assertEquals(Set.of(), lost);
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> o.dNonDerivedSources().size() == 1));
+            assertTrue(objects.allMatch(o -> o.dSources().size() == 1));
             for (TestNewable o : objects) {
                 if (o.dClass() == REF && opp.get(o) != null) {
                     assertNotNull(n.get(o));

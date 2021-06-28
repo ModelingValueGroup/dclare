@@ -318,6 +318,10 @@ public class ObserverTransaction extends ActionTransaction {
                 if (result == null) {
                     result = (O) startState.get(mutable(), observer().constructed()).get(reason);
                     if (result == null) {
+                        if (mutable() instanceof Newable && isCircularConstruction((Newable) mutable(), reason)) {
+                            backwards.set(TRUE);
+                            return null;
+                        }
                         result = supplier.get();
                     }
                 }
@@ -334,6 +338,13 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
         }
+    }
+
+    private boolean isCircularConstruction(Newable newable, Construction.Reason reason) {
+        QualifiedSet<Direction, Construction> cons = state().get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
+        QualifiedSet<Direction, Construction> preCons = startState.get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
+        return !cons.isEmpty() && preCons.isEmpty() && cons.get(reason.direction()) == null && //
+                cons.flatMap(Construction::derivers).anyMatch(n -> n.dDirections().contains(reason.direction()));
     }
 
     @Override
