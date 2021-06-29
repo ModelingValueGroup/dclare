@@ -237,9 +237,9 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
-            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
-                throw new NullPointerException(setable.toString());
-            }
+            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
+            //                throw new NullPointerException(setable.toString());
+            //            }
             observe(object, (Observed<O, T>) setable, sets);
             if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
                 T start = startState.get(object, setable);
@@ -341,7 +341,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private boolean isCircularConstruction(Newable newable, Construction.Reason reason) {
-        QualifiedSet<Direction, Construction> cons = state().get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
+        QualifiedSet<Direction, Construction> cons = get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
         QualifiedSet<Direction, Construction> preCons = startState.get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
         return !cons.isEmpty() && preCons.isEmpty() && cons.get(reason.direction()) == null && //
                 cons.flatMap(Construction::derivers).anyMatch(n -> n.dDirections().contains(reason.direction()));

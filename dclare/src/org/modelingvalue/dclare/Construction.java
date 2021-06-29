@@ -144,7 +144,7 @@ public class Construction extends IdentifiedByArray {
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
                     from.directions().noneMatch(directions()::contains) && //
-                    (from.sources().contains(newable()) || //
+                    (from.sources().contains(newable()) || from.sources().anyMatch(s -> s.dHasAncestor(newable())) || //
                             (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
