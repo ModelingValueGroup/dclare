@@ -685,9 +685,11 @@ public class NewableTests {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
             assertEquals(Set.of(), objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet());
+            Set<TestNewable> lost = added.merge().removeAll(objects);
             if (!oo2fb) {
-                Set<TestNewable> lost = added.merge().removeAll(objects);
                 assertEquals(Set.of(), lost);
+            } else if (fb2oo) {
+                assertEquals(1, lost.size());
             }
             assertEquals((oo2fb && fb2oo) ? 56 : fb2oo ? 46 : oo2fb ? 42 : 32, objects.size());
 
