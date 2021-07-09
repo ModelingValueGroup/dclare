@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
-
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
@@ -46,7 +44,7 @@ public enum Priority implements Internable {
         private final boolean actions;
 
         private Queued(boolean actions, int nr) {
-            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, doNotCheckConsistency);
+            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, CoreSetableModifier.plumbing);
             this.actions = actions;
         }
 

@@ -163,11 +163,11 @@ public class ObserverTransaction extends ActionTransaction {
             State result = merge();
             Set<ObserverTrace> traces = observer.traces.get(mutable);
             ObserverTrace trace = new ObserverTrace(mutable, observer, traces.sorted().findFirst().orElse(null), observer.changesPerInstance(), //
-                    observeds.filter(e -> e.getKey().checkConsistency).flatMap(e -> e.getValue().map(m -> {
+                    observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
                         m = m.dResolve(mutable);
                         return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
                     })).toMap(e -> e), //
-                    pre.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).toMap(e -> e));
+                    pre.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
             if (changesPerInstance > stats.maxNrOfChanges() * 2) {
                 hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
@@ -237,11 +237,11 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         if (observing(object, setable)) {
-            if (((Observed) setable).mandatory() && setable.checkConsistency && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
-                throw new NullPointerException(setable.toString());
-            }
+            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
+            //                throw new NullPointerException(setable.toString());
+            //            }
             observe(object, (Observed<O, T>) setable, sets);
-            if (!Objects.equals(pre, post)) {
+            if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
                 T start = startState.get(object, setable);
                 if (pre instanceof Newable || post instanceof Newable) {
                     post = (T) singleMatch((Observed) setable, start, pre, post);
@@ -318,6 +318,10 @@ public class ObserverTransaction extends ActionTransaction {
                 if (result == null) {
                     result = (O) startState.get(mutable(), observer().constructed()).get(reason);
                     if (result == null) {
+                        if (mutable() instanceof Newable && isCircularConstruction((Newable) mutable(), reason)) {
+                            backwards.set(TRUE);
+                            return null;
+                        }
                         result = supplier.get();
                     }
                 }
@@ -334,6 +338,13 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
         }
+    }
+
+    private boolean isCircularConstruction(Newable newable, Construction.Reason reason) {
+        QualifiedSet<Direction, Construction> cons = get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
+        QualifiedSet<Direction, Construction> preCons = startState.get(newable, Newable.D_DERIVED_CONSTRUCTIONS);
+        return !cons.isEmpty() && preCons.isEmpty() && cons.get(reason.direction()) == null && //
+                cons.flatMap(Construction::derivers).anyMatch(n -> n.dDirections().contains(reason.direction()));
     }
 
     @Override
@@ -385,7 +396,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private boolean inputIsChanged() {
-        return gets.merge().removeAll(sets.merge(), Set::removeAll).filter(e -> e.getKey().checkConsistency).anyMatch(e -> e.getValue().anyMatch(m -> {
+        return gets.merge().removeAll(sets.merge(), Set::removeAll).filter(e -> !e.getKey().isPlumbing()).anyMatch(e -> e.getValue().anyMatch(m -> {
             Mutable object = m.dResolve(mutable());
             return !Objects.equals(state().get(object, e.getKey()), startState.get(object, e.getKey()));
         }));
@@ -397,7 +408,6 @@ public class ObserverTransaction extends ActionTransaction {
         if (before instanceof Newable && hasNoConstructions((Newable) before, cons)) {
             return after;
         } else if (after instanceof Newable && hasNoConstructions((Newable) after, cons)) {
-            backwards.set(TRUE);
             return before;
         } else if (before instanceof Newable && after instanceof Newable && //
                 ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
@@ -440,7 +450,6 @@ public class ObserverTransaction extends ActionTransaction {
         }
         if (after != null) {
             for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons))) {
-                backwards.set(TRUE);
                 after = after.remove(n);
             }
         }

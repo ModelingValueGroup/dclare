@@ -60,7 +60,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
             State result = currentSate.result();
             if (universeTransaction().getConfig().isTraceActions()) {
-                Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && s.checkConsistency).toMap(e -> e);
+                Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
                 if (!diff.isEmpty()) {
                     preState.run(() -> {
                         System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
@@ -81,7 +81,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <O> void trigger(Observed<O, ?> observed, O o) {
-        if (o instanceof Mutable && observed.checkConsistency) {
+        if (o instanceof Mutable && !observed.isPlumbing()) {
             setChanged((Mutable) o);
         }
         Mutable source = mutable();

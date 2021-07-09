@@ -15,9 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckMandatory;
-
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.ContainingCollection;
@@ -66,14 +63,14 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory      = CoreSetableModifier.mandatory.in(modifiers);
-        this.checkMandatory = !doNotCheckMandatory.in(modifiers);
-        this.observers      = new Observers<>(this);
+        this.mandatory = CoreSetableModifier.mandatory.in(modifiers) || CoreSetableModifier.softMandatory.in(modifiers);
+        this.checkMandatory = mandatory && !CoreSetableModifier.softMandatory.in(modifiers);
+        this.observers = new Observers<>(this);
     }
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (checkConsistency && utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
+        if (!isPlumbing() && utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
             throw new TooManyObserversException(object, this, observers, utx);
         }
     }
@@ -115,7 +112,7 @@ public class Observed<O, T> extends Setable<O, T> {
         private Observers(Observed observed) {
             super(observed, Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
                 observed.checkTooManyObservers(tx.universeTransaction(), o, a);
-            }, doNotCheckConsistency);
+            }, CoreSetableModifier.plumbing);
         }
 
         @SuppressWarnings("unchecked")
@@ -137,13 +134,13 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @Override
     public boolean checkConsistency() {
-        return checkConsistency && ((mandatory && checkMandatory) || super.checkConsistency());
+        return !isPlumbing() && ((mandatory && checkMandatory) || super.checkConsistency());
     }
 
     @Override
     public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
         Set<ConsistencyError> errors = super.checkConsistency() ? super.checkConsistency(state, object, post) : Set.of();
-        if (checkConsistency && checkMandatory && mandatory && isEmpty(post)) {
+        if (!isPlumbing() && mandatory && checkMandatory && isEmpty(post)) {
             errors = errors.add(new EmptyMandatoryException(object, this));
         }
         return errors;

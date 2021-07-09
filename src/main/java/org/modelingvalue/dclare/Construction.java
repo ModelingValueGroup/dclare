@@ -74,7 +74,7 @@ public class Construction extends IdentifiedByArray {
         return super.size() != 3;
     }
 
-    public Set<Newable> derivers() {
+    protected Set<Newable> derivers() {
         Set<Newable> result = Set.of();
         if (isDerived()) {
             if (object() instanceof Newable) {
@@ -144,7 +144,8 @@ public class Construction extends IdentifiedByArray {
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
                     from.directions().noneMatch(directions()::contains) && //
-                    (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource());
+                    (from.sources().contains(newable()) || from.sources().anyMatch(s -> s.dHasAncestor(newable())) || //
+                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
         public void mergeIn(MatchInfo from) {
@@ -164,7 +165,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean hasUnidentifiedSource() {
-            return notDerivedSources().anyMatch(n -> n.dMatchingIdentity() == null);
+            return sources().anyMatch(n -> n.dMatchingIdentity() == null);
         }
 
         public Newable newable() {
@@ -183,14 +184,14 @@ public class Construction extends IdentifiedByArray {
 
         public Comparable sortKey() {
             if (sortKey == null) {
-                sortKey = notDerivedSources().map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
+                sortKey = sources().map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
             }
             return sortKey;
         }
 
-        private Set<Newable> notDerivedSources() {
+        private Set<Newable> sources() {
             if (notDerivedSources == null) {
-                notDerivedSources = newable.dNonDerivedSources();
+                notDerivedSources = newable.dSources();
             }
             return notDerivedSources;
         }
@@ -219,7 +220,7 @@ public class Construction extends IdentifiedByArray {
         }
 
         public String asString() {
-            return newable() + ":" + directions().toString().substring(3) + newable().dNonDerivedSources().toString().substring(3);
+            return newable() + ":" + directions().toString().substring(3) + newable().dSources().toString().substring(3);
         }
 
     }

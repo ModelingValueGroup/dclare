@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotCheckConsistency;
+import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -25,7 +25,7 @@ import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
 
-    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, doNotCheckConsistency);
+    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, plumbing);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.<Direction, Construction> of(c -> c.reason().direction()), (t, o, b, a) -> {
@@ -37,24 +37,36 @@ public interface Newable extends Mutable {
                                                                                                  obs.constructed().setDefault(o);
                                                                                              }
                                                                                          }
-                                                                                     }, doNotCheckConsistency);
+                                                                                     }, plumbing);
 
-    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), doNotCheckConsistency);
+    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), plumbing);
 
     Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
                                                                                          Construction direct = n.dDirectConstruction();
                                                                                          if (direct != null) {
-                                                                                             D_SOURCES.setNonObserving(n, Set.of(n));
+                                                                                             D_SOURCES.set(n, Set.of(n));
                                                                                          } else {
-                                                                                             Set<Newable> set = n.dDerivedConstructions().flatMap(c -> c.derivers()).flatMap(d -> Newable.D_SOURCES.get(d)).toSet();
-                                                                                             D_SOURCES.setNonObserving(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
+                                                                                             Set<Newable> set = n.dDerivedConstructions().flatMap(Construction::derivers).flatMap(Newable::dSources).toSet();
+                                                                                             D_SOURCES.set(n, set.exclude(p -> set.anyMatch(c -> c.dHasAncestor(p))).toSet());
                                                                                          }
                                                                                      });
 
-    Observed<Newable, Set<Direction>>                        D_SUPER_POSITION        = Observed.of("D_SUPER_POSITION", Set.of(), doNotCheckConsistency);
+    Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
+
+    Observer<Newable>                                        D_DIRECTIONS_RULE       = Observer.of(D_DIRECTIONS, n -> {
+                                                                                         Construction direct = n.dDirectConstruction();
+                                                                                         if (direct != null) {
+                                                                                             D_DIRECTIONS.set(n, Set.of());
+                                                                                         } else {
+                                                                                             QualifiedSet<Direction, Construction> cons = n.dDerivedConstructions();
+                                                                                             D_DIRECTIONS.set(n, cons.toKeys().toSet().addAll(cons.flatMap(Construction::derivers).flatMap(Newable::dDirections)));
+                                                                                         }
+                                                                                     });
+
+    Observed<Newable, Set<Direction>>                        D_SUPER_POSITION        = Observed.of("D_SUPER_POSITION", Set.of(), plumbing);
 
     Observer<Newable>                                        D_SUPER_POSITION_RULE   = Observer.of("D_SUPER_POSITION_RULE", n -> {
-                                                                                         D_SUPER_POSITION.setNonObserving(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
+                                                                                         D_SUPER_POSITION.set(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
                                                                                      });
 
     @SuppressWarnings("rawtypes")
@@ -88,14 +100,19 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
-    default Set<Newable> dNonDerivedSources() {
+    default Set<Newable> dSources() {
         return D_SOURCES.get(this);
+    }
+
+    default Set<Direction> dDirections() {
+        return D_DIRECTIONS.get(this);
     }
 
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
         D_SOURCES_RULE.trigger(this);
+        D_DIRECTIONS_RULE.trigger(this);
         D_SUPER_POSITION_RULE.trigger(this);
     }
 
@@ -103,6 +120,7 @@ public interface Newable extends Mutable {
     default void dDeactivate() {
         Mutable.super.dDeactivate();
         D_SOURCES_RULE.deObserve(this);
+        D_DIRECTIONS_RULE.deObserve(this);
         D_SUPER_POSITION_RULE.deObserve(this);
     }
 
