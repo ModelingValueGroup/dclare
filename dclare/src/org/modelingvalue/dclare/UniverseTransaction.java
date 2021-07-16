@@ -193,8 +193,8 @@ public class UniverseTransaction extends MutableTransaction {
             startState = state;
             state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
             state = super.run(state);
-            state = clearOrphans(state);
             universeStatistics.completeForward();
+            state = clearOrphans(state);
         } while (!killed && hasBackwardActionsQueued(state));
         return state;
     }

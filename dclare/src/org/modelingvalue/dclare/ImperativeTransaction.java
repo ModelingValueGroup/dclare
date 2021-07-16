@@ -109,18 +109,9 @@ public class ImperativeTransaction extends LeafTransaction {
             universeTransaction().put(actionId, () -> {
                 try {
                     finalSetted.forEachOrdered(e -> {
-                        if (e.getKey() instanceof Mutable && !(e.getKey() instanceof Universe)) {
-                            Action.of(actionId, o -> {
-                                DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());
-                                for (Setable p : e.getValue()) {
-                                    p.set(e.getKey(), props.get(p));
-                                }
-                            }).trigger((Mutable) e.getKey());
-                        } else {
-                            DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());
-                            for (Setable p : e.getValue()) {
-                                p.set(e.getKey(), props.get(p));
-                            }
+                        DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());
+                        for (Setable p : e.getValue()) {
+                            p.set(e.getKey(), props.get(p));
                         }
                     });
                 } catch (Throwable t) {
@@ -229,10 +220,6 @@ public class ImperativeTransaction extends LeafTransaction {
                 universeTransaction().dummy();
             }
         }
-    }
-
-    @Override
-    protected void setChanged(Mutable changed) {
     }
 
     @Override

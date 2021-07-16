@@ -49,6 +49,12 @@ public class TestNewable extends TestMutable implements Newable {
         return tx.construct(reason, () -> new TestNewable(clazz.uniqueInt(), clazz));
     }
 
+    @SuppressWarnings("unchecked")
+    public static void construct(TestNewable newable, Direction direction, Object reason) {
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        tx.construct(new TestReason(direction, tx.mutable(), new Object[]{reason}, new Consumer[0]), () -> newable);
+    }
+
     private TestNewable(Comparable id, TestMutableClass clazz) {
         super(id, clazz);
     }

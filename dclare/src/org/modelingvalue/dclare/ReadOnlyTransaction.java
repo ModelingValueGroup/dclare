@@ -97,11 +97,6 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    protected void setChanged(Mutable changed) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean isChanged() {
         return false;
     }

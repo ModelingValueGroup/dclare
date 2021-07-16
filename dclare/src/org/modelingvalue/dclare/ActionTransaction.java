@@ -92,8 +92,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, Priority.forward);
-                    for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
-                        set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
+                    // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
+                    if (!observed.isPlumbing()) {
+                        for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
+                            set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
+                        }
                     }
                 }
             }
@@ -170,7 +173,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
         byte cnr = get(universe, Mutable.D_CHANGE_NR);
