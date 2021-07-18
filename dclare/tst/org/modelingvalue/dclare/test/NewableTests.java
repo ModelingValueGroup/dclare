@@ -62,7 +62,7 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
-            withMaxNrOfChanges(32).withMaxTotalNrOfChanges(10000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
+            withMaxNrOfChanges(32).withMaxTotalNrOfChanges(10000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).               //
             withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
@@ -354,12 +354,12 @@ public class NewableTests {
         FAT.observe(fbDir, //
                 ft -> {
                     if (left.get(ft) == null) {
-                        // left.set(ft, create(fbDir, "L", ft, ROL));
+                        left.set(ft, create(fbDir, "L", ft, ROL));
                     }
                 }, //
                 ft -> {
                     if (right.get(ft) == null) {
-                        // right.set(ft, create(fbDir, "R", ft, ROL));
+                        right.set(ft, create(fbDir, "R", ft, ROL));
                     }
                 }, //
                 ft -> {
