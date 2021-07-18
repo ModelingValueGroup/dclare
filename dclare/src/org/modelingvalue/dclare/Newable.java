@@ -49,6 +49,7 @@ public interface Newable extends Mutable {
                                                                                          if (pair.a() instanceof Newable && n.equals(pair.b().get(pair.a()))) {
                                                                                              sources = sources.addAll(D_SOURCES.get((Newable) pair.a()));
                                                                                          }
+                                                                                         // LeafTransaction.getCurrent().runNonObserving(() -> System.out.println("!!!!!! SOURCES !!!!!!! " + n + " " + sources));
                                                                                          D_SOURCES.set(n, sources);
                                                                                      });
 
