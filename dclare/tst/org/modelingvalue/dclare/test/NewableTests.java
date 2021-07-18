@@ -68,7 +68,7 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a constant
-    private static final int            MANY_NR            = 4;
+    private static final int            MANY_NR            = 16;
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
