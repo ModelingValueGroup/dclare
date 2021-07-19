@@ -45,7 +45,7 @@ public interface Newable extends Mutable {
             sources = sources.addAll(D_SOURCES.get((Newable) pair.a()));
         }
         Set<Newable> finalSources = sources;
-        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n, finalSources));
+        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n.toString().replaceAll("\n", "\\n").replaceAll("\r", "\\r"), finalSources));
         D_SOURCES.set(n, sources);
     });
     Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
