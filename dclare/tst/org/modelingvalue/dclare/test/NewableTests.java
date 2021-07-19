@@ -874,7 +874,7 @@ public class NewableTests {
             });
 
             return result;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Newable.D_SOURCE_TRACE.forEach(System.err::println);
             throw e;
         } finally {
