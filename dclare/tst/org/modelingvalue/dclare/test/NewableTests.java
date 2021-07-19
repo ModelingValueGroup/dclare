@@ -874,8 +874,12 @@ public class NewableTests {
             });
 
             return result;
+        } catch (Exception e) {
+            Newable.D_SOURCE_TRACE.forEach(System.err::println);
+            throw e;
         } finally {
-            System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%s fb2oo=%s ooIn=%s, fbIn=%s - %s\n", oo2fb, fb2oo, ooIn, fbIn, debug_info);
+            System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%s fb2oo=%s ooIn=%s, fbIn=%s - %s (%d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
+            Newable.D_SOURCE_TRACE.clear();
         }
     }
 

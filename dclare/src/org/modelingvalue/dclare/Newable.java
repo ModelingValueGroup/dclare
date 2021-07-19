@@ -17,6 +17,8 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
+import java.util.ArrayList;
+
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
@@ -25,6 +27,7 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
+    java.util.List<String>                                   D_SOURCE_TRACE          = new ArrayList<>();
     Observed<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Observed.of("D_DIRECT_CONSTRUCTION", null, plumbing);
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                  //
@@ -44,8 +47,12 @@ public interface Newable extends Mutable {
         if (pair.a() instanceof Newable && n.equals(pair.b().get(pair.a()))) {
             sources = sources.addAll(D_SOURCES.get((Newable) pair.a()));
         }
-        Set<Newable> finalSources = sources;
-        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n.toString().replaceAll("\n", "\\n").replaceAll("\r", "\\r"), finalSources));
+        String s = String.format("D_SOURCES: %-20s = %s\n", n, sources);
+        synchronized (D_SOURCE_TRACE) {
+            D_SOURCE_TRACE.add(s);
+        }
+        //        Set<Newable> finalSources = sources;
+        //        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n, finalSources));
         D_SOURCES.set(n, sources);
     });
     Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
