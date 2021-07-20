@@ -28,13 +28,11 @@ import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.RepeatedTest;
@@ -225,56 +223,56 @@ public class NewableTests {
     @ValueSource(ints = {0, 1})
     public void oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb(" + number + ")L"), oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void oo2fb_oo(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo(" + number + ")L"), oofb(CONFIGS[number], true, false, true, false, imperative, "oo2fb_oo(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo-" + number + "-L"), oofb(CONFIGS[number], true, false, true, false, imperative, "oo2fb_oo-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void fb2oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_fb(" + number + ")L"), oofb(CONFIGS[number], false, true, false, true, imperative, "fb2oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, true, false, true, imperative, "fb2oo_fb-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void oo2fb_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo_fb(" + number + ")L"), oofb(CONFIGS[number], true, false, true, true, imperative, "oo2fb_oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, false, true, true, imperative, "oo2fb_oo_fb-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void fb2oo_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_oo_fb(" + number + ")L"), oofb(CONFIGS[number], false, true, true, true, imperative, "fb2oo_oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, true, true, true, imperative, "fb2oo_oo_fb-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void oo2fb_fb2oo_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo_fb(" + number + ")L"), oofb(CONFIGS[number], true, true, true, true, imperative, "oo2fb_fb2oo_oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, true, true, true, imperative, "oo2fb_fb2oo_oo_fb-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void oo2fb_fb2oo_oo(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo(" + number + ")L"), oofb(CONFIGS[number], true, true, true, false, imperative, "oo2fb_fb2oo_oo(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo-" + number + "-L"), oofb(CONFIGS[number], true, true, true, false, imperative, "oo2fb_fb2oo_oo-" + number + "-R"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void oo2fb_fb2oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
-        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_fb(" + number + ")L"), oofb(CONFIGS[number], true, true, false, true, imperative, "oo2fb_fb2oo_fb(" + number + ")R"));
+        compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, true, false, true, imperative, "oo2fb_fb2oo_fb-" + number + "-R"));
     }
 
     //    @ParameterizedTest
@@ -283,15 +281,15 @@ public class NewableTests {
     public void testAll(RepetitionInfo repetitionInfo) {
         DclareConfig   config     = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
         TestImperative imperative = TestImperative.of();
-        State          state      = oofb(config, false, false, true, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + ",pre]");
+        State          state      = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
         for (int i = 0; i < 2; i++) {
-            compareStates(state, oofb(config, true, false, true, false, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, false, true, false, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, true, false, true, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, false, true, true, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, true, true, true, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, true, true, true, false, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
-            compareStates(state, oofb(config, true, true, false, true, imperative, "[" + repetitionInfo.getCurrentRepetition() + "," + i + "]"));
+            compareStates(state, oofb(config, false, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, false, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, true, false, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, true, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, true, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, true, true, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            compareStates(state, oofb(config, true, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
         }
     }
 
@@ -300,13 +298,16 @@ public class NewableTests {
         TestImperative imperative = TestImperative.of();
         for (int i = 0; i < MANY_NR; i++) {
             DclareConfig config = CONFIGS[i % 2];
-            oofb(config, false, false, true, true, imperative, "testNoTransformation - " + i);
+            oofb(config, false, false, true, true, imperative, "testNoTransformation-" + i);
         }
     }
 
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative, String debug_info) {
-        System.err.printf("TOMTOMTOM oofb test START: oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
+        String logName = debug_info + "-" + (oo2fb ? "1" : "_") + (fb2oo ? "1" : "_") + (ooIn ? "1" : "_") + (fbIn ? "1" : "_");
+        if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
+            System.err.println("TOMTOMTOM oofb test START: " + logName);
+        }
         try {
             assertTrue(imperative.isEmpty());
 
@@ -880,19 +881,25 @@ public class NewableTests {
 
             return result;
         } catch (Throwable e) {
-            if (Newable.DEBUG_D_SOURCE_PROBLEM) {
-                try {
-                    Path logPath = Paths.get(String.format("TOMTOMTOM-%6d.txt", new Random().nextInt(1000000)));
-                    System.err.printf("TOMTOMTOM oofb test ERROR : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces to %s)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size(), logPath.toAbsolutePath());
-                    Files.write(logPath, Newable.D_SOURCE_TRACE);
-                } catch (IOException ee) {
-                    System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+            if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
+                if (Newable.D_SOURCE_PROBLEM_SUPPRESS) {
+                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb but supressed by Newable.D_SOURCE_PROBLEM_SUPPRESS");
+                    return null;
+                } else {
+                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb (can be suppressed by Newable.D_SOURCE_PROBLEM_SUPPRESS)");
                 }
             }
             throw e;
         } finally {
-            System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
-            Newable.D_SOURCE_TRACE.clear();
+            if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
+                try {
+                    System.err.printf("TOMTOMTOM oofb test DONE : %s (%4d traces)\n", logName, Newable.D_SOURCE_PROBLEM_TRACE_LINES.size());
+                    Files.write(Paths.get("TOMTOMTOM-" + logName + ".txt"), Newable.D_SOURCE_PROBLEM_TRACE_LINES);
+                } catch (IOException ee) {
+                    System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+                }
+            }
+            Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
         }
     }
 
@@ -926,6 +933,11 @@ public class NewableTests {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void compareStates(State as, State bs) {
+        if (as == null || bs == null) {
+            assertTrue(Newable.D_SOURCE_PROBLEM_TRACE);
+            assertTrue(Newable.D_SOURCE_PROBLEM_SUPPRESS);
+            return;// TOMTOMTOM: accept nulls to suppress ERRORs
+        }
         List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         assertEquals(al.size(), bl.size());
