@@ -59,13 +59,15 @@ jobs:
           if ! ant test; then
             echo
             echo
-            for i in TEST-*.xml; do
-              echo "#"
-              echo "echo <<EOF > '$i'"
-              cat "$i"
-              echo
-              echo "EOF"
-              echo "#"
+            for i in TEST-*.xml TOMTOMTOM-*.txt; do
+              if [[ -f "$i" ]];then
+                echo "#"
+                echo "echo <<EOF > '$i'"
+                cat "$i"
+                echo
+                echo "EOF"
+                echo "#"
+              fi
             done
             echo
             echo

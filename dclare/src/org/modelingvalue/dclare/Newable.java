@@ -47,13 +47,15 @@ public interface Newable extends Mutable {
         if (pair.a() instanceof Newable && n.equals(pair.b().get(pair.a()))) {
             sources = sources.addAll(D_SOURCES.get((Newable) pair.a()));
         }
-        String s = String.format("D_SOURCES: %-20s = %s", n, sources);
-        synchronized (D_SOURCE_TRACE) {
-            D_SOURCE_TRACE.add(s);
+        if (!D_SOURCES.get(n).equals(sources)) {
+            String s = String.format("D_SOURCES: %-20s = %s", n, sources);
+            synchronized (D_SOURCE_TRACE) {
+                D_SOURCE_TRACE.add(s);
+            }
+            //        Set<Newable> finalSources = sources;
+            //        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n, finalSources));
+            D_SOURCES.set(n, sources);
         }
-        //        Set<Newable> finalSources = sources;
-        //        LeafTransaction.getCurrent().runNonObserving(() -> System.err.printf("D_SOURCES: %-20s = %s\n", n, finalSources));
-        D_SOURCES.set(n, sources);
     });
     Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
     Observer<Newable>                                        D_DIRECTIONS_RULE       = Observer.of(D_DIRECTIONS, n -> {

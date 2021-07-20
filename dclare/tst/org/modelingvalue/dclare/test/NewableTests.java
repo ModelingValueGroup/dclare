@@ -26,10 +26,15 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.RepeatedTest;
@@ -875,7 +880,13 @@ public class NewableTests {
 
             return result;
         } catch (Throwable e) {
-            Newable.D_SOURCE_TRACE.forEach(System.err::println);
+            try {
+                Path logPath = Paths.get(String.format("TOMTOMTOM-%6d.txt", new Random().nextInt(1000000)));
+                System.err.printf("TOMTOMTOM oofb test ERROR : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces to %s)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size(), logPath.toAbsolutePath());
+                Files.write(logPath, Newable.D_SOURCE_TRACE);
+            } catch (IOException ee) {
+                System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+            }
             throw e;
         } finally {
             System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
