@@ -47,7 +47,7 @@ public interface Newable extends Mutable {
         if (pair.a() instanceof Newable && n.equals(pair.b().get(pair.a()))) {
             sources = sources.addAll(D_SOURCES.get((Newable) pair.a()));
         }
-        String s = String.format("D_SOURCES: %-20s = %s\n", n, sources);
+        String s = String.format("D_SOURCES: %-20s = %s", n, sources);
         synchronized (D_SOURCE_TRACE) {
             D_SOURCE_TRACE.add(s);
         }

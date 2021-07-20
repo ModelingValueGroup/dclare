@@ -301,7 +301,7 @@ public class NewableTests {
 
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative, String debug_info) {
-        System.err.printf("TOMTOMTOM oofb test START: oo2fb=%s fb2oo=%s ooIn=%s, fbIn=%s - %s\n", oo2fb, fb2oo, ooIn, fbIn, debug_info);
+        System.err.printf("TOMTOMTOM oofb test START: oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
         try {
             assertTrue(imperative.isEmpty());
 
@@ -878,7 +878,7 @@ public class NewableTests {
             Newable.D_SOURCE_TRACE.forEach(System.err::println);
             throw e;
         } finally {
-            System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%s fb2oo=%s ooIn=%s, fbIn=%s - %s (%d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
+            System.err.printf("TOMTOMTOM oofb test DONE : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size());
             Newable.D_SOURCE_TRACE.clear();
         }
     }
