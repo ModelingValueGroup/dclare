@@ -880,12 +880,14 @@ public class NewableTests {
 
             return result;
         } catch (Throwable e) {
-            try {
-                Path logPath = Paths.get(String.format("TOMTOMTOM-%6d.txt", new Random().nextInt(1000000)));
-                System.err.printf("TOMTOMTOM oofb test ERROR : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces to %s)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size(), logPath.toAbsolutePath());
-                Files.write(logPath, Newable.D_SOURCE_TRACE);
-            } catch (IOException ee) {
-                System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+            if (Newable.DEBUG_D_SOURCE_PROBLEM) {
+                try {
+                    Path logPath = Paths.get(String.format("TOMTOMTOM-%6d.txt", new Random().nextInt(1000000)));
+                    System.err.printf("TOMTOMTOM oofb test ERROR : oo2fb=%-5s fb2oo=%-5s ooIn=%-5s, fbIn=%-5s - %s (%4d traces to %s)\n", oo2fb, fb2oo, ooIn, fbIn, debug_info, Newable.D_SOURCE_TRACE.size(), logPath.toAbsolutePath());
+                    Files.write(logPath, Newable.D_SOURCE_TRACE);
+                } catch (IOException ee) {
+                    System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+                }
             }
             throw e;
         } finally {
