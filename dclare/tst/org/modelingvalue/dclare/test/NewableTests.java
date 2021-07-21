@@ -304,10 +304,8 @@ public class NewableTests {
 
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative, String debug_info) {
-        String logName = debug_info + "-" + (oo2fb ? "1" : "_") + (fb2oo ? "1" : "_") + (ooIn ? "1" : "_") + (fbIn ? "1" : "_");
-        if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
-            System.err.println("TOMTOMTOM oofb test START: " + logName);
-        }
+        String  logName      = debug_info + "-" + (oo2fb ? "O" : "_") + (fb2oo ? "F" : "_") + (ooIn ? "o" : "_") + (fbIn ? "f" : "_"); //TOMTOMTOM remove after debugging
+        boolean logCondition = oo2fb && fb2oo && fbIn && Newable.D_SOURCE_PROBLEM_TRACE; //TOMTOMTOM remove after debugging
         try {
             assertTrue(imperative.isEmpty());
 
@@ -881,7 +879,7 @@ public class NewableTests {
 
             return result;
         } catch (Throwable e) {
-            if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
+            if (logCondition) {
                 if (Newable.D_SOURCE_PROBLEM_SUPPRESS) {
                     System.err.println("TOMTOMTOM: ERROR DETECTED in oofb but supressed by Newable.D_SOURCE_PROBLEM_SUPPRESS");
                     return null;
@@ -891,7 +889,7 @@ public class NewableTests {
             }
             throw e;
         } finally {
-            if (oo2fb && fb2oo && ooIn && fbIn && Newable.D_SOURCE_PROBLEM_TRACE) {
+            if (logCondition) {
                 try {
                     System.err.printf("TOMTOMTOM oofb test DONE : %s (%4d traces)\n", logName, Newable.D_SOURCE_PROBLEM_TRACE_LINES.size());
                     Files.write(Paths.get("TOMTOMTOM-" + logName + ".txt"), Newable.D_SOURCE_PROBLEM_TRACE_LINES);
