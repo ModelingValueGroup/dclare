@@ -305,7 +305,7 @@ public class NewableTests {
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative, String debug_info) {
         String  logName      = debug_info + "-" + (oo2fb ? "O" : "_") + (fb2oo ? "F" : "_") + (ooIn ? "o" : "_") + (fbIn ? "f" : "_"); //TOMTOMTOM remove after debugging
-        boolean logCondition = oo2fb && fb2oo && fbIn && Newable.D_SOURCE_PROBLEM_TRACE; //TOMTOMTOM remove after debugging
+        boolean logCondition = oo2fb && fb2oo && Newable.D_SOURCE_PROBLEM_TRACE; //TOMTOMTOM remove after debugging
         try {
             assertTrue(imperative.isEmpty());
 
