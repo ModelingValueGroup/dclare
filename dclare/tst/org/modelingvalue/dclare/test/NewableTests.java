@@ -313,8 +313,6 @@ public class NewableTests {
 
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, TestImperative imperative, String debug_info) {
-        String  logName      = debug_info + "-" + (oo2fb ? "O" : "_") + (fb2oo ? "F" : "_") + (ooIn ? "o" : "_") + (fbIn ? "f" : "_"); //TOMTOMTOM remove after debugging
-        boolean logCondition = oo2fb && fb2oo && Newable.D_SOURCE_PROBLEM_TRACE; //TOMTOMTOM remove after debugging
         try {
             assertTrue(imperative.isEmpty());
 
@@ -888,25 +886,29 @@ public class NewableTests {
 
             return result;
         } catch (Throwable e) {
-            if (logCondition) {
-                if (D_SOURCE_PROBLEM_SUPPRESS) {
-                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb but supressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS");
-                    return null;
-                }
-                System.err.println("TOMTOMTOM: ERROR DETECTED in oofb (can be suppressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS)");
+            if (D_SOURCE_PROBLEM_SUPPRESS) {
+                System.err.println("TOMTOMTOM: KNOWN ERROR DETECTED in oofb but supressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS");
+                return null;
+            } else {
+                System.err.println("TOMTOMTOM: KNOWN ERROR DETECTED in oofb (can be suppressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS)");
             }
             throw e;
         } finally {
-            if (logCondition) {
-                try {
-                    System.err.printf("TOMTOMTOM oofb test DONE : %s (%4d traces)\n", logName, Newable.D_SOURCE_PROBLEM_TRACE_LINES.size());
-                    Files.write(Paths.get("TOMTOMTOM-" + logName + ".txt"), Newable.D_SOURCE_PROBLEM_TRACE_LINES);
-                } catch (IOException ee) {
-                    System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+            //TOMTOMTOM remove after debugging
+            if (Newable.D_SOURCE_PROBLEM_TRACE) {
+                if (oo2fb && fb2oo) { // testing has revealed that only under this condition the failure will occur
+                    try {
+                        @SuppressWarnings("ConstantConditions")
+                        String logName = debug_info + "-" + (oo2fb ? "O" : "_") + (fb2oo ? "F" : "_") + (ooIn ? "o" : "_") + (fbIn ? "f" : "_");
+                        System.err.printf("TOMTOMTOM oofb test DONE : %s (%4d traces)\n", logName, Newable.D_SOURCE_PROBLEM_TRACE_LINES.size());
+                        Files.write(Paths.get("TOMTOMTOM-" + logName + ".txt"), Newable.D_SOURCE_PROBLEM_TRACE_LINES);
+                    } catch (IOException ee) {
+                        System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
+                    }
                 }
-            }
-            synchronized (Newable.D_SOURCE_PROBLEM_TRACE_LINES) {
-                Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
+                synchronized (Newable.D_SOURCE_PROBLEM_TRACE_LINES) {
+                    Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
+                }
             }
         }
     }
@@ -942,7 +944,6 @@ public class NewableTests {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void compareStates(State as, State bs) {
         if (as == null || bs == null) {
-            assertTrue(Newable.D_SOURCE_PROBLEM_TRACE);
             assertTrue(D_SOURCE_PROBLEM_SUPPRESS);
             return;// TOMTOMTOM: accept nulls to suppress ERRORs (message was written to stderr above)
         }
