@@ -19,7 +19,7 @@ artifacts=(
 )
 dependencies=(
   "org.modelingvalue   immutable-collections   $version    jar jds-"
-  "org.modelingvalue   mvgjson                 $version    jar jds-"
+  "org.modelingvalue   mvg-json                $version    jar jds-"
 
   "org.junit.jupiter   junit-jupiter-api       5.7.2       jar jdst"
   "org.junit.jupiter   junit-jupiter-engine    5.7.2       jar jdst"
