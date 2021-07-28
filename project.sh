@@ -13,13 +13,13 @@
 ##     Arjan Kok, Carel Bast                                                                                           ~
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-version="1.5.0"
+version="1.6.0"
 artifacts=(
   "org.modelingvalue   dclare                  $version    jar jds"
 )
 dependencies=(
-  "org.modelingvalue   immutable-collections   1.5.0       jar jds-"
-  "org.modelingvalue   mvgjson                 1.1.6       jar jds-"
+  "org.modelingvalue   immutable-collections   $version    jar jds-"
+  "org.modelingvalue   mvgjson                 $version    jar jds-"
 
   "org.junit.jupiter   junit-jupiter-api       5.7.2       jar jdst"
   "org.junit.jupiter   junit-jupiter-engine    5.7.2       jar jdst"
