@@ -62,7 +62,7 @@
     </dependency>
     <dependency>
       <groupId>org.modelingvalue</groupId>
-      <artifactId>mvgjson</artifactId>
+      <artifactId>mvg-json</artifactId>
       <version>1.6.0</version>
     </dependency>
     <dependency>
