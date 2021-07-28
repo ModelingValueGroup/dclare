@@ -64,13 +64,22 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-    private static final DclareConfig BASE_CONFIG = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
-            withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
-            withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
+    private static final boolean      D_SOURCE_PROBLEM_SUPPRESS = true;               //TOMTOMTOM remove after debugging
+    private static final DclareConfig BASE_CONFIG               = new DclareConfig()
+            .withDevMode(true)
+            .withCheckOrphanState(true)
+            .withMaxNrOfChanges(32)
+            .withMaxTotalNrOfChanges(1000)
+            .withMaxNrOfObserved(36)
+            .withMaxNrOfObservers(36)
+            .withTraceUniverse(false)
+            .withTraceMutable(false)
+            .withTraceMatching(false)
+            .withTraceActions(false);
 
     private static final DclareConfig[] CONFIGS = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
-    private static final int     NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a constant
+    private static final int     NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
     private static final int     MANY_NR            = 16;
     private static final boolean PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
@@ -880,12 +889,11 @@ public class NewableTests {
             return result;
         } catch (Throwable e) {
             if (logCondition) {
-                if (Newable.D_SOURCE_PROBLEM_SUPPRESS) {
-                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb but supressed by Newable.D_SOURCE_PROBLEM_SUPPRESS");
+                if (D_SOURCE_PROBLEM_SUPPRESS) {
+                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb but supressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS");
                     return null;
-                } else {
-                    System.err.println("TOMTOMTOM: ERROR DETECTED in oofb (can be suppressed by Newable.D_SOURCE_PROBLEM_SUPPRESS)");
                 }
+                System.err.println("TOMTOMTOM: ERROR DETECTED in oofb (can be suppressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS)");
             }
             throw e;
         } finally {
@@ -897,7 +905,9 @@ public class NewableTests {
                     System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
                 }
             }
-            Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
+            synchronized (Newable.D_SOURCE_PROBLEM_TRACE_LINES) {
+                Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
+            }
         }
     }
 
@@ -933,8 +943,8 @@ public class NewableTests {
     private static void compareStates(State as, State bs) {
         if (as == null || bs == null) {
             assertTrue(Newable.D_SOURCE_PROBLEM_TRACE);
-            assertTrue(Newable.D_SOURCE_PROBLEM_SUPPRESS);
-            return;// TOMTOMTOM: accept nulls to suppress ERRORs
+            assertTrue(D_SOURCE_PROBLEM_SUPPRESS);
+            return;// TOMTOMTOM: accept nulls to suppress ERRORs (message was written to stderr above)
         }
         List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();

@@ -27,8 +27,7 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public interface Newable extends Mutable {
-    boolean                                                  D_SOURCE_PROBLEM_TRACE       = true;               //TOMTOMTOM remove after debugging
-    boolean                                                  D_SOURCE_PROBLEM_SUPPRESS    = true;               //TOMTOMTOM remove after debugging
+    boolean                                                  D_SOURCE_PROBLEM_TRACE       = false;               //TOMTOMTOM remove after debugging
     java.util.List<String>                                   D_SOURCE_PROBLEM_TRACE_LINES = new ArrayList<>();  //TOMTOMTOM remove after debugging
     //
     Observed<Newable, Construction>                          D_DIRECT_CONSTRUCTION        = Observed.of("D_DIRECT_CONSTRUCTION", null, plumbing);
