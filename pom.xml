@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>1.5.0</version>
+  <version>1.6.0</version>
   <packaging>jar</packaging>
   <scm>
     <url>https://maven.pkg.github.com/ModelingValueGroup/dclare</url>
@@ -58,12 +58,12 @@
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>immutable-collections</artifactId>
-      <version>1.5.0</version>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>mvgjson</artifactId>
-      <version>1.1.6</version>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.opentest4j</groupId>
