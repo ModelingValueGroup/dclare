@@ -155,8 +155,8 @@
   <path id="library.gen:_junit-platform-launcher.classpath">
     <pathelement location="${basedir}/lib/junit-platform-launcher.jar"/>
   </path>
-  <path id="library.gen:_mvgjson.classpath">
-    <pathelement location="${basedir}/lib/mvgjson.jar"/>
+  <path id="library.gen:_mvg-json.classpath">
+    <pathelement location="${basedir}/lib/mvg-json.jar"/>
   </path>
   <path id="library.gen:_opentest4j.classpath">
     <pathelement location="${basedir}/lib/opentest4j.jar"/>
