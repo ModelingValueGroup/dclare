@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,20 +18,24 @@ package org.modelingvalue.dclare;
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-
-    private final Setted setted = new Setted();
-    private State        preState;
+    private final CurrentState currentSate = new CurrentState();
+    private State              preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -46,22 +50,62 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         ((Action<Mutable>) action()).run(mutable());
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected final State run(State state) {
         TraceTimer.traceBegin(traceId());
         preState = state;
-        setted.init(state);
+        currentSate.init(state);
         try {
             LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
-            return setted.result();
+            State result = currentSate.result();
+            if (universeTransaction().getConfig().isTraceActions()) {
+                Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
+                if (!diff.isEmpty()) {
+                    preState.run(() -> {
+                        System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                    });
+                }
+            }
+            return result;
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return state;
         } finally {
-            setted.clear();
+            currentSate.clear();
             preState = null;
             TraceTimer.traceEnd(traceId());
         }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    protected <O> void trigger(Observed<O, ?> observed, O o) {
+        if (o instanceof Mutable && !observed.isPlumbing()) {
+            setChanged((Mutable) o);
+        }
+        Mutable source = mutable();
+        for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers())) {
+            Observer observer = e.getKey();
+            for (Mutable m : e.getValue()) {
+                //noinspection ConstantConditions
+                Mutable target = m.dResolve((Mutable) o);
+                if (!cls().equals(observer) || !source.equals(target)) {
+                    trigger(target, observer, Priority.forward);
+                    // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
+                    if (!observed.isPlumbing()) {
+                        for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
+                            set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean isChanged() {
+        return !preState.equals(currentSate.merge());
     }
 
     protected String traceId() {
@@ -76,24 +120,28 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return preState;
     }
 
-    protected State resultState() {
-        State result = setted.result();
-        setted.init(result);
-        return result;
-    }
-
     @Override
     public State current() {
-        return setted.get();
+        return currentSate.get();
+    }
+
+    public State merge() {
+        return currentSate.merge();
     }
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(setted.get().get(object, property), element));
+        return set(object, property, function.apply(currentSate.get().get(object, property), element));
+    }
+
+    @Override
+    public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        return set(object, property, oper.apply(currentSate.get().get(object, property)));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
+        property.init(post);
         T pre = state().get(object, property);
         set(object, property, pre, post);
         return pre;
@@ -102,7 +150,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
         T[] oldNew = (T[]) new Object[2];
-        if (setted.change(s -> s.set(object, property, (br, po) -> {
+        if (currentSate.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
             } else if (!Objects.equals(br, pre)) {
@@ -118,20 +166,13 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    @Override
-    public <O> void clear(O object) {
-        super.clear(object);
-        setted.change(s -> s.set(object, State.EMPTY_SETABLES_MAP));
-    }
-
-    private final class Setted extends Concurrent<State> {
+    private final class CurrentState extends Concurrent<State> {
         @Override
         protected State merge(State base, State[] branches, int length) {
             return base.merge(ActionTransaction.this, branches, length);
         }
     }
 
-    @Override
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
         byte cnr = get(universe, Mutable.D_CHANGE_NR);
@@ -155,7 +196,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected Mutable dParent(Mutable object) {
-        return setted.get().getA(object, Mutable.D_PARENT_CONTAINING);
+        return currentSate.get().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
     @Override

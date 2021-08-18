@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -44,6 +44,7 @@ public class State implements Serializable {
     public static final Predicate<Object>                               ALL_OBJECTS        = __ -> true;
     public static final Predicate<Setable>                              ALL_SETTABLES      = __ -> true;
     public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
+    public static final BinaryOperator<String>                          CONCAT_COMMA       = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
     private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
@@ -102,6 +103,13 @@ public class State implements Serializable {
         return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
     }
 
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        oldNew[0] = get(props, property);
+        oldNew[1] = oper.apply(oldNew[0]);
+        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+    }
+
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
@@ -137,7 +145,7 @@ public class State implements Serializable {
         return pair != null ? pair.b() : null;
     }
 
-    private static <O, T> DefaultMap<Setable, Object> setProperties(DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
+    protected static <O, T> DefaultMap<Setable, Object> setProperties(DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
         return Objects.equals(property.getDefault(), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
     }
 
@@ -194,7 +202,7 @@ public class State implements Serializable {
 
     @Override
     public String toString() {
-        return "State" + "[" + universeTransaction.getClass().getSimpleName() + getProperties(universeTransaction.universe()).toString().substring(3) + "]";
+        return "State" + "[" + universeTransaction.getClass().getSimpleName() + getProperties(universeTransaction.universe()).toString() + "]";
     }
 
     public String asString() {
@@ -282,12 +290,29 @@ public class State implements Serializable {
                 StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT) + "}", CONCAT));
     }
 
+    public String shortDiffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff, Object self) {
+        return get(() -> diff.reduce("", (s1, e1) -> (s1.isEmpty() ? "" : s1 + ",") + (self.equals(e1.getKey()) ? "" : StringUtil.toString(e1.getKey()) + "{") + //
+                e1.getValue().reduce("", (s2, e2) -> (s2.isEmpty() ? "" : s2 + ",") + StringUtil.toString(e2.getKey()) + "=" + //
+                        shortValueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT_COMMA) + (self.equals(e1.getKey()) ? "" : "}"), CONCAT_COMMA));
+    }
+
     @SuppressWarnings("unchecked")
     private static String valueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
             return "\n          <+ " + ((Set) a).removeAll((Set) b) + "\n          +> " + ((Set) b).removeAll((Set) a);
         } else {
             return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String shortValueDiffString(Object a, Object b) {
+        if (a instanceof Set && b instanceof Set) {
+            Set removed = ((Set) a).removeAll((Set) b);
+            Set added = ((Set) b).removeAll((Set) a);
+            return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+        } else {
+            return StringUtil.toString(a) + "->" + StringUtil.toString(b);
         }
     }
 

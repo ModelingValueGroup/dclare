@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -37,7 +37,7 @@ import org.modelingvalue.dclare.ex.NonDeterministicException;
 @SuppressWarnings("rawtypes")
 public class ConstantState {
     private static final Context<Boolean>                            WEAK    = Context.of(false);
-    private static final Object                                      NULL    = new Object() {
+    public static final Object                                       NULL    = new Object() {
                                                                                  @Override
                                                                                  public String toString() {
                                                                                      return "null";
@@ -132,7 +132,7 @@ public class ConstantState {
         public <V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
-            if (ist == null) {
+            if (ist == null || forced) {
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {

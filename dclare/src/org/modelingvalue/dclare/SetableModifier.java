@@ -13,25 +13,26 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test.support;
+package org.modelingvalue.dclare;
 
-import static java.math.BigInteger.*;
+/**
+ * this is a marker interface
+ */
+public interface SetableModifier {
+    default SetableModifier iff(boolean b) {
+        return b ? this : null;
+    }
 
-import java.math.*;
+    default SetableModifier ifnot(boolean b) {
+        return b ? null : this;
+    }
 
-import org.modelingvalue.dclare.*;
-
-public class Fibonacci {
-    static final BigInteger ONE = BigInteger.valueOf(1);
-    static final BigInteger TWO = BigInteger.valueOf(2);
-
-    public static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
-        if (n.equals(ZERO) || n.equals(ONE)) {
-            return n;
-        } else {
-            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
-            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
-            return one.add(two);
+    default boolean in(SetableModifier[] modifiers) {
+        for (SetableModifier m : modifiers) {
+            if (this == m) {
+                return true;
+            }
         }
-    });
+        return false;
+    }
 }

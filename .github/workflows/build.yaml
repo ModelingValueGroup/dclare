@@ -54,13 +54,39 @@ jobs:
 
       - name: "test"
         run:  |
+          echo
+          echo
           if ! ant test; then
-            for i in TEST-*.xml; do
-              echo "=============== $i"
-              sed "s/^/>> /" $i
+            echo
+            echo
+            for i in TEST-*.xml TOMTOMTOM-*.txt; do
+              if [[ -f "$i" ]];then
+                echo "#"
+                echo "echo <<EOF > '$i'"
+                cat "$i"
+                echo
+                echo "EOF"
+                echo "#"
+              fi
             done
+            echo
+            echo
             exit 42
           fi
+          echo
+          echo
+          for i in TEST-*NewableTests.xml TOMTOMTOM-*.txt; do
+            if [[ -f "$i" ]];then
+              echo "#"
+              echo "echo <<EOF > '$i'"
+              cat "$i"
+              echo
+              echo "EOF"
+              echo "#"
+            fi
+          done
+          echo
+          echo
 
       - name: "generate javadoc"
         run:  ant javadoc

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,31 +15,114 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 
 @SuppressWarnings("unused")
-public class TestUniverse extends TestObject implements Universe {
-    public static TestUniverse of(Object id, TestClass clazz) {
+public class TestUniverse extends TestMutable implements Universe {
+
+    public static final Direction INIT = Direction.of("INIT");
+
+    public static TestUniverse of(Object id, TestMutableClass clazz, TestImperative scheduler) {
         return new TestUniverse(id, u -> {
-        }, clazz);
+        }, clazz, scheduler);
     }
 
-    public static TestUniverse of(Object id, Consumer<Universe> init, TestClass clazz) {
-        return new TestUniverse(id, init, clazz);
-    }
+    private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
 
-    private final Consumer<Universe> init;
+    private final TestImperative                     scheduler;
+    private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
+    private final AtomicInteger                      counter   = new AtomicInteger(0);
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestClass clazz) {
+    private Thread                                   waitForEndThread;
+    private ImperativeTransaction                    imperativeTransaction;
+
+    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
         super(id, clazz);
-        this.init = init;
+        this.scheduler = scheduler;
     }
 
     @Override
     public void init() {
         Universe.super.init();
-        init.accept(this);
+        UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
+        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
+            pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
+                if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
+                    TestNewable n = (TestNewable) e.getKey();
+                    if (n.dDirectConstruction() == null) {
+                        TestNewable.construct(n, TestUniverse.INIT, "init" + uniqueInt());
+                    }
+                }
+            });
+            if (last) {
+                idle();
+            }
+        }, scheduler, false);
+        utx.dummy();
+        waitForEndThread = new Thread(() -> {
+            try {
+                utx.waitForEnd();
+            } catch (Throwable t) {
+                idle();
+            }
+        }, "TestUniverse.waitForEndThread");
+        waitForEndThread.setDaemon(true);
+        waitForEndThread.start();
+        idle();
     }
+
+    public int uniqueInt() {
+        return counter.getAndIncrement();
+    }
+
+    public void schedule(Runnable action) {
+        waitForIdle();
+        if (!imperativeTransaction.universeTransaction().isKilled()) {
+            imperativeTransaction.schedule(() -> {
+                DUMMY.set(this, Long::sum, 1l);
+                action.run();
+            });
+        }
+    }
+
+    private void idle() {
+        try {
+            idleQueue.put(Boolean.TRUE);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    private void waitForIdle() {
+        try {
+            idleQueue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    public State waitForEnd() {
+        return imperativeTransaction.waitForEnd();
+    }
+
+    public State waitForEnd(UniverseTransaction universeTransaction) throws Throwable {
+        try {
+            return universeTransaction.waitForEnd();
+        } catch (Error e) {
+            throw e.getCause();
+        }
+    }
+
 }

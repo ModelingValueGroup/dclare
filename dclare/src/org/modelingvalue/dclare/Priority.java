@@ -13,25 +13,58 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test.support;
+package org.modelingvalue.dclare;
 
-import static java.math.BigInteger.*;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
 
-import java.math.*;
+public enum Priority implements Internable {
 
-import org.modelingvalue.dclare.*;
+    urgent(0),
 
-public class Fibonacci {
-    static final BigInteger ONE = BigInteger.valueOf(1);
-    static final BigInteger TWO = BigInteger.valueOf(2);
+    forward(1),
 
-    public static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
-        if (n.equals(ZERO) || n.equals(ONE)) {
-            return n;
-        } else {
-            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
-            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
-            return one.add(two);
+    backward(2),
+
+    scheduled(3);
+
+    public final Queued<Action<?>> actions;
+    public final Queued<Mutable>   children;
+    public final int               nr;
+
+    Priority(int nr) {
+        actions = new Queued<>(true, nr);
+        children = new Queued<>(false, nr);
+        this.nr = nr;
+    }
+
+    public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
+
+        private final boolean actions;
+
+        private Queued(boolean actions, int nr) {
+            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, CoreSetableModifier.plumbing);
+            this.actions = actions;
         }
-    });
+
+        public Priority priority() {
+            return Priority.this;
+        }
+
+        public boolean actions() {
+            return actions;
+        }
+
+        public boolean children() {
+            return !actions;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + super.toString().substring(4);
+        }
+
+    }
+
 }

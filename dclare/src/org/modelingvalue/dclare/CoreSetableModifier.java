@@ -13,25 +13,13 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.test.support;
+package org.modelingvalue.dclare;
 
-import static java.math.BigInteger.*;
-
-import java.math.*;
-
-import org.modelingvalue.dclare.*;
-
-public class Fibonacci {
-    static final BigInteger ONE = BigInteger.valueOf(1);
-    static final BigInteger TWO = BigInteger.valueOf(2);
-
-    public static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
-        if (n.equals(ZERO) || n.equals(ONE)) {
-            return n;
-        } else {
-            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
-            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
-            return one.add(two);
-        }
-    });
+public enum CoreSetableModifier implements SetableModifier {
+    symmetricOpposite,
+    containment,
+    mandatory,
+    softMandatory,
+    synthetic,
+    plumbing;
 }

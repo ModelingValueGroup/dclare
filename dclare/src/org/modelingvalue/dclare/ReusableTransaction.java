@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,15 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Reusable;
 
-public class ReusableTransaction<C extends TransactionClass, T extends Transaction> extends Reusable<UniverseTransaction, C, T, MutableTransaction> {
-
-    private static final long serialVersionUID = -2818161207254622257L;
+public class ReusableTransaction<C extends TransactionClass, T extends Transaction> extends Reusable<C, T, MutableTransaction> {
 
     @SuppressWarnings("unchecked")
-    public ReusableTransaction(UniverseTransaction universeTransaction) {
-        super(universeTransaction, (c, u) -> (T) c.newTransaction(u), Transaction::start, Transaction::stop, Transaction::isOpen);
+    public ReusableTransaction(UniverseTransaction u) {
+        super(c -> (T) c.newTransaction(u), Transaction::start, Transaction::stop, Transaction::isOpen);
+
     }
 
 }

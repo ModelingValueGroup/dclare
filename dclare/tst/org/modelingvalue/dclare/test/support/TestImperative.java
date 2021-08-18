@@ -15,23 +15,47 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static java.math.BigInteger.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Consumer;
 
-import java.math.*;
+public class TestImperative implements Consumer<Runnable> {
 
-import org.modelingvalue.dclare.*;
+    public static TestImperative of() {
+        return new TestImperative();
+    }
 
-public class Fibonacci {
-    static final BigInteger ONE = BigInteger.valueOf(1);
-    static final BigInteger TWO = BigInteger.valueOf(2);
+    private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
 
-    public static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
-        if (n.equals(ZERO) || n.equals(ONE)) {
-            return n;
-        } else {
-            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
-            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
-            return one.add(two);
+    protected TestImperative() {
+        Thread imperativeThread = new Thread(() -> {
+            while (true) {
+                take().run();
+            }
+        }, "TestUniverse.imperativeThread");
+        imperativeThread.setDaemon(true);
+        imperativeThread.start();
+    }
+
+    @Override
+    public void accept(Runnable action) {
+        try {
+            queue.put(action);
+        } catch (InterruptedException e) {
+            throw new Error(e);
         }
-    });
+    }
+
+    private Runnable take() {
+        try {
+            return queue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    public boolean isEmpty() {
+        return queue.isEmpty();
+    }
+
 }

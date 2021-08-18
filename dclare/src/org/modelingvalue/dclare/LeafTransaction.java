@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,7 +17,9 @@ package org.modelingvalue.dclare;
 
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -36,8 +38,9 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
+    @SuppressWarnings("rawtypes")
     public static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + e.getValue().size(), Integer::sum);
+        return map.reduce(0, (a, e) -> a + (!(e.getKey() instanceof Observed) || ((Observed) e.getKey()).checkConsistency() ? e.getValue().size() : 0), Integer::sum);
     }
 
     public static LeafTransaction getCurrent() {
@@ -56,13 +59,15 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
 
+    public abstract <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
+
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T get(O object, Getable<O, T> property) {
         return state().get(object, property);
     }
 
-    public <O, T> T current(O object, Getable<O, T> property) {
+    protected <O, T> T current(O object, Getable<O, T> property) {
         return current().get(object, property);
     }
 
@@ -72,28 +77,34 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
         property.changed(this, object, preValue, postValue);
+        if (property instanceof Observed) {
+            trigger((Observed<O, T>) property, object);
+        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public <O> void clear(O object) {
-        for (Entry<Setable, Object> e : state().getProperties(object)) {
-            set(object, e.getKey(), e.getKey().getDefault());
+    public void clear(Mutable object) {
+        for (Setable setable : toBeCleared(object)) {
+            set(object, setable, setable.getDefault());
         }
     }
 
-    protected abstract void setChanged(Mutable changed);
+    @SuppressWarnings("rawtypes")
+    protected Collection<Setable> toBeCleared(Mutable object) {
+        return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
+    }
 
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Direction direction) {
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
-        set(object, direction.actions, Set::add, action);
-        if (direction == Direction.forward) {
-            set(object, Direction.backward.actions, Set::remove, action);
+        set(object, priority.actions, Set::add, action);
+        if (priority == Priority.forward || priority == Priority.urgent) {
+            set(object, Priority.backward.actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
-            set(container, direction.children, Set::add, object);
-            if (direction == Direction.forward && current(object, Direction.backward.actions).isEmpty() && current(object, Direction.backward.children).isEmpty()) {
-                set(container, Direction.backward.children, Set::remove, object);
+            set(container, priority.children, Set::add, object);
+            if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
+                set(container, Priority.backward.children, Set::remove, object);
             }
             object = container;
             container = dParent(object);
@@ -121,10 +132,28 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     @Override
-    public final Mutable mutable() {
+    public Mutable mutable() {
         return parent().mutable();
     }
 
     public abstract ActionInstance actionInstance();
+
+    @SuppressWarnings("unchecked")
+    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+        Newable result = universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction)) {
+            Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
+        }
+        return (O) result;
+    }
+
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return construct(reason, supplier);
+    }
+
+    protected <O> void trigger(Observed<O, ?> observed, O o) {
+    }
+
+    public abstract boolean isChanged();
 
 }

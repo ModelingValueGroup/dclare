@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,59 +15,70 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
-@SuppressWarnings("unused")
-public class TestClass implements MutableClass {
-    private static Map<Object, TestClass> staticTestClassMap = Map.of();
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.Setable;
 
-    public static TestClass existing(Object id) {
+@SuppressWarnings({"unused", "rawtypes"})
+public class TestMutableClass implements MutableClass {
+    private static Map<Object, TestMutableClass> staticTestClassMap = Map.of();
+
+    public static TestMutableClass existing(String id) {
         return staticTestClassMap.get(id);
     }
 
     @SafeVarargs
-    public static TestClass of(Object id, Observer<? extends TestObject>... observers) {
-        return new TestClass(id, Set.of(), Set.of(observers));
+    public static TestMutableClass of(String id, Setable<? extends TestMutable, ?>... setables) {
+        return new TestMutableClass(id, setables);
     }
 
-    @SafeVarargs
-    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable, Observer<? extends TestObject>... observers) {
-        return new TestClass(id, Set.of(setable), Set.of(observers));
-    }
+    private final AtomicInteger                counter = new AtomicInteger(0);
+    private final Object                       id;
+    private Set<Setable<? extends Mutable, ?>> setables;
+    private Set<Observer<?>>                   observers;
 
-    @SafeVarargs
-    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Observer<? extends TestObject>... observers) {
-        return new TestClass(id, Set.of(setable0, setable1), Set.of(observers));
-    }
-
-    @SafeVarargs
-    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Setable<? extends TestObject, ?> setable2, Observer<? extends TestObject>... observers) {
-        return new TestClass(id, Set.of(setable0, setable1, setable2), Set.of(observers));
-    }
-
-    @SafeVarargs
-    public static TestClass of(Object id, Setable<? extends TestObject, ?> setable0, Setable<? extends TestObject, ?> setable1, Setable<? extends TestObject, ?> setable2, Setable<? extends TestObject, ?> setable3, Observer<? extends TestObject>... observers) {
-        return new TestClass(id, Set.of(setable0, setable1, setable2, setable3), Set.of(observers));
-    }
-
-    private final Object                         id;
-    private final Set <? extends Observer <?>>   observers;
-    private final Set <? extends Setable <?, ?>> setables;
-
-    protected TestClass(Object id, Set<? extends Setable<?, ?>> setables, Set<? extends Observer<?>> observers) {
+    @SuppressWarnings("unchecked")
+    protected TestMutableClass(Object id, Setable[] setables) {
         this.id = id;
-        this.setables = setables;
-        this.observers = observers;
-        synchronized (TestClass.class) {
+        this.setables = Set.of();
+        for (int i = 0; i < setables.length; i++) {
+            this.setables = this.setables.add(setables[i]);
+        }
+        this.observers = Set.of();
+        synchronized (TestMutableClass.class) {
             staticTestClassMap = staticTestClassMap.put(id, this);
         }
     }
 
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
+    public final TestMutableClass observe(Consumer<TestMutable>... actions) {
+        return observe(Observer.DEFAULT_DIRECTION, actions);
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("unchecked")
+    public final TestMutableClass observe(Direction direction, Consumer<TestMutable>... actions) {
+        for (int i = 0; i < actions.length; i++) {
+            Observer<?> of = Observer.of(Pair.of(this, counter.getAndIncrement()), actions[i], m -> direction);
+            observers = observers.add(of);
+        }
+        return this;
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
     public Set<? extends Observer<?>> dObservers() {
-        return observers;
+        return (Set<? extends Observer<?>>) observers;
     }
 
     @SuppressWarnings("unchecked")
@@ -99,8 +110,12 @@ public class TestClass implements MutableClass {
         } else if (getClass() != obj.getClass()) {
             return false;
         } else {
-            TestClass c = (TestClass) obj;
+            TestMutableClass c = (TestMutableClass) obj;
             return id.equals(c.id);
         }
+    }
+
+    public boolean isInstance(TestMutable mutable) {
+        return equals(mutable.dClass());
     }
 }

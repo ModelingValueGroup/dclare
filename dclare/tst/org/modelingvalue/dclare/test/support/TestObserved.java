@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,33 +15,34 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.SetableModifier;
 
 public class TestObserved<O, T> extends Observed<O, T> {
-    private static Map<Object, TestObserved<?, ?>> staticObservedMap = Map.of();
+    private static Map<Object, TestObserved<?, ?>>          staticObservedMap = Map.of();
 
     private final BiFunction<TestObserved<O, T>, T, Object> serializeValue;
     private final BiFunction<TestObserved<O, T>, Object, T> deserializeValue;
 
     @SuppressWarnings("unchecked")
-    public static <C, V> TestObserved<C, V> existing(Object id) {
+    public static <C, V> TestObserved<C, V> existing(Object id, SetableModifier... modifiers) {
         return (TestObserved<C, V>) staticObservedMap.get(id);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def) {
-        return new TestObserved<>(id, serializeValue, deserializeValue, false, def, false, null, null, null, true);
+    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def, SetableModifier... modifiers) {
+        return new TestObserved<>(id, serializeValue, deserializeValue, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def, boolean containment) {
-        return new TestObserved<>(id, serializeValue, deserializeValue, false, def, containment, null, null, null, true);
-    }
-
-    protected TestObserved(Object id, BiFunction<TestObserved<O, T>, T, Object> serializeValue, BiFunction<TestObserved<O, T>, Object, T> deserializeValue, boolean mandatory, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
-        super(id, mandatory, def, containment, opposite, scope, changed, checkConsistency);
+    protected TestObserved(Object id, BiFunction<TestObserved<O, T>, T, Object> serializeValue, BiFunction<TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, def, opposite, scope, changed, modifiers);
         this.serializeValue = serializeValue;
         this.deserializeValue = deserializeValue;
         synchronized (TestObserved.class) {

@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.modelingvalue</groupId>
   <artifactId>dclare</artifactId>
-  <version>1.5.0</version>
+  <version>1.6.0</version>
   <packaging>jar</packaging>
   <scm>
     <url>https://maven.pkg.github.com/ModelingValueGroup/dclare</url>
@@ -22,42 +22,48 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
-      <version>5.6.2</version>
+      <version>5.7.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <version>5.6.2</version>
+      <version>5.7.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>5.7.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-commons</artifactId>
-      <version>1.6.2</version>
+      <version>1.7.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-engine</artifactId>
-      <version>1.6.2</version>
+      <version>1.7.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-launcher</artifactId>
-      <version>1.6.2</version>
+      <version>1.7.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.modelingvalue</groupId>
       <artifactId>immutable-collections</artifactId>
-      <version>1.5.0</version>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.modelingvalue</groupId>
-      <artifactId>mvgjson</artifactId>
-      <version>1.1.6</version>
+      <artifactId>mvg-json</artifactId>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>org.opentest4j</groupId>

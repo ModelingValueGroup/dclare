@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,9 +15,12 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
@@ -28,6 +31,7 @@ import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
 import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
@@ -35,37 +39,52 @@ public class Setable<O, T> extends Getable<O, T> {
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
-    public static <C, V> Setable<C, V> of(Object id, V def) {
-        return new Setable<>(id, def, false, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed) {
-        return new Setable<>(id, def, false, null, null, changed, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite) {
-        return new Setable<>(id, def, false, opposite, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new Setable<>(id, def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, boolean containment) {
-        return new Setable<>(id, def, containment, null, null, null, true);
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, scope, changed, modifiers);
     }
 
-    protected QuadConsumer<LeafTransaction, O, T, T>  changed;
-    protected final boolean                           containment;
-    private final Supplier<Setable<?, ?>>             opposite;
-    private final Supplier<Setable<O, Set<?>>>        scope;
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, def, opposite, scope, null, modifiers);
+    }
+
+    private final QuadConsumer<LeafTransaction, O, T, T> changed;
+    private final boolean                                containment;
+    private final Supplier<Setable<?, ?>>                opposite;
+    private final Supplier<Setable<O, Set<?>>>           scope;
     @SuppressWarnings("rawtypes")
-    private final Constant<T, Entry<Setable, Object>> internal;
-    protected final boolean                           checkConsistency;
-    private boolean                                   isReference;
+    private final Constant<T, Entry<Setable, Object>>    internal;
+    private final boolean                                plumbing;
+    private final boolean                                synthetic;
 
-    protected Setable(Object id, T def, boolean containment, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, boolean checkConsistency) {
+    private Boolean                                      isReference;
+
+    protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.checkConsistency = checkConsistency;
-        this.containment = containment;
+        this.plumbing = CoreSetableModifier.plumbing.in(modifiers);
+        this.containment = CoreSetableModifier.containment.in(modifiers);
+        this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
         this.changed = changed;
-        this.opposite = opposite;
+        if (symmetricOpposite.in(modifiers)) {
+            if (opposite != null) {
+                throw new Error("The setable " + this + " is already a symetric-opposite");
+            } else {
+                this.opposite = () -> this;
+            }
+        } else {
+            this.opposite = opposite;
+        }
         this.scope = scope;
         if (containment && opposite != null) {
             throw new Error("The containment setable " + this + " has an opposite");
@@ -113,6 +132,15 @@ public class Setable<O, T> extends Getable<O, T> {
 
     }
 
+    public boolean isReference() {
+        return isReference != null && isReference;
+    }
+
+    @Override
+    public boolean synthetic() {
+        return synthetic;
+    }
+
     @Override
     public boolean containment() {
         return containment;
@@ -128,12 +156,13 @@ public class Setable<O, T> extends Getable<O, T> {
         return scope != null ? scope.get() : null;
     }
 
-    protected final boolean isHandlingChange() {
+    protected boolean isHandlingChange() {
         return changed != null || containment || opposite != null;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
+        init(postValue);
         if (changed != null) {
             changed.accept(tx, object, preValue, postValue);
         }
@@ -147,17 +176,15 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    for (Direction dir : Direction.values()) {
-                        dir.children.set((Mutable) object, Set::add, added);
-                    }
+                    Priority.forward.children.set((Mutable) object, Set::add, added);
                 }
             }, removed -> {
+                for (Priority dir : Priority.values()) {
+                    dir.children.set((Mutable) object, Set::remove, removed);
+                }
                 if (!MOVING.get()) {
-                    removed.dDeactivate();
-                    for (Direction dir : Direction.values()) {
-                        dir.children.set((Mutable) object, Set::remove, removed);
-                    }
-                    Mutable.D_PARENT_CONTAINING.set(removed, null);
+                    Mutable.D_PARENT_CONTAINING.setDefault(removed);
+                    removed.dHandleRemoved((Mutable) object);
                 }
             });
         } else if (opposite != null) {
@@ -165,13 +192,17 @@ public class Setable<O, T> extends Getable<O, T> {
             Setable.diff(preValue, postValue, //
                     added -> opp.add(added, object), //
                     removed -> opp.remove(removed, object));
-        } else if (this != Mutable.D_PARENT_CONTAINING && !isReference) {
-            Object v = postValue;
-            if (v instanceof ContainingCollection) {
-                v = ((ContainingCollection<?>) v).isEmpty() ? null : ((ContainingCollection<?>) v).get(0);
+        }
+    }
+
+    protected void init(T postValue) {
+        if (isReference == null) {
+            Object element = postValue;
+            if (element instanceof ContainingCollection) {
+                element = ((ContainingCollection<?>) element).isEmpty() ? null : ((ContainingCollection<?>) element).get(0);
             }
-            if (v instanceof Mutable) {
-                isReference = true;
+            if (element != null) {
+                isReference = element instanceof Mutable && !containment && this != Mutable.D_PARENT_CONTAINING;
             }
         }
     }
@@ -184,13 +215,12 @@ public class Setable<O, T> extends Getable<O, T> {
         return currentLeaf(object).set(object, this, value);
     }
 
-    public T setNonObserving(O object, T value) {
-        LeafTransaction tx = currentLeaf(object);
-        return tx.getNonObserving(() -> tx.set(object, this, value));
-    }
-
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         return currentLeaf(object).set(object, this, function, element);
+    }
+
+    public <E> T set(O object, UnaryOperator<T> oper) {
+        return currentLeaf(object).set(object, this, oper);
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})
@@ -251,15 +281,24 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return checkConsistency && (scope != null || isReference);
+        return !plumbing && (scope != null || isReference());
+    }
+
+    public boolean isTraced() {
+        return !plumbing && !synthetic;
+    }
+
+    public boolean isPlumbing() {
+        return plumbing;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public void checkConsistency(State state, O object, T post) {
-        if (isReference) {
+    public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
+        Set<ConsistencyError> errors = Set.of();
+        if (isReference()) {
             for (Mutable m : mutables(post)) {
                 if (isOrphan(state, m)) {
-                    throw new ReferencedOrphanException(object, this, m);
+                    errors = errors.add(new ReferencedOrphanException(object, this, m));
                 }
             }
         }
@@ -267,14 +306,15 @@ public class Setable<O, T> extends Getable<O, T> {
             Set s = state.get(object, scope.get());
             if (post instanceof ContainingCollection) {
                 if (!s.containsAll((ContainingCollection) post)) {
-                    throw new OutOfScopeException(object, this, post, s);
+                    errors = errors.add(new OutOfScopeException(object, this, post, s));
                 }
             } else if (post != null) {
                 if (!s.contains(post)) {
-                    throw new OutOfScopeException(object, this, post, s);
+                    errors = errors.add(new OutOfScopeException(object, this, post, s));
                 }
             }
         }
+        return errors;
     }
 
     protected boolean isOrphan(State state, Mutable m) {

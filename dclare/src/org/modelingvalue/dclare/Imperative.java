@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,15 +18,15 @@ package org.modelingvalue.dclare;
 public class Imperative extends Leaf {
 
     public static Imperative of(Object id) {
-        return new Imperative(id, Direction.forward);
+        return new Imperative(id, Priority.forward);
     }
 
-    public static Imperative of(Object id, Direction initDirection) {
-        return new Imperative(id, initDirection);
+    public static Imperative of(Object id, Priority initPriority) {
+        return new Imperative(id, initPriority);
     }
 
-    protected Imperative(Object id, Direction initDirection) {
-        super(id, initDirection);
+    protected Imperative(Object id, Priority initPriority) {
+        super(id, initPriority);
     }
 
     @Override

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,19 +17,19 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.util.StringUtil;
 
-public abstract class Leaf implements TransactionClass {
+public abstract class Leaf implements TransactionClass, Feature {
 
     private final Object    id;
-    private final Direction initDirection;
+    private final Priority initPriority;
 
-    protected Leaf(Object id, Direction initDirection) {
+    protected Leaf(Object id, Priority initPriority) {
         this.id = id;
-        this.initDirection = initDirection;
+        this.initPriority = initPriority;
     }
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id.hashCode() ^ getClass().hashCode();
     }
 
     @Override
@@ -54,8 +54,8 @@ public abstract class Leaf implements TransactionClass {
         return id;
     }
 
-    protected Direction initDirection() {
-        return initDirection;
+    protected Priority initPriority() {
+        return initPriority;
     }
 
 }

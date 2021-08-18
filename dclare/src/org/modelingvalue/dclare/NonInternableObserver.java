@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2020 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -21,15 +21,15 @@ import java.util.function.Consumer;
 public class NonInternableObserver<O extends Mutable> extends Observer<O> {
 
     public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action) {
-        return new NonInternableObserver<>(id, action, Direction.forward);
+        return new NonInternableObserver<>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Direction initDirection) {
-        return new NonInternableObserver<>(id, action, initDirection);
+    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new NonInternableObserver<>(id, action, initPriority);
     }
 
-    protected NonInternableObserver(Object id, Consumer<O> action, Direction initDirection) {
-        super(id, action, initDirection);
+    protected NonInternableObserver(Object id, Consumer<O> action, Priority initPriority) {
+        super(id, action, initPriority);
     }
 
     @Override
