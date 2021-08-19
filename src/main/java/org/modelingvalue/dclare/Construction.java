@@ -144,7 +144,7 @@ public class Construction extends IdentifiedByArray {
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
                     from.directions().noneMatch(directions()::contains) && //
-                    (from.sources().contains(newable()) || from.sources().anyMatch(s -> s.dHasAncestor(newable())) || //
+                    (from.sources().contains(newable()) || //
                             (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
@@ -165,14 +165,15 @@ public class Construction extends IdentifiedByArray {
         }
 
         public boolean hasUnidentifiedSource() {
-            return sources().anyMatch(n -> n.dMatchingIdentity() == null);
+            Set<Newable> sources = sources();
+            return sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).anyMatch(n -> n.dMatchingIdentity() == null);
         }
 
         public Newable newable() {
             return newable;
         }
 
-        private Object identity() {
+        public Object identity() {
             if (identity == null) {
                 identity = newable.dMatchingIdentity();
                 if (identity == null) {
@@ -184,7 +185,8 @@ public class Construction extends IdentifiedByArray {
 
         public Comparable sortKey() {
             if (sortKey == null) {
-                sortKey = sources().map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
+                Set<Newable> sources = sources();
+                sortKey = sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
             }
             return sortKey;
         }
@@ -198,8 +200,7 @@ public class Construction extends IdentifiedByArray {
 
         public boolean isCarvedInStone() {
             if (isCarvedInStone == null) {
-                isCarvedInStone = newable.dDirectConstruction() != null || //
-                        (!directions().isEmpty() && LeafTransaction.getCurrent().universeTransaction().preState().get(newable, Mutable.D_PARENT_CONTAINING) != null);
+                isCarvedInStone = newable.dDirectConstruction() != null;
             }
             return isCarvedInStone;
         }

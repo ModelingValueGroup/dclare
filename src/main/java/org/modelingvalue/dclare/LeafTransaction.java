@@ -94,8 +94,6 @@ public abstract class LeafTransaction extends Transaction {
         return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
     }
 
-    protected abstract void setChanged(Mutable changed);
-
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
@@ -142,11 +140,11 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        return (O) universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> {
-            O o = supplier.get();
-            Newable.D_DIRECT_CONSTRUCTION.set(o, Construction.of(reason));
-            return o;
-        });
+        Newable result = universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction)) {
+            Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
+        }
+        return (O) result;
     }
 
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {

@@ -68,6 +68,10 @@ public abstract class Getable<O, T> implements Feature, Internable {
         return currentLeaf(object).get(object, this);
     }
 
+    public T current(O object) {
+        return currentLeaf(object).current(object, this);
+    }
+
     public T pre(O object) {
         return currentLeaf(object).pre(object, this);
     }

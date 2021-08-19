@@ -72,6 +72,7 @@ public class ObserverTransaction extends ActionTransaction {
     protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
         Pair<Instant, Throwable> throwable = null;
+        // System.err.println("!!!!!!!!RUN!!!!!!!! " + mutable() + "." + observer);
         // check if the universe is still in the same transaction, if not: reset my state
         observer.startTransaction(universeTransaction.stats());
         // check if we should do the work...
@@ -236,23 +237,25 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
+        T result = post;
         if (observing(object, setable)) {
-            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post)) {
+            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.result().equals(TRUE)) {
             //                throw new NullPointerException(setable.toString());
             //            }
             observe(object, (Observed<O, T>) setable, sets);
             if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
                 T start = startState.get(object, setable);
                 if (pre instanceof Newable || post instanceof Newable) {
-                    post = (T) singleMatch((Observed) setable, start, pre, post);
+                    // runNonObserving(() -> System.err.println("!!! SET SINGLE !!!! " + object + "." + setable + " = " + pre + "-> " + post));
+                    result = (T) singleMatch((Observed) setable, start, pre, post);
                 } else if (isNewableCollection(pre) || isNewableCollection(post)) {
-                    post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
+                    result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
-                    post = rippleOut((Observed<O, T>) setable, start, pre, post);
+                    result = rippleOut((Observed<O, T>) setable, start, pre, post);
                 }
             }
         }
-        super.set(object, setable, pre, post);
+        super.set(object, setable, pre, result);
     }
 
     @SuppressWarnings("rawtypes")
@@ -364,8 +367,12 @@ public class ObserverTransaction extends ActionTransaction {
                     post = result;
                 }
             } else if (pre instanceof Mutable && isChanged((Mutable) pre)) {
+                //                if (inputIsChanged()) {
+                //                    runNonObserving(() -> System.err.println("!!!!!!!!!!!!!!!!!! " + observed + " " + pre));
+                //                }
                 backwards.set(TRUE);
                 return pre;
+
             }
         }
         if (!Objects.equals(pre, start)) {
@@ -381,6 +388,11 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         return post;
+    }
+
+    @Override
+    protected void setChanged(Mutable changed) {
+        // Do nothing
     }
 
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
@@ -413,6 +425,7 @@ public class ObserverTransaction extends ActionTransaction {
                 ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
             MatchInfo pre = MatchInfo.of((Newable) before, cons);
             MatchInfo post = MatchInfo.of((Newable) after, cons);
+            // runNonObserving(() -> System.err.println("!!!!!!!!!!!!! " + post + "  " + pre.directions() + "  " + post.directions()));
             if (pre.directions().noneMatch(post.directions()::contains)) {
                 if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
                     if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
