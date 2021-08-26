@@ -1,8 +1,6 @@
 name: build
 
-on:
-  push:
-    branches: [ "*" ]
+on: [ push, workflow_dispatch ]
 
 jobs:
   build:
@@ -24,4 +22,4 @@ jobs:
 
       ################################################################################
       - name: "build"
-        run: ./gradlew --scan
+        run: ./gradlew --info --scan
