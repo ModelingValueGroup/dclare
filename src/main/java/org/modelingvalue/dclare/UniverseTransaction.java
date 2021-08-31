@@ -286,7 +286,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void checkConsistency(Universe universe) {
         LeafTransaction lt = LeafTransaction.getCurrent();
         State post = lt.state();
-        preState.diff(post, o -> o instanceof Mutable).forEach(e0 -> {
+        preState.diff(post, o -> o instanceof Mutable && ((Mutable) o).dCheckConsistency()).forEach(e0 -> {
             Mutable mutable = (Mutable) e0.getKey();
             DefaultMap<Setable, Object> values = e0.getValue().b();
             if (mutable.equals(universe()) || mutable.dHasAncestor(universe())) {

@@ -194,4 +194,8 @@ public interface Mutable extends TransactionClass {
         }
     }
 
+    default boolean dCheckConsistency() {
+        return true;
+    }
+
 }
