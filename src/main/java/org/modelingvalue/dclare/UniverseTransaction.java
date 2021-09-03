@@ -254,10 +254,6 @@ public class UniverseTransaction extends MutableTransaction {
         init();
     }
 
-    public DclareConfig getConfig() {
-        return config;
-    }
-
     protected void mainLoop(State start) {
         state = start != null ? start.clone(this) : emptyState;
         if (config.isTraceUniverse()) {
@@ -357,6 +353,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State waitForStop() {
         return moodManager.waitForStopMood();
+    }
+
+    public DclareConfig getConfig() {
+        return config;
     }
 
     public String getMood() {
@@ -561,7 +561,7 @@ public class UniverseTransaction extends MutableTransaction {
         return state.get(universe(), STOPPED);
     }
 
-    public void putAndWaitUntilRunning(Object id, Runnable action) {
+    public void putAndWaitForBusy(Object id, Runnable action) {
         final CompletableFuture<Void> sync = new CompletableFuture<>();
         put(id, () -> {
             sync.complete(null);
@@ -570,8 +570,13 @@ public class UniverseTransaction extends MutableTransaction {
         try {
             sync.get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new Error("problem waiting after put() in UniverseTransaction", e);
+            throw new Error("problem waiting in UniverseTransaction.putAndWaitForBusy()", e);
         }
+    }
+
+    public State putAndWaitForIdle(Object id, Runnable action) {
+        putAndWaitForBusy(id, action);
+        return waitForIdle();
     }
 
     public void put(Object id, Runnable action) {

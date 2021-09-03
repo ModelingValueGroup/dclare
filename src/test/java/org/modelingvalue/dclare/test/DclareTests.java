@@ -238,13 +238,11 @@ public class DclareTests {
         printState(universeTransaction, state);
         assertNull(state.get(universe, child));
 
-        universeTransaction.putAndWaitUntilRunning("inject1", () -> child.set(universe, child1));
-        state = universeTransaction.waitForIdle();
+        state = universeTransaction.putAndWaitForIdle("inject1", () -> child.set(universe, child1));
         printState(universeTransaction, state);
         assertEquals(child1, state.get(universe, child));
 
-        universeTransaction.putAndWaitUntilRunning("inject2", () -> child.set(universe, child2));
-        state = universeTransaction.waitForIdle();
+        state = universeTransaction.putAndWaitForIdle("inject2", () -> child.set(universe, child2));
         printState(universeTransaction, state);
         assertEquals(child2, state.get(universe, child));
 
