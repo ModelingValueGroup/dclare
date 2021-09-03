@@ -19,7 +19,7 @@ import org.modelingvalue.collections.util.Internable;
 
 public interface Universe extends Mutable, Internable {
     default void init() {
-        LeafTransaction.getCurrent().universeTransaction().initialized = true;
+        LeafTransaction.getCurrent().universeTransaction().setInitialized();
         dActivate();
     }
 }

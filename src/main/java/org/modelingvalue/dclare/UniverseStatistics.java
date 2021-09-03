@@ -134,7 +134,14 @@ public class UniverseStatistics {
 
     @Override
     public String toString() {
-        return "UniverseStats:\n" + "  debugging         = " + debugging + "\n" + "  runCount          = " + runCount + "\n" + "  forwardCount       = " + forwardCount + "\n" + "  totalChanges      = " + totalChanges + "\n" + "  totalChangesEver  = " + totalChangesEver;
+        return "UniverseStats:\n" +
+               "    mood             = " + tx.getMood() + "\n" +
+               "    initialized      = " + tx.isInitialized() + "\n" +
+               "    debugging        = " + debugging + "\n" +
+               "    runCount         = " + runCount + "\n" +
+               "    forwardCount     = " + forwardCount + "\n" +
+               "    totalChanges     = " + totalChanges + "\n" +
+               "    totalChangesEver = " + totalChangesEver;
     }
 
     @Override

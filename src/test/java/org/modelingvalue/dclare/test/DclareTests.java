@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
@@ -43,6 +42,11 @@ import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestUniverse;
 
 public class DclareTests {
+    static {
+        //        System.setProperty("TRACE_LOG", "true");
+        //        System.setProperty("TRACE_LOG_DT", "true");
+        //        System.setProperty("TRACE_MOOD", "true");
+    }
 
     @Test
     public void source2target() {
@@ -60,31 +64,6 @@ public class DclareTests {
 
         printState(universeTransaction, result);
         assertEquals(10, (int) result.get(object, target));
-    }
-
-    @Test
-    public void cycle1second() {
-        Observed<TestUniverse, Long>             currentTime         = Observed.of("time", System.currentTimeMillis());
-        long                                     begin               = System.currentTimeMillis();
-        Observed<TestUniverse, Set<TestMutable>> children            = Observed.of("children", Set.of(), containment);
-        TestUniverse                             universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", children), TestImperative.of());
-        UniverseTransaction                      universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withMaxInInQueue(100).withCycle(r -> currentTime.set(universe, System.currentTimeMillis())));
-        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> {
-            long time = currentTime.get(universe);
-            if (time - begin > 1000) {
-                universeTransaction.stop();
-            }
-        });
-        universeTransaction.put("step1", () -> {
-            for (int io = 0; io < 8; io++) {
-                children.set(universe, Set::add, TestMutable.of(io, clazz));
-            }
-        });
-        State  result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
-        double sec    = (result.get(universe, currentTime) - begin) / 1000.0;
-
-        printState(universeTransaction, result, sec + " s");
-        assertTrue(sec >= 0.9 && sec <= 1.1, "cycle-time not close to 1.0: " + sec);
     }
 
     @Test
@@ -243,6 +222,35 @@ public class DclareTests {
         EmptyMandatoryException t = assertThrows(EmptyMandatoryException.class, () -> universe.waitForEnd(universeTransaction));
         assertEquals("Empty mandatory property 'mandatory' of object 'Object@object'", t.getMessage());
         printState(universeTransaction, null);
+    }
+
+    @Test
+    public void moodTest() {
+        Observed<TestUniverse, TestMutable> child               = Observed.of("child", null, containment);
+        TestUniverse                        universe            = TestUniverse.of("universe", TestMutableClass.of("Universe", child), TestImperative.of());
+        UniverseTransaction                 universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true));
+        TestMutableClass                    clazz               = TestMutableClass.of("Object");
+        TestMutable                         child1              = TestMutable.of("child1", clazz);
+        TestMutable                         child2              = TestMutable.of("child2", clazz);
+        State                               state;
+
+        state = universeTransaction.waitForIdle();
+        printState(universeTransaction, state);
+        assertNull(state.get(universe, child));
+
+        universeTransaction.putAndWaitUntilRunning("inject1", () -> child.set(universe, child1));
+        state = universeTransaction.waitForIdle();
+        printState(universeTransaction, state);
+        assertEquals(child1, state.get(universe, child));
+
+        universeTransaction.putAndWaitUntilRunning("inject2", () -> child.set(universe, child2));
+        state = universeTransaction.waitForIdle();
+        printState(universeTransaction, state);
+        assertEquals(child2, state.get(universe, child));
+
+        universeTransaction.stop();
+        state = universeTransaction.waitForStop();
+        printState(universeTransaction, state);
     }
 
     @Test

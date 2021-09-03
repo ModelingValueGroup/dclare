@@ -20,7 +20,7 @@ import java.util.function.Function;
 
 public class Action<O extends Mutable> extends Leaf {
 
-    protected static final Function<Mutable, Direction> DEFAULT_DIRECTION_FUNCTION = m -> m.dDirection();
+    protected static final Function<Mutable, Direction> DEFAULT_DIRECTION_FUNCTION = Mutable::dDirection;
 
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
@@ -53,7 +53,7 @@ public class Action<O extends Mutable> extends Leaf {
 
     protected Action(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
         super(id, initPriority);
-        this.action = action;
+        this.action    = action;
         this.direction = direction;
     }
 

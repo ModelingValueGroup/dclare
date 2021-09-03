@@ -17,15 +17,17 @@ package org.modelingvalue.dclare.test.support;
 
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 
 public class Shared {
 
-    public static final boolean     PRINT_STATE = true;
+    public static final boolean     PRINT_STATE = false;
     public static final ContextPool THE_POOL    = ContextThread.createPool();
 
     public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
+        TraceTimer.dumpLogs();
         if (PRINT_STATE) {
             int num = result == null ? -1 : result.getObjects(TestMutable.class).size();
 

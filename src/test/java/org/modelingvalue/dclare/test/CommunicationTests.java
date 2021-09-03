@@ -57,7 +57,7 @@ public class CommunicationTests {
         for (int NEW_VALUE : new int[]{3, 6, 9, 10}) {
             busyWaitAllForIdle();
 
-            System.err.printf("universeSyncWithinOneJVM: setting value to %d\n", NEW_VALUE);
+            //System.err.printf("universeSyncWithinOneJVM: setting value to %d\n", NEW_VALUE);
             a.setXyzzy_source(NEW_VALUE);
 
             busyWaitAllForIdle();

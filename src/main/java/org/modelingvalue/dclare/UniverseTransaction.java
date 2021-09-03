@@ -19,6 +19,8 @@ import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -42,45 +44,200 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
-    private static final UnaryOperator<Byte>                                                        INCREMENT               = c -> ++c;
-    private static final Setable<Universe, Boolean>                                                 STOPPED                 = Setable.of("stopped", false);
+    private static final UnaryOperator<Byte>                                                             INCREMENT               = c -> ++c;
+    private static final Setable<Universe, Boolean>                                                      STOPPED                 = Setable.of("stopped", false);
+    private static final boolean                                                                         TRACE_MOOD              = Boolean.getBoolean("TRACE_MOOD");
     //
-    private final DclareConfig                                                                      config;
-    protected final Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
+    private final        DclareConfig                                                                    config;
+    protected final      Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
-    private final Action<Universe>                                                                  cycle;
-    private final Action<Universe>                                                                  dummy                   = Action.of("$dummy");
-    private final Action<Universe>                                                                  stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
-    private final Action<Universe>                                                                  backward                = Action.of("$backward");
-    private final Action<Universe>                                                                  forward                 = Action.of("$forward");
-    private final Action<Universe>                                                                  clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
-    private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
-    protected final BlockingQueue<Action<Universe>>                                                 inQueue;
-    private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);
-    private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Priority.forward);
-    private final UniverseStatistics                                                                universeStatistics;
-    private final AtomicReference<Set<Throwable>>                                                   errors                  = new AtomicReference<>(Set.of());
-    protected final ConstantState                                                                   constantState           = new ConstantState(this::handleException);
+    private final        Action<Universe>                                                                init                    = Action.of("$init", o -> universe().init());
+    private final        Action<Universe>                                                                dummy                   = Action.of("$dummy");
+    private final        Action<Universe>                                                                stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final        Action<Universe>                                                                backward                = Action.of("$backward");
+    private final        Action<Universe>                                                                forward                 = Action.of("$forward");
+    private final        Action<Universe>                                                                clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
+    private final        Action<Universe>                                                                checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
+    //
+    protected final      BlockingQueue<Action<Universe>>                                                 inQueue;
+    private final        BlockingQueue<State>                                                            resultQueue             = new LinkedBlockingQueue<>(1); //TODO wire onto MoodManager
+    private final        State                                                                           emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    protected final      ReadOnly                                                                        runOnState              = new ReadOnly(this, Priority.forward);
+    private final        UniverseStatistics                                                              universeStatistics;
+    private final        AtomicReference<Set<Throwable>>                                                 errors                  = new AtomicReference<>(Set.of());
+    protected final      ConstantState                                                                   constantState           = new ConstantState(this::handleException);
+    private final        MoodManager                                                                     moodManager             = new MoodManager();
 
-    private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
-    private List<Action<Universe>>                                                                  preActions              = List.of();
-    private List<Action<Universe>>                                                                  postActions             = List.of();
-    private List<State>                                                                             history                 = List.of();
-    private List<State>                                                                             future                  = List.of();
-    private State                                                                                   preState;
-    private State                                                                                   startState;
-    private State                                                                                   state;
-    protected boolean                                                                               initialized;
-    private boolean                                                                                 killed;
-    private boolean                                                                                 timeTraveling;
-    private boolean                                                                                 handling;
-    private boolean                                                                                 stopped;
-    private boolean                                                                                 orphansDetected;
+    private List<Action<Universe>> timeTravelingActions = List.of(backward, forward);
+    private List<Action<Universe>> preActions           = List.of();
+    private List<Action<Universe>> postActions          = List.of();
+    private List<State>            history              = List.of();
+    private List<State>            future               = List.of();
+    private State                  preState;
+    private State                  startState;
+    private State                  state;
+    private boolean                initialized;
+    private boolean                killed;
+    private boolean                timeTraveling;
+    private boolean                handling; //TODO wire onto MoodManager
+    private boolean                stopped; //TODO wire onto MoodManager
+    private boolean                orphansDetected;
+
+    private static class MoodManager {
+        CompletableFuture<State> idleFuture = new CompletableFuture<>();
+        CompletableFuture<Void>  busyFuture = new CompletableFuture<>();
+
+        private void setBusyMood(Action<Universe> action) {
+            if (TRACE_MOOD) {
+                String id = action.id().toString();
+                if (isStopMood()) {
+                    TraceTimer.traceLog("                                     busy <= stop (" + id + ") ??????????????????????");
+                } else if (isIdleMood()) {
+                    TraceTimer.traceLog("                                  => busy         (" + id + ")");
+                } else if (isBusyMood()) {
+                    TraceTimer.traceLog("                                     busy         (" + id + ")");
+                } else {
+                    TraceTimer.traceLog("                     init =========> busy         (" + id + ")");
+                }
+            }
+            if (idleFuture.isDone()) {
+                idleFuture = new CompletableFuture<>();
+            }
+            if (!busyFuture.isDone() && !busyFuture.complete(null)) {
+                throw new Error("OOPS could not set busyFuture...");
+            }
+        }
+
+        private void setIdleMood(State state) {
+            if (TRACE_MOOD) {
+                if (isStopMood()) {
+                    TraceTimer.traceLog("                             idle <========= stop ??????????????????????");
+                } else if (isIdleMood()) {
+                    TraceTimer.traceLog("                             idle");
+                } else if (isBusyMood()) {
+                    TraceTimer.traceLog("                             idle <=");
+                } else {
+                    TraceTimer.traceLog("                     init => idle");
+                }
+            }
+            if (busyFuture.isDone()) {
+                busyFuture = new CompletableFuture<>();
+            }
+            if (idleFuture.isDone()) {
+                idleFuture = new CompletableFuture<>();
+            }
+            if (!idleFuture.isDone() && !idleFuture.complete(state)) {
+                throw new Error("OOPS could not set idleFuture...");
+            }
+        }
+
+        private void setStopMood(State state) {
+            if (TRACE_MOOD) {
+                if (isStopMood()) {
+                    TraceTimer.traceLog("                                             stop ??????????????????????");
+                } else if (isIdleMood()) {
+                    TraceTimer.traceLog("                             idle =========> stop");
+                } else if (isBusyMood()) {
+                    TraceTimer.traceLog("                                     busy => stop");
+                } else {
+                    TraceTimer.traceLog("                     init =================> stop");
+                }
+            }
+            // if we are idle, we need to prepare for this new state to be the final state:
+            if (isIdleMood()) {
+                idleFuture = new CompletableFuture<>();
+            }
+            // complete both idle and busy future to indicate stop mood:
+            if (!idleFuture.isDone() && !idleFuture.complete(state)) {
+                throw new Error("OOPS could not set idleFuture on stop...");
+            }
+            if (!busyFuture.isDone() && !busyFuture.complete(null)) {
+                throw new Error("OOPS could not set busyFuture on stop...");
+            }
+        }
+
+        private boolean isInitMood() {
+            return !idleFuture.isDone() && !busyFuture.isDone();
+        }
+
+        private boolean isIdleMood() {
+            return idleFuture.isDone() && !busyFuture.isDone();
+        }
+
+        private boolean isBusyMood() {
+            return !idleFuture.isDone() && busyFuture.isDone();
+        }
+
+        private boolean isStopMood() {
+            return idleFuture.isDone() && busyFuture.isDone();
+        }
+
+        private State waitForIdleMood() {
+            try {
+                return idleFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new Error("problem during waitForIdle()", e);
+            }
+        }
+
+        private void waitForBusyMood() {
+            try {
+                busyFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new Error("problem during waitForBusy()", e);
+            }
+        }
+
+        private State waitForStopMood() {
+            try {
+                while (!isStopMood()) {
+                    idleFuture.get();
+                    busyFuture.get();
+                }
+                return idleFuture.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new Error("problem during waitForStop()", e);
+            }
+        }
+
+        public String getMood() {
+            return isInitMood() ? "init" : isBusyMood() ? "busy" : isIdleMood() ? "idle" : isStopMood() ? "stop" : "????";
+        }
+        //        {
+        //            int id = new Random().nextInt(9999);
+        //
+        //            Thread a = new Thread(() -> {
+        //                TraceTimer.traceLog("START A");
+        //                while (true) {
+        //                    waitForIdleMood();
+        //                    if (isStopped()) {
+        //                        break;
+        //                    }
+        //                    TraceTimer.traceLog("IDLE");
+        //                    waitForBusyMood();
+        //                    if (isStopped()) {
+        //                        break;
+        //                    }
+        //                    TraceTimer.traceLog("BUSY");
+        //                }
+        //                TraceTimer.traceLog("STOP A");
+        //            }, "TRACER-A-" + id);
+        //            a.setDaemon(true);
+        //            a.start();
+        //
+        //            Thread b = new Thread(() -> {
+        //                TraceTimer.traceLog("START B");
+        //                waitForStopMood();
+        //                TraceTimer.traceLog("STOP B");
+        //            }, "TRACER-B-" + id);
+        //            b.setDaemon(true);
+        //            b.start();
+        //        }
+    }
 
     public UniverseTransaction(Universe universe, ContextPool pool) {
         this(universe, pool, new DclareConfig());
@@ -88,9 +245,8 @@ public class UniverseTransaction extends MutableTransaction {
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config) {
         super(null);
-        this.config = Objects.requireNonNull(config);
-        this.cycle = config.getCycle() != null ? Action.of("$cycle", o -> config.getCycle().accept(this)) : null;
-        this.inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
+        this.config             = Objects.requireNonNull(config);
+        this.inQueue            = new LinkedBlockingQueue<>(config.getMaxInInQueue());
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = emptyState;
@@ -109,11 +265,19 @@ public class UniverseTransaction extends MutableTransaction {
         }
         while (!killed) {
             try {
-                handling = false;
+                handling = false; //TODO wire onto MoodManager
+                if (inQueue.isEmpty() && initialized) {
+                    moodManager.setIdleMood(state);
+                }
+                //==========================================================================
                 Action<Universe> action = take();
+                //==========================================================================
+                if (action != init) {
+                    moodManager.setBusyMood(action);
+                }
                 preState = state;
                 universeStatistics.setDebugging(false);
-                handling = true;
+                handling = true; //TODO wire onto MoodManager
                 if (config.isTraceUniverse()) {
                     System.err.println("DCLARE: BEGIN TRANSACTION " + this);
                 }
@@ -123,19 +287,19 @@ public class UniverseTransaction extends MutableTransaction {
                     start(action);
                     if (action == backward) {
                         if (history.size() > 3) {
-                            future = future.prepend(state);
-                            state = history.last();
+                            future  = future.prepend(state);
+                            state   = history.last();
                             history = history.removeLast();
                         }
                     } else if (action == forward) {
                         if (!future.isEmpty()) {
                             history = history.append(state);
-                            state = future.first();
-                            future = future.removeFirst();
+                            state   = future.first();
+                            future  = future.removeFirst();
                         }
                     } else if (action != dummy) {
                         history = history.append(state);
-                        future = List.of();
+                        future  = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
@@ -155,13 +319,8 @@ public class UniverseTransaction extends MutableTransaction {
                     if (!killed && !postActions.isEmpty()) {
                         state = state.get(() -> run(triggerActions(state, postActions)));
                     }
-                    if (!killed && inQueue.isEmpty()) {
-                        if (isStopped(state)) {
-                            break;
-                        }
-                        if (this.cycle != null) {
-                            put(this.cycle);
-                        }
+                    if (!killed && inQueue.isEmpty() && isStopped(state)) {
+                        break;
                     }
                 } catch (Throwable t) {
                     handleException(t);
@@ -183,16 +342,33 @@ public class UniverseTransaction extends MutableTransaction {
         stop();
         history = history.append(state);
         constantState.stop();
-        end(state);
-        stopped = true;
+        end(state); //TODO wire onto MoodManager
+        stopped = true; //TODO wire onto MoodManager
+        moodManager.setStopMood(state);
+    }
+
+    public State waitForIdle() {
+        return moodManager.waitForIdleMood();
+    }
+
+    public void waitForBusy() {
+        moodManager.waitForBusyMood();
+    }
+
+    public State waitForStop() {
+        return moodManager.waitForStopMood();
+    }
+
+    public String getMood() {
+        return moodManager.getMood();
     }
 
     @Override
     protected State run(State state) {
         do {
             startState = state;
-            state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
-            state = super.run(state);
+            state      = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
+            state      = super.run(state);
             universeStatistics.completeForward();
             state = clearOrphans(state);
         } while (!killed && hasBackwardActionsQueued(state));
@@ -218,12 +394,20 @@ public class UniverseTransaction extends MutableTransaction {
         return inQueue.size();
     }
 
-    public boolean isHandling() {
+    public boolean isHandling() { //TODO wire onto MoodManager
         return handling;
     }
 
-    public boolean isStopped() {
+    public boolean isStopped() { //TODO wire onto MoodManager
         return stopped;
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    protected void setInitialized() {
+        initialized = true;
     }
 
     @Override
@@ -279,16 +463,16 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void init() {
-        put("$init", () -> universe().init());
+        put(init);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected void checkConsistency(Universe universe) {
-        LeafTransaction lt = LeafTransaction.getCurrent();
-        State post = lt.state();
+        LeafTransaction lt   = LeafTransaction.getCurrent();
+        State           post = lt.state();
         preState.diff(post, o -> o instanceof Mutable && ((Mutable) o).dCheckConsistency()).forEach(e0 -> {
-            Mutable mutable = (Mutable) e0.getKey();
-            DefaultMap<Setable, Object> values = e0.getValue().b();
+            Mutable                     mutable = (Mutable) e0.getKey();
+            DefaultMap<Setable, Object> values  = e0.getValue().b();
             if (mutable.equals(universe()) || mutable.dHasAncestor(universe())) {
                 MutableClass dClass = mutable.dClass();
                 Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
@@ -376,6 +560,19 @@ public class UniverseTransaction extends MutableTransaction {
         return state.get(universe(), STOPPED);
     }
 
+    public void putAndWaitUntilRunning(Object id, Runnable action) {
+        final CompletableFuture<Void> sync = new CompletableFuture<>();
+        put(id, () -> {
+            sync.complete(null);
+            action.run();
+        });
+        try {
+            sync.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new Error("problem waiting after put() in UniverseTransaction", e);
+        }
+    }
+
     public void put(Object id, Runnable action) {
         put(Action.of(id, o -> action.run()));
     }
@@ -398,7 +595,7 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    protected void end(State state) {
+    protected void end(State state) { //TODO wire onto MoodManager
         try {
             resultQueue.put(state);
         } catch (InterruptedException e) {
@@ -406,7 +603,7 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public State waitForEnd() {
+    public State waitForEnd() { //TODO wire onto MoodManager
         try {
             State state = resultQueue.take();
             resultQueue.put(state);
@@ -439,9 +636,9 @@ public class UniverseTransaction extends MutableTransaction {
     public ImperativeTransaction addImperative(String id, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, firstHandler, diffHandler, keepTransaction);
         addPostAction(Action.of(id, o -> {
-            LeafTransaction tx = ActionTransaction.getCurrent();
-            State pre = tx.state();
-            boolean timeTraveling = tx.universeTransaction().isTimeTraveling();
+            LeafTransaction tx            = ActionTransaction.getCurrent();
+            State           pre           = tx.state();
+            boolean         timeTraveling = tx.universeTransaction().isTimeTraveling();
             n.schedule(() -> n.commit(pre, timeTraveling));
         }));
         return n;
