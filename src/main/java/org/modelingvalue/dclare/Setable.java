@@ -297,7 +297,7 @@ public class Setable<O, T> extends Getable<O, T> {
         Set<ConsistencyError> errors = Set.of();
         if (isReference()) {
             for (Mutable m : mutables(post)) {
-                if (isOrphan(state, m)) {
+                if (m.dIsOrphan(state)) {
                     errors = errors.add(new ReferencedOrphanException(object, this, m));
                 }
             }
@@ -315,10 +315,6 @@ public class Setable<O, T> extends Getable<O, T> {
             }
         }
         return errors;
-    }
-
-    protected boolean isOrphan(State state, Mutable m) {
-        return !(m instanceof Universe) && state.get(m, Mutable.D_PARENT_CONTAINING) == null;
     }
 
 }

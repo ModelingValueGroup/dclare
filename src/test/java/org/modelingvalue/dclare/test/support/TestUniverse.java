@@ -125,4 +125,9 @@ public class TestUniverse extends TestMutable implements Universe {
         }
     }
 
+    @Override
+    public boolean dIsOrphan(State state) {
+        return Universe.super.dIsOrphan(state);
+    }
+
 }

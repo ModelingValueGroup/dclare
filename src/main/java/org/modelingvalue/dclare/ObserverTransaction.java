@@ -457,11 +457,17 @@ public class ObserverTransaction extends ActionTransaction {
         }
         Map<Reason, Newable> cons = constructions.merge();
         if (before != null) {
+            if (after == null) {
+                after = before.clear();
+            }
             for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> hasNoConstructions(n, cons))) {
                 before = before.remove(n);
             }
         }
         if (after != null) {
+            if (before == null) {
+                before = after.clear();
+            }
             for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons))) {
                 after = after.remove(n);
             }

@@ -198,4 +198,8 @@ public interface Mutable extends TransactionClass {
         return true;
     }
 
+    default boolean dIsOrphan(State state) {
+        return state.get(this, Mutable.D_PARENT_CONTAINING) == null;
+    }
+
 }

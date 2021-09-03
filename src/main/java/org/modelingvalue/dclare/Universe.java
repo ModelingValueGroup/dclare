@@ -22,4 +22,9 @@ public interface Universe extends Mutable, Internable {
         LeafTransaction.getCurrent().universeTransaction().setInitialized();
         dActivate();
     }
+
+    @Override
+    default boolean dIsOrphan(State state) {
+        return false;
+    }
 }
