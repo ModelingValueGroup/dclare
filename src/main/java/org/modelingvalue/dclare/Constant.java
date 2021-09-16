@@ -71,9 +71,14 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     @Override
+    protected Constant<O, T> constant() {
+        return this;
+    }
+
+    @Override
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, function, element);
     }
 
@@ -83,32 +88,32 @@ public class Constant<O, T> extends Setable<O, T> {
             throw new Error("Constant " + this + " is derived");
         }
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, false);
     }
 
     public T force(O object, T value) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, true);
     }
 
     @Override
     public T get(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this);
     }
 
     public T get(O object, Function<O, T> deriver) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this, deriver);
     }
 
     public boolean isSet(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.isSet(leafTransaction, object, this);
     }
 

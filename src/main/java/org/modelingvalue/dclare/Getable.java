@@ -112,6 +112,10 @@ public abstract class Getable<O, T> implements Feature, Internable {
         return null;
     }
 
+    public boolean mandatory() {
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     public static <T, E> Collection<Mutable> mutables(T value) {
         if (value instanceof ContainingCollection) {
@@ -121,6 +125,11 @@ public abstract class Getable<O, T> implements Feature, Internable {
         } else {
             return Set.of();
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected boolean isEmpty(T result) {
+        return result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty());
     }
 
 }

@@ -283,4 +283,9 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
     }
 
+    @SuppressWarnings("rawtypes")
+    public Set<Setable> targets() {
+        return Set.of();
+    }
+
 }

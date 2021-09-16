@@ -118,4 +118,5 @@ public class TestMutableClass implements MutableClass {
     public boolean isInstance(TestMutable mutable) {
         return equals(mutable.dClass());
     }
+
 }

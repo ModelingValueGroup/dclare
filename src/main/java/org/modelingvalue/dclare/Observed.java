@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -84,6 +83,7 @@ public class Observed<O, T> extends Setable<O, T> {
         return observers;
     }
 
+    @Override
     public boolean mandatory() {
         return mandatory;
     }
@@ -144,11 +144,6 @@ public class Observed<O, T> extends Setable<O, T> {
             errors = errors.add(new EmptyMandatoryException(object, this));
         }
         return errors;
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected boolean isEmpty(T result) {
-        return result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty());
     }
 
 }

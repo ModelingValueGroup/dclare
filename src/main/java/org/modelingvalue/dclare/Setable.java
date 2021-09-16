@@ -69,6 +69,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                synthetic;
 
     private Boolean                                      isReference;
+    private Constant<O, T>                               constant;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
@@ -134,6 +135,13 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean isReference() {
         return isReference != null && isReference;
+    }
+
+    protected Constant<O, T> constant() {
+        if (constant == null) {
+            constant = Constant.of(this, def);
+        }
+        return constant;
     }
 
     @Override

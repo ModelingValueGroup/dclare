@@ -15,44 +15,25 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.Serializable;
+public class Derivation extends ReadOnly {
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Internable;
-
-public final class This implements Mutable, Internable, Serializable {
-
-    private static final long         serialVersionUID = 5000610308072466985L;
-
-    private static final MutableClass THIS_CLASS       = new MutableClass() {
-                                                           @Override
-                                                           public Set<? extends Observer<?>> dObservers() {
-                                                               return Set.of();
-                                                           }
-
-                                                           @Override
-                                                           public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
-                                                               return Set.of();
-                                                           }
-                                                       };
-
-    public This() {
-        super();
+    protected Derivation(Object id, Priority initPriority) {
+        super(id, initPriority);
     }
 
     @Override
-    public String toString() {
-        return "<this>";
+    public DerivationTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().derivations.get().open(this, parent);
     }
 
     @Override
-    public MutableClass dClass() {
-        return THIS_CLASS;
+    public void closeTransaction(Transaction tx) {
+        tx.universeTransaction().derivations.get().close((DerivationTransaction) tx);
     }
 
     @Override
-    public final Mutable dResolve(Mutable self) {
-        return self;
+    public DerivationTransaction newTransaction(UniverseTransaction universeTransaction) {
+        return new DerivationTransaction(universeTransaction);
     }
 
 }
