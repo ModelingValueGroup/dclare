@@ -534,6 +534,10 @@ public class UniverseTransaction extends MutableTransaction {
         return emptyState;
     }
 
+    public Action<Universe> initAction() {
+        return init;
+    }
+
     @SuppressWarnings("rawtypes")
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
@@ -585,7 +589,7 @@ public class UniverseTransaction extends MutableTransaction {
         put(Action.of(id, o -> action.run()));
     }
 
-    protected void put(Action<Universe> action) {
+    public void put(Action<Universe> action) {
         if (!killed) {
             try {
                 inQueue.put(action);
