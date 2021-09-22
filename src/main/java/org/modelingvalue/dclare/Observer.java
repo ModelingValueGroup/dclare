@@ -41,6 +41,14 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, action, Priority.forward);
     }
 
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value) {
+        return new Observer<M>(id, setable, value, Priority.forward);
+    }
+
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value, Priority initPriority) {
+        return new Observer<M>(id, setable, value, initPriority);
+    }
+
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
         return new Observer<M>(id, action, direction, Priority.forward);
     }
@@ -58,6 +66,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Observerds                    observeds;
     private final Constructed                   constructed;
     private final PreConstructed                preConstructed;
+    @SuppressWarnings("rawtypes")
+    private final Set<Setable>                  targets;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -72,13 +82,24 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected Observer(Object id, Setable setable, Function value, Priority initPriority) {
+        this(id, o -> setable.set(o, value.apply(o)), (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, Set.of(setable));
+    }
+
     protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        this(id, action, direction, initPriority, Set.of());
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable> targets) {
         super(id, action, direction, initPriority);
         traces = new Traces(Pair.of(this, "TRACES"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
         preConstructed = PreConstructed.of(this);
+        this.targets = targets;
     }
 
     public Observerds observeds() {
@@ -285,7 +306,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     @SuppressWarnings("rawtypes")
     public Set<Setable> targets() {
-        return Set.of();
+        return targets;
     }
 
 }
