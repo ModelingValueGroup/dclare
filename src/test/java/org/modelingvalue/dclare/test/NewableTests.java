@@ -26,9 +26,6 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -64,24 +61,14 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-    private static final boolean      D_SOURCE_PROBLEM_SUPPRESS = true;               //TOMTOMTOM remove after debugging
-    private static final DclareConfig BASE_CONFIG               = new DclareConfig()
-            .withDevMode(true)
-            .withCheckOrphanState(true)
-            .withMaxNrOfChanges(32)
-            .withMaxTotalNrOfChanges(1000)
-            .withMaxNrOfObserved(36)
-            .withMaxNrOfObservers(36)
-            .withTraceUniverse(false)
-            .withTraceMutable(false)
-            .withTraceMatching(false)
-            .withTraceActions(false);
+    private static final boolean        D_SOURCE_PROBLEM_SUPPRESS = true;                                                                                                                                                                                                                                                                   //TOMTOMTOM remove after debugging
+    private static final DclareConfig   BASE_CONFIG               = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
-    private static final DclareConfig[] CONFIGS = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
+    private static final DclareConfig[] CONFIGS                   = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
-    private static final int     NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int     MANY_NR            = 16;
-    private static final boolean PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
+    private static final int            NUM_CONFIGS               = 2;                                                                                                                                                                                                                                                                      // = CONFIGS.length; // used in annotation which requires a hardconstant
+    private static final int            MANY_NR                   = 16;
+    private static final boolean        PRINT_RESULT_STATE        = false;                                                                                                                                                                                                                                                                  // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
     public void sanityCheck() {
@@ -99,16 +86,16 @@ public class NewableTests {
     //    @ValueSource(ints = {0, 1})
     @RepeatedTest(MANY_NR * NUM_CONFIGS)
     public void manyBidirectional(RepetitionInfo repetitionInfo) {
-        DclareConfig   config     = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
+        DclareConfig config = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
         TestImperative imperative = TestImperative.of();
-        State          state      = bidirectional(config, imperative);
+        State state = bidirectional(config, imperative);
         compareStates(state, bidirectional(config, imperative));
         compareStates(state, bidirectional(config, imperative));
     }
 
     public State bidirectional(DclareConfig config, TestImperative imperative) {
         Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
-        TestMutableClass                        U  = TestMutableClass.of("Universe", cs);
+        TestMutableClass U = TestMutableClass.of("Universe", cs);
 
         Direction aDir = Direction.of("A");
         Direction bDir = Direction.of("B");
@@ -122,8 +109,8 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> ar = Observed.of("ar", null, mandatory);
         Observed<TestMutable, TestNewable> br = Observed.of("br", null, mandatory);
 
-        TestNewableClass A  = TestNewableClass.of("A", aDir, n::get, n, acs, acr, br);
-        TestNewableClass B  = TestNewableClass.of("B", bDir, n::get, n, bcs, bcr, ar);
+        TestNewableClass A = TestNewableClass.of("A", aDir, n::get, n, acs, acr, br);
+        TestNewableClass B = TestNewableClass.of("B", bDir, n::get, n, bcs, bcr, ar);
         TestNewableClass AC = TestNewableClass.of("AC", aDir, n::get, n, br);
         TestNewableClass BC = TestNewableClass.of("BC", bDir, n::get, n, ar);
 
@@ -153,8 +140,8 @@ public class NewableTests {
                 ac -> n.set(ac, n.get(bc))//
         )));
 
-        TestUniverse        universe = TestUniverse.of("universe", U, imperative);
-        UniverseTransaction utx      = new UniverseTransaction(universe, THE_POOL, config);
+        TestUniverse universe = TestUniverse.of("universe", U, imperative);
+        UniverseTransaction utx = new UniverseTransaction(universe, THE_POOL, config);
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
@@ -288,9 +275,9 @@ public class NewableTests {
     //    @ValueSource(ints = {0, 1})
     @RepeatedTest(MANY_NR * 2)
     public void testAll(RepetitionInfo repetitionInfo) {
-        DclareConfig   config     = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
+        DclareConfig config = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
         TestImperative imperative = TestImperative.of();
-        State          state      = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
+        State state = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
         for (int i = 0; i < 2; i++) {
             compareStates(state, oofb(config, false, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
             compareStates(state, oofb(config, false, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
@@ -321,41 +308,41 @@ public class NewableTests {
 
             // OO
 
-            Observed<TestMutable, Set<TestNewable>> cls  = Observed.of("cls", Set.of(), containment);
-            Observed<TestMutable, TestNewable>      mfbm = Observed.of("mfbm", null, synthetic);
-            TestNewableClass                        OOM  = TestNewableClass.of("OOM", ooDir, n::get, n, cls, mfbm);
+            Observed<TestMutable, Set<TestNewable>> cls = Observed.of("cls", Set.of(), containment);
+            Observed<TestMutable, TestNewable> mfbm = Observed.of("mfbm", null, synthetic);
+            TestNewableClass OOM = TestNewableClass.of("OOM", ooDir, n::get, n, cls, mfbm);
 
             Observed<TestMutable, Set<TestNewable>> refs = Observed.of("refs", Set.of(), containment);
-            Observed<TestMutable, TestNewable>      mobt = Observed.of("mobt", null, synthetic);
-            TestNewableClass                        CLS  = TestNewableClass.of("CLS", ooDir, n::get, n, refs, mobt);
+            Observed<TestMutable, TestNewable> mobt = Observed.of("mobt", null, synthetic);
+            TestNewableClass CLS = TestNewableClass.of("CLS", ooDir, n::get, n, refs, mobt);
 
             Observed<TestMutable, TestNewable> typ = Observed.of("typ", null);
 
-            Observed<TestMutable, TestNewable> opp  = Observed.of("opp", null, symmetricOpposite);
+            Observed<TestMutable, TestNewable> opp = Observed.of("opp", null, symmetricOpposite);
             Observed<TestMutable, TestNewable> mrol = Observed.of("mrol", null, synthetic);
             Observed<TestMutable, TestNewable> mfat = Observed.of("mfat", null, synthetic);
-            TestNewableClass                   REF  = TestNewableClass.of("REF", ooDir, n::get, n, typ, opp, mrol, mfat);
+            TestNewableClass REF = TestNewableClass.of("REF", ooDir, n::get, n, typ, opp, mrol, mfat);
 
             // FB
 
-            Observed<TestMutable, Set<TestNewable>> fts  = Observed.of("fts", Set.of(), containment);
-            Observed<TestMutable, Set<TestNewable>> ots  = Observed.of("ots", Set.of(), containment);
-            Observed<TestMutable, TestNewable>      moom = Observed.of("moom", null, synthetic);
-            TestNewableClass                        FBM  = TestNewableClass.of("FBM", fbDir, n::get, n, ots, fts, moom);
+            Observed<TestMutable, Set<TestNewable>> fts = Observed.of("fts", Set.of(), containment);
+            Observed<TestMutable, Set<TestNewable>> ots = Observed.of("ots", Set.of(), containment);
+            Observed<TestMutable, TestNewable> moom = Observed.of("moom", null, synthetic);
+            TestNewableClass FBM = TestNewableClass.of("FBM", fbDir, n::get, n, ots, fts, moom);
 
-            Observed<TestMutable, TestNewable>      mcls = Observed.of("mcls", null, synthetic);
+            Observed<TestMutable, TestNewable> mcls = Observed.of("mcls", null, synthetic);
             Observed<TestMutable, Set<TestNewable>> _otr = Observed.of("_otr", Set.of());
-            TestNewableClass                        OBT  = TestNewableClass.of("OBT", fbDir, n::get, n, mcls, _otr);
+            TestNewableClass OBT = TestNewableClass.of("OBT", fbDir, n::get, n, mcls, _otr);
 
-            Observed<TestMutable, TestNewable> otr   = Observed.of("otr", null, () -> _otr);
-            Observed<TestMutable, TestNewable> mref  = Observed.of("mref", null, synthetic);
+            Observed<TestMutable, TestNewable> otr = Observed.of("otr", null, () -> _otr);
+            Observed<TestMutable, TestNewable> mref = Observed.of("mref", null, synthetic);
             Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory, symmetricOpposite);
-            TestNewableClass                   ROL   = TestNewableClass.of("ROL", fbDir, n::get, n, otr, mref, rlopp);
+            TestNewableClass ROL = TestNewableClass.of("ROL", fbDir, n::get, n, otr, mref, rlopp);
 
-            Observed<TestMutable, Pair<Pair<String, TestNewable>, Pair<String, TestNewable>>> ftid  = Observed.of("ftid", null);
-            Observed<TestMutable, TestNewable>                                                left  = Observed.of("left", null, containment, mandatory);
-            Observed<TestMutable, TestNewable>                                                right = Observed.of("right", null, containment, mandatory);
-            TestNewableClass                                                                  FAT   = TestNewableClass.of("FAT", fbDir, ftid::get, n, ftid, left, right);
+            Observed<TestMutable, Pair<Pair<String, TestNewable>, Pair<String, TestNewable>>> ftid = Observed.of("ftid", null);
+            Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
+            Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
+            TestNewableClass FAT = TestNewableClass.of("FAT", fbDir, ftid::get, n, ftid, left, right);
 
             ROL.observe(fbDir, //
                     rl -> {
@@ -386,8 +373,8 @@ public class NewableTests {
                         TestNewable rr = right.get(ft);
                         TestNewable lt = otr.get(lr);
                         TestNewable rt = otr.get(rr);
-                        String      ln = n.get(lr);
-                        String      rn = n.get(rr);
+                        String ln = n.get(lr);
+                        String rn = n.get(rr);
                         ftid.set(ft, Pair.of(Pair.of(ln, lt), Pair.of(rn, rt)));
                     });
 
@@ -395,7 +382,7 @@ public class NewableTests {
 
             Observed<TestMutable, Set<TestNewable>> fbms = Observed.of("fbms", Set.of(), containment);
             Observed<TestMutable, Set<TestNewable>> ooms = Observed.of("ooms", Set.of(), containment);
-            TestMutableClass                        U    = TestMutableClass.of("Universe", fbms, ooms);
+            TestMutableClass U = TestMutableClass.of("Universe", fbms, ooms);
 
             // Transformation
 
@@ -439,9 +426,9 @@ public class NewableTests {
 
             // Instances
 
-            TestUniverse        universe = TestUniverse.of("universe", U, imperative);
-            UniverseTransaction utx      = new UniverseTransaction(universe, THE_POOL, config);
-            final State[]       state    = new State[]{utx.emptyState()};
+            TestUniverse universe = TestUniverse.of("universe", U, imperative);
+            UniverseTransaction utx = new UniverseTransaction(universe, THE_POOL, config);
+            final State[] state = new State[]{utx.emptyState()};
 
             Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
                 state[0] = checkState(state[0]);
@@ -515,15 +502,15 @@ public class NewableTests {
                     n.set(ft3, "e");
                     n.set(ft4, "f");
 
-                    TestNewable rl1  = c.create(ROL);
-                    TestNewable rl2  = c.create(ROL);
-                    TestNewable rl3  = c.create(ROL);
-                    TestNewable rl4  = c.create(ROL);
-                    TestNewable rl5  = c.create(ROL);
-                    TestNewable rl6  = c.create(ROL);
-                    TestNewable rl7  = c.create(ROL);
-                    TestNewable rl8  = c.create(ROL);
-                    TestNewable rl9  = c.create(ROL);
+                    TestNewable rl1 = c.create(ROL);
+                    TestNewable rl2 = c.create(ROL);
+                    TestNewable rl3 = c.create(ROL);
+                    TestNewable rl4 = c.create(ROL);
+                    TestNewable rl5 = c.create(ROL);
+                    TestNewable rl6 = c.create(ROL);
+                    TestNewable rl7 = c.create(ROL);
+                    TestNewable rl8 = c.create(ROL);
+                    TestNewable rl9 = c.create(ROL);
                     TestNewable rl10 = c.create(ROL);
                     left.set(ft1, rl1);
                     right.set(ft1, rl2);
@@ -573,12 +560,12 @@ public class NewableTests {
                 assertEquals(32, objects.size());
 
                 if (oo2fb) { // add OO
-                    TestNewable      oom     = ooms.get(universe).get(0);
+                    TestNewable oom = ooms.get(universe).get(0);
                     Set<TestNewable> classes = cls.get(oom);
-                    TestNewable      cl1     = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
-                    TestNewable      cl2     = classes.filter(cl -> Objects.equals(n.get(cl), "B")).findAny().get();
-                    TestNewable      cl3     = classes.filter(cl -> Objects.equals(n.get(cl), "C")).findAny().get();
-                    TestNewable      cl4     = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
+                    TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                    TestNewable cl2 = classes.filter(cl -> Objects.equals(n.get(cl), "B")).findAny().get();
+                    TestNewable cl3 = classes.filter(cl -> Objects.equals(n.get(cl), "C")).findAny().get();
+                    TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
 
                     TestNewable rf1 = c.create(REF);
                     TestNewable rf2 = c.create(REF);
@@ -601,12 +588,12 @@ public class NewableTests {
                 }
 
                 if (fb2oo) { // add FB
-                    TestNewable      fbm         = fbms.get(universe).get(0);
+                    TestNewable fbm = fbms.get(universe).get(0);
                     Set<TestNewable> objectTypes = ots.get(fbm);
-                    TestNewable      ot1         = objectTypes.filter(ot -> Objects.equals(n.get(ot), "A")).findAny().get();
-                    TestNewable      ot2         = objectTypes.filter(ot -> Objects.equals(n.get(ot), "B")).findAny().get();
-                    TestNewable      ot3         = objectTypes.filter(ot -> Objects.equals(n.get(ot), "C")).findAny().get();
-                    TestNewable      ot4         = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+                    TestNewable ot1 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "A")).findAny().get();
+                    TestNewable ot2 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "B")).findAny().get();
+                    TestNewable ot3 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "C")).findAny().get();
+                    TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
 
                     TestNewable ft1 = c.create(FAT);
                     TestNewable ft2 = c.create(FAT);
@@ -653,21 +640,21 @@ public class NewableTests {
                 assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
 
                 if (oo2fb) { // change OO
-                    TestNewable      oom         = ooms.get(universe).get(0);
-                    Set<TestNewable> classes     = cls.get(oom);
+                    TestNewable oom = ooms.get(universe).get(0);
+                    Set<TestNewable> classes = cls.get(oom);
                     Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
-                    TestNewable      rf3         = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
-                    TestNewable      rf4         = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
+                    TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                    TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
 
                     opp.set(rf3, rf4);
                     opp.set(rf4, rf3);
                 }
 
                 if (fb2oo) { // change FB
-                    TestNewable      fbm       = fbms.get(universe).get(0);
+                    TestNewable fbm = fbms.get(universe).get(0);
                     Set<TestNewable> factTypes = fts.get(fbm);
-                    TestNewable      ft3       = factTypes.filter(ft -> Objects.equals(n.get(ft), "v")).findAny().get();
-                    TestNewable      rl5       = left.get(ft3);
+                    TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "v")).findAny().get();
+                    TestNewable rl5 = left.get(ft3);
 
                     n.set(rl5, "u");
                 }
@@ -759,21 +746,21 @@ public class NewableTests {
                 assertEquals(Set.of(), lost);
 
                 if (oo2fb) { // change OO
-                    TestNewable      oom         = ooms.get(universe).get(0);
-                    Set<TestNewable> classes     = cls.get(oom);
+                    TestNewable oom = ooms.get(universe).get(0);
+                    Set<TestNewable> classes = cls.get(oom);
                     Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
-                    TestNewable      rf3         = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
-                    TestNewable      rf4         = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
+                    TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                    TestNewable rf4 = refferences.filter(rf -> Objects.equals(n.get(rf), "s")).findAny().get();
 
                     opp.set(rf3, (TestNewable) null);
                     opp.set(rf4, (TestNewable) null);
                 }
 
                 if (fb2oo) { // change FB
-                    TestNewable      fbm       = fbms.get(universe).get(0);
+                    TestNewable fbm = fbms.get(universe).get(0);
                     Set<TestNewable> factTypes = fts.get(fbm);
-                    TestNewable      ft3       = factTypes.filter(ft -> Objects.equals(n.get(ft), "u_v")).findAny().get();
-                    TestNewable      rl5       = left.get(ft3);
+                    TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u_v")).findAny().get();
+                    TestNewable rl5 = left.get(ft3);
 
                     n.set(rl5, "~");
                 }
@@ -783,7 +770,7 @@ public class NewableTests {
             run(utx, "setType", c -> {
                 state[0] = checkState(state[0]);
                 Set<TestNewable> objects = state[0].getObjects(TestNewable.class).filter(n -> n instanceof Universe || n.dParent() != null).toSet();
-                Set<TestNewable> supers  = objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet();
+                Set<TestNewable> supers = objects.filter(n -> !Newable.D_SUPER_POSITION.get(n).isEmpty()).toSet();
                 assertEquals(Set.of(), supers.removeAll(objects));
                 assertEquals(Set.of(), supers);
                 assertEquals((oo2fb && fb2oo) ? 58 : (oo2fb || fb2oo) ? 45 : 32, objects.size());
@@ -791,19 +778,19 @@ public class NewableTests {
                 assertEquals(Set.of(), lost);
 
                 if (oo2fb) { // change OO
-                    TestNewable      oom         = ooms.get(universe).get(0);
-                    Set<TestNewable> classes     = cls.get(oom);
-                    TestNewable      cl1         = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                    TestNewable oom = ooms.get(universe).get(0);
+                    Set<TestNewable> classes = cls.get(oom);
+                    TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
                     Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
-                    TestNewable      rf3         = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                    TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
 
                     typ.set(rf3, cl1);
                 }
 
                 if (fb2oo) { // change FB
-                    TestNewable      fbm         = fbms.get(universe).get(0);
+                    TestNewable fbm = fbms.get(universe).get(0);
                     Set<TestNewable> objectTypes = ots.get(fbm);
-                    TestNewable      ot4         = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
+                    TestNewable ot4 = objectTypes.filter(ot -> Objects.equals(n.get(ot), "D")).findAny().get();
 
                     TestNewable ft4 = c.create(FAT);
                     fts.set(fbm, Set::add, ft4);
@@ -827,12 +814,12 @@ public class NewableTests {
                 assertEquals(Set.of(), lost);
 
                 if (oo2fb) { // change OO
-                    TestNewable      oom         = ooms.get(universe).get(0);
-                    Set<TestNewable> classes     = cls.get(oom);
-                    TestNewable      cl1         = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
-                    TestNewable      cl4         = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
+                    TestNewable oom = ooms.get(universe).get(0);
+                    Set<TestNewable> classes = cls.get(oom);
+                    TestNewable cl1 = classes.filter(cl -> Objects.equals(n.get(cl), "A")).findAny().get();
+                    TestNewable cl4 = classes.filter(cl -> Objects.equals(n.get(cl), "D")).findAny().get();
                     Set<TestNewable> refferences = classes.flatMap(refs::get).toSet();
-                    TestNewable      rf3         = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
+                    TestNewable rf3 = refferences.filter(rf -> Objects.equals(n.get(rf), "r")).findAny().get();
 
                     assertEquals(cl1, typ.get(rf3));
 
@@ -840,9 +827,9 @@ public class NewableTests {
                 }
 
                 if (fb2oo) { // change FB
-                    TestNewable      fbm       = fbms.get(universe).get(0);
+                    TestNewable fbm = fbms.get(universe).get(0);
                     Set<TestNewable> factTypes = fts.get(fbm);
-                    TestNewable      ft4       = factTypes.filter(ft -> Objects.equals(n.get(right.get(ft)), "dd")).findAny().get();
+                    TestNewable ft4 = factTypes.filter(ft -> Objects.equals(n.get(right.get(ft)), "dd")).findAny().get();
 
                     fts.set(fbm, Set::remove, ft4);
                 }
@@ -893,23 +880,6 @@ public class NewableTests {
                 System.err.println("TOMTOMTOM: KNOWN ERROR DETECTED in oofb (can be suppressed by NewableTests.D_SOURCE_PROBLEM_SUPPRESS)");
             }
             throw e;
-        } finally {
-            //TOMTOMTOM remove after debugging
-            if (Newable.D_SOURCE_PROBLEM_TRACE) {
-                if (oo2fb && fb2oo) { // testing has revealed that only under this condition the failure will occur
-                    try {
-                        @SuppressWarnings("ConstantConditions")
-                        String logName = debug_info + "-" + (oo2fb ? "O" : "_") + (fb2oo ? "F" : "_") + (ooIn ? "o" : "_") + (fbIn ? "f" : "_");
-                        System.err.printf("TOMTOMTOM oofb test DONE : %s (%4d traces)\n", logName, Newable.D_SOURCE_PROBLEM_TRACE_LINES.size());
-                        Files.write(Paths.get("TOMTOMTOM-" + logName + ".txt"), Newable.D_SOURCE_PROBLEM_TRACE_LINES);
-                    } catch (IOException ee) {
-                        System.err.println("TOMTOMTOM: error during log write: " + ee.getMessage());
-                    }
-                }
-                synchronized (Newable.D_SOURCE_PROBLEM_TRACE_LINES) {
-                    Newable.D_SOURCE_PROBLEM_TRACE_LINES.clear();
-                }
-            }
         }
     }
 
@@ -923,7 +893,7 @@ public class NewableTests {
 
     private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> action) {
         if (!utx.isKilled()) {
-            TestUniverse                 u       = (TestUniverse) utx.universe();
+            TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
             u.schedule(() -> action.accept(c -> {
                 TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
@@ -971,16 +941,16 @@ public class NewableTests {
     private static boolean equals(State as, Object a, State bs, Object b, Map<Pair<Newable, Newable>, Boolean> done) {
         boolean result = false;
         if (a instanceof Newable && b instanceof Newable) {
-            Newable                an  = (Newable) a;
-            Newable                bn  = (Newable) b;
+            Newable an = (Newable) a;
+            Newable bn = (Newable) b;
             Pair<Newable, Newable> key = Pair.of(an, bn);
             if (done.containsKey(key)) {
                 result = done.get(key);
             } else {
                 if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
-                    equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
-                    equals(as, as.get(an::dMatchingIdentity), bs, bs.get(bn::dMatchingIdentity), done) && //
-                    equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
+                        equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
+                        equals(as, as.get(an::dMatchingIdentity), bs, bs.get(bn::dMatchingIdentity), done) && //
+                        equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }
                 done.put(key, result);
