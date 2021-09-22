@@ -35,24 +35,13 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         return new NonCheckingObserver<>(setable, value, initPriority);
     }
 
-    @SuppressWarnings("rawtypes")
-    private final Set<Setable> targets;
-
     protected NonCheckingObserver(Object id, Consumer<O> action, Priority initPriority) {
-        super(id, action, initPriority);
-        targets = Set.of();
+        super(id, action, initPriority, Set.of());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected NonCheckingObserver(Setable setable, Function value, Priority initPriority) {
-        super(setable, m -> setable.set(m, value.apply(m)), initPriority);
-        targets = Set.of(setable);
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    public Set<Setable> targets() {
-        return targets;
+        super(setable, m -> setable.set(m, value.apply(m)), initPriority, Set.of(setable));
     }
 
     @Override

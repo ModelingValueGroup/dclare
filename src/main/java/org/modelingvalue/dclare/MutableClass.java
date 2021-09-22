@@ -31,10 +31,10 @@ public interface MutableClass extends Internable {
     Constant<MutableClass, Set<Constant>>                      D_PUSHING_CONSTANTS = Constant.of("D_PUSHING_CONSTANTS",                                                                    //
             c -> c.dSetables().filter(s -> s instanceof Constant && s.isHandlingChange() && ((Constant) s).deriver() != null).map(s -> (Constant) s).toSet());
 
-    @SuppressWarnings({"rawtypes"})
+    @SuppressWarnings({"rawtypes", "unchecked"})
     Constant<MutableClass, DefaultMap<Setable, Set<Observer>>> D_DERIVERS          = Constant.of("D_DERIVERS",                                                                             //
             c -> {
-                Set<Setable> setables = c.dObservers().flatMap(Observer::targets).toSet();
+                Set<Setable> setables = (Set) c.dObservers().flatMap(Observer::targets).toSet();
                 return setables.toDefaultMap(k -> Set.of(), s -> Entry.<Setable, Set<Observer>> of(s, c.dObservers().map(o -> (Observer) o).filter(o -> o.targets().contains(s)).toSet()));
             });
 

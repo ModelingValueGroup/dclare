@@ -67,7 +67,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Constructed                   constructed;
     private final PreConstructed                preConstructed;
     @SuppressWarnings("rawtypes")
-    private final Set<Setable>                  targets;
+    private final Set<Setable<O, ?>>            targets;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -91,8 +91,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         this(id, action, direction, initPriority, Set.of());
     }
 
+    @SuppressWarnings("unchecked")
+    protected Observer(Object id, Consumer<O> action, Priority initPriority, @SuppressWarnings("rawtypes") Set<Setable<O, ?>> targets) {
+        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, targets);
+    }
+
     @SuppressWarnings("rawtypes")
-    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable> targets) {
+    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable<O, ?>> targets) {
         super(id, action, direction, initPriority);
         traces = new Traces(Pair.of(this, "TRACES"));
         observeds = new Observerds(this);
@@ -305,7 +310,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public Set<Setable> targets() {
+    public Set<Setable<O, ?>> targets() {
         return targets;
     }
 
