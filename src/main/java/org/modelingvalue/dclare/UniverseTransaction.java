@@ -89,9 +89,51 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 stopped;                                                                         //TODO wire onto MoodManager
     private boolean                                                                                 orphansDetected;
 
+    public static enum Mood {
+        initializing(),
+        busy(),
+        idle(),
+        stopped();
+    }
+
+    public static class MoodProvider {
+        private final Mood                            mood;
+        private final State                           state;
+        private final CompletableFuture<MoodProvider> future;
+
+        private MoodProvider(Mood mood, State state) {
+            this.mood = mood;
+            this.state = state;
+            this.future = new CompletableFuture<>();
+        }
+
+        public Mood getMood() {
+            return mood;
+        }
+
+        public State getState() {
+            return state;
+        }
+
+        public MoodProvider waitForNextMood() {
+            try {
+                return mood == Mood.stopped ? this : future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new Error("problem during waitForNextMood()", e);
+            }
+        }
+    }
+
     private static class MoodManager {
-        CompletableFuture<State> idleFuture = new CompletableFuture<>();
-        CompletableFuture<Void>  busyFuture = new CompletableFuture<>();
+
+        private MoodProvider moodProvider = new MoodProvider(Mood.initializing, null);
+
+        private final void setMood(Mood mood, State state) {
+            assert moodProvider.mood != mood;
+            MoodProvider oldMoodProvider = moodProvider;
+            moodProvider = new MoodProvider(mood, state);
+            oldMoodProvider.future.complete(moodProvider);
+        }
 
         private void setBusyMood(Action<Universe> action) {
             if (TRACE_MOOD) {
@@ -106,11 +148,8 @@ public class UniverseTransaction extends MutableTransaction {
                     TraceTimer.traceLog("                     init =========> busy         (" + id + ")");
                 }
             }
-            if (idleFuture.isDone()) {
-                idleFuture = new CompletableFuture<>();
-            }
-            if (!busyFuture.isDone() && !busyFuture.complete(null)) {
-                throw new Error("OOPS could not set busyFuture...");
+            if (moodProvider.mood != Mood.busy) {
+                setMood(Mood.busy, null);
             }
         }
 
@@ -126,15 +165,7 @@ public class UniverseTransaction extends MutableTransaction {
                     TraceTimer.traceLog("                     init => idle");
                 }
             }
-            if (busyFuture.isDone()) {
-                busyFuture = new CompletableFuture<>();
-            }
-            if (idleFuture.isDone()) {
-                idleFuture = new CompletableFuture<>();
-            }
-            if (!idleFuture.isDone() && !idleFuture.complete(state)) {
-                throw new Error("OOPS could not set idleFuture...");
-            }
+            setMood(Mood.idle, state);
         }
 
         private void setStopMood(State state) {
@@ -149,96 +180,56 @@ public class UniverseTransaction extends MutableTransaction {
                     TraceTimer.traceLog("                     init =================> stop");
                 }
             }
-            // if we are idle, we need to prepare for this new state to be the final state:
-            if (isIdleMood()) {
-                idleFuture = new CompletableFuture<>();
-            }
-            // complete both idle and busy future to indicate stop mood:
-            if (!idleFuture.isDone() && !idleFuture.complete(state)) {
-                throw new Error("OOPS could not set idleFuture on stop...");
-            }
-            if (!busyFuture.isDone() && !busyFuture.complete(null)) {
-                throw new Error("OOPS could not set busyFuture on stop...");
-            }
+            setMood(Mood.stopped, state);
         }
 
         private boolean isInitMood() {
-            return !idleFuture.isDone() && !busyFuture.isDone();
+            return moodProvider.mood == Mood.initializing;
         }
 
         private boolean isIdleMood() {
-            return idleFuture.isDone() && !busyFuture.isDone();
+            return moodProvider.mood == Mood.idle;
         }
 
         private boolean isBusyMood() {
-            return !idleFuture.isDone() && busyFuture.isDone();
+            return moodProvider.mood == Mood.busy;
         }
 
         private boolean isStopMood() {
-            return idleFuture.isDone() && busyFuture.isDone();
+            return moodProvider.mood == Mood.stopped;
+        }
+
+        private State waitForeMood(Mood mood) {
+            MoodProvider mp = moodProvider;
+            while (mp.mood != mood) {
+                mp = mp.waitForNextMood();
+            }
+            return mp.state;
+        }
+
+        private MoodProvider moodProvider() {
+            return moodProvider;
         }
 
         private State waitForIdleMood() {
-            try {
-                return idleFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new Error("problem during waitForIdle()", e);
-            }
+            return waitForeMood(Mood.idle);
         }
 
         private void waitForBusyMood() {
-            try {
-                busyFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new Error("problem during waitForBusy()", e);
-            }
+            waitForeMood(Mood.busy);
         }
 
         private State waitForStopMood() {
-            try {
-                while (!isStopMood()) {
-                    idleFuture.get();
-                    busyFuture.get();
-                }
-                return idleFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new Error("problem during waitForStop()", e);
-            }
+            return waitForeMood(Mood.stopped);
         }
 
-        public String getMood() {
-            return isInitMood() ? "init" : isBusyMood() ? "busy" : isIdleMood() ? "idle" : isStopMood() ? "stop" : "????";
+        public Mood getMood() {
+            return moodProvider.mood;
         }
-        //        {
-        //            int id = new Random().nextInt(9999);
-        //
-        //            Thread a = new Thread(() -> {
-        //                TraceTimer.traceLog("START A");
-        //                while (true) {
-        //                    waitForIdleMood();
-        //                    if (isStopped()) {
-        //                        break;
-        //                    }
-        //                    TraceTimer.traceLog("IDLE");
-        //                    waitForBusyMood();
-        //                    if (isStopped()) {
-        //                        break;
-        //                    }
-        //                    TraceTimer.traceLog("BUSY");
-        //                }
-        //                TraceTimer.traceLog("STOP A");
-        //            }, "TRACER-A-" + id);
-        //            a.setDaemon(true);
-        //            a.start();
-        //
-        //            Thread b = new Thread(() -> {
-        //                TraceTimer.traceLog("START B");
-        //                waitForStopMood();
-        //                TraceTimer.traceLog("STOP B");
-        //            }, "TRACER-B-" + id);
-        //            b.setDaemon(true);
-        //            b.start();
-        //        }
+
+        public State getState() {
+            return moodProvider.state;
+        }
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool) {
@@ -270,7 +261,7 @@ public class UniverseTransaction extends MutableTransaction {
                 //==========================================================================
                 Action<Universe> action = take();
                 //==========================================================================
-                if (action != init) {
+                if (initialized) {
                     moodManager.setBusyMood(action);
                 }
                 preState = state;
@@ -345,6 +336,10 @@ public class UniverseTransaction extends MutableTransaction {
         moodManager.setStopMood(state);
     }
 
+    public MoodProvider moodProvider() {
+        return moodManager.moodProvider;
+    }
+
     public State waitForIdle() {
         return moodManager.waitForIdleMood();
     }
@@ -361,7 +356,7 @@ public class UniverseTransaction extends MutableTransaction {
         return config;
     }
 
-    public String getMood() {
+    public Mood getMood() {
         return moodManager.getMood();
     }
 
@@ -687,7 +682,7 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    protected State startState() {
+    public State startState() {
         return startState;
     }
 
