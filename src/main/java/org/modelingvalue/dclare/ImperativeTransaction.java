@@ -33,15 +33,14 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, firstHandler, diffHandler, keepTransaction);
+    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR    = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
     private final TriConsumer<State, State, Boolean>          diffHandler;
-    private final Consumer<State>                             firstHandler;
     private final Pair<ImperativeTransaction, String>         actionId     = Pair.of(this, "$toDClare");
 
     private State                                             pre;
@@ -52,13 +51,12 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  allSetted;
     private Long                                              lastChangeNr = CHANGE_NR.getDefault();
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, Consumer<State> firstHandler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
-        this.firstHandler = firstHandler;
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
@@ -151,6 +149,9 @@ public class ImperativeTransaction extends LeafTransaction {
             if (timeTraveling) {
                 pre = state;
             }
+            if (last) {
+                universeTransaction().removeActive(this);
+            }
         }
     }
 
@@ -210,13 +211,13 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
+            if (first) {
+                universeTransaction().addActive(this);
+            }
             Set<Setable> set = Set.of(property);
             allSetted = allSetted.add(object, set, Set::addAll);
             setted = setted.add(object, set, Set::addAll);
             if (first) {
-                if (firstHandler != null) {
-                    firstHandler.accept(pre);
-                }
                 universeTransaction().dummy();
             }
         }

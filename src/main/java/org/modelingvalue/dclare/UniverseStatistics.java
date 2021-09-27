@@ -17,20 +17,10 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
-import org.modelingvalue.dclare.UniverseTransaction.Mood;
-
 @SuppressWarnings("unused")
 public class UniverseStatistics {
     private final UniverseTransaction tx;
-    private final boolean             devMode;
-    private final int                 maxInInQueue;
-    private final int                 maxTotalNrOfChanges;
-    private final int                 maxNrOfChanges;
-    private final int                 maxNrOfObserved;
-    private final int                 maxNrOfObservers;
-    private final int                 maxNrOfHistory;
     //
-    private UniverseTransaction.Mood  mood;
     private boolean                   debugging;
     private int                       totalChanges;
     private long                      runCount;
@@ -39,31 +29,20 @@ public class UniverseStatistics {
 
     public UniverseStatistics(UniverseTransaction tx) {
         this.tx = tx;
-        this.mood = tx.getMood();
-        this.devMode = tx.getConfig().isDevMode();
-        this.maxInInQueue = tx.getConfig().getMaxInInQueue();
-        this.maxTotalNrOfChanges = devMode ? tx.getConfig().getMaxTotalNrOfChanges() : Integer.MAX_VALUE;
-        this.maxNrOfChanges = devMode ? tx.getConfig().getMaxNrOfChanges() : Integer.MAX_VALUE;
-        this.maxNrOfObserved = devMode ? tx.getConfig().getMaxNrOfObserved() : Integer.MAX_VALUE;
-        this.maxNrOfObservers = devMode ? tx.getConfig().getMaxNrOfObservers() : Integer.MAX_VALUE;
-        this.maxNrOfHistory = tx.getConfig().getMaxNrOfHistory();
     }
 
-    public UniverseStatistics(UniverseStatistics o) {
+    private UniverseStatistics(UniverseStatistics o) {
         this.tx = o.tx;
-        this.mood = o.mood;
-        this.devMode = o.devMode;
-        this.maxInInQueue = o.maxInInQueue;
-        this.maxTotalNrOfChanges = o.maxTotalNrOfChanges;
-        this.maxNrOfChanges = o.maxNrOfChanges;
-        this.maxNrOfObserved = o.maxNrOfObserved;
-        this.maxNrOfObservers = o.maxNrOfObservers;
-        this.maxNrOfHistory = o.maxNrOfHistory;
         this.debugging = o.debugging;
         this.totalChanges = o.totalChanges;
         this.runCount = o.runCount;
         this.forwardCount = o.forwardCount;
         this.totalChangesEver = o.totalChangesEver;
+    }
+
+    @Override
+    public UniverseStatistics clone() {
+        return new UniverseStatistics(this);
     }
 
     void completeRun() {
@@ -78,27 +57,31 @@ public class UniverseStatistics {
     }
 
     public int maxInInQueue() {
-        return maxInInQueue;
+        return tx.getConfig().getMaxInInQueue();
     }
 
     public int maxTotalNrOfChanges() {
-        return maxTotalNrOfChanges;
+        DclareConfig config = tx.getConfig();
+        return config.isDevMode() ? config.getMaxTotalNrOfChanges() : Integer.MAX_VALUE;
     }
 
     public int maxNrOfChanges() {
-        return maxNrOfChanges;
+        DclareConfig config = tx.getConfig();
+        return config.isDevMode() ? tx.getConfig().getMaxNrOfChanges() : Integer.MAX_VALUE;
     }
 
     public int maxNrOfObserved() {
-        return maxNrOfObserved;
+        DclareConfig config = tx.getConfig();
+        return config.isDevMode() ? tx.getConfig().getMaxNrOfObserved() : Integer.MAX_VALUE;
     }
 
     public int maxNrOfObservers() {
-        return maxNrOfObservers;
+        DclareConfig config = tx.getConfig();
+        return config.isDevMode() ? tx.getConfig().getMaxNrOfObservers() : Integer.MAX_VALUE;
     }
 
     public int maxNrOfHistory() {
-        return maxNrOfHistory;
+        return tx.getConfig().getMaxNrOfHistory();
     }
 
     public boolean debugging() {
@@ -118,7 +101,7 @@ public class UniverseStatistics {
     }
 
     public int bumpAndGetTotalChanges() {
-        if (totalChanges > maxTotalNrOfChanges) {
+        if (totalChanges > maxTotalNrOfChanges()) {
             synchronized (tx) {
                 return totalChanges++;
             }
@@ -141,13 +124,9 @@ public class UniverseStatistics {
         return tx;
     }
 
-    public Mood getMood() {
-        return mood;
-    }
-
     @Override
     public String toString() {
-        return "UniverseStats:\n" + "    mood             = " + mood + "\n" + "    debugging        = " + debugging + "\n" + "    runCount         = " + runCount + "\n" + "    forwardCount     = " + forwardCount + "\n" + "    totalChanges     = " + totalChanges + "\n" + "    totalChangesEver = " + totalChangesEver;
+        return "UniverseStats:\n" + "    debugging        = " + debugging + "\n" + "    runCount         = " + runCount + "\n" + "    forwardCount     = " + forwardCount + "\n" + "    totalChanges     = " + totalChanges + "\n" + "    totalChangesEver = " + totalChangesEver;
     }
 
     @Override
@@ -159,12 +138,11 @@ public class UniverseStatistics {
             return false;
         }
         UniverseStatistics that = (UniverseStatistics) o;
-        return tx == that.tx && mood == that.mood && devMode == that.devMode && maxInInQueue == that.maxInInQueue && maxTotalNrOfChanges == that.maxTotalNrOfChanges && maxNrOfChanges == that.maxNrOfChanges && maxNrOfObserved == that.maxNrOfObserved && maxNrOfObservers == that.maxNrOfObservers && //
-                maxNrOfHistory == that.maxNrOfHistory && debugging == that.debugging && totalChanges == that.totalChanges && runCount == that.runCount && forwardCount == that.forwardCount && totalChangesEver == that.totalChangesEver;
+        return tx == that.tx && debugging == that.debugging && totalChanges == that.totalChanges && runCount == that.runCount && forwardCount == that.forwardCount && totalChangesEver == that.totalChangesEver;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tx, mood, devMode, maxInInQueue, maxTotalNrOfChanges, maxNrOfChanges, maxNrOfObserved, maxNrOfObservers, maxNrOfHistory, debugging, totalChanges, runCount, forwardCount, totalChangesEver);
+        return Objects.hash(tx, debugging, totalChanges, runCount, forwardCount, totalChangesEver);
     }
 }

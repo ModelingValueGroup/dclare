@@ -57,7 +57,7 @@ public class TestUniverse extends TestMutable implements Universe {
     public void init() {
         Universe.super.init();
         UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
-        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
+        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();

@@ -33,12 +33,12 @@ import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
-    private final String                       name;
-    private final UniverseTransaction          tx;
+    private final String                         name;
+    private final UniverseTransaction            tx;
     protected final SerializationHelper<C, M, S> helper;
-    private final AdaptorDaemon                adaptorDaemon;
-    private final ImperativeTransaction        imperativeTransaction;
-    protected final BlockingQueue<String>      deltaQueue = new ArrayBlockingQueue<>(10);
+    private final AdaptorDaemon                  adaptorDaemon;
+    private final ImperativeTransaction          imperativeTransaction;
+    protected final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
         this.name = name;
@@ -46,7 +46,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        this.imperativeTransaction = tx.addImperative("sync-" + name, null, this::queueDelta, adaptorDaemon, false);
+        this.imperativeTransaction = tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, false);
     }
 
     /**
@@ -180,7 +180,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-	public class ToJsonDeltas extends ToJsonIC {
+    public class ToJsonDeltas extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
@@ -190,7 +190,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         private ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
             super(root);
         }
-      
+
         @SuppressWarnings("unchecked")
         @Override
         protected Object filter(Object o) {
