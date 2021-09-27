@@ -18,6 +18,8 @@ package org.modelingvalue.dclare;
 import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
@@ -66,14 +68,21 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
     protected final BlockingQueue<Action<Universe>>                                                 inQueue;
-    private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);                                     //TODO wire onto MoodManager
+    private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);                                           //TODO wire onto MoodManager
     private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Priority.forward);
     protected final Derivation                                                                      derivation              = new Derivation(this, Priority.forward);
     private final UniverseStatistics                                                                universeStatistics;
     private final AtomicReference<Set<Throwable>>                                                   errors                  = new AtomicReference<>(Set.of());
     private final ConstantState                                                                     constantState           = new ConstantState(this::handleException);
-    private final StatusProvider<Status>                                                            statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState));
+    private final StatusProvider<Status>                                                            statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState, null));
+    private final Timer                                                                             timer                   = new Timer("UniverseTransactionTimer");
+    private final TimerTask                                                                         timerTask               = new TimerTask() {
+                                                                                                                                @Override
+                                                                                                                                public void run() {
+                                                                                                                                    UniverseTransaction.this.timerTask();
+                                                                                                                                }
+                                                                                                                            };
 
     private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                  preActions              = List.of();
@@ -86,21 +95,23 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 initialized;
     private boolean                                                                                 killed;
     private boolean                                                                                 timeTraveling;
-    private boolean                                                                                 handling;                                                                                   //TODO wire onto MoodManager
-    private boolean                                                                                 stopped;                                                                                    //TODO wire onto MoodManager
+    private boolean                                                                                 handling;                                                                                         //TODO wire onto MoodManager
+    private boolean                                                                                 stopped;                                                                                          //TODO wire onto MoodManager
     private boolean                                                                                 orphansDetected;
 
     public class Status extends AbstractStatus {
 
-        public final Mood             mood;
-        public final Action<Universe> action;
-        public final State            state;
+        public final Mood               mood;
+        public final Action<Universe>   action;
+        public final State              state;
+        public final UniverseStatistics statistics;
 
-        public Status(Mood mood, Action<Universe> action, State state) {
+        public Status(Mood mood, Action<Universe> action, State state, UniverseStatistics statistics) {
             super();
             this.mood = mood;
             this.action = action;
             this.state = state;
+            this.statistics = statistics;
         }
 
         @Override
@@ -146,6 +157,7 @@ public class UniverseTransaction extends MutableTransaction {
         if (config.isTraceUniverse()) {
             System.err.println("DCLARE: START UNIVERSE " + this);
         }
+        timer.schedule(timerTask, 300, 300);
         while (!killed) {
             try {
                 handling = false; //TODO wire onto MoodManager
@@ -227,15 +239,15 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private void setBusyMood(Action<Universe> action) {
-        statusProvider.setNext(p -> new Status(Mood.busy, action, p.state));
+        statusProvider.setNext(p -> new Status(Mood.busy, action, p.state, p.statistics));
     }
 
     private void setIdleMood(State state) {
-        statusProvider.setNext(p -> new Status(Mood.idle, p.action, state));
+        statusProvider.setNext(p -> new Status(Mood.idle, p.action, state, p.statistics));
     }
 
     private void setStoppedMood(State state) {
-        statusProvider.setNext(p -> new Status(Mood.stopped, p.action, state));
+        statusProvider.setNext(p -> new Status(Mood.stopped, p.action, state, p.statistics));
     }
 
     public Action<Universe> waitForBusy() {
@@ -274,6 +286,16 @@ public class UniverseTransaction extends MutableTransaction {
 
     public DclareConfig getConfig() {
         return config;
+    }
+
+    protected void timerTask() {
+        statusProvider.setNext(p -> {
+            if (!Objects.equals(p.statistics, stats())) {
+                return new Status(p.mood, p.action, p.state, new UniverseStatistics(stats()));
+            } else {
+                return p;
+            }
+        });
     }
 
     @Override
