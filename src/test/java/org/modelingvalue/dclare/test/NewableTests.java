@@ -895,13 +895,13 @@ public class NewableTests {
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
             assertTimeoutPreemptively(TIMEOUT, () -> {
                 StatusIterator<Status> it = utx.getStatusIterator();
-                it.getFirst(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
+                it.getFirst(s -> s.mood == Mood.stopped || (s.action != null && s.mood == Mood.idle && s.active.isEmpty()));
                 u.schedule(() -> action.accept(c -> {
                     TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
                     created.set(Set::add, newable);
                     return newable;
                 }));
-                it.getFirst(s -> !s.active.isEmpty());
+                it.getFirst(s -> s.mood == Mood.stopped || !s.active.isEmpty());
             });
             return created;
         } else {
