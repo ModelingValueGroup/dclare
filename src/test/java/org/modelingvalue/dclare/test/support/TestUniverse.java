@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -73,10 +75,17 @@ public class TestUniverse extends TestMutable implements Universe {
 
     public void schedule(Runnable action) {
         if (!universeTransaction.isKilled()) {
+            CompletableFuture<Void> future = new CompletableFuture<>();
             imperativeTransaction.schedule(() -> {
                 DUMMY.set(this, Long::sum, 1l);
                 action.run();
+                future.complete(null);
             });
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                universeTransaction.handleException(e);
+            }
         }
     }
 
