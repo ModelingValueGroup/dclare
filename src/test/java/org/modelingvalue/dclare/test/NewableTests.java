@@ -889,8 +889,8 @@ public class NewableTests {
         if (!utx.isKilled()) {
             TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
-            utx.waitForStatus(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
             StatusIterator<Status> it = utx.getStatusIterator();
+            it.getFirst(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
             u.schedule(() -> action.accept(c -> {
                 TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
                 created.set(Set::add, newable);
