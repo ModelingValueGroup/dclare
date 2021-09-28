@@ -328,8 +328,11 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private State clearOrphans(State state) {
+        State pre;
         do {
+            pre = state;
             state = super.run(triggerAction(state, clearOrphans));
+            startState = pre;
         } while (!killed && orphansDetected);
         return state;
     }
@@ -484,7 +487,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State postState = tx.state();
-        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preState()//
+        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = startState//
                 .diff(postState, o -> {
                     if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
                         return !tx.toBeCleared((Mutable) o).isEmpty();
