@@ -43,14 +43,14 @@ public interface Mutable extends TransactionClass {
     Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //
-            added -> added.trigger(obj),                                                                                                                                                                                 //
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,                     //
+            added -> added.trigger(obj),                                                                                                                                                                                            //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
+    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
         return D_PARENT_CONTAINING.get(this);

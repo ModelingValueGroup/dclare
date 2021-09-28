@@ -38,7 +38,7 @@ public interface Newable extends Mutable {
                                                                                          }
                                                                                      }, plumbing);
     Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), plumbing);
-    Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
+    Observer<Newable>                                        D_SOURCES_RULE          = NonCheckingObserver.of(D_SOURCES, n -> {
                                                                                          Set<Newable> sources = n.dDirectConstruction() != null ? Set.of(n) : Set.of();
                                                                                          sources = sources.addAll(n.dDerivedConstructions().flatMap(Construction::derivers).flatMap(D_SOURCES::get));
                                                                                          Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(n);
@@ -48,7 +48,7 @@ public interface Newable extends Mutable {
                                                                                          D_SOURCES.set(n, sources);
                                                                                      });
     Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
-    Observer<Newable>                                        D_DIRECTIONS_RULE       = Observer.of(D_DIRECTIONS, n -> {
+    Observer<Newable>                                        D_DIRECTIONS_RULE       = NonCheckingObserver.of(D_DIRECTIONS, n -> {
                                                                                          Construction direct = n.dDirectConstruction();
                                                                                          if (direct != null) {
                                                                                              D_DIRECTIONS.set(n, Set.of());
@@ -58,7 +58,7 @@ public interface Newable extends Mutable {
                                                                                          }
                                                                                      });
     Observed<Newable, Set<Direction>>                        D_SUPER_POSITION        = Observed.of("D_SUPER_POSITION", Set.of(), plumbing);
-    Observer<Newable>                                        D_SUPER_POSITION_RULE   = Observer.of("D_SUPER_POSITION_RULE", n -> {
+    Observer<Newable>                                        D_SUPER_POSITION_RULE   = NonCheckingObserver.of("D_SUPER_POSITION_RULE", n -> {
                                                                                          D_SUPER_POSITION.set(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
                                                                                      });
 
