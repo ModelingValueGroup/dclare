@@ -17,6 +17,7 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
@@ -26,6 +27,7 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -889,14 +891,16 @@ public class NewableTests {
         if (!utx.isKilled()) {
             TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
-            StatusIterator<Status> it = utx.getStatusIterator();
-            it.getFirst(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
-            u.schedule(() -> action.accept(c -> {
-                TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
-                created.set(Set::add, newable);
-                return newable;
-            }));
-            it.getFirst(s -> !s.active.isEmpty());
+            assertTimeoutPreemptively(Duration.ofMillis(1000), () -> {
+                StatusIterator<Status> it = utx.getStatusIterator();
+                it.getFirst(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
+                u.schedule(() -> action.accept(c -> {
+                    TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
+                    created.set(Set::add, newable);
+                    return newable;
+                }));
+                it.getFirst(s -> !s.active.isEmpty());
+            });
             return created;
         } else {
             return Concurrent.of(Set.of());
