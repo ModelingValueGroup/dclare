@@ -28,10 +28,10 @@ import org.modelingvalue.dclare.Setable;
 
 public class NetUtils {
 
-    public static enum Role {
+    public enum Role {
         server(),
         client(),
-        none();
+        none()
     }
 
     private static Role role = null;
@@ -66,18 +66,32 @@ public class NetUtils {
         int portNumber = 55055;
         switch (getRole()) {
         case server:
-            startServerThread(deltaAdapter, portNumber);
+            start("dclare-server", () -> runServer(deltaAdapter, portNumber));
             break;
         case client:
-            startClientThread(deltaAdapter, portNumber);
+            start("dclare-client", () -> runClient(deltaAdapter, portNumber));
             break;
         case none:
             break;
         }
     }
 
-    public static <M extends Mutable> void startServer(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
+    public static void start(String name, Runnable runnable) {
+        Thread t = new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+                runnable.run();
+            } catch (Throwable t1) {
+                t1.printStackTrace();
+            }
+        }, name);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    public static <M extends Mutable> void runServer(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
         try (ServerSocket sock = new ServerSocket(portNumber); Socket clientSocket = sock.accept(); PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+            //noinspection InfiniteLoopStatement
             while (true) {
                 String json = deltaAdapter.get();
                 out.write(json);
@@ -89,31 +103,10 @@ public class NetUtils {
         }
     }
 
-    public static <M extends Mutable> void startServerThread(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
-        Thread t = new Thread(() -> threadCatch(() -> startServer(deltaAdapter, portNumber)), "dclare-server");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    public static <M extends Mutable> void startClient(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
-        try (Socket sock = new Socket("localhost", portNumber); PrintWriter out = new PrintWriter(sock.getOutputStream(), true); BufferedReader in = new BufferedReader(new InputStreamReader(sock.getInputStream()));) {
-            in.lines().forEach(l -> deltaAdapter.accept(l));
-        } catch (ConnectException e) {
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
-    public static <M extends Mutable> void startClientThread(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
-        Thread t = new Thread(() -> threadCatch(() -> startClient(deltaAdapter, portNumber)), "dclare-client");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    private static <M extends Mutable> void threadCatch(Runnable r) {
-        try {
-            Thread.sleep(1000);
-            r.run();
+    public static <M extends Mutable> void runClient(DeltaAdaptor<? extends MutableClass, M, Setable<M, Object>> deltaAdapter, int portNumber) {
+        try (Socket sock = new Socket("localhost", portNumber);
+             BufferedReader in = new BufferedReader(new InputStreamReader(sock.getInputStream()))) {
+            in.lines().forEach(deltaAdapter);
         } catch (Throwable t) {
             t.printStackTrace();
         }
