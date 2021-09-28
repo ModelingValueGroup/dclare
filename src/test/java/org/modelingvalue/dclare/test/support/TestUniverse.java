@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -39,13 +37,12 @@ public class TestUniverse extends TestMutable implements Universe {
         }, clazz, scheduler);
     }
 
-    private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
+    private static final Setable<TestUniverse, Long> DUMMY   = Setable.of("$DUMMY", 0l);
 
     private final TestImperative                     scheduler;
-    private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
-    private final AtomicInteger                      counter   = new AtomicInteger(0);
+    private final AtomicInteger                      counter = new AtomicInteger(0);
 
-    private Thread                                   waitForEndThread;
+    private UniverseTransaction                      universeTransaction;
     private ImperativeTransaction                    imperativeTransaction;
 
     protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
@@ -56,8 +53,8 @@ public class TestUniverse extends TestMutable implements Universe {
     @Override
     public void init() {
         Universe.super.init();
-        UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
-        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
+        universeTransaction = LeafTransaction.getCurrent().universeTransaction();
+        imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
@@ -66,21 +63,8 @@ public class TestUniverse extends TestMutable implements Universe {
                     }
                 }
             });
-            if (last) {
-                idle();
-            }
         }, scheduler, false);
-        utx.dummy();
-        waitForEndThread = new Thread(() -> {
-            try {
-                utx.waitForEnd();
-            } catch (Throwable t) {
-                idle();
-            }
-        }, "TestUniverse.waitForEndThread");
-        waitForEndThread.setDaemon(true);
-        waitForEndThread.start();
-        idle();
+        universeTransaction.dummy();
     }
 
     public int uniqueInt() {
@@ -88,28 +72,11 @@ public class TestUniverse extends TestMutable implements Universe {
     }
 
     public void schedule(Runnable action) {
-        waitForIdle();
-        if (!imperativeTransaction.universeTransaction().isKilled()) {
+        if (!universeTransaction.isKilled()) {
             imperativeTransaction.schedule(() -> {
                 DUMMY.set(this, Long::sum, 1l);
                 action.run();
             });
-        }
-    }
-
-    private void idle() {
-        try {
-            idleQueue.put(Boolean.TRUE);
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-    }
-
-    private void waitForIdle() {
-        try {
-            idleQueue.take();
-        } catch (InterruptedException e) {
-            throw new Error(e);
         }
     }
 

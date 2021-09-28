@@ -43,6 +43,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
 import org.modelingvalue.dclare.DclareConfig;
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.LeafTransaction;
@@ -52,6 +53,8 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.UniverseTransaction.Mood;
+import org.modelingvalue.dclare.UniverseTransaction.Status;
 import org.modelingvalue.dclare.test.support.TestImperative;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
@@ -886,11 +889,14 @@ public class NewableTests {
         if (!utx.isKilled()) {
             TestUniverse u = (TestUniverse) utx.universe();
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
+            utx.waitForStatus(s -> s.action != null && s.mood == Mood.idle && s.active.isEmpty());
+            StatusIterator<Status> it = utx.getStatusIterator();
             u.schedule(() -> action.accept(c -> {
                 TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
                 created.set(Set::add, newable);
                 return newable;
             }));
+            it.getFirst(s -> !s.active.isEmpty());
             return created;
         } else {
             return Concurrent.of(Set.of());

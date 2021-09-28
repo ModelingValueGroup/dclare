@@ -25,6 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
@@ -259,15 +260,19 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public Action<Universe> waitForBusy() {
-        return getStatusIterator().getFirst(s -> s.mood == Mood.busy).action;
+        return waitForStatus(s -> s.mood == Mood.busy).action;
     }
 
     public State waitForIdle() {
-        return getStatusIterator().getFirst(s -> s.mood == Mood.idle).state;
+        return waitForStatus(s -> s.mood == Mood.idle).state;
     }
 
     public State waitForStopped() {
-        return getStatusIterator().getFirst(s -> s.mood == Mood.stopped).state;
+        return waitForStatus(s -> s.mood == Mood.stopped).state;
+    }
+
+    public Status waitForStatus(Predicate<Status> pred) {
+        return getStatusIterator().getFirst(pred);
     }
 
     public State putAndWaitForIdle(Object id, Runnable action) {
