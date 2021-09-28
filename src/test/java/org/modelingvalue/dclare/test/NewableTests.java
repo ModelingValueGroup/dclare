@@ -66,7 +66,7 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-    private static final Duration       TIMEOUT            = Duration.ofMillis(10000);
+    private static final Duration       TIMEOUT            = Duration.ofMillis(20000);
 
     //TOMTOMTOM remove after debugging
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
