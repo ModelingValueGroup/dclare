@@ -26,10 +26,11 @@ public class TestImperative implements Consumer<Runnable> {
     }
 
     private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+    private boolean                       stop;
 
     protected TestImperative() {
         Thread imperativeThread = new Thread(() -> {
-            while (true) {
+            while (!stop) {
                 take().run();
             }
         }, "TestUniverse.imperativeThread");
@@ -56,6 +57,12 @@ public class TestImperative implements Consumer<Runnable> {
 
     public boolean isEmpty() {
         return queue.isEmpty();
+    }
+
+    public void cancel() {
+        stop = true;
+        accept(() -> {
+        });
     }
 
 }

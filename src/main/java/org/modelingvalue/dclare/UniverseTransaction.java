@@ -76,7 +76,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final AtomicReference<Set<Throwable>>                                                   errors                  = new AtomicReference<>(Set.of());
     private final ConstantState                                                                     constantState           = new ConstantState(this::handleException);
     private final StatusProvider<Status>                                                            statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState, null, Set.of()));
-    private final Timer                                                                             timer                   = new Timer("UniverseTransactionTimer");
+    private final Timer                                                                             timer                   = new Timer("UniverseTransactionTimer", true);
 
     private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                  preActions              = List.of();
@@ -239,6 +239,7 @@ public class UniverseTransaction extends MutableTransaction {
         if (config.isTraceUniverse()) {
             System.err.println("DCLARE: STOP UNIVERSE " + this);
         }
+        timer.cancel();
         stop();
         history = history.append(state);
         constantState.stop();

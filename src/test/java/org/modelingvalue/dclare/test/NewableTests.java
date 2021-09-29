@@ -85,7 +85,9 @@ public class NewableTests {
     @ParameterizedTest
     @ValueSource(ints = {0, 1})
     public void singleBidirectional(int number) {
-        bidirectional(CONFIGS[number], TestImperative.of());
+        TestImperative imperative = TestImperative.of();
+        bidirectional(CONFIGS[number], imperative);
+        imperative.cancel();
     }
 
     //    @ParameterizedTest
@@ -97,6 +99,7 @@ public class NewableTests {
         State state = bidirectional(config, imperative);
         compareStates(state, bidirectional(config, imperative));
         compareStates(state, bidirectional(config, imperative));
+        imperative.cancel();
     }
 
     public State bidirectional(DclareConfig config, TestImperative imperative) {
@@ -226,6 +229,7 @@ public class NewableTests {
     public void oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, false, true, true, imperative, "oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -233,6 +237,7 @@ public class NewableTests {
     public void oo2fb_oo(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo-" + number + "-L"), oofb(CONFIGS[number], true, false, true, false, imperative, "oo2fb_oo-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -240,6 +245,7 @@ public class NewableTests {
     public void fb2oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, true, false, true, imperative, "fb2oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -247,6 +253,7 @@ public class NewableTests {
     public void oo2fb_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, false, true, true, imperative, "oo2fb_oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -254,6 +261,7 @@ public class NewableTests {
     public void fb2oo_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "fb2oo_oo_fb-" + number + "-L"), oofb(CONFIGS[number], false, true, true, true, imperative, "fb2oo_oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -261,6 +269,7 @@ public class NewableTests {
     public void oo2fb_fb2oo_oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, true, true, true, imperative, "oo2fb_fb2oo_oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -268,6 +277,7 @@ public class NewableTests {
     public void oo2fb_fb2oo_oo(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_oo-" + number + "-L"), oofb(CONFIGS[number], true, true, true, false, imperative, "oo2fb_fb2oo_oo-" + number + "-R"));
+        imperative.cancel();
     }
 
     @ParameterizedTest
@@ -275,6 +285,7 @@ public class NewableTests {
     public void oo2fb_fb2oo_fb(int number) {
         TestImperative imperative = TestImperative.of();
         compareStates(oofb(CONFIGS[number], false, false, true, true, imperative, "oo2fb_fb2oo_fb-" + number + "-L"), oofb(CONFIGS[number], true, true, false, true, imperative, "oo2fb_fb2oo_fb-" + number + "-R"));
+        imperative.cancel();
     }
 
     //    @ParameterizedTest
@@ -293,6 +304,7 @@ public class NewableTests {
             compareStates(state, oofb(config, true, true, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
             compareStates(state, oofb(config, true, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
         }
+        imperative.cancel();
     }
 
     @Test
@@ -302,6 +314,7 @@ public class NewableTests {
             DclareConfig config = CONFIGS[i % 2];
             oofb(config, false, false, true, true, imperative, "testNoTransformation-" + i);
         }
+        imperative.cancel();
     }
 
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
