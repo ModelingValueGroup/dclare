@@ -26,7 +26,6 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -64,9 +63,7 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-    private static final Duration       TIMEOUT            = Duration.ofMillis(100000);
 
-    //TOMTOMTOM remove after debugging
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
@@ -854,7 +851,7 @@ public class NewableTests {
             }
         });
         run(utx, "stop", c -> utx.stop());
-        State result = universe.waitForEnd();
+        State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
             System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && s.isTraced() && s != n));

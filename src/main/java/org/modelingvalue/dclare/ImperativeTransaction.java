@@ -16,8 +16,6 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -155,24 +153,6 @@ public class ImperativeTransaction extends LeafTransaction {
         }
     }
 
-    public State waitForEnd() {
-        universeTransaction().waitForEnd();
-        BlockingQueue<Boolean> waitQueue = new LinkedBlockingQueue<>(1);
-        scheduler.accept(() -> {
-            try {
-                waitQueue.put(Boolean.TRUE);
-            } catch (InterruptedException e) {
-                throw new Error(e);
-            }
-        });
-        try {
-            waitQueue.take();
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-        return state;
-    }
-
     @Override
     public boolean isChanged() {
         return pre != state;
@@ -233,10 +213,4 @@ public class ImperativeTransaction extends LeafTransaction {
         throw new UnsupportedOperationException();
     }
 
-    public static State clean(State state) {
-        for (ImperativeTransaction itx : state.getObjects(ImperativeTransaction.class)) {
-            state = state.set(itx, CHANGE_NR, CHANGE_NR.getDefault());
-        }
-        return state;
-    }
 }
