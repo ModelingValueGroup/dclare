@@ -890,14 +890,12 @@ public class NewableTests {
         if (!status.isStopped()) {
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
             TestUniverse u = (TestUniverse) utx.universe();
-            u.schedule(() -> {
-                action.accept(c -> {
-                    TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
-                    created.set(Set::add, newable);
-                    return newable;
-                });
-            });
-            it.waitForStoppedOr(Status::isBusy);
+            u.schedule(() -> action.accept(c -> {
+                TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
+                created.set(Set::add, newable);
+                return newable;
+            }));
+            it.waitForStoppedOr(s -> !s.active.isEmpty());
             return created;
         } else {
             return Concurrent.of(Set.of());
