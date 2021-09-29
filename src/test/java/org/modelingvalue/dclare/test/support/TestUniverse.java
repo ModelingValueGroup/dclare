@@ -64,7 +64,6 @@ public class TestUniverse extends TestMutable implements Universe {
                 }
             });
         }, scheduler, false);
-        universeTransaction.dummy();
     }
 
     public int uniqueInt() {

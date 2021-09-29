@@ -43,6 +43,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private State                                             pre;
     private State                                             state;
+    private boolean                                           active;
     @SuppressWarnings("rawtypes")
     private DefaultMap<Object, Set<Setable>>                  setted;
     @SuppressWarnings("rawtypes")
@@ -149,6 +150,7 @@ public class ImperativeTransaction extends LeafTransaction {
             }
             if (last) {
                 universeTransaction().removeActive(this);
+                active = false;
             }
         }
     }
@@ -162,7 +164,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
         T[] old = (T[]) new Object[1];
-        boolean first = pre == state;
+        boolean first = state == pre;
         state = state.set(object, property, post, old);
         changed(object, property, old[0], post, first);
         return old[0];
@@ -172,7 +174,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         T[] oldNew = (T[]) new Object[2];
-        boolean first = pre == state;
+        boolean first = state == pre;
         state = state.set(object, property, function, element, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
@@ -182,7 +184,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         T[] oldNew = (T[]) new Object[2];
-        boolean first = pre == state;
+        boolean first = state == pre;
         state = state.set(object, property, oper, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
@@ -191,8 +193,9 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
-            if (first) {
+            if (!active) {
                 universeTransaction().addActive(this);
+                active = true;
             }
             Set<Setable> set = Set.of(property);
             allSetted = allSetted.add(object, set, Set::addAll);
