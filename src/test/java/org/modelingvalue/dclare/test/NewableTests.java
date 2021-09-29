@@ -66,9 +66,9 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
 
-    static {
-        System.setProperty("TRACE_STATUS", "true");
-    }
+    //    static {
+    //        System.setProperty("TRACE_STATUS", "true");
+    //    }
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
