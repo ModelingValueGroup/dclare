@@ -17,7 +17,7 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
@@ -294,7 +294,7 @@ public class NewableTests {
     //    @ValueSource(ints = {0, 1})
     @RepeatedTest(MANY_NR * 2)
     public void testAll(RepetitionInfo repetitionInfo) {
-        assertTimeout(Duration.ofMillis(300000), () -> {
+        assertTimeoutPreemptively(Duration.ofMillis(300000), () -> {
             DclareConfig config = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
             TestImperative imperative = TestImperative.of();
             State state = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
