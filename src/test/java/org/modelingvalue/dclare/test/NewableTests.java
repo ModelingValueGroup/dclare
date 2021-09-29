@@ -17,6 +17,7 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
@@ -26,6 +27,7 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -292,19 +294,21 @@ public class NewableTests {
     //    @ValueSource(ints = {0, 1})
     @RepeatedTest(MANY_NR * 2)
     public void testAll(RepetitionInfo repetitionInfo) {
-        DclareConfig config = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
-        TestImperative imperative = TestImperative.of();
-        State state = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
-        for (int i = 0; i < 2; i++) {
-            compareStates(state, oofb(config, false, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, false, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, true, false, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, true, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, true, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, true, true, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-            compareStates(state, oofb(config, true, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
-        }
-        imperative.cancel();
+        assertTimeout(Duration.ofMillis(300000), () -> {
+            DclareConfig config = CONFIGS[(repetitionInfo.getCurrentRepetition() - 1) / MANY_NR]; // combining junit5 @ParameterizedTest and @RepeatedTest is not (yet) possible
+            TestImperative imperative = TestImperative.of();
+            State state = oofb(config, false, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-pre");
+            for (int i = 0; i < 2; i++) {
+                compareStates(state, oofb(config, false, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, false, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, true, false, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, true, false, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, true, true, false, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, true, true, true, false, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+                compareStates(state, oofb(config, true, true, true, true, imperative, repetitionInfo.getCurrentRepetition() + "-" + i));
+            }
+            imperative.cancel();
+        });
     }
 
     @Test
