@@ -115,6 +115,14 @@ public class UniverseTransaction extends MutableTransaction {
             return mood == Mood.stopped;
         }
 
+        public boolean isIdle() {
+            return action != null && mood == Mood.idle && active.isEmpty();
+        }
+
+        public boolean isBusy() {
+            return mood == Mood.busy || !active.isEmpty();
+        }
+
         @Override
         protected void handleException(Exception e) {
             UniverseTransaction.this.handleException(e);
@@ -260,19 +268,19 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public Action<Universe> waitForBusy() {
-        return waitForStatus(s -> s.mood == Mood.busy).action;
+        return waitForStatus(Status::isBusy).action;
     }
 
     public State waitForIdle() {
-        return waitForStatus(s -> s.mood == Mood.idle).state;
+        return waitForStatus(Status::isIdle).state;
     }
 
     public State waitForStopped() {
-        return waitForStatus(s -> s.mood == Mood.stopped).state;
+        return waitForStatus(Status::isStopped).state;
     }
 
     public Status waitForStatus(Predicate<Status> pred) {
-        return getStatusIterator().getFirst(pred);
+        return getStatusIterator().waitForStoppedOr(pred);
     }
 
     public State putAndWaitForIdle(Object id, Runnable action) {
@@ -282,7 +290,7 @@ public class UniverseTransaction extends MutableTransaction {
     public State putAndWaitForIdle(Action<Universe> action) {
         StatusIterator<Status> iterator = getStatusIterator();
         put(action);
-        return iterator.getFirst(s -> s.mood == Mood.idle && s.action == action).state;
+        return iterator.waitForStoppedOr(s -> s.isIdle() && s.action == action).state;
     }
 
     public Mood getMood() {
