@@ -130,7 +130,7 @@ public class UniverseTransaction extends MutableTransaction {
 
         @Override
         public String toString() {
-            return "Status:" + mood + "(" + action + ")" + active.size();
+            return "Status:" + mood + "(" + action + ")" + active.size() + (stats != null ? stats.shortString() : "");
         }
     }
 
@@ -311,12 +311,13 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void timerTask() {
         statusProvider.setNext(p -> {
-            UniverseStatistics stats = stats().clone();
-            if (!Objects.equals(p.stats, stats)) {
-                return new Status(p.mood, p.action, p.state, stats, p.active);
-            } else {
-                return p;
+            if (p.mood == Mood.busy) {
+                UniverseStatistics stats = stats().clone();
+                if (!Objects.equals(p.stats, stats)) {
+                    return new Status(p.mood, p.action, p.state, stats, p.active);
+                }
             }
+            return p;
         });
     }
 

@@ -129,6 +129,10 @@ public class UniverseStatistics {
         return "UniverseStats:\n" + "    debugging        = " + debugging + "\n" + "    runCount         = " + runCount + "\n" + "    forwardCount     = " + forwardCount + "\n" + "    totalChanges     = " + totalChanges + "\n" + "    totalChangesEver = " + totalChangesEver;
     }
 
+    public String shortString() {
+        return "[debug=" + debugging + ",run=" + runCount + ",forward=" + forwardCount + ",total=" + totalChanges + ",ever=" + totalChangesEver + "]";
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
