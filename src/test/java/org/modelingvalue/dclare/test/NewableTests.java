@@ -43,6 +43,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
 import org.modelingvalue.dclare.DclareConfig;
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.LeafTransaction;
@@ -52,6 +53,7 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.UniverseTransaction.Status;
 import org.modelingvalue.dclare.test.support.TestImperative;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
@@ -61,7 +63,11 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-    //TOMTOMTOM remove after debugging
+
+    static {
+        System.setProperty("TRACE_STATUS", "true");
+    }
+
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
@@ -849,7 +855,7 @@ public class NewableTests {
             }
         });
         run(utx, "stop", c -> utx.stop());
-        State result = universe.waitForEnd();
+        State result = utx.waitForEnd();
 
         if (PRINT_RESULT_STATE) {
             System.err.println(result.asString(o -> o instanceof TestMutable, s -> s instanceof Observed && s.isTraced() && s != n));
@@ -883,14 +889,17 @@ public class NewableTests {
     }
 
     private Concurrent<Set<TestNewable>> run(UniverseTransaction utx, String id, Consumer<Creator> action) {
-        if (!utx.isKilled()) {
-            TestUniverse u = (TestUniverse) utx.universe();
+        StatusIterator<Status> it = utx.getStatusIterator();
+        Status status = it.waitForStoppedOr(Status::isIdle);
+        if (!status.isStopped()) {
             Concurrent<Set<TestNewable>> created = Concurrent.of(Set.of());
+            TestUniverse u = (TestUniverse) utx.universe();
             u.schedule(() -> action.accept(c -> {
                 TestNewable newable = create(TestUniverse.INIT, id + u.uniqueInt(), c);
                 created.set(Set::add, newable);
                 return newable;
             }));
+            it.waitForStoppedOr(s -> !s.active.isEmpty());
             return created;
         } else {
             return Concurrent.of(Set.of());
