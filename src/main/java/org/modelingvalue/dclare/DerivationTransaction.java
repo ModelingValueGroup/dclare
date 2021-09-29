@@ -33,12 +33,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         super(universeTransaction);
     }
 
-    private ConstantState constantState;
-
-    @Override
-    protected ConstantState constantState() {
-        return constantState;
-    }
+    private ConstantState constantState;   
 
     public <R> R derive(Supplier<R> action, State state, ConstantState constantState) {
         this.constantState = constantState;
@@ -77,8 +72,9 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T> T derive(O object, Observed<O, T> observed) {
-        Constant<O, T> constant = observed.constant();
-        if (!constant.isSet(object)) {
+        Constant<O, T> constant = observed.constant();        
+        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+		if (!constantState.isSet(leafTransaction, object, constant)) {
             Pair<Object, Observed> slot = Pair.of(object, observed);
             Set<Pair<Object, Observed>> derived = DERIVED.get();
             if (derived.contains(slot)) {
@@ -91,7 +87,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                 });
             }
         }
-        return constant.get(object);
+        return constantState.get(leafTransaction, object, constant);        		
     }
 
     @Override
@@ -107,7 +103,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T value) {
         if (doDeriver(object, setable)) {
-            setable.constant().set(object, value);
+            constantState.set(LeafTransaction.getCurrent(), object, setable.constant(), value, false);
             return setable.getDefault();
         } else if (!Objects.equals(state().get(object, setable), value)) {
             return super.set(object, setable, value);
