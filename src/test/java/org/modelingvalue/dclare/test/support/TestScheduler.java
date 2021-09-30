@@ -19,31 +19,26 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 
-public class TestImperative implements Consumer<Runnable> {
+public class TestScheduler implements Consumer<Runnable> {
 
-    public static TestImperative of() {
-        return new TestImperative();
+    public static TestScheduler of() {
+        return new TestScheduler();
     }
 
     private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
     private boolean                       stop;
 
-    protected TestImperative() {
-        Thread imperativeThread = new Thread(() -> {
-            while (!stop) {
-                take().run();
-            }
-        }, "TestUniverse.imperativeThread");
-        imperativeThread.setDaemon(true);
-        imperativeThread.start();
+    protected TestScheduler() {
     }
 
     @Override
     public void accept(Runnable action) {
-        try {
-            queue.put(action);
-        } catch (InterruptedException e) {
-            throw new Error(e);
+        if (!stop) {
+            try {
+                queue.put(action);
+            } catch (InterruptedException e) {
+                throw new Error(e);
+            }
         }
     }
 
@@ -59,10 +54,27 @@ public class TestImperative implements Consumer<Runnable> {
         return queue.isEmpty();
     }
 
-    public void cancel() {
+    public void start() {
+        queue.clear();
+        stop = false;
+        Thread imperativeThread = new Thread(() -> {
+            while (!stop) {
+                take().run();
+            }
+        }, "TestUniverse.imperativeThread");
+        imperativeThread.setDaemon(true);
+        imperativeThread.start();
+    }
+
+    public void stop() {
         stop = true;
-        accept(() -> {
-        });
+        queue.clear();
+        try {
+            queue.put(() -> {
+            });
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
     }
 
 }

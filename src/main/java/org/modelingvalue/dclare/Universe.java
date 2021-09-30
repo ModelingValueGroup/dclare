@@ -23,6 +23,10 @@ public interface Universe extends Mutable, Internable {
         dActivate();
     }
 
+    default void exit() {
+        // To be overridden
+    }
+
     @Override
     default boolean dIsOrphan(State state) {
         return false;

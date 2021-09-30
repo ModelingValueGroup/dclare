@@ -16,7 +16,6 @@
 package org.modelingvalue.dclare.test.support;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.ImperativeTransaction;
@@ -32,26 +31,25 @@ public class TestUniverse extends TestMutable implements Universe {
 
     public static final Direction INIT = Direction.of("INIT");
 
-    public static TestUniverse of(Object id, TestMutableClass clazz, TestImperative scheduler) {
-        return new TestUniverse(id, u -> {
-        }, clazz, scheduler);
+    public static TestUniverse of(Object id, TestMutableClass clazz) {
+        return new TestUniverse(id, clazz);
     }
 
-    private static final Setable<TestUniverse, Long> DUMMY   = Setable.of("$DUMMY", 0l);
+    private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
 
-    private final TestImperative                     scheduler;
-    private final AtomicInteger                      counter = new AtomicInteger(0);
+    private final TestScheduler                      scheduler = TestScheduler.of();
+    private final AtomicInteger                      counter   = new AtomicInteger(0);
 
     private UniverseTransaction                      universeTransaction;
     private ImperativeTransaction                    imperativeTransaction;
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
+    private TestUniverse(Object id, TestMutableClass clazz) {
         super(id, clazz);
-        this.scheduler = scheduler;
     }
 
     @Override
     public void init() {
+        scheduler.start();
         Universe.super.init();
         universeTransaction = LeafTransaction.getCurrent().universeTransaction();
         imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
@@ -66,6 +64,12 @@ public class TestUniverse extends TestMutable implements Universe {
         }, scheduler, false);
     }
 
+    @Override
+    public void exit() {
+        scheduler.stop();
+        Universe.super.exit();
+    }
+
     public int uniqueInt() {
         return counter.getAndIncrement();
     }
@@ -75,7 +79,6 @@ public class TestUniverse extends TestMutable implements Universe {
             DUMMY.set(this, Long::sum, 1l);
             action.run();
         });
-
     }
 
     public State waitForEnd(UniverseTransaction universeTransaction) throws Throwable {

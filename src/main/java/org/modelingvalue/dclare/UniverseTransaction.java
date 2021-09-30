@@ -240,6 +240,7 @@ public class UniverseTransaction extends MutableTransaction {
             System.err.println("DCLARE: STOP UNIVERSE " + this);
         }
         timer.cancel();
+        state.run(() -> UniverseTransaction.this.universe().exit());
         stop();
         history = history.append(state);
         constantState.stop();
