@@ -65,16 +65,16 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
 
-    //    static {
-    //        System.setProperty("TRACE_STATUS", "true");
-    //    }
+    static {
+        System.setProperty("TRACE_STATUS", "true");
+    }
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).withMaxNrOfChanges(32).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
 
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                                                                                                                                                                                                                      // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int            MANY_NR            = 64;
+    private static final int            MANY_NR            = 16;
     private static final boolean        PRINT_RESULT_STATE = false;                                                                                                                                                                                                                                                                  // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
