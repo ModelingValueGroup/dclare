@@ -147,7 +147,7 @@ public class ImperativeTransaction extends LeafTransaction {
             if (timeTraveling) {
                 pre = state;
             }
-            if (last && active) {
+            if (last && active && stateChangeNr.equals(state.get(this, CHANGE_NR))) {
                 active = false;
                 universeTransaction().removeActive(this);
             }
