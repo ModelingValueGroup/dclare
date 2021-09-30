@@ -21,22 +21,22 @@ import java.util.Objects;
 public class UniverseStatistics {
     private final UniverseTransaction tx;
     //
-    private boolean                   debugging;
-    private int                       totalChanges;
-    private long                      runCount;
-    private long                      forwardCount;
-    private long                      totalChangesEver;
+    private       boolean             debugging;
+    private       int                 totalChanges;
+    private       long                runCount;
+    private       long                forwardCount;
+    private       long                totalChangesEver;
 
     public UniverseStatistics(UniverseTransaction tx) {
         this.tx = tx;
     }
 
     private UniverseStatistics(UniverseStatistics o) {
-        this.tx = o.tx;
-        this.debugging = o.debugging;
-        this.totalChanges = o.totalChanges;
-        this.runCount = o.runCount;
-        this.forwardCount = o.forwardCount;
+        this.tx               = o.tx;
+        this.debugging        = o.debugging;
+        this.totalChanges     = o.totalChanges;
+        this.runCount         = o.runCount;
+        this.forwardCount     = o.forwardCount;
         this.totalChangesEver = o.totalChangesEver;
     }
 
@@ -126,11 +126,16 @@ public class UniverseStatistics {
 
     @Override
     public String toString() {
-        return "UniverseStats:\n" + "    debugging        = " + debugging + "\n" + "    runCount         = " + runCount + "\n" + "    forwardCount     = " + forwardCount + "\n" + "    totalChanges     = " + totalChanges + "\n" + "    totalChangesEver = " + totalChangesEver;
+        return "UniverseStats:\n" //
+               + "    runCount         = " + runCount + "\n" //
+               + "    forwardCount     = " + forwardCount + "\n" //
+               + "    totalChanges     = " + totalChanges + "\n" //
+               + "    totalChangesEver = " + totalChangesEver//
+               + "    debugging        = " + debugging; //
     }
 
     public String shortString() {
-        return "[debug=" + debugging + ",run=" + runCount + ",forward=" + forwardCount + ",total=" + totalChanges + ",ever=" + totalChangesEver + "]";
+        return String.format("[run=%6d forward=%6d total=%6d ever=%6d debug=%-5s]", runCount, forwardCount, totalChanges, totalChangesEver, debugging);
     }
 
     @Override

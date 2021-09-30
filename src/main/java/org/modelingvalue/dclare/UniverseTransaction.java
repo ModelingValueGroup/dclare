@@ -48,50 +48,50 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
-    private static final UnaryOperator<Byte>                                                        INCREMENT               = c -> ++c;
-    private static final Setable<Universe, Boolean>                                                 STOPPED                 = Setable.of("stopped", false);
+    private static final UnaryOperator<Byte>                                                             INCREMENT               = c -> ++c;
+    private static final Setable<Universe, Boolean>                                                      STOPPED                 = Setable.of("stopped", false);
     //
-    private final DclareConfig                                                                      config;
-    protected final Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<Derivation, DerivationTransaction>>              derivations             = Concurrent.of(() -> new ReusableTransaction<>(this));
-    protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
+    private final        DclareConfig                                                                    config;
+    protected final      Concurrent<ReusableTransaction<Action<?>, ActionTransaction>>                   actionTransactions      = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<Observer<?>, ObserverTransaction>>               observerTransactions    = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                    mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                  readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<Derivation, DerivationTransaction>>              derivations             = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final      Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
-    private final Action<Universe>                                                                  init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                  dummy                   = Action.of("$dummy");
-    private final Action<Universe>                                                                  stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
-    private final Action<Universe>                                                                  backward                = Action.of("$backward");
-    private final Action<Universe>                                                                  forward                 = Action.of("$forward");
-    private final Action<Universe>                                                                  clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
-    private final Action<Universe>                                                                  checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
+    private final        Action<Universe>                                                                init                    = Action.of("$init", o -> universe().init());
+    private final        Action<Universe>                                                                dummy                   = Action.of("$dummy");
+    private final        Action<Universe>                                                                stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final        Action<Universe>                                                                backward                = Action.of("$backward");
+    private final        Action<Universe>                                                                forward                 = Action.of("$forward");
+    private final        Action<Universe>                                                                clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
+    private final        Action<Universe>                                                                checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
-    protected final BlockingQueue<Action<Universe>>                                                 inQueue;
-    private final BlockingQueue<State>                                                              resultQueue             = new LinkedBlockingQueue<>(1);                                                     //TODO wire onto MoodManager
-    private final State                                                                             emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                        runOnState              = new ReadOnly(this, Priority.forward);
-    protected final Derivation                                                                      derivation              = new Derivation(this, Priority.forward);
-    private final UniverseStatistics                                                                universeStatistics;
-    private final AtomicReference<Set<Throwable>>                                                   errors                  = new AtomicReference<>(Set.of());
-    private final ConstantState                                                                     constantState           = new ConstantState(this::handleException);
-    private final StatusProvider<Status>                                                            statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState, null, Set.of()));
-    private final Timer                                                                             timer                   = new Timer("UniverseTransactionTimer", true);
+    protected final      BlockingQueue<Action<Universe>>                                                 inQueue;
+    private final        BlockingQueue<State>                                                            resultQueue             = new LinkedBlockingQueue<>(1);                                                     //TODO wire onto MoodManager
+    private final        State                                                                           emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    protected final      ReadOnly                                                                        runOnState              = new ReadOnly(this, Priority.forward);
+    protected final      Derivation                                                                      derivation              = new Derivation(this, Priority.forward);
+    private final        UniverseStatistics                                                              universeStatistics;
+    private final        AtomicReference<Set<Throwable>>                                                 errors                  = new AtomicReference<>(Set.of());
+    private final        ConstantState                                                                   constantState           = new ConstantState(this::handleException);
+    private final        StatusProvider<Status>                                                          statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState, null, Set.of()));
+    private final        Timer                                                                           timer                   = new Timer("UniverseTransactionTimer", true);
 
-    private List<Action<Universe>>                                                                  timeTravelingActions    = List.of(backward, forward);
-    private List<Action<Universe>>                                                                  preActions              = List.of();
-    private List<Action<Universe>>                                                                  postActions             = List.of();
-    private List<State>                                                                             history                 = List.of();
-    private List<State>                                                                             future                  = List.of();
-    private State                                                                                   preState;
-    private State                                                                                   startState;
-    private State                                                                                   state;
-    private boolean                                                                                 initialized;
-    private boolean                                                                                 killed;
-    private boolean                                                                                 timeTraveling;
-    private boolean                                                                                 handling;                                                                                                   //TODO wire onto MoodManager
-    private boolean                                                                                 stopped;                                                                                                    //TODO wire onto MoodManager
-    private boolean                                                                                 orphansDetected;
+    private List<Action<Universe>> timeTravelingActions = List.of(backward, forward);
+    private List<Action<Universe>> preActions           = List.of();
+    private List<Action<Universe>> postActions          = List.of();
+    private List<State>            history              = List.of();
+    private List<State>            future               = List.of();
+    private State                  preState;
+    private State                  startState;
+    private State                  state;
+    private boolean                initialized;
+    private boolean                killed;
+    private boolean                timeTraveling;
+    private boolean                handling;                                                                                                   //TODO wire onto MoodManager
+    private boolean                stopped;                                                                                                    //TODO wire onto MoodManager
+    private boolean                orphansDetected;
 
     public class Status extends AbstractStatus {
 
@@ -103,10 +103,10 @@ public class UniverseTransaction extends MutableTransaction {
 
         public Status(Mood mood, Action<Universe> action, State state, UniverseStatistics stats, Set<ImperativeTransaction> active) {
             super();
-            this.mood = mood;
+            this.mood   = mood;
             this.action = action;
-            this.state = state;
-            this.stats = stats;
+            this.state  = state;
+            this.stats  = stats;
             this.active = active;
         }
 
@@ -130,7 +130,7 @@ public class UniverseTransaction extends MutableTransaction {
 
         @Override
         public String toString() {
-            return "Status:" + mood + "(" + action + ")" + active.size() + (stats != null ? stats.shortString() : "");
+            return String.format("%-10s #act=%d %-70s %s", mood, active.size(), (stats != null ? stats.shortString() : ""), action);
         }
     }
 
@@ -147,8 +147,8 @@ public class UniverseTransaction extends MutableTransaction {
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config) {
         super(null);
-        this.config = Objects.requireNonNull(config);
-        this.inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
+        this.config             = Objects.requireNonNull(config);
+        this.inQueue            = new LinkedBlockingQueue<>(config.getMaxInInQueue());
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = emptyState;
@@ -187,19 +187,19 @@ public class UniverseTransaction extends MutableTransaction {
                     start(action);
                     if (action == backward) {
                         if (history.size() > 3) {
-                            future = future.prepend(state);
-                            state = history.last();
+                            future  = future.prepend(state);
+                            state   = history.last();
                             history = history.removeLast();
                         }
                     } else if (action == forward) {
                         if (!future.isEmpty()) {
                             history = history.append(state);
-                            state = future.first();
-                            future = future.removeFirst();
+                            state   = future.first();
+                            future  = future.removeFirst();
                         }
                     } else if (action != dummy) {
                         history = history.append(state);
-                        future = List.of();
+                        future  = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
                         }
@@ -250,11 +250,19 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void addActive(ImperativeTransaction imptx) {
-        statusProvider.setNext(p -> new Status(p.mood, p.action, p.state, p.stats, p.active.add(imptx)));
+        statusProvider.setNext(p -> {
+            Set<ImperativeTransaction> newSet = p.active.add(imptx);
+            assert p.active != newSet;
+            return new Status(p.mood, p.action, p.state, p.stats, newSet);
+        });
     }
 
     protected void removeActive(ImperativeTransaction imptx) {
-        statusProvider.setNext(p -> new Status(p.mood, p.action, p.state, p.stats, p.active.remove(imptx)));
+        statusProvider.setNext(p -> {
+            Set<ImperativeTransaction> newSet = p.active.remove(imptx);
+            assert p.active != newSet;
+            return new Status(p.mood, p.action, p.state, p.stats, newSet);
+        });
     }
 
     private void setBusyMood(Action<Universe> action) {
@@ -327,8 +335,8 @@ public class UniverseTransaction extends MutableTransaction {
     protected State run(State state) {
         do {
             startState = state;
-            state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
-            state = super.run(state);
+            state      = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
+            state      = super.run(state);
             universeStatistics.completeForward();
             state = clearOrphans(state);
         } while (!killed && hasBackwardActionsQueued(state));
@@ -346,8 +354,8 @@ public class UniverseTransaction extends MutableTransaction {
     private State clearOrphans(State state) {
         State pre;
         do {
-            pre = state;
-            state = super.run(triggerAction(state, clearOrphans));
+            pre        = state;
+            state      = super.run(triggerAction(state, clearOrphans));
             startState = pre;
         } while (!killed && orphansDetected);
         return state;
@@ -431,11 +439,11 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected void checkConsistency(Universe universe) {
-        LeafTransaction lt = LeafTransaction.getCurrent();
-        State post = lt.state();
+        LeafTransaction lt   = LeafTransaction.getCurrent();
+        State           post = lt.state();
         preState.diff(post, o -> o instanceof Mutable && ((Mutable) o).dCheckConsistency()).forEach(e0 -> {
-            Mutable mutable = (Mutable) e0.getKey();
-            DefaultMap<Setable, Object> values = e0.getValue().b();
+            Mutable                     mutable = (Mutable) e0.getKey();
+            DefaultMap<Setable, Object> values  = e0.getValue().b();
             if (mutable.equals(universe()) || mutable.dHasAncestor(universe())) {
                 MutableClass dClass = mutable.dClass();
                 Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
@@ -501,8 +509,8 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings("rawtypes")
     protected void clearOrphans(Universe universe) {
-        LeafTransaction tx = LeafTransaction.getCurrent();
-        State postState = tx.state();
+        LeafTransaction tx        = LeafTransaction.getCurrent();
+        State           postState = tx.state();
         Map<Object, Map<Setable, Pair<Object, Object>>> orphans = startState//
                 .diff(postState, o -> {
                     if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
@@ -591,9 +599,9 @@ public class UniverseTransaction extends MutableTransaction {
     public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
         addPostAction(Action.of(id, o -> {
-            LeafTransaction tx = ActionTransaction.getCurrent();
-            State pre = tx.state();
-            boolean timeTraveling = tx.universeTransaction().isTimeTraveling();
+            LeafTransaction tx            = ActionTransaction.getCurrent();
+            State           pre           = tx.state();
+            boolean         timeTraveling = tx.universeTransaction().isTimeTraveling();
             n.schedule(() -> n.commit(pre, timeTraveling));
         }));
         return n;
