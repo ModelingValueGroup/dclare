@@ -858,7 +858,6 @@ public class NewableTests {
             Set<TestNewable> lost = created.result().removeAll(objects);
             assertEquals(Set.of(), lost);
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
-            assertTrue(objects.allMatch(o -> Newable.D_SOURCES.get(o).size() > 0));
             for (TestNewable o : objects) {
                 if (o.dClass() == REF && opp.get(o) != null) {
                     assertNotNull(n.get(o));
