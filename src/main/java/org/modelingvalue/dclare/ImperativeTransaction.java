@@ -98,7 +98,6 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void extern2intern() {
         if (pre != state) {
-            CHANGE_NR.set(this, (BiFunction<Long, Long, Long>) Long::sum, 1l);
             State finalState = state;
             DefaultMap<Object, Set<Setable>> finalSetted = setted;
             pre = state;
@@ -149,8 +148,8 @@ public class ImperativeTransaction extends LeafTransaction {
                 pre = state;
             }
             if (last) {
-                universeTransaction().removeActive(this);
                 active = false;
+                universeTransaction().removeActive(this);
             }
         }
     }
@@ -193,14 +192,15 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue, boolean first) {
         if (!Objects.equals(preValue, postValue)) {
-            if (!active) {
-                universeTransaction().addActive(this);
-                active = true;
-            }
             Set<Setable> set = Set.of(property);
             allSetted = allSetted.add(object, set, Set::addAll);
             setted = setted.add(object, set, Set::addAll);
             if (first) {
+                set(this, CHANGE_NR, (BiFunction<Long, Long, Long>) Long::sum, 1l);
+                if (!active) {
+                    active = true;
+                    universeTransaction().addActive(this);
+                }
                 universeTransaction().dummy();
             }
         }

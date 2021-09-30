@@ -38,7 +38,7 @@ public interface Newable extends Mutable {
                                                                                          }
                                                                                      }, plumbing);
     Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), plumbing);
-    Observer<Newable>                                        D_SOURCES_RULE          = NonCheckingObserver.of(D_SOURCES, n -> {
+    Observer<Newable>                                        D_SOURCES_RULE          = Observer.of(D_SOURCES, n -> {
                                                                                          Set<Newable> sources = n.dDirectConstruction() != null ? Set.of(n) : Set.of();
                                                                                          sources = sources.addAll(n.dDerivedConstructions().flatMap(Construction::derivers).flatMap(D_SOURCES::get));
                                                                                          Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(n);
