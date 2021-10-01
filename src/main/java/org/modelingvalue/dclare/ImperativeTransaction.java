@@ -201,7 +201,7 @@ public class ImperativeTransaction extends LeafTransaction {
                     active = true;
                     universeTransaction().addActive(this);
                 }
-                universeTransaction().dummy();
+                universeTransaction().post();
             }
         }
     }

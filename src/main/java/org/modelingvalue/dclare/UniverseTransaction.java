@@ -60,7 +60,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
     private final Action<Universe>                                                                  init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                  dummy                   = Action.of("$dummy");
+    private final Action<Universe>                                                                  post                    = Action.of("$post");
     private final Action<Universe>                                                                  stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
     private final Action<Universe>                                                                  backward                = Action.of("$backward");
     private final Action<Universe>                                                                  forward                 = Action.of("$forward");
@@ -197,7 +197,7 @@ public class UniverseTransaction extends MutableTransaction {
                             state = future.first();
                             future = future.removeFirst();
                         }
-                    } else if (action != dummy) {
+                    } else if (action != post) {
                         history = history.append(state);
                         future = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
@@ -626,8 +626,8 @@ public class UniverseTransaction extends MutableTransaction {
         put(forward);
     }
 
-    public void dummy() {
-        put(dummy);
+    public void post() {
+        put(post);
     }
 
     public State preState() {
