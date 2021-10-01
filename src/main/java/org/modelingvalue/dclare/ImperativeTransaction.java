@@ -23,7 +23,7 @@ import java.util.function.UnaryOperator;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
@@ -31,7 +31,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
-    public static ImperativeTransaction of(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
@@ -39,8 +39,9 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private final Consumer<Runnable>                          scheduler;
     private final TriConsumer<State, State, Boolean>          diffHandler;
-    private final Pair<ImperativeTransaction, String>         actionId     = Pair.of(this, "$toDClare");
+    private final NamedIdentity                               actionId     = NamedIdentity.of(this, "$toDClare");
 
+    private Action<Universe>                                  action;
     private State                                             pre;
     private State                                             state;
     private boolean                                           active;
@@ -50,7 +51,7 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  allSetted;
     private Long                                              lastChangeNr = CHANGE_NR.getDefault();
 
-    protected ImperativeTransaction(Leaf cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
@@ -79,6 +80,10 @@ public class ImperativeTransaction extends LeafTransaction {
         if (isOpen()) {
             super.stop();
         }
+    }
+
+    public final Imperative imperative() {
+        return (Imperative) leaf();
     }
 
     public void schedule(Runnable action) {
@@ -201,7 +206,7 @@ public class ImperativeTransaction extends LeafTransaction {
                     active = true;
                     universeTransaction().addActive(this);
                 }
-                universeTransaction().post();
+                universeTransaction().put(action);
             }
         }
     }
@@ -214,6 +219,14 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public ActionInstance actionInstance() {
         throw new UnsupportedOperationException();
+    }
+
+    protected Action<Universe> getAction() {
+        return action;
+    }
+
+    protected void setAction(Action<Universe> action) {
+        this.action = action;
     }
 
 }

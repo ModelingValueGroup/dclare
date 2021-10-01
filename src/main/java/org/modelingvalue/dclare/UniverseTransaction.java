@@ -60,7 +60,6 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>> nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
     private final Action<Universe>                                                                  init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                  post                    = Action.of("$post");
     private final Action<Universe>                                                                  stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
     private final Action<Universe>                                                                  backward                = Action.of("$backward");
     private final Action<Universe>                                                                  forward                 = Action.of("$forward");
@@ -89,6 +88,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 initialized;
     private boolean                                                                                 killed;
     private boolean                                                                                 timeTraveling;
+    private boolean                                                                                 postAction;
     private boolean                                                                                 handling;                                                                                                   //TODO wire onto MoodManager
     private boolean                                                                                 stopped;                                                                                                    //TODO wire onto MoodManager
     private boolean                                                                                 orphansDetected;
@@ -184,6 +184,7 @@ public class UniverseTransaction extends MutableTransaction {
                 TraceTimer.traceBegin("root");
                 try {
                     timeTraveling = timeTravelingActions.contains(action);
+                    postAction = postActions.contains(action);
                     start(action);
                     if (action == backward) {
                         if (history.size() > 3) {
@@ -197,7 +198,7 @@ public class UniverseTransaction extends MutableTransaction {
                             state = future.first();
                             future = future.removeFirst();
                         }
-                    } else if (action != post) {
+                    } else if (!postAction) {
                         history = history.append(state);
                         future = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
@@ -216,7 +217,9 @@ public class UniverseTransaction extends MutableTransaction {
                             handleTooManyChanges(state);
                         }
                     }
-                    if (!killed && !postActions.isEmpty()) {
+                    if (!killed && postAction) {
+                        state = state.get(() -> run(triggerAction(state, action)));
+                    } else if (!killed && !postActions.isEmpty()) {
                         state = state.get(() -> run(triggerActions(state, postActions)));
                     }
                     if (!killed && inQueue.isEmpty() && isStopped(state)) {
@@ -589,21 +592,25 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public void addDiffHandler(String id, TriConsumer<State, State, Boolean> diffHandler) {
-        addPostAction(Action.of(id, o -> {
+    public Action<Universe> addDiffHandler(String id, TriConsumer<State, State, Boolean> diffHandler) {
+        Action<Universe> action = Action.of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
             diffHandler.accept(tx.universeTransaction().preState(), tx.state(), true);
-        }));
+        });
+        addPostAction(action);
+        return action;
     }
 
     public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
-        addPostAction(Action.of(id, o -> {
+        Action<Universe> action = Action.of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
             State pre = tx.state();
             boolean timeTraveling = tx.universeTransaction().isTimeTraveling();
             n.schedule(() -> n.commit(pre, timeTraveling));
-        }));
+        });
+        n.setAction(action);
+        addPostAction(action);
         return n;
     }
 
@@ -624,10 +631,6 @@ public class UniverseTransaction extends MutableTransaction {
 
     public void forward() {
         put(forward);
-    }
-
-    public void post() {
-        put(post);
     }
 
     public State preState() {
