@@ -15,12 +15,13 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.*;
 
 public class SyncConnectionHandler {
     private final SupplierAndConsumer<String> sac;
-    private final List<SocketSyncConnection>  connectionList = new ArrayList<>();
+    private final List<SocketSyncConnection>  connectionList = new CopyOnWriteArrayList<>();
     private final AsyncConnectorDaemon        asyncConnector = new AsyncConnectorDaemon();
 
     public SyncConnectionHandler(SupplierAndConsumer<String> sac) {
