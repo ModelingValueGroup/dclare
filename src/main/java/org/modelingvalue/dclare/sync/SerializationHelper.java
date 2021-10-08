@@ -23,12 +23,14 @@ import org.modelingvalue.dclare.Setable;
 
 public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
     /////////////////////////////////
+
     Predicate<Mutable> mutableFilter();
 
     Predicate<Setable<M, ?>> setableFilter();
 
+    C getMutableClass(M s);
+
     /////////////////////////////////
-    String serializeClass(C clazz);
 
     String serializeSetable(S setable);
 
@@ -37,12 +39,12 @@ public interface SerializationHelper<C extends MutableClass, M extends Mutable, 
     Object serializeValue(S setable, Object value);
 
     /////////////////////////////////
-    C deserializeClass(String s);
 
     S deserializeSetable(C clazz, String s);
 
     M deserializeMutable(String s);
 
     Object deserializeValue(S setable, Object s);
+
     /////////////////////////////////
 }

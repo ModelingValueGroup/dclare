@@ -78,9 +78,13 @@ public class ModelMaker {
                                                                                                                                                                return s -> s instanceof TestObserved;
                                                                                                                                                            }
 
-                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                                                                                                                            @Override
-                                                                                                                                                           public String serializeClass(TestMutableClass clazz) {
+                                                                                                                                                           public TestMutableClass getMutableClass(TestMutable s) {
+                                                                                                                                                               return s.dClass();
+                                                                                                                                                           }
+
+                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                                                           private String serializeClass(TestMutableClass clazz) {
                                                                                                                                                                return clazz.serializeClass();
                                                                                                                                                            }
 
@@ -100,8 +104,7 @@ public class ModelMaker {
                                                                                                                                                            }
 
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                                                                                                                                                           @Override
-                                                                                                                                                           public TestMutableClass deserializeClass(String s) {
+                                                                                                                                                           private TestMutableClass deserializeClass(String s) {
                                                                                                                                                                return TestMutableClass.existing(s);
                                                                                                                                                            }
 
@@ -120,6 +123,7 @@ public class ModelMaker {
                                                                                                                                                            public Object deserializeValue(TestObserved setable, Object value) {
                                                                                                                                                                return setable.getDeserializeValue().apply(setable, value);
                                                                                                                                                            }
+
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                                                                                                                        };
 

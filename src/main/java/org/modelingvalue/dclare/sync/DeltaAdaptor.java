@@ -282,7 +282,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 break;
             case 2:
                 //noinspection unchecked
-                currentSetable = helper.deserializeSetable((C) currentMutable.dClass(), key);
+                currentSetable = helper.deserializeSetable(helper.getMutableClass(currentMutable), key);
                 break;
             }
             return super.makeMapKey(key);
