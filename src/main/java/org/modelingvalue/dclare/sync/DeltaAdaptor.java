@@ -15,21 +15,14 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ImperativeTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
@@ -254,6 +247,11 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 key = super.stringFromKey(keyObj);
             }
             return key;
+        }
+
+        @Override
+        protected java.util.Map<String, Object> getIntrospectionMap(Object o) {
+            throw new IllegalArgumentException("No serialization found for " + o + " of class " + o.getClass().getSimpleName());
         }
     }
 
