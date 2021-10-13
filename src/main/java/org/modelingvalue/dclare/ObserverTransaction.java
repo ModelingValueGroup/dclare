@@ -20,23 +20,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.NonDeterministicException;
-import org.modelingvalue.dclare.ex.TooManyChangesException;
-import org.modelingvalue.dclare.ex.TooManyObservedException;
+import org.modelingvalue.dclare.ex.*;
 
 public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
@@ -239,14 +227,13 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         T result = post;
         if (observing(object, setable)) {
-            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.result().equals(TRUE)) {
-            //                throw new NullPointerException(setable.toString());
-            //            }
+            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
+                throw new NullPointerException(setable.toString());
+            }
             observe(object, (Observed<O, T>) setable, sets);
             if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
                 T start = startState.get(object, setable);
                 if (pre instanceof Newable || post instanceof Newable) {
-                    // runNonObserving(() -> System.err.println("!!! SET SINGLE !!!! " + object + "." + setable + " = " + pre + "-> " + post));
                     result = (T) singleMatch((Observed) setable, start, pre, post);
                 } else if (isNewableCollection(pre) || isNewableCollection(post)) {
                     result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
