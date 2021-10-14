@@ -227,7 +227,7 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         T result = post;
         if (observing(object, setable)) {
-            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
+            if (((Observed) setable).mandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
                 throw new NullPointerException(setable.toString());
             }
             observe(object, (Observed<O, T>) setable, sets);

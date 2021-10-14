@@ -19,7 +19,6 @@ public enum CoreSetableModifier implements SetableModifier {
     symmetricOpposite,
     containment,
     mandatory,
-    softMandatory,
     synthetic,
     plumbing;
 }
