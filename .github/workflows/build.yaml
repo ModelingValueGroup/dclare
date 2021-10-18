@@ -11,7 +11,7 @@ jobs:
       TOKEN: "${{secrets.ALLREP_TOKEN}}"
       CI: "true"
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v2.3.5
         with:
           fetch-depth: 0
 
