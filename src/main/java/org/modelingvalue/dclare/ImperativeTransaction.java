@@ -16,13 +16,9 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.collections.util.TriConsumer;
 
@@ -41,7 +37,6 @@ public class ImperativeTransaction extends LeafTransaction {
     private final TriConsumer<State, State, Boolean>          diffHandler;
     private final NamedIdentity                               actionId     = NamedIdentity.of(this, "$toDClare");
 
-    private Action<Universe>                                  action;
     private State                                             pre;
     private State                                             state;
     private boolean                                           active;
@@ -206,7 +201,7 @@ public class ImperativeTransaction extends LeafTransaction {
                     active = true;
                     universeTransaction().addActive(this);
                 }
-                universeTransaction().put(action);
+                universeTransaction().commit();
             }
         }
     }
@@ -219,14 +214,6 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public ActionInstance actionInstance() {
         throw new UnsupportedOperationException();
-    }
-
-    protected Action<Universe> getAction() {
-        return action;
-    }
-
-    protected void setAction(Action<Universe> action) {
-        this.action = action;
     }
 
 }

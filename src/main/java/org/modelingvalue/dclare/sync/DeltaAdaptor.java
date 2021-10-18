@@ -40,7 +40,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        this.imperativeTransaction = tx.addImperative("sync-" + name, this::queueDelta, adaptorDaemon, false);
+        this.imperativeTransaction = tx.addImperative(name, this::queueDelta, adaptorDaemon, false);
     }
 
     /**
