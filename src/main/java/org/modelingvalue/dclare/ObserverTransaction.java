@@ -404,30 +404,31 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Observed observed, Object start, Object before, Object after) {
         Map<Reason, Newable> cons = constructions.merge();
-        if (before instanceof Newable && hasNoConstructions((Newable) before, cons)) {
-            return after;
-        } else if (after instanceof Newable && hasNoConstructions((Newable) after, cons)) {
-            return before;
-        } else if (before instanceof Newable && after instanceof Newable && //
-                ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
-            MatchInfo pre = MatchInfo.of((Newable) before, cons);
-            MatchInfo post = MatchInfo.of((Newable) after, cons);
-            // runNonObserving(() -> System.err.println("!!!!!!!!!!!!! " + post + "  " + pre.directions() + "  " + post.directions()));
-            if (pre.directions().noneMatch(post.directions()::contains)) {
-                if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
-                    if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
+        if (before instanceof Newable && after instanceof Newable) {
+            if (hasNoConstructions((Newable) before, cons)) {
+                return after;
+            } else if (hasNoConstructions((Newable) after, cons)) {
+                return before;
+            } else if (((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
+                MatchInfo pre = MatchInfo.of((Newable) before, cons);
+                MatchInfo post = MatchInfo.of((Newable) after, cons);
+                // runNonObserving(() -> System.err.println("!!!!!!!!!!!!! " + post + "  " + pre.directions() + "  " + post.directions()));
+                if (pre.directions().noneMatch(post.directions()::contains)) {
+                    if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
+                        if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
+                            makeTheSame(pre, post);
+                            return before;
+                        } else {
+                            makeTheSame(post, pre);
+                            return after;
+                        }
+                    } else if (!post.isCarvedInStone()) {
                         makeTheSame(pre, post);
                         return before;
                     } else {
                         makeTheSame(post, pre);
                         return after;
                     }
-                } else if (!post.isCarvedInStone()) {
-                    makeTheSame(pre, post);
-                    return before;
-                } else {
-                    makeTheSame(post, pre);
-                    return after;
                 }
             }
         }
