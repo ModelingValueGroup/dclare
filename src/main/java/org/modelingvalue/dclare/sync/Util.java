@@ -17,9 +17,11 @@ package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.*;
 
+import java.math.*;
+
 @SuppressWarnings("unused")
 public class Util {
-    public static final Map<Class<?>, Class<?>>  UNBOX_MAP    = Map.of(
+    public static final Map<Class<?>, Class<?>> UNBOX_MAP  = Map.of(
             Entry.of(Boolean.class, boolean.class),
             Entry.of(Byte.class, byte.class),
             Entry.of(Character.class, char.class),
@@ -29,7 +31,7 @@ public class Util {
             Entry.of(Long.class, long.class),
             Entry.of(Short.class, short.class)
     );
-    public static final Map<Class<?>, Class<?>>  BOX_MAP  = Map.of(
+    public static final Map<Class<?>, Class<?>> BOX_MAP    = Map.of(
             Entry.of(boolean.class, Boolean.class),
             Entry.of(byte.class, Byte.class),
             Entry.of(char.class, Character.class),
@@ -39,7 +41,7 @@ public class Util {
             Entry.of(long.class, Long.class),
             Entry.of(short.class, Short.class)
     );
-    public static final Map<Class<?>, String> PREFIX_MAP = Map.of(
+    public static final Map<Class<?>, String>   PREFIX_MAP = Map.of(
             Entry.of(byte.class, "B"),
             Entry.of(Byte.class, "B"),
             Entry.of(char.class, "C"),
@@ -56,7 +58,9 @@ public class Util {
             Entry.of(Short.class, "S"),
             Entry.of(boolean.class, "Z"),
             Entry.of(Boolean.class, "Z"),
-            Entry.of(String.class, "s")
+            Entry.of(String.class, "s"),
+            Entry.of(BigInteger.class, "II"),
+            Entry.of(BigDecimal.class, "DD")
     );
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +84,7 @@ public class Util {
             String[] split  = s.split("[^0-9]", 2);
             int      length = Integer.parseInt(split[0]);
             parts[i] = split[1].substring(0, length);
-            s = i + 1 == num ? null : split[1].substring(length + 1);
+            s        = i + 1 == num ? null : split[1].substring(length + 1);
         }
         return parts;
     }

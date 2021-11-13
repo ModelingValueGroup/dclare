@@ -18,22 +18,46 @@ package org.modelingvalue.dclare.sync;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.dclare.sync.SerialisationPool.*;
 
+import java.math.*;
 import java.util.stream.*;
 
 @SuppressWarnings("unused")
 public class Converters {
+    public static List<Converter<?>> ALL = List.of(
+            new ByteConverter(),
+            new ShortConverter(),
+            new IntegerConverter(),
+            new LongConverter(),
+            new FloatConverter(),
+            new DoubleConverter(),
+            new CharacterConverter(),
+            new BooleanConverter(),
+
+            new StringConverter(),
+            new ListConverter(),
+            new SetConverter(),
+            new MapConverter(),
+            new BigIntegerConverter(),
+            new BigDecimalConverter(),
+
+            new ImmutableListConverter(),
+            new ImmutableSetConverter(),
+            new ImmutableMapConverter()
+    );
+
+    // Primitive Converters =============================================================
     public static class ByteConverter extends BaseConverter<Byte> {
         public ByteConverter() {
             super(Byte.class);
         }
 
         @Override
-        public String serialize(Object context, Byte o) {
+        public String serialize(Byte o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Byte deserialize(Object context, String s) {
+        public Byte deserialize(String s, Object context) {
             return Byte.valueOf(s);
         }
     }
@@ -44,12 +68,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Short o) {
+        public String serialize(Short o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Short deserialize(Object context, String s) {
+        public Short deserialize(String s, Object context) {
             return Short.valueOf(s);
         }
     }
@@ -60,12 +84,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Integer o) {
+        public String serialize(Integer o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Integer deserialize(Object context, String s) {
+        public Integer deserialize(String s, Object context) {
             return Integer.valueOf(s);
         }
     }
@@ -76,12 +100,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Long o) {
+        public String serialize(Long o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Long deserialize(Object context, String s) {
+        public Long deserialize(String s, Object context) {
             return Long.valueOf(s);
         }
     }
@@ -92,12 +116,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Float o) {
+        public String serialize(Float o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Float deserialize(Object context, String s) {
+        public Float deserialize(String s, Object context) {
             return Float.valueOf(s);
         }
     }
@@ -108,12 +132,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Double o) {
+        public String serialize(Double o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Double deserialize(Object context, String s) {
+        public Double deserialize(String s, Object context) {
             return Double.valueOf(s);
         }
     }
@@ -124,12 +148,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Character o) {
+        public String serialize(Character o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Character deserialize(Object context, String s) {
+        public Character deserialize(String s, Object context) {
             return s.charAt(0);
         }
     }
@@ -140,104 +164,81 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Object context, Boolean o) {
+        public String serialize(Boolean o, Object context) {
             return o.toString();
         }
 
         @Override
-        public Boolean deserialize(Object context, String s) {
+        public Boolean deserialize(String s, Object context) {
             return Boolean.valueOf(s);
         }
     }
 
+    // Java Converters ==================================================================
     public static class StringConverter extends BaseConverter<String> {
         public StringConverter() {
             super(String.class);
         }
 
         @Override
-        public String serialize(Object context, String o) {
+        public String serialize(String o, Object context) {
             return o;
         }
 
         @Override
-        public String deserialize(Object context, String s) {
+        public String deserialize(String s, Object context) {
             return s;
-        }
-    }
-
-    public static class ImmutableListConverter extends BaseConverter<List<?>> {
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        public ImmutableListConverter() {
-            super((Class<List<?>>) (Class) List.class, "immutable-list");
-        }
-
-        @Override
-        public String serialize(Object context, List<?> l) {
-            return JsonIC.toJson(l.map(serialisationPool::serialize).collect(Collectors.toList()));
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public List<?> deserialize(Object context, String string) {
-            List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(e -> serialisationPool.deserialize(e.toString())).toList();
         }
     }
 
     public static class ListConverter extends BaseConverter<java.util.List<?>> {
         @SuppressWarnings({"unchecked", "rawtypes"})
         public ListConverter() {
-            super((Class<java.util.List<?>>) (Class) java.util.List.class, "list");
+            super((Class<java.util.List<?>>) (Class) java.util.List.class);
         }
 
         @Override
-        public String serialize(Object context, java.util.List<?> l) {
+        public String serialize(java.util.List<?> l, Object context) {
             return JsonIC.toJson(l.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public java.util.List<?> deserialize(Object context, String string) {
+        public java.util.List<?> deserialize(String string, Object context) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(o -> serialisationPool.deserialize(o.toString()))
                     .collect(Collectors.toList());
         }
     }
 
-    public static class ImmutableMapConverter extends BaseConverter<Map<?, ?>> {
+    public static class SetConverter extends BaseConverter<java.util.Set<?>> {
         @SuppressWarnings({"unchecked", "rawtypes"})
-        public ImmutableMapConverter() {
-            super((Class<Map<?, ?>>) (Class) Map.class, "immutable-map");
+        public SetConverter() {
+            super((Class<java.util.Set<?>>) (Class) java.util.Set.class);
         }
 
         @Override
-        public String serialize(Object context, Map<?, ?> m) {
-            return JsonIC.toJson(
-                    m.collect(Collectors.toMap(
-                            e -> serialisationPool.serialize(e.getKey(), context),
-                            e -> serialisationPool.serialize(e.getValue(), context)))
-            );
+        public String serialize(java.util.Set<?> s, Object context) {
+            return JsonIC.toJson(s.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
+        @SuppressWarnings("unchecked")
         @Override
-        public Map<?, ?> deserialize(Object context, String string) {
-            Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
-            return m.toMap(e -> Entry.of(
-                    serialisationPool.deserialize(e.getKey().toString()),
-                    serialisationPool.deserialize(e.getValue().toString())
-            ));
+        public java.util.Set<?> deserialize(String string, Object context) {
+            List<Object> l = (List<Object>) JsonIC.fromJson(string);
+            return l.map(o -> serialisationPool.deserialize(o.toString()))
+                    .collect(Collectors.toSet());
         }
     }
 
     public static class MapConverter extends BaseConverter<java.util.Map<?, ?>> {
         @SuppressWarnings({"unchecked", "rawtypes"})
         public MapConverter() {
-            super((Class<java.util.Map<?, ?>>) (Class) java.util.Map.class, "map");
+            super((Class<java.util.Map<?, ?>>) (Class) java.util.Map.class);
         }
 
         @Override
-        public String serialize(Object context, java.util.Map<?, ?> m) {
+        public String serialize(java.util.Map<?, ?> m, Object context) {
             return JsonIC.toJson(
                     m.entrySet()
                             .stream()
@@ -248,7 +249,7 @@ public class Converters {
         }
 
         @Override
-        public java.util.Map<?, ?> deserialize(Object context, String string) {
+        public java.util.Map<?, ?> deserialize(String string, Object context) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
             return m.collect(Collectors.toMap(
                     e -> serialisationPool.deserialize(e.getKey().toString()),
@@ -257,42 +258,99 @@ public class Converters {
         }
     }
 
-    public static class ImmutableSetConverter extends BaseConverter<Set<?>> {
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        public ImmutableSetConverter() {
-            super((Class<Set<?>>) (Class) Set.class, "immutable-set");
+    public static class BigIntegerConverter extends BaseConverter<BigInteger> {
+        public BigIntegerConverter() {
+            super(BigInteger.class);
         }
 
         @Override
-        public String serialize(Object context, Set<?> s) {
+        public String serialize(BigInteger o, Object context) {
+            return o.toString();
+        }
+
+        @Override
+        public BigInteger deserialize(String s, Object context) {
+            return new BigInteger(s);
+        }
+    }
+
+    public static class BigDecimalConverter extends BaseConverter<BigDecimal> {
+        public BigDecimalConverter() {
+            super(BigDecimal.class);
+        }
+
+        @Override
+        public String serialize(BigDecimal o, Object context) {
+            return o.toString();
+        }
+
+        @Override
+        public BigDecimal deserialize(String s, Object context) {
+            return new BigDecimal(s);
+        }
+    }
+
+    // Immutable Collections Converters =================================================
+    public static class ImmutableListConverter extends BaseConverter<List<?>> {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        public ImmutableListConverter() {
+            super((Class<List<?>>) (Class) List.class, "immutableList");
+        }
+
+        @Override
+        public String serialize(List<?> l, Object context) {
+            return JsonIC.toJson(l.map(serialisationPool::serialize).collect(Collectors.toList()));
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public List<?> deserialize(String string, Object context) {
+            List<Object> l = (List<Object>) JsonIC.fromJson(string);
+            return l.map(e -> serialisationPool.deserialize(e.toString())).toList();
+        }
+    }
+
+    public static class ImmutableSetConverter extends BaseConverter<Set<?>> {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        public ImmutableSetConverter() {
+            super((Class<Set<?>>) (Class) Set.class, "immutableSet");
+        }
+
+        @Override
+        public String serialize(Set<?> s, Object context) {
             return JsonIC.toJson(s.map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public Set<?> deserialize(Object context, String string) {
+        public Set<?> deserialize(String string, Object context) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(e -> serialisationPool.deserialize(e.toString())).toSet();
         }
     }
 
-    public static class SetConverter extends BaseConverter<java.util.Set<?>> {
+    public static class ImmutableMapConverter extends BaseConverter<Map<?, ?>> {
         @SuppressWarnings({"unchecked", "rawtypes"})
-        public SetConverter() {
-            super((Class<java.util.Set<?>>) (Class) java.util.Set.class, "set");
+        public ImmutableMapConverter() {
+            super((Class<Map<?, ?>>) (Class) Map.class, "immutableMap");
         }
 
         @Override
-        public String serialize(Object context, java.util.Set<?> s) {
-            return JsonIC.toJson(s.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
+        public String serialize(Map<?, ?> m, Object context) {
+            return JsonIC.toJson(
+                    m.collect(Collectors.toMap(
+                            e -> serialisationPool.serialize(e.getKey(), context),
+                            e -> serialisationPool.serialize(e.getValue(), context)))
+            );
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public java.util.Set<?> deserialize(Object context, String string) {
-            List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(o -> serialisationPool.deserialize(o.toString()))
-                    .collect(Collectors.toSet());
+        public Map<?, ?> deserialize(String string, Object context) {
+            Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
+            return m.toMap(e -> Entry.of(
+                    serialisationPool.deserialize(e.getKey().toString()),
+                    serialisationPool.deserialize(e.getValue().toString())
+            ));
         }
     }
 }

@@ -25,20 +25,19 @@ import java.util.function.*;
 import java.util.stream.*;
 
 public class SerialisationPool {
-    public static final boolean TRACE        = Boolean.getBoolean("TRACE_SERIALIZATION");
-    public static final String  ERROR_PREFIX = "__ERROR__";
+    public static final boolean TRACE = Boolean.getBoolean("TRACE_SERIALIZATION");
 
     public interface Converter<T> {
         char DELIMITER = ':';
 
-        String serialize(Object context, T t);
+        String serialize(T t, Object context);
 
-        T deserialize(Object context, String s);
+        T deserialize(String s, Object context);
 
         Class<? extends T> getClazz();
 
         default String getPrefix() {
-            return getClazz().getSimpleName().toLowerCase();
+            return getClazz().getSimpleName();
         }
 
         default void setPool(@SuppressWarnings("unused") SerialisationPool serialisationPool) {
@@ -51,7 +50,7 @@ public class SerialisationPool {
         protected     SerialisationPool serialisationPool;
 
         protected BaseConverter(Class<T> clazz) {
-            this(clazz, Util.PREFIX_MAP.getOrDefault(clazz, clazz.getSimpleName().toLowerCase()));
+            this(clazz, Util.PREFIX_MAP.getOrDefault(clazz, clazz.getSimpleName()));
         }
 
         protected BaseConverter(Class<T> clazz, String prefix) {
@@ -84,11 +83,26 @@ public class SerialisationPool {
     private       Map<Class<?>, Converter<?>> additionalMappingsCache = Map.of();
 
     public SerialisationPool(Converter<?>... converters) {
-        List<Converter<?>> conv = List.of(converters);
+        this(Arrays.stream(converters));
+    }
+
+    public SerialisationPool(java.util.List<Converter<?>> converters) {
+        this(converters.stream());
+    }
+
+    public SerialisationPool(Stream<Converter<?>> converters) {
+        List<Converter<?>> conv = Collection.of(converters).toList();
         sanityCheck(conv);
         conv.forEach(c -> c.setPool(this));
         deserialiseMap = conv.toMap(c -> Entry.of(c.getPrefix(), c));
         serializeMap   = conv.toMap(c -> Entry.of(c.getClazz(), c));
+        if (TRACE) {
+            System.err.println("serialisation pool vacabulary:");
+            int maxLength = conv.mapToInt(c -> c.getClazz().getName().length()).max().orElse(0);
+            conv.sorted(Comparator.comparing(a -> a.getClazz().getSimpleName()))
+                    .toList() // this toList() should not be needed but is (bug in immutable collections?)
+                    .forEach(c -> System.err.printf("  - %-" + maxLength + "s %s%s\n", c.getClazz().getName(), c.getPrefix(), Converter.DELIMITER));
+        }
     }
 
     private void sanityCheck(List<Converter<?>> conv) {
@@ -101,7 +115,7 @@ public class SerialisationPool {
                         .map(List::of)
         ).toList();
         if (!doublePrefixes.isEmpty()) {
-            throw new IllegalArgumentException("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes);
+            throw problem("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes);
         }
         // NB: keep this next var separate to avoid java compiler error:
         Collection<List<? extends Class<?>>> avoidCompilerError = Collection.of(
@@ -115,11 +129,7 @@ public class SerialisationPool {
         );
         List<List<? extends Class<?>>> doubleClazzes = avoidCompilerError.toList();
         if (!doubleClazzes.isEmpty()) {
-            throw new IllegalArgumentException("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes);
-        }
-        List<String> wrongPrefix = conv.filter(c -> c.getPrefix().equals(ERROR_PREFIX)).map(c -> c.getClazz().getSimpleName()).toList();
-        if (!wrongPrefix.isEmpty()) {
-            throw new IllegalArgumentException("converters can not have a prefix " + ERROR_PREFIX);
+            throw problem("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes);
         }
     }
 
@@ -156,26 +166,21 @@ public class SerialisationPool {
     }
 
     public Object deserialize(String string, Object context) {
-        if (string == null) {
-            return null;
+        if (string == null || string.isBlank()) {
+            throw problem("[DESERIALIZE] " + ("no deserialisation possible for null or empty string"));
         }
-        int i = string.indexOf(Converter.DELIMITER);
-        if (0 < i) {
-            String       prefix    = string.substring(0, i);
-            String       rest      = string.substring(i + 1);
-            Converter<?> converter = deserialiseMap.get(prefix);
-            if (converter != null) {
-                Object value = converter.deserialize(context, rest);
-                if (TRACE) {
-                    System.err.println("[DESERIALIZE] (" + prefix + "," + rest + ") -> " + value);
-                }
-                return value;
-            }
+        int          i         = string.indexOf(Converter.DELIMITER);
+        String       prefix    = i < 0 ? string : string.substring(0, i);
+        String       rest      = i < 0 ? null : string.substring(i + 1);
+        Converter<?> converter = deserialiseMap.get(prefix);
+        if (converter == null) {
+            throw problem("[DESERIALIZE] " + ("missing converter for '" + prefix + "' in \"" + string + "\" (no deserialisation possible)"));
         }
+        Object value = converter.deserialize(rest, context);
         if (TRACE) {
-            System.err.println("[DESERIALIZE] no deserialisation possible for " + string);
+            System.err.println("[DESERIALIZE] (" + prefix + "," + rest + ") -> " + value);
         }
-        return null;
+        return value;
     }
 
     public <T> String serialize(T o) {
@@ -187,10 +192,9 @@ public class SerialisationPool {
         Converter<T> serializer = getConverterFor((Class<T>) o.getClass());
         String string;
         if (serializer == null) {
-            string = ERROR_PREFIX + Converter.DELIMITER + "no Converter for " + o.getClass().getSimpleName();
-        } else {
-            string = serializer.getPrefix() + Converter.DELIMITER + serializer.serialize(context, o);
+            throw problem("[  SERIALIZE] " + ("no Converter for " + o.getClass().getSimpleName()));
         }
+        string = serializer.getPrefix() + Converter.DELIMITER + serializer.serialize(o, context);
         if (TRACE) {
             System.err.println("[  SERIALIZE] " + o + " -> " + string);
         }
@@ -206,5 +210,12 @@ public class SerialisationPool {
     @SuppressWarnings("unchecked")
     private static <T> Converter<T> getValue(Entry<Class<?>, Converter<?>> e) {
         return (Converter<T>) e.getValue();
+    }
+
+    private static IllegalArgumentException problem(String msg) {
+        if (TRACE) {
+            System.err.println(msg);
+        }
+        return new IllegalArgumentException(msg);
     }
 }

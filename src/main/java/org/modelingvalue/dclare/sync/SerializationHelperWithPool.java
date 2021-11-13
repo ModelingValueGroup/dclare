@@ -18,11 +18,22 @@ package org.modelingvalue.dclare.sync;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.SerialisationPool.*;
 
+import java.util.*;
+import java.util.stream.*;
+
 @SuppressWarnings("unused")
 public abstract class SerializationHelperWithPool<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> implements SerializationHelper<C, M, S> {
     protected final SerialisationPool serialisationPool;
 
     public SerializationHelperWithPool(Converter<?>... converters) {
+        serialisationPool = new SerialisationPool(converters);
+    }
+
+    public SerializationHelperWithPool(List<Converter<?>> converters) {
+        serialisationPool = new SerialisationPool(converters);
+    }
+
+    public SerializationHelperWithPool(Stream<Converter<?>> converters) {
         serialisationPool = new SerialisationPool(converters);
     }
 
