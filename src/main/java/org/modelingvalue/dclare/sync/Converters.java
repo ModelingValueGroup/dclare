@@ -52,12 +52,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Byte o, Object context) {
+        public String serialize(Byte o) {
             return o.toString();
         }
 
         @Override
-        public Byte deserialize(String s, Object context) {
+        public Byte deserialize(String s) {
             return Byte.valueOf(s);
         }
     }
@@ -68,12 +68,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Short o, Object context) {
+        public String serialize(Short o) {
             return o.toString();
         }
 
         @Override
-        public Short deserialize(String s, Object context) {
+        public Short deserialize(String s) {
             return Short.valueOf(s);
         }
     }
@@ -84,12 +84,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Integer o, Object context) {
+        public String serialize(Integer o) {
             return o.toString();
         }
 
         @Override
-        public Integer deserialize(String s, Object context) {
+        public Integer deserialize(String s) {
             return Integer.valueOf(s);
         }
     }
@@ -100,12 +100,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Long o, Object context) {
+        public String serialize(Long o) {
             return o.toString();
         }
 
         @Override
-        public Long deserialize(String s, Object context) {
+        public Long deserialize(String s) {
             return Long.valueOf(s);
         }
     }
@@ -116,12 +116,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Float o, Object context) {
+        public String serialize(Float o) {
             return o.toString();
         }
 
         @Override
-        public Float deserialize(String s, Object context) {
+        public Float deserialize(String s) {
             return Float.valueOf(s);
         }
     }
@@ -132,12 +132,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Double o, Object context) {
+        public String serialize(Double o) {
             return o.toString();
         }
 
         @Override
-        public Double deserialize(String s, Object context) {
+        public Double deserialize(String s) {
             return Double.valueOf(s);
         }
     }
@@ -148,12 +148,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Character o, Object context) {
+        public String serialize(Character o) {
             return o.toString();
         }
 
         @Override
-        public Character deserialize(String s, Object context) {
+        public Character deserialize(String s) {
             return s.charAt(0);
         }
     }
@@ -164,12 +164,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Boolean o, Object context) {
+        public String serialize(Boolean o) {
             return o.toString();
         }
 
         @Override
-        public Boolean deserialize(String s, Object context) {
+        public Boolean deserialize(String s) {
             return Boolean.valueOf(s);
         }
     }
@@ -181,12 +181,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(String o, Object context) {
+        public String serialize(String o) {
             return o;
         }
 
         @Override
-        public String deserialize(String s, Object context) {
+        public String deserialize(String s) {
             return s;
         }
     }
@@ -198,13 +198,13 @@ public class Converters {
         }
 
         @Override
-        public String serialize(java.util.List<?> l, Object context) {
+        public String serialize(java.util.List<?> l) {
             return JsonIC.toJson(l.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public java.util.List<?> deserialize(String string, Object context) {
+        public java.util.List<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(o -> serialisationPool.deserialize(o.toString()))
                     .collect(Collectors.toList());
@@ -218,13 +218,13 @@ public class Converters {
         }
 
         @Override
-        public String serialize(java.util.Set<?> s, Object context) {
+        public String serialize(java.util.Set<?> s) {
             return JsonIC.toJson(s.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public java.util.Set<?> deserialize(String string, Object context) {
+        public java.util.Set<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(o -> serialisationPool.deserialize(o.toString()))
                     .collect(Collectors.toSet());
@@ -249,7 +249,7 @@ public class Converters {
         }
 
         @Override
-        public java.util.Map<?, ?> deserialize(String string, Object context) {
+        public java.util.Map<?, ?> deserialize(String string) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
             return m.collect(Collectors.toMap(
                     e -> serialisationPool.deserialize(e.getKey().toString()),
@@ -264,12 +264,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(BigInteger o, Object context) {
+        public String serialize(BigInteger o) {
             return o.toString();
         }
 
         @Override
-        public BigInteger deserialize(String s, Object context) {
+        public BigInteger deserialize(String s) {
             return new BigInteger(s);
         }
     }
@@ -280,12 +280,12 @@ public class Converters {
         }
 
         @Override
-        public String serialize(BigDecimal o, Object context) {
+        public String serialize(BigDecimal o) {
             return o.toString();
         }
 
         @Override
-        public BigDecimal deserialize(String s, Object context) {
+        public BigDecimal deserialize(String s) {
             return new BigDecimal(s);
         }
     }
@@ -298,13 +298,13 @@ public class Converters {
         }
 
         @Override
-        public String serialize(List<?> l, Object context) {
+        public String serialize(List<?> l) {
             return JsonIC.toJson(l.map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public List<?> deserialize(String string, Object context) {
+        public List<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(e -> serialisationPool.deserialize(e.toString())).toList();
         }
@@ -317,13 +317,13 @@ public class Converters {
         }
 
         @Override
-        public String serialize(Set<?> s, Object context) {
+        public String serialize(Set<?> s) {
             return JsonIC.toJson(s.map(serialisationPool::serialize).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public Set<?> deserialize(String string, Object context) {
+        public Set<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
             return l.map(e -> serialisationPool.deserialize(e.toString())).toSet();
         }
@@ -345,7 +345,7 @@ public class Converters {
         }
 
         @Override
-        public Map<?, ?> deserialize(String string, Object context) {
+        public Map<?, ?> deserialize(String string) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
             return m.toMap(e -> Entry.of(
                     serialisationPool.deserialize(e.getKey().toString()),

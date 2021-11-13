@@ -21,18 +21,30 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.*;
 
 import java.util.*;
-import java.util.function.*;
 import java.util.stream.*;
 
 public class SerialisationPool {
     public static final boolean TRACE = Boolean.getBoolean("TRACE_SERIALIZATION");
 
+    @SuppressWarnings("unused")
     public interface Converter<T> {
         char DELIMITER = ':';
 
-        String serialize(T t, Object context);
+        default String serialize(T t, Object context) {
+            return serialize(t);
+        }
 
-        T deserialize(String s, Object context);
+        default String serialize(T t) {
+            throw new IllegalArgumentException("deserialize(String) should be implemented in " + getClass().getSimpleName());
+        }
+
+        default T deserialize(String s, Object context) {
+            return deserialize(s);
+        }
+
+        default T deserialize(String s) {
+            throw new IllegalArgumentException("deserialize(String) should be implemented in " + getClass().getSimpleName());
+        }
 
         Class<? extends T> getClazz();
 
@@ -40,7 +52,7 @@ public class SerialisationPool {
             return getClazz().getSimpleName();
         }
 
-        default void setPool(@SuppressWarnings("unused") SerialisationPool serialisationPool) {
+        default void setPool(SerialisationPool serialisationPool) {
         }
     }
 
@@ -131,10 +143,6 @@ public class SerialisationPool {
         if (!doubleClazzes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes);
         }
-    }
-
-    private SerialisationPool add(Converter<?>... converters) {
-        return new SerialisationPool(Stream.concat(deserialiseMap.toValues(), Arrays.stream(converters)).toArray((IntFunction<Converter<?>[]>) Converter[]::new));
     }
 
     private <T> Converter<T> getConverterFor(Class<T> cls) {
