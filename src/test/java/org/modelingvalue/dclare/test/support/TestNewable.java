@@ -20,13 +20,7 @@ import java.util.function.Consumer;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.Construction;
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Newable;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
@@ -90,8 +84,9 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     @Override
-    public Collection<? extends Observer<?>> dMutableObservers() {
-        return Collection.concat(Newable.super.dMutableObservers(), dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
+    public Collection<? extends Observer<?>> dAllObservers() {
+        return Collection.concat(Newable.super.dAllObservers(), //
+                dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
     }
 
     @Override

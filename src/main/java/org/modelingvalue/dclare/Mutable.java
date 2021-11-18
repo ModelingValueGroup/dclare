@@ -19,10 +19,7 @@ import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
@@ -43,11 +40,11 @@ public interface Mutable extends TransactionClass {
     Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,                     //
-            added -> added.trigger(obj),                                                                                                                                                                                            //
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
+            added -> added.trigger(obj),                                                                                                                                                                                     //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
+    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
 
     @SuppressWarnings("unchecked")
     Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
@@ -135,8 +132,8 @@ public interface Mutable extends TransactionClass {
 
     MutableClass dClass();
 
-    default Collection<? extends Observer<?>> dMutableObservers() {
-        return Set.of();
+    default Collection<? extends Observer<?>> dAllObservers() {
+        return dClass().dObservers();
     }
 
     @SuppressWarnings("unchecked")
