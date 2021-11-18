@@ -17,23 +17,11 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Internable;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.OutOfScopeException;
-import org.modelingvalue.dclare.ex.ReferencedOrphanException;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
 public class Setable<O, T> extends Getable<O, T> {
 
@@ -65,6 +53,8 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Supplier<Setable<O, Set<?>>>           scope;
     @SuppressWarnings("rawtypes")
     private final Constant<T, Entry<Setable, Object>>    internal;
+    @SuppressWarnings("rawtypes")
+    private final Entry<Setable, Object>                 nullEntry;
     private final boolean                                plumbing;
     private final boolean                                synthetic;
 
@@ -90,47 +80,19 @@ public class Setable<O, T> extends Getable<O, T> {
         if (containment && opposite != null) {
             throw new Error("The containment setable " + this + " has an opposite");
         }
-        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.nullEntry = Entry.of(this, null);
+        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> {
+            @SuppressWarnings("rawtypes")
+            Entry<Setable, Object> e = Entry.of(this, v);
+            State.deduplicate(e);
+            return e;
+        });
+
     }
 
     @SuppressWarnings("rawtypes")
     protected Entry<Setable, Object> entry(T value, DefaultMap<Setable, Object> properties) {
-        if (value != null && Internable.isInternable(value)) {
-            return internal.get(value);
-        } else {
-            Entry<Setable, Object> entry = Entry.of(this, value);
-            if (properties != null) {
-                deduplicate(entry, properties);
-            }
-            return entry;
-        }
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    protected void deduplicate(Entry e1, DefaultMap<?, ?> map2) {
-        TraceTimer.traceBegin("deduplicate");
-        try {
-            Object v1 = e1.getValue();
-            if (v1 instanceof DefaultMap) {
-                if (((DefaultMap<?, ?>) v1).size() < 100) {
-                    for (Entry e3 : (DefaultMap<?, ?>) v1) {
-                        deduplicate(e3, map2);
-                    }
-                }
-            } else if (map2.size() < 100) {
-                for (Entry e2 : map2) {
-                    Object v2 = e2.getValue();
-                    if (v2 instanceof DefaultMap) {
-                        deduplicate(e1, (DefaultMap) v2);
-                    } else {
-                        e1.setValueIfEqual(v2);
-                    }
-                }
-            }
-        } finally {
-            TraceTimer.traceEnd("deduplicate");
-        }
-
+        return value == null ? nullEntry : internal.get(value);
     }
 
     public boolean isReference() {

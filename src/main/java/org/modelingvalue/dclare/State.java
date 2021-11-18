@@ -18,22 +18,10 @@ package org.modelingvalue.dclare;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.NotMergeableException;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TriConsumer;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -46,6 +34,14 @@ public class State implements Serializable {
     public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
     public static final BinaryOperator<String>                          CONCAT_COMMA       = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
     private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    private static final Constant<Object, Object>                       INTERNAL           = Constant.of("$INTERNAL", v -> {
+                                                                                               if (v instanceof DefaultMap) {
+                                                                                                   ((DefaultMap<?, ?>) v).forEach(State::deduplicate);
+                                                                                               } else if (v instanceof Map) {
+                                                                                                   ((Map<?, ?>) v).forEach(State::deduplicate);
+                                                                                               }
+                                                                                               return v;
+                                                                                           });
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
@@ -189,7 +185,7 @@ public class State implements Serializable {
             if (changeHandler != null) {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
-                        p.getKey().deduplicate(p, props);
+                        deduplicate(p);
                         changeHandler.handleChange(o, ps, p, pss);
                     }
                 }
@@ -198,6 +194,11 @@ public class State implements Serializable {
         }, maps, maps.length);
         return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
 
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <K, V> void deduplicate(Entry<K, V> e) {
+        e.setValueIfEqual((V) INTERNAL.get(e.getValue()));
     }
 
     @Override
