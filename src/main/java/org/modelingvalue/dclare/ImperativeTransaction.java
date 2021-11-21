@@ -19,8 +19,7 @@ import java.util.Objects;
 import java.util.function.*;
 
 import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.NamedIdentity;
-import org.modelingvalue.collections.util.TriConsumer;
+import org.modelingvalue.collections.util.*;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -35,7 +34,6 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private final Consumer<Runnable>                          scheduler;
     private final TriConsumer<State, State, Boolean>          diffHandler;
-    private final NamedIdentity                               actionId     = NamedIdentity.of(this, "$toDClare");
 
     private State                                             pre;
     private State                                             state;
@@ -102,7 +100,7 @@ public class ImperativeTransaction extends LeafTransaction {
             DefaultMap<Object, Set<Setable>> finalSetted = setted;
             pre = state;
             setted = SETTED_MAP;
-            universeTransaction().put(actionId, () -> {
+            universeTransaction().put(NamedIdentity.of(Pair.of(this, lastChangeNr), "$toDClare"), () -> {
                 try {
                     finalSetted.forEachOrdered(e -> {
                         DefaultMap<Setable, Object> props = finalState.getProperties(e.getKey());

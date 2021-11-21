@@ -81,18 +81,26 @@ public class Setable<O, T> extends Getable<O, T> {
             throw new Error("The containment setable " + this + " has an opposite");
         }
         this.nullEntry = Entry.of(this, null);
-        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> {
-            @SuppressWarnings("rawtypes")
-            Entry<Setable, Object> e = Entry.of(this, v);
-            State.deduplicate(e);
-            return e;
-        });
-
+        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
     }
 
     @SuppressWarnings("rawtypes")
     protected Entry<Setable, Object> entry(T value, DefaultMap<Setable, Object> properties) {
-        return value == null ? nullEntry : internal.get(value);
+        if (value == null) {
+            return nullEntry;
+        } else if (Internable.isInternable(value)) {
+            return internal.get(value);
+        } else {
+            Entry<Setable, Object> e = Entry.of(this, value);
+            if (deduplicate(value)) {
+                State.deduplicate(e);
+            }
+            return e;
+        }
+    }
+
+    protected boolean deduplicate(T value) {
+        return value instanceof ContainingCollection;
     }
 
     public boolean isReference() {

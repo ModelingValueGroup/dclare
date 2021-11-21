@@ -197,8 +197,8 @@ public class State implements Serializable {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <K, V> void deduplicate(Entry<K, V> e) {
-        e.setValueIfEqual((V) INTERNAL.get(e.getValue()));
+    public static <K, V> boolean deduplicate(Entry<K, V> e) {
+        return e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
     }
 
     @Override

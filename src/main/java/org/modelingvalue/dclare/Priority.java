@@ -61,6 +61,11 @@ public enum Priority implements Internable {
         }
 
         @Override
+        protected boolean deduplicate(Set<T> value) {
+            return false;
+        }
+
+        @Override
         public String toString() {
             return getClass().getSimpleName() + super.toString().substring(4);
         }

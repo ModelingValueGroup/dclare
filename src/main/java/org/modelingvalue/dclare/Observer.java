@@ -201,6 +201,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         protected Traces(Object id) {
             super(id, Set.of(), null, null, null);
         }
+
+        @Override
+        protected boolean deduplicate(Set<ObserverTrace> value) {
+            return false;
+        }
+
     }
 
     @SuppressWarnings("rawtypes")
@@ -262,6 +268,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
 
         @Override
+        protected boolean deduplicate(Pair<Instant, Throwable> value) {
+            return false;
+        }
+
+        @Override
         public Set<ConsistencyError> checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
             return p != null ? Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
         }
@@ -292,6 +303,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             }, CoreSetableModifier.plumbing);
         }
 
+        //        @Override
+        //        protected boolean isInternalized(Map<Reason, Newable> value) {
+        //            return false;
+        //        }
+
         @Override
         public String toString() {
             return getClass().getSimpleName() + ":" + super.toString();
@@ -308,6 +324,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private PreConstructed(Observer observer) {
             super(observer, Map.of(), null, null, null, CoreSetableModifier.plumbing);
         }
+
+        //        @Override
+        //        protected boolean isInternalized(Map<Reason, Newable> value) {
+        //            return false;
+        //        }
 
         @Override
         public String toString() {
