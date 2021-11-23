@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static java.math.BigInteger.*;
+import org.modelingvalue.dclare.Constant;
 
-import java.math.*;
+import java.math.BigInteger;
 
-import org.modelingvalue.dclare.*;
+import static java.math.BigInteger.ZERO;
 
 public class Fibonacci {
     static final BigInteger ONE = BigInteger.valueOf(1);

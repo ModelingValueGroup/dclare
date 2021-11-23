@@ -22,7 +22,7 @@ public final class ReferencedOrphanException extends ConsistencyError {
 
     private static final long serialVersionUID = -6687018038130352922L;
 
-    private final Object      referenced;
+    private final Object referenced;
 
     public ReferencedOrphanException(Object object, Setable<?, ?> setable, Object referenced) {
         super(object, setable, 4, "Property '" + setable + "' of object '" + object + "' references orphan '" + referenced + "'");

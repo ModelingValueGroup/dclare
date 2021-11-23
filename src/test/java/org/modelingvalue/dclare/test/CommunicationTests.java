@@ -15,12 +15,6 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWaitAllForIdle;
-
-import java.io.IOException;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -30,6 +24,12 @@ import org.modelingvalue.dclare.test.support.CommunicationPeer;
 import org.modelingvalue.dclare.test.support.ModelMaker;
 import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
+
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWaitAllForIdle;
 
 public class CommunicationTests {
     static {
@@ -43,10 +43,10 @@ public class CommunicationTests {
     //@RepeatedTest(50)
     @Test
     public void universeSyncWithinOneJVM() {
-        ModelMaker a = new ModelMaker("a", false);
+        ModelMaker       a        = new ModelMaker("a", false);
         TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a);
 
-        ModelMaker b = new ModelMaker("b", true);
+        ModelMaker       b        = new ModelMaker("b", true);
         TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b);
 
         CommunicationHelper.hookupTransportDaemon("a->b", aAdaptor, bAdaptor);
@@ -105,7 +105,7 @@ public class CommunicationTests {
     @Test
     @Disabled
     public void universeSyncBetweenJVMs() throws IOException {
-        ModelMaker mmMain = new ModelMaker("mmMain", false);
+        ModelMaker       mmMain        = new ModelMaker("mmMain", false);
         TestDeltaAdaptor mmMainAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMain);
 
         PeerTester peer = new PeerTester(CommunicationPeer.class) {

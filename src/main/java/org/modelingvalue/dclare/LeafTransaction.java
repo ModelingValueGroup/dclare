@@ -15,15 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
+
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -106,7 +106,7 @@ public abstract class LeafTransaction extends Transaction {
             if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
                 set(container, Priority.backward.children, Set::remove, object);
             }
-            object = container;
+            object    = container;
             container = dParent(object);
         }
     }

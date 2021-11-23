@@ -19,11 +19,11 @@ import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Leaf implements TransactionClass, Feature {
 
-    private final Object    id;
+    private final Object   id;
     private final Priority initPriority;
 
     protected Leaf(Object id, Priority initPriority) {
-        this.id = id;
+        this.id           = id;
         this.initPriority = initPriority;
     }
 

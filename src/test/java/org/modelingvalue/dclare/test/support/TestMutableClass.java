@@ -15,9 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
@@ -27,6 +24,9 @@ import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.Setable;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestMutableClass implements MutableClass {
@@ -41,14 +41,14 @@ public class TestMutableClass implements MutableClass {
         return new TestMutableClass(id, setables);
     }
 
-    private final AtomicInteger                counter = new AtomicInteger(0);
-    private final Object                       id;
-    private Set<Setable<? extends Mutable, ?>> setables;
-    private Set<Observer<?>>                   observers;
+    private final AtomicInteger                      counter = new AtomicInteger(0);
+    private final Object                             id;
+    private       Set<Setable<? extends Mutable, ?>> setables;
+    private       Set<Observer<?>>                   observers;
 
     @SuppressWarnings("unchecked")
     protected TestMutableClass(Object id, Setable[] setables) {
-        this.id = id;
+        this.id       = id;
         this.setables = Set.of();
         for (int i = 0; i < setables.length; i++) {
             this.setables = this.setables.add(setables[i]);

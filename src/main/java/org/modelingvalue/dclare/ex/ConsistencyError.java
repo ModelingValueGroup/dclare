@@ -26,15 +26,15 @@ public abstract class ConsistencyError extends RuntimeException implements Compa
 
     protected ConsistencyError(Object object, Feature feature, int severity, String message) {
         super(message);
-        this.object = object;
-        this.feature = feature;
+        this.object   = object;
+        this.feature  = feature;
         this.severity = severity;
     }
 
     protected ConsistencyError(Object object, Feature feature, int severity, Throwable t) {
         super(t);
-        this.object = object;
-        this.feature = feature;
+        this.object   = object;
+        this.feature  = feature;
         this.severity = severity;
     }
 

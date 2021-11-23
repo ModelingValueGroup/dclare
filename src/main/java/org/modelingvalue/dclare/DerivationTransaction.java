@@ -15,14 +15,14 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
 
 public class DerivationTransaction extends ReadOnlyTransaction {
 
@@ -72,10 +72,10 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T> T derive(O object, Observed<O, T> observed) {
-        Constant<O, T> constant = observed.constant();
+        Constant<O, T>  constant        = observed.constant();
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
         if (!constantState.isSet(leafTransaction, object, constant)) {
-            Pair<Object, Observed> slot = Pair.of(object, observed);
+            Pair<Object, Observed>      slot    = Pair.of(object, observed);
             Set<Pair<Object, Observed>> derived = DERIVED.get();
             if (derived.contains(slot)) {
                 return observed.getDefault();

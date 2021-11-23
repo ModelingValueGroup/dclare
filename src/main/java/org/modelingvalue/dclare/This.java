@@ -15,26 +15,26 @@
 
 package org.modelingvalue.dclare;
 
-import java.io.Serializable;
-
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
+import java.io.Serializable;
+
 public final class This implements Mutable, Internable, Serializable {
 
-    private static final long         serialVersionUID = 5000610308072466985L;
+    private static final long serialVersionUID = 5000610308072466985L;
 
-    private static final MutableClass THIS_CLASS       = new MutableClass() {
-                                                           @Override
-                                                           public Set<? extends Observer<?>> dObservers() {
-                                                               return Set.of();
-                                                           }
+    private static final MutableClass THIS_CLASS = new MutableClass() {
+        @Override
+        public Set<? extends Observer<?>> dObservers() {
+            return Set.of();
+        }
 
-                                                           @Override
-                                                           public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
-                                                               return Set.of();
-                                                           }
-                                                       };
+        @Override
+        public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
+            return Set.of();
+        }
+    };
 
     public This() {
         super();

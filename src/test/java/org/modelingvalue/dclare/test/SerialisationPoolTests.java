@@ -15,15 +15,24 @@
 
 package org.modelingvalue.dclare.test;
 
-import org.junit.jupiter.api.*;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.dclare.*;
-import org.modelingvalue.dclare.sync.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.sync.Converters;
+import org.modelingvalue.dclare.sync.SerializationHelperWithPool;
 
-import java.math.*;
-import java.util.function.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.function.Predicate;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SerialisationPoolTests {
     private static final String BIG_INTEGER_VALUE = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";

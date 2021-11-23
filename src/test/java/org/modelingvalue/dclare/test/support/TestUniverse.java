@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.LeafTransaction;
@@ -25,6 +23,8 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
@@ -35,13 +35,13 @@ public class TestUniverse extends TestMutable implements Universe {
         return new TestUniverse(id, clazz);
     }
 
-    private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
+    private static final Setable<TestUniverse, Long> DUMMY = Setable.of("$DUMMY", 0l);
 
-    private final TestScheduler                      scheduler = TestScheduler.of();
-    private final AtomicInteger                      counter   = new AtomicInteger(0);
+    private final TestScheduler scheduler = TestScheduler.of();
+    private final AtomicInteger counter   = new AtomicInteger(0);
 
-    private UniverseTransaction                      universeTransaction;
-    private ImperativeTransaction                    imperativeTransaction;
+    private UniverseTransaction   universeTransaction;
+    private ImperativeTransaction imperativeTransaction;
 
     private TestUniverse(Object id, TestMutableClass clazz) {
         super(id, clazz);
@@ -51,7 +51,7 @@ public class TestUniverse extends TestMutable implements Universe {
     public void init() {
         scheduler.start();
         Universe.super.init();
-        universeTransaction = LeafTransaction.getCurrent().universeTransaction();
+        universeTransaction   = LeafTransaction.getCurrent().universeTransaction();
         imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {

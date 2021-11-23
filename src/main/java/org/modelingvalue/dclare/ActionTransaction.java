@@ -15,11 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.ConcurrentModificationException;
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -33,9 +28,14 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
+import java.util.ConcurrentModificationException;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
+
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
     private final CurrentState currentSate = new CurrentState();
-    private State              preState;
+    private       State        preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -175,7 +175,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
-        byte cnr = get(universe, Mutable.D_CHANGE_NR);
+        byte     cnr      = get(universe, Mutable.D_CHANGE_NR);
         while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
             changed = dParent(changed);
         }

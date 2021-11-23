@@ -15,17 +15,26 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
-import org.modelingvalue.dclare.sync.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 public abstract class PeerTester extends WorkDaemon<String> {
     private final AtomicReference<String> lastLine = new AtomicReference<>("");
@@ -38,25 +47,25 @@ public abstract class PeerTester extends WorkDaemon<String> {
         super("PEER-" + mainClass.getName());
         process = new ProcessBuilder("java", "-cp", getClassPath(), mainClass.getName()).start();
 
-        inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
+        inSucker  = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
         errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
-        out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        out       = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
 
         CommunicationHelper.add(this);
         start();
     }
 
     public String getClassPath() {
-        List<String> cp = new ArrayList<>();
+        List<String> cp = List.of();
 
         String classLoaderRender = getClass().getClassLoader().toString();
         if (classLoaderRender.startsWith("AntClassLoader[")) {
             // the AntClassLoader can have classpath elements that are not in the java.class.path property
             // luckely it renders its classpath in a toString()!
             String[] classPath = classLoaderRender.replaceAll("AntClassLoader\\[", "").replaceAll("]", "").split(":");
-            cp.addAll(Arrays.stream(classPath).collect(Collectors.toList()));
+            cp = cp.addAll(Collection.of(classPath));
         }
-        cp.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).collect(Collectors.toList()));
+        cp = cp.addAll(Collection.of(System.getProperty("java.class.path").split(":")));
         return String.join(":", cp);
     }
 

@@ -15,13 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
-
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -34,6 +27,13 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
+
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 
 public class Setable<O, T> extends Getable<O, T> {
 
@@ -68,15 +68,15 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
 
-    private Boolean                                      isReference;
-    private Constant<O, T>                               constant;
+    private Boolean        isReference;
+    private Constant<O, T> constant;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.plumbing = CoreSetableModifier.plumbing.in(modifiers);
+        this.plumbing    = CoreSetableModifier.plumbing.in(modifiers);
         this.containment = CoreSetableModifier.containment.in(modifiers);
-        this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
-        this.changed = changed;
+        this.synthetic   = CoreSetableModifier.synthetic.in(modifiers);
+        this.changed     = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
                 throw new Error("The setable " + this + " is already a symetric-opposite");

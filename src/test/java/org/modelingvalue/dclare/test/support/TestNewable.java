@@ -15,12 +15,18 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.function.Consumer;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Construction;
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Newable;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Observer;
+
+import java.util.function.Consumer;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {

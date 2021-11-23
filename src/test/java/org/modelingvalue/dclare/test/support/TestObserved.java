@@ -15,9 +15,6 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.QuadConsumer;
@@ -26,8 +23,11 @@ import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.SetableModifier;
 
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+
 public class TestObserved<O, T> extends Observed<O, T> {
-    private static Map<Object, TestObserved<?, ?>>          staticObservedMap = Map.of();
+    private static Map<Object, TestObserved<?, ?>> staticObservedMap = Map.of();
 
     private final BiFunction<TestObserved<O, T>, T, Object> serializeValue;
     private final BiFunction<TestObserved<O, T>, Object, T> deserializeValue;
@@ -43,7 +43,7 @@ public class TestObserved<O, T> extends Observed<O, T> {
 
     protected TestObserved(Object id, BiFunction<TestObserved<O, T>, T, Object> serializeValue, BiFunction<TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.serializeValue = serializeValue;
+        this.serializeValue   = serializeValue;
         this.deserializeValue = deserializeValue;
         synchronized (TestObserved.class) {
             staticObservedMap = staticObservedMap.put(id, this);

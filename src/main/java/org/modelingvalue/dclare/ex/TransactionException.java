@@ -15,16 +15,14 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.TransactionClass;
 
-import java.util.*;
+import java.util.Arrays;
 
 @SuppressWarnings("unused")
 public final class TransactionException extends RuntimeException {
-
     private static final long serialVersionUID = 4787416569147173605L;
-
-    protected static final int MAX_STACK_DEPTH = Integer.getInteger("MAX_STACK_DEPTH", 4);
+    private static final int  MAX_STACK_DEPTH  = Integer.getInteger("MAX_STACK_DEPTH", 4);
 
     private final TransactionClass cls;
 
@@ -70,5 +68,4 @@ public final class TransactionException extends RuntimeException {
         }
         return t;
     }
-
 }

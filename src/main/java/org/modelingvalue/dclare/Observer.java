@@ -15,16 +15,23 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.*;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
@@ -63,18 +70,18 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, action, direction, initPriority);
     }
 
-    public final Traces                         traces;
-    private final ExceptionSetable              exception;
-    private final Observerds                    observeds;
-    private final Constructed                   constructed;
-    private final PreConstructed                preConstructed;
+    public final  Traces             traces;
+    private final ExceptionSetable   exception;
+    private final Observerds         observeds;
+    private final Constructed        constructed;
+    private final PreConstructed     preConstructed;
     @SuppressWarnings("rawtypes")
-    private final Set<Setable<O, ?>>            targets;
+    private final Set<Setable<O, ?>> targets;
 
-    private long                                runCount     = -1;
-    private int                                 instances;
-    private int                                 changes;
-    private boolean                             stopped;
+    private long    runCount = -1;
+    private int     instances;
+    private int     changes;
+    private boolean stopped;
 
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -110,12 +117,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable<O, ?>> targets) {
         super(id, action, direction, initPriority);
-        traces = new Traces(Pair.of(this, "TRACES"));
-        observeds = new Observerds(this);
-        exception = ExceptionSetable.of(this);
-        constructed = Constructed.of(this);
+        traces         = new Traces(Pair.of(this, "TRACES"));
+        observeds      = new Observerds(this);
+        exception      = ExceptionSetable.of(this);
+        constructed    = Constructed.of(this);
         preConstructed = PreConstructed.of(this);
-        this.targets = targets;
+        this.targets   = targets;
     }
 
     public Observerds observeds() {
@@ -161,8 +168,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         long runCount = stats.runCount();
         if (this.runCount != runCount) {
             this.runCount = runCount;
-            this.changes = 0;
-            this.stopped = false;
+            this.changes  = 0;
+            this.stopped  = false;
         }
     }
 
@@ -278,7 +285,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Newable before = pre.get(reason);
-                    Newable after = post.get(reason);
+                    Newable after  = post.get(reason);
                     if (!Objects.equals(before, after)) {
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {

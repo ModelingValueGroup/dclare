@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.Setable;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestNewableClass extends TestMutableClass {
@@ -35,7 +35,7 @@ public class TestNewableClass extends TestMutableClass {
 
     protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, Setable... setables) {
         super(id, setables);
-        this.identity = identity;
+        this.identity  = identity;
         this.direction = direction;
     }
 

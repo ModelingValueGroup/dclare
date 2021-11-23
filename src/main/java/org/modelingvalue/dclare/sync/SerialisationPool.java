@@ -16,15 +16,15 @@
 package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.*;
 
-import java.util.*;
-import java.util.stream.*;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class SerialisationPool {
-    public static final boolean TRACE = Boolean.getBoolean("TRACE_SERIALIZATION");
+    public static final boolean TRACE_SERIALIZATION = Boolean.getBoolean("TRACE_SERIALIZATION");
 
     @SuppressWarnings("unused")
     public interface Converter<T> {
@@ -100,15 +100,11 @@ public class SerialisationPool {
     private       Map<Class<?>, Converter<?>> additionalMappingsCache = Map.of();
 
     public SerialisationPool(Converter<?>... converters) {
-        this(Arrays.stream(converters));
+        this(Collection.of(converters));
     }
 
-    public SerialisationPool(java.util.List<Converter<?>> converters) {
-        this(converters.stream());
-    }
-
-    public SerialisationPool(Stream<Converter<?>> converters) {
-        List<Converter<?>> conv = Collection.of(converters).toList();
+    public SerialisationPool(Collection<Converter<?>> converters) {
+        List<Converter<?>> conv = converters.toList();
         sanityCheck(conv);
         conv.forEach(c -> c.setPool(this));
         deserialiseMap = conv.toMap(c -> Entry.of(c.getPrefix(), c));
@@ -116,7 +112,7 @@ public class SerialisationPool {
     }
 
     private void sanityCheck(List<Converter<?>> conv) {
-        if (TRACE) {
+        if (TRACE_SERIALIZATION) {
             System.err.println("serialisation-pool vacabulary:");
             int maxLength = conv.mapToInt(c -> c.getClazz().getName().length()).max().orElse(0);
             conv.sequential()
@@ -132,7 +128,7 @@ public class SerialisationPool {
                         .map(List::of)
         ).toList();
         if (!doublePrefixes.isEmpty()) {
-            throw problem("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes.map(l->l.get(0)).collect(Collectors.toList()));
+            throw problem("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes.map(l -> l.get(0)).collect(Collectors.toList()));
         }
         // NB: keep this next var separate to avoid java compiler error:
         Collection<List<? extends Class<?>>> avoidCompilerError = Collection.of(
@@ -190,7 +186,7 @@ public class SerialisationPool {
             throw problem("[DESERIALIZE] " + ("missing converter for '" + prefix + "' in \"" + string + "\" (no deserialisation possible)"));
         }
         Object value = converter.deserialize(rest, context);
-        if (TRACE) {
+        if (TRACE_SERIALIZATION) {
             System.err.println("[DESERIALIZE] (" + prefix + "," + rest + ") -> " + value);
         }
         return value;
@@ -201,15 +197,19 @@ public class SerialisationPool {
     }
 
     public <T> String serialize(T o, Object context) {
+        if (o == null) {
+            System.err.printf("[  SERIALIZE] %-25s: %-25s -> <null>\n", context, o);
+            return null;
+        }
         @SuppressWarnings("unchecked")
         Converter<T> serializer = getConverterFor((Class<T>) o.getClass());
         String string;
         if (serializer == null) {
-            throw problem("[  SERIALIZE] " + ("no Converter for " + o.getClass().getSimpleName()));
+            throw problem(String.format("[  SERIALIZE] %-25s: no converter available for class %s\n", context, o.getClass().getSimpleName()));
         }
         string = serializer.getPrefix() + Converter.DELIMITER + serializer.serialize(o, context);
-        if (TRACE) {
-            System.err.println("[  SERIALIZE] " + o + " -> " + string);
+        if (TRACE_SERIALIZATION) {
+            System.err.printf("[  SERIALIZE] %-25s: %-25s -> \"%s\"\n", context == null ? "<root>" : context.toString(), o, string);
         }
         return string;
     }
@@ -226,7 +226,7 @@ public class SerialisationPool {
     }
 
     private static IllegalArgumentException problem(String msg) {
-        if (TRACE) {
+        if (TRACE_SERIALIZATION) {
             System.err.println(msg);
         }
         return new IllegalArgumentException(msg);

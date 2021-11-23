@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
 
 public interface StateMergeHandler {
 

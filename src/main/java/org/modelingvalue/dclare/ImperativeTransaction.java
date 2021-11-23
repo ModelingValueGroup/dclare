@@ -15,12 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.*;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.collections.util.TriConsumer;
+
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -31,27 +35,27 @@ public class ImperativeTransaction extends LeafTransaction {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
-    private final static Setable<ImperativeTransaction, Long> CHANGE_NR    = Setable.of("$CHANGE_NR", 0L);
+    private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
-    private final Consumer<Runnable>                          scheduler;
-    private final TriConsumer<State, State, Boolean>          diffHandler;
-    private final NamedIdentity                               actionId     = NamedIdentity.of(this, "$toDClare");
+    private final Consumer<Runnable>                 scheduler;
+    private final TriConsumer<State, State, Boolean> diffHandler;
+    private final NamedIdentity                      actionId = NamedIdentity.of(this, "$toDClare");
 
-    private State                                             pre;
-    private State                                             state;
-    private boolean                                           active;
+    private State                            pre;
+    private State                            state;
+    private boolean                          active;
     @SuppressWarnings("rawtypes")
-    private DefaultMap<Object, Set<Setable>>                  setted;
+    private DefaultMap<Object, Set<Setable>> setted;
     @SuppressWarnings("rawtypes")
-    private DefaultMap<Object, Set<Setable>>                  allSetted;
-    private Long                                              lastChangeNr = CHANGE_NR.getDefault();
+    private DefaultMap<Object, Set<Setable>> allSetted;
+    private Long                             lastChangeNr = CHANGE_NR.getDefault();
 
     protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
-        this.pre = init;
-        this.state = init;
-        this.setted = SETTED_MAP;
-        this.allSetted = SETTED_MAP;
+        this.pre         = init;
+        this.state       = init;
+        this.setted      = SETTED_MAP;
+        this.allSetted   = SETTED_MAP;
         this.diffHandler = diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
@@ -98,9 +102,9 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void extern2intern() {
         if (pre != state) {
-            State finalState = state;
+            State                            finalState  = state;
             DefaultMap<Object, Set<Setable>> finalSetted = setted;
-            pre = state;
+            pre    = state;
             setted = SETTED_MAP;
             universeTransaction().put(actionId, () -> {
                 try {
@@ -121,17 +125,17 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void intern2extern(State post, boolean timeTraveling) {
         if (pre != post) {
-            State finalState = state;
-            Long postChangeNr = post.get(this, CHANGE_NR);
-            Long stateChangeNr = finalState.get(this, CHANGE_NR);
-            boolean last = postChangeNr.equals(stateChangeNr) && !postChangeNr.equals(lastChangeNr);
+            State   finalState    = state;
+            Long    postChangeNr  = post.get(this, CHANGE_NR);
+            Long    stateChangeNr = finalState.get(this, CHANGE_NR);
+            boolean last          = postChangeNr.equals(stateChangeNr) && !postChangeNr.equals(lastChangeNr);
             if (last) {
                 lastChangeNr = postChangeNr;
-                allSetted = SETTED_MAP;
+                allSetted    = SETTED_MAP;
             } else {
                 for (Entry<Object, Set<Setable>> e : allSetted) {
-                    Object object = e.getKey();
-                    DefaultMap<Setable, Object> postProps = post.getProperties(object);
+                    Object                      object     = e.getKey();
+                    DefaultMap<Setable, Object> postProps  = post.getProperties(object);
                     DefaultMap<Setable, Object> stateProps = finalState.getProperties(object);
                     for (Setable setable : e.getValue()) {
                         postProps = State.setProperties(postProps, setable, stateProps.get(setable));
@@ -162,7 +166,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T[] old = (T[]) new Object[1];
+        T[]     old   = (T[]) new Object[1];
         boolean first = state == pre;
         state = state.set(object, property, post, old);
         changed(object, property, old[0], post, first);
@@ -172,8 +176,8 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        T[] oldNew = (T[]) new Object[2];
-        boolean first = state == pre;
+        T[]     oldNew = (T[]) new Object[2];
+        boolean first  = state == pre;
         state = state.set(object, property, function, element, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
@@ -182,8 +186,8 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        T[] oldNew = (T[]) new Object[2];
-        boolean first = state == pre;
+        T[]     oldNew = (T[]) new Object[2];
+        boolean first  = state == pre;
         state = state.set(object, property, oper, oldNew);
         changed(object, property, oldNew[0], oldNew[1], first);
         return oldNew[0];
@@ -194,7 +198,7 @@ public class ImperativeTransaction extends LeafTransaction {
         if (!Objects.equals(preValue, postValue)) {
             Set<Setable> set = Set.of(property);
             allSetted = allSetted.add(object, set, Set::addAll);
-            setted = setted.add(object, set, Set::addAll);
+            setted    = setted.add(object, set, Set::addAll);
             if (first) {
                 set(this, CHANGE_NR, (BiFunction<Long, Long, Long>) Long::sum, 1l);
                 if (!active) {

@@ -23,8 +23,8 @@ public final class OutOfScopeException extends ConsistencyError {
 
     private static final long serialVersionUID = -6687018038130352922L;
 
-    private final Object      value;
-    private final Set<?>      scope;
+    private final Object value;
+    private final Set<?> scope;
 
     public OutOfScopeException(Object object, Setable<?, ?> setable, Object value, Set<?> scope) {
         super(object, setable, 6, "The value '" + value + "' of '" + setable + "' of object '" + object + "' is out of scope '" + scope + "'");

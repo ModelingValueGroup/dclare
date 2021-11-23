@@ -15,21 +15,23 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.*;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.util.Concurrent;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class SyncConnectionHandler {
-    private final SupplierAndConsumer<String> sac;
-    private final List<SocketSyncConnection>  connectionList = new CopyOnWriteArrayList<>();
-    private final AsyncConnectorDaemon        asyncConnector = new AsyncConnectorDaemon();
+    private final SupplierAndConsumer<String>            sac;
+    private final Concurrent<List<SocketSyncConnection>> connectionList = Concurrent.of(List.of());
+    private final AsyncConnectorDaemon                   asyncConnector = new AsyncConnectorDaemon();
 
     public SyncConnectionHandler(SupplierAndConsumer<String> sac) {
         this.sac = sac;
     }
 
     public List<SocketSyncConnection> getConnections() {
-        return Collections.unmodifiableList(connectionList);
+        return connectionList.get();
     }
 
     public void connect(String host, int port) {
@@ -37,11 +39,11 @@ public class SyncConnectionHandler {
             @Override
             public void close() {
                 super.close();
-                connectionList.remove(this);
+                connectionList.set(List::remove, this);
             }
         };
         try {
-            connectionList.add(newConnection);
+            connectionList.set(List::add, newConnection);
             asyncConnector.queue.put(newConnection);
         } catch (InterruptedException e) {
             throw new Error("connect to " + newConnection.getName() + " failed", e);

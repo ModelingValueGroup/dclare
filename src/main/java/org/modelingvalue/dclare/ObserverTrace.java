@@ -15,13 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.TriConsumer;
+
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public class ObserverTrace implements Comparable<ObserverTrace> {
@@ -36,12 +36,12 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     private final Map<ObservedInstance, Set<ObserverTrace>> backTrace;
 
     protected ObserverTrace(Mutable mutable, Observer<?> observer, ObserverTrace previous, int nrOfChanges, Map<ObservedInstance, Object> read, Map<ObservedInstance, Object> written) {
-        this.mutable = mutable;
-        this.observer = observer;
+        this.mutable     = mutable;
+        this.observer    = observer;
         this.nrOfChanges = nrOfChanges;
-        this.previous = previous;
-        this.read = read;
-        this.written = written;
+        this.previous    = previous;
+        this.read        = read;
+        this.written     = written;
         for (Entry<ObservedInstance, Object> e : read) {
             e.getKey().observed().readers().set(e.getKey().mutable(), Set::add, this);
         }
@@ -50,18 +50,18 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         }
         Set<ObserverTrace> done = previous != null ? previous.done : Set.of();
         Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.toMap(e -> {
-            ObservedInstance observedInstance = e.getKey();
-            Set<ObserverTrace> writers = observedInstance.observed().writers().get(observedInstance.mutable());
+            ObservedInstance   observedInstance = e.getKey();
+            Set<ObserverTrace> writers          = observedInstance.observed().writers().get(observedInstance.mutable());
             return Entry.of(observedInstance, writers.removeAll(done).remove(this));
         });
-        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).toSet();
+        Set<ObserverTrace> back     = backTrace.flatMap(Entry::getValue).toSet();
         Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
         backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
         if (backTrace.anyMatch(e -> e.getValue().anyMatch(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)))) {
             backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).toSet()));
         }
         this.backTrace = backTrace;
-        this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
+        this.done      = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
     }
 
     public Mutable mutable() {
@@ -110,9 +110,10 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     public String trace(String prefix, int length) {
         StringBuilder sb = new StringBuilder();
         trace(prefix,
-                (c, r   ) -> sb.append(c).append("run  : ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges),
+                (c, r) -> sb.append(c).append("run  : ").append(r.mutable()).append(".").append(r.observer()).append(" nr: ").append(r.nrOfChanges),
                 (c, r, s) -> sb.append(c).append("read : ").append(s.mutable()).append(".").append(s.observed()).append("=").append(r.read.get(s)),
-                (c, w, s) -> sb.append(c).append("write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)), p -> p + "  ", new Set[]{Set.of()}, length);
+                (c, w, s) -> sb.append(c).append("write: ").append(s.mutable()).append(".").append(s.observed()).append("=").append(w.written.get(s)), p -> p + "  ", new Set[]{
+                        Set.of()}, length);
         return sb.toString();
     }
 

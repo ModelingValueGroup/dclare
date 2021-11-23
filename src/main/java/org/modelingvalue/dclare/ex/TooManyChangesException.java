@@ -22,7 +22,7 @@ import org.modelingvalue.dclare.State;
 @SuppressWarnings("unused")
 public final class TooManyChangesException extends ConsistencyError {
 
-    private static final long   serialVersionUID = 7857822332170335179L;
+    private static final long serialVersionUID = 7857822332170335179L;
 
     private final State         state;
     private final int           nrOfChanges;
@@ -30,8 +30,8 @@ public final class TooManyChangesException extends ConsistencyError {
 
     public TooManyChangesException(State state, ObserverTrace last, int nrOfChanges) {
         super(last.mutable(), last.observer(), 2, "Too many changes " + nrOfChanges);
-        this.state = state;
-        this.last = last;
+        this.state       = state;
+        this.last        = last;
         this.nrOfChanges = nrOfChanges;
     }
 

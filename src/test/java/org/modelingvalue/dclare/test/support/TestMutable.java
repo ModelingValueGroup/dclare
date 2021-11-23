@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Mutable;
 
 public class TestMutable implements Mutable {
-    private final Object    id;
+    private final Object           id;
     private final TestMutableClass clazz;
 
     public static TestMutable of(Object id, TestMutableClass clazz) {
@@ -27,7 +27,7 @@ public class TestMutable implements Mutable {
     }
 
     protected TestMutable(Object id, TestMutableClass clazz) {
-        this.id = id;
+        this.id    = id;
         this.clazz = clazz;
     }
 

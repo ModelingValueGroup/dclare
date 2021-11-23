@@ -15,23 +15,23 @@
 
 package org.modelingvalue.dclare.sync;
 
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+
 public class SocketSyncConnection {
     private final String                      host;
     private final int                         port;
     private final SupplierAndConsumer<String> sac;
     //
-    private boolean                           connecting;
-    private Socket                            socket;
-    private InpStreamDaemon                   inpDaemon;
-    private OutStreamDaemon                   outDaemon;
+    private       boolean                     connecting;
+    private       Socket                      socket;
+    private       InpStreamDaemon             inpDaemon;
+    private       OutStreamDaemon             outDaemon;
 
     public boolean isConnecting() {
         return connecting;
@@ -64,13 +64,13 @@ public class SocketSyncConnection {
     public SocketSyncConnection(String host, int port, SupplierAndConsumer<String> sac) {
         this.host = host;
         this.port = port;
-        this.sac = sac;
+        this.sac  = sac;
     }
 
     public void connect() {
         try {
-            connecting = true;
-            this.socket = new Socket(host, port);
+            connecting     = true;
+            this.socket    = new Socket(host, port);
             this.inpDaemon = new InpStreamDaemon(socket);
             this.outDaemon = new OutStreamDaemon(socket);
         } catch (IOException e) {

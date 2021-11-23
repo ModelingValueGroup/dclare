@@ -34,9 +34,9 @@ public enum Priority implements Internable {
     public final int               nr;
 
     Priority(int nr) {
-        actions = new Queued<>(true, nr);
+        actions  = new Queued<>(true, nr);
         children = new Queued<>(false, nr);
-        this.nr = nr;
+        this.nr  = nr;
     }
 
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
