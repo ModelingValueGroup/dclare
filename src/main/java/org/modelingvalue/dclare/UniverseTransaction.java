@@ -603,8 +603,16 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
+    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> commit, Consumer<Runnable> scheduler, boolean keepTransaction) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, commit, keepTransaction);
+        synchronized (this) {
+            imperativeTransactions = imperativeTransactions.add(n);
+        }
+        return n;
+    }
+
+    public <X> ImperativeTransaction addImperative(String id, TriFunction<State, State, Boolean, X> preCommit, QuadConsumer<State, State, Boolean, X> commit, Consumer<Runnable> scheduler, boolean keepTransaction) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, preCommit, commit, keepTransaction);
         synchronized (this) {
             imperativeTransactions = imperativeTransactions.add(n);
         }
@@ -614,8 +622,9 @@ public class UniverseTransaction extends MutableTransaction {
     private void commit(State state, boolean timeTraveling, Iterator<ImperativeTransaction> it) {
         if (!killed && it.hasNext()) {
             ImperativeTransaction n = it.next();
+            Object argument = n.preCommit(preState, state, timeTraveling);
             n.schedule(() -> {
-                n.commit(state, timeTraveling);
+                n.commit(state, timeTraveling, argument);
                 commit(n.state(), timeTraveling, it);
             });
         }

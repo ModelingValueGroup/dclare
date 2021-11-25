@@ -21,19 +21,24 @@ import java.util.function.*;
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.*;
 
-public class ImperativeTransaction extends LeafTransaction {
+public final class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings("rawtypes")
     private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
     public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, null, (pre, post, last, dummy) -> diffHandler.accept(pre, post, last), keepTransaction);
+    }
+
+    public static <X> ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriFunction<State, State, Boolean, X> preDiffHandler, QuadConsumer<State, State, Boolean, X> diffHandler, boolean keepTransaction) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, preDiffHandler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR    = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
-    private final TriConsumer<State, State, Boolean>          diffHandler;
+    private final TriFunction<State, State, Boolean, Object>  preDiffHandler;
+    private final QuadConsumer<State, State, Boolean, Object> diffHandler;
 
     private State                                             pre;
     private State                                             state;
@@ -44,13 +49,15 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  allSetted;
     private Long                                              lastChangeNr = CHANGE_NR.getDefault();
 
-    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    @SuppressWarnings("unchecked")
+    private ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriFunction<State, State, Boolean, ?> preDiffHandler, QuadConsumer<State, State, Boolean, ?> diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
-        this.diffHandler = diffHandler;
+        this.preDiffHandler = (TriFunction<State, State, Boolean, Object>) preDiffHandler;
+        this.diffHandler = (QuadConsumer<State, State, Boolean, Object>) diffHandler;
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
             LeafTransaction.getContext().setOnThread(this);
@@ -83,9 +90,14 @@ public class ImperativeTransaction extends LeafTransaction {
         scheduler.accept(action);
     }
 
-    public void commit(State post, boolean timeTraveling) {
+    protected Object preCommit(State pre, State post, boolean timeTraveling) {
+        return preDiffHandler != null ? state.get(() -> preDiffHandler.apply(pre, post, timeTraveling)) : null;
+    }
+
+    protected void commit(State post, boolean timeTraveling, Object argument) {
+        State start = pre;
         extern2intern();
-        intern2extern(post, timeTraveling);
+        intern2extern(start, post, timeTraveling, argument);
     }
 
     @Override
@@ -117,7 +129,7 @@ public class ImperativeTransaction extends LeafTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void intern2extern(State post, boolean timeTraveling) {
+    private void intern2extern(State start, State post, boolean timeTraveling, Object argument) {
         if (pre != post) {
             State finalState = state;
             Long postChangeNr = post.get(this, CHANGE_NR);
@@ -129,10 +141,15 @@ public class ImperativeTransaction extends LeafTransaction {
             } else {
                 for (Entry<Object, Set<Setable>> e : allSetted) {
                     Object object = e.getKey();
-                    DefaultMap<Setable, Object> postProps = post.getProperties(object);
+                    DefaultMap<Setable, Object> startProps = start.getProperties(object);
                     DefaultMap<Setable, Object> stateProps = finalState.getProperties(object);
+                    DefaultMap<Setable, Object> postProps = post.getProperties(object);
                     for (Setable setable : e.getValue()) {
-                        postProps = State.setProperties(postProps, setable, stateProps.get(setable));
+                        Object startVal = startProps.get(setable);
+                        Object stateVal = stateProps.get(setable);
+                        Object postVal = postProps.get(setable);
+                        Object mergedVal = startVal instanceof Mergeable && !Objects.equals(postVal, startVal) && !Objects.equals(postVal, stateVal) ? ((Mergeable) startVal).merge(stateVal, postVal) : stateVal;
+                        postProps = State.setProperties(postProps, setable, mergedVal);
                     }
                     post = post.set(object, postProps);
                 }
@@ -141,7 +158,7 @@ public class ImperativeTransaction extends LeafTransaction {
             if (!timeTraveling) {
                 pre = state;
             }
-            diffHandler.accept(finalState, post, last);
+            diffHandler.accept(finalState, post, last, argument);
             if (timeTraveling) {
                 pre = state;
             }
