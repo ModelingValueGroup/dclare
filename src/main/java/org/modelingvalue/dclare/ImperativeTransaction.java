@@ -91,7 +91,7 @@ public final class ImperativeTransaction extends LeafTransaction {
     }
 
     protected Object preCommit(State pre, State post, boolean timeTraveling) {
-        return preDiffHandler != null ? state.get(() -> preDiffHandler.apply(pre, post, timeTraveling)) : null;
+        return preDiffHandler != null ? post.get(() -> preDiffHandler.apply(pre, post, timeTraveling)) : null;
     }
 
     protected void commit(State post, boolean timeTraveling, Object argument) {

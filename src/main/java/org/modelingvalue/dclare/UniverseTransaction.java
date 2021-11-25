@@ -621,11 +621,11 @@ public class UniverseTransaction extends MutableTransaction {
 
     private void commit(State state, boolean timeTraveling, Iterator<ImperativeTransaction> it) {
         if (!killed && it.hasNext()) {
-            ImperativeTransaction n = it.next();
-            Object argument = n.preCommit(preState, state, timeTraveling);
-            n.schedule(() -> {
-                n.commit(state, timeTraveling, argument);
-                commit(n.state(), timeTraveling, it);
+            ImperativeTransaction imp = it.next();
+            Object argument = imp.preCommit(preState, state, timeTraveling);
+            imp.schedule(() -> {
+                imp.commit(state, timeTraveling, argument);
+                commit(imp.state(), timeTraveling, it);
             });
         }
     }
