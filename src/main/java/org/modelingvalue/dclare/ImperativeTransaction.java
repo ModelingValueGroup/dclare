@@ -94,10 +94,10 @@ public final class ImperativeTransaction extends LeafTransaction {
         return preDiffHandler != null ? post.get(() -> preDiffHandler.apply(pre, post, timeTraveling)) : null;
     }
 
-    protected void commit(State post, boolean timeTraveling, Object argument) {
-        State start = pre;
+    protected void commit(State dclare, boolean timeTraveling, Object argument) {
+        State base = pre;
         extern2intern();
-        intern2extern(start, post, timeTraveling, argument);
+        intern2extern(base, dclare, timeTraveling, argument);
     }
 
     @Override
@@ -129,36 +129,36 @@ public final class ImperativeTransaction extends LeafTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void intern2extern(State start, State post, boolean timeTraveling, Object argument) {
-        if (pre != post) {
+    private void intern2extern(State base, State dclare, boolean timeTraveling, Object argument) {
+        if (pre != dclare) {
             State finalState = state;
-            Long postChangeNr = post.get(this, CHANGE_NR);
-            Long stateChangeNr = finalState.get(this, CHANGE_NR);
-            boolean last = postChangeNr.equals(stateChangeNr) && !postChangeNr.equals(lastChangeNr);
+            Long dclareChangeNr = dclare.get(this, CHANGE_NR);
+            Long stateChangeNr = state.get(this, CHANGE_NR);
+            boolean last = dclareChangeNr.equals(stateChangeNr) && !dclareChangeNr.equals(lastChangeNr);
             if (last) {
-                lastChangeNr = postChangeNr;
+                lastChangeNr = dclareChangeNr;
                 allSetted = SETTED_MAP;
             } else {
                 for (Entry<Object, Set<Setable>> e : allSetted) {
                     Object object = e.getKey();
-                    DefaultMap<Setable, Object> startProps = start.getProperties(object);
-                    DefaultMap<Setable, Object> stateProps = finalState.getProperties(object);
-                    DefaultMap<Setable, Object> postProps = post.getProperties(object);
+                    DefaultMap<Setable, Object> baseProps = base.getProperties(object);
+                    DefaultMap<Setable, Object> stateProps = state.getProperties(object);
+                    DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                     for (Setable setable : e.getValue()) {
-                        Object startVal = startProps.get(setable);
+                        Object baseVal = baseProps.get(setable);
                         Object stateVal = stateProps.get(setable);
-                        Object postVal = postProps.get(setable);
-                        Object mergedVal = startVal instanceof Mergeable && !Objects.equals(postVal, startVal) && !Objects.equals(postVal, stateVal) ? ((Mergeable) startVal).merge(stateVal, postVal) : stateVal;
-                        postProps = State.setProperties(postProps, setable, mergedVal);
+                        Object dclareVal = dclareProps.get(setable);
+                        Object mergedVal = baseVal instanceof Mergeable && !Objects.equals(dclareVal, baseVal) && !Objects.equals(dclareVal, stateVal) ? ((Mergeable) baseVal).merge(stateVal, dclareVal) : stateVal;
+                        dclareProps = State.setProperties(dclareProps, setable, mergedVal);
                     }
-                    post = post.set(object, postProps);
+                    dclare = dclare.set(object, dclareProps);
                 }
             }
-            state = post;
+            state = dclare;
             if (!timeTraveling) {
                 pre = state;
             }
-            diffHandler.accept(finalState, post, last, argument);
+            diffHandler.accept(finalState, dclare, last, argument);
             if (timeTraveling) {
                 pre = state;
             }
