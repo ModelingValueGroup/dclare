@@ -123,7 +123,7 @@ public class CommunicationHelper {
         rethrowAllDaemonProblems();
     }
 
-    private static void rethrowAllDaemonProblems() {
+    public static void rethrowAllDaemonProblems() {
         assertAll(ALL_DAEMONS.get()
                 .map(WorkDaemon::getThrowable)
                 .filter(Objects::nonNull)

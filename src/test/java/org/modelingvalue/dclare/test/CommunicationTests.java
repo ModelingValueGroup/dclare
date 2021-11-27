@@ -26,6 +26,7 @@ import org.modelingvalue.dclare.test.support.PeerTester;
 import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -153,8 +154,13 @@ public class CommunicationTests {
 
     @AfterEach
     public void after() {
+        CommunicationHelper.rethrowAllDaemonProblems();
         TraceTimer.dumpLogs();
-        CommunicationHelper.tearDownAll();
+        try {
+            CommunicationHelper.tearDownAll();
+        } catch (ConcurrentModificationException e) {
+            System.err.println("ignored exception during tearDownAll(): " + e);
+        }
         ModelMaker.assertNoUncaughtThrowables();
         TraceTimer.dumpLogs();
     }
