@@ -45,6 +45,7 @@ public class State implements Serializable {
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
+    private ConstantState                                               derivationState;
 
     State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
@@ -254,10 +255,17 @@ public class State implements Serializable {
     public <R> R derive(Supplier<R> supplier) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, new ConstantState(universeTransaction::handleException));
+            return tx.derive(supplier, this, derivationState());
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
         }
+    }
+
+    private ConstantState derivationState() {
+        if (derivationState == null) {
+            derivationState = new ConstantState(universeTransaction::handleException);
+        }
+        return derivationState;
     }
 
     public <T> Collection<T> getObjects(Class<T> filter) {
