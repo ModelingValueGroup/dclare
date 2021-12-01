@@ -185,14 +185,14 @@ public class Converters {
 
         @Override
         public String serialize(java.util.List<?> l) {
-            return JsonIC.toJson(l.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
+            return JsonIC.toJson(l.stream().map(o -> getPool().serialize(o)).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public java.util.List<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(o -> serialisationPool.deserialize(o.toString())).collect(Collectors.toList());
+            return l.map(o -> getPool().deserialize(o.toString())).collect(Collectors.toList());
         }
     }
 
@@ -204,14 +204,14 @@ public class Converters {
 
         @Override
         public String serialize(java.util.Set<?> s) {
-            return JsonIC.toJson(s.stream().map(serialisationPool::serialize).collect(Collectors.toList()));
+            return JsonIC.toJson(s.stream().map(o -> getPool().serialize(o)).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public java.util.Set<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(o -> serialisationPool.deserialize(o.toString())).collect(Collectors.toSet());
+            return l.map(o -> getPool().deserialize(o.toString())).collect(Collectors.toSet());
         }
     }
 
@@ -223,13 +223,13 @@ public class Converters {
 
         @Override
         public String serialize(java.util.Map<?, ?> m, Object context) {
-            return JsonIC.toJson(m.entrySet().stream().collect(Collectors.toMap(e -> serialisationPool.serialize(e.getKey(), context), e -> serialisationPool.serialize(e.getValue(), context))));
+            return JsonIC.toJson(m.entrySet().stream().collect(Collectors.toMap(e -> getPool().serialize(e.getKey(), context), e -> getPool().serialize(e.getValue(), context))));
         }
 
         @Override
         public java.util.Map<?, ?> deserialize(String string) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
-            return m.collect(Collectors.toMap(e -> serialisationPool.deserialize(e.getKey().toString()), e -> serialisationPool.deserialize(e.getValue().toString())));
+            return m.collect(Collectors.toMap(e -> getPool().deserialize(e.getKey().toString()), e -> getPool().deserialize(e.getValue().toString())));
         }
     }
 
@@ -274,14 +274,14 @@ public class Converters {
 
         @Override
         public String serialize(List<?> l) {
-            return JsonIC.toJson(l.map(serialisationPool::serialize).collect(Collectors.toList()));
+            return JsonIC.toJson(l.map(o -> getPool().serialize(o)).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public List<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(e -> serialisationPool.deserialize(e.toString())).toList();
+            return l.map(e -> getPool().deserialize(e.toString())).toList();
         }
     }
 
@@ -293,14 +293,14 @@ public class Converters {
 
         @Override
         public String serialize(Set<?> s) {
-            return JsonIC.toJson(s.map(serialisationPool::serialize).collect(Collectors.toList()));
+            return JsonIC.toJson(s.map(o -> getPool().serialize(o)).collect(Collectors.toList()));
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public Set<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(e -> serialisationPool.deserialize(e.toString())).toSet();
+            return l.map(e -> getPool().deserialize(e.toString())).toSet();
         }
     }
 
@@ -312,13 +312,13 @@ public class Converters {
 
         @Override
         public String serialize(Map<?, ?> m, Object context) {
-            return JsonIC.toJson(m.collect(Collectors.toMap(e -> serialisationPool.serialize(e.getKey(), context), e -> serialisationPool.serialize(e.getValue(), context))));
+            return JsonIC.toJson(m.collect(Collectors.toMap(e -> getPool().serialize(e.getKey(), context), e -> getPool().serialize(e.getValue(), context))));
         }
 
         @Override
         public Map<?, ?> deserialize(String string) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
-            return m.toMap(e -> Entry.of(serialisationPool.deserialize(e.getKey().toString()), serialisationPool.deserialize(e.getValue().toString())));
+            return m.toMap(e -> Entry.of(getPool().deserialize(e.getKey().toString()), getPool().deserialize(e.getValue().toString())));
         }
     }
 }

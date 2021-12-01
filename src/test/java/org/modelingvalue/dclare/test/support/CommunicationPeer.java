@@ -15,9 +15,10 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.sync.WorkDaemon;
 
@@ -52,8 +53,9 @@ public class CommunicationPeer {
         backFeeder.start();
 
         AtomicBoolean stop = new AtomicBoolean();
-        CommunicationHelper.interpreter(System.in, stop, Map.of('.', (c, line) -> System.out.println("." + line), 'D', (c, line) -> mmSlaveAdaptor.accept(line), // delta main->robot
-                'C', (c, line) -> check(line, mmSlave.getXyzzy_source(), mmSlave.getXyzzy_target(), mmSlave.getXyzzy_aList().size(), mmSlave.getXyzzy_aSet().size() / 2, mmSlave.getXyzzy_aMap().size(), mmSlave.getXyzzy_aDefMap().size(), mmSlave.getXyzzy_aQuaSet().size(), mmSlave.getXyzzy_aQuaDefSet().size()), 'Q', (c, line) -> stop.set(true), '*', (c, line) -> exit(10, "ERROR: unknown command " + c + line)));
+
+        CommunicationHelper.interpreter(System.in, stop, Map.of(Entry.of('.', (c, line) -> System.out.println("." + line)), Entry.of('D', (c, line) -> mmSlaveAdaptor.accept(line)), // delta main->robot
+                Entry.of('C', (c, line) -> check(line, mmSlave.getXyzzy_source(), mmSlave.getXyzzy_target(), mmSlave.getXyzzy_aList().size(), mmSlave.getXyzzy_aSet().size() / 2, mmSlave.getXyzzy_aMap().size(), mmSlave.getXyzzy_aDefMap().size(), mmSlave.getXyzzy_aQuaSet().size(), mmSlave.getXyzzy_aQuaDefSet().size())), Entry.of('Q', (c, line) -> stop.set(true)), Entry.of('*', (c, line) -> exit(10, "ERROR: unknown command " + c + line))));
 
         CommunicationHelper.tearDownAll();
         System.err.println("peer stopped");

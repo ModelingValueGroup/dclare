@@ -20,14 +20,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 
-import java.util.ArrayList;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
@@ -39,7 +36,7 @@ public class ModelMaker {
     public static final int                                                                                   SOURCE_DEFAULT                           = 11;
     public static final int                                                                                   TARGET_DEFAULT                           = 12;
     public static final int                                                                                   TARGET2_DEFAULT                          = 13;
-    private static final java.util.List<Pair<Thread, Throwable>>                                              UNCAUGHT_THROWABLES                      = new ArrayList<>();
+    private static final Concurrent<List<Pair<Thread, Throwable>>>                                            UNCAUGHT_THROWABLES                      = Concurrent.of(List.of());
     //
     private static final Observed<TestMutable, Integer>                                                       source                                   = TestObserved.of("#source", ModelMaker::id, ModelMaker::desInt, SOURCE_DEFAULT);
     private static final Observed<TestMutable, Integer>                                                       target                                   = TestObserved.of("#target", ModelMaker::id, ModelMaker::desInt, TARGET_DEFAULT);
@@ -182,10 +179,10 @@ public class ModelMaker {
             o -> target2.set(o, source.get(o)),                                                                                                    //
             o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@"),                                                                        //
             o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)),                                                                     //
-            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Stream.of(TestMutable.of("TO-" + i, extraClass))).toSet()),       //
+            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet()),   //
             o -> target.set(extra.get(o), target.get(o)),                                                                                          //
             o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList()),                                                      //
-            o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Stream.of("&" + i, "@" + i * 2)).toSet()),                            //
+            o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet()),                        //
             o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!"))),                                   //
             o -> aDefMap.set(o, aDefMap.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!")))),   //
             o -> aQuaSet.set(o, aQuaSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i))),                               //
@@ -233,13 +230,11 @@ public class ModelMaker {
 
     private static void uncaughtThrowables(Thread thread, Throwable throwable) {
         traceLog("ALARM: uncaught exception in pool thread %s: %s", thread.getName(), throwable);
-        synchronized (UNCAUGHT_THROWABLES) {
-            UNCAUGHT_THROWABLES.add(Pair.of(thread, throwable));
-        }
+        UNCAUGHT_THROWABLES.set(List::add, Pair.of(thread, throwable));
     }
 
     public static void assertNoUncaughtThrowables() {
-        assertAll("uncaught in pool", UNCAUGHT_THROWABLES.stream().map(u -> () -> fail("uncaught in " + u.a().getName(), u.b())));
+        assertAll("uncaught in pool", UNCAUGHT_THROWABLES.get().map(u -> () -> fail("uncaught in " + u.a().getName(), u.b())));
     }
 
     public void setXyzzy_source(int i) {

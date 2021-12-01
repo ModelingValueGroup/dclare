@@ -21,16 +21,15 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
-import java.util.*;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
@@ -41,7 +40,6 @@ import org.modelingvalue.dclare.test.support.*;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
-
     //    static {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
@@ -880,7 +878,7 @@ public class NewableTests {
         List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
         assertEquals(al.size(), bl.size());
-        HashMap<Pair<Newable, Newable>, Boolean> done = new HashMap<>();
+        AtomicReference<Map<Pair<Newable, Newable>, Boolean>> done = new AtomicReference<>(Map.of());
         for (Newable an : al) {
             Optional<Newable> bo = bl.filter(bn -> equals(as, an, bs, bn, done)).findFirst();
             assertTrue(bo.isPresent());
@@ -898,14 +896,14 @@ public class NewableTests {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private static boolean equals(State as, Object a, State bs, Object b, Map<Pair<Newable, Newable>, Boolean> done) {
+    private static boolean equals(State as, Object a, State bs, Object b, AtomicReference<Map<Pair<Newable, Newable>, Boolean>> done) {
         boolean result = false;
         if (a instanceof Newable && b instanceof Newable) {
             Newable an = (Newable) a;
             Newable bn = (Newable) b;
             Pair<Newable, Newable> key = Pair.of(an, bn);
-            if (done.containsKey(key)) {
-                result = done.get(key);
+            if (done.get().containsKey(key)) {
+                result = done.get().get(key);
             } else {
                 if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
                         equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
@@ -913,7 +911,7 @@ public class NewableTests {
                         equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }
-                done.put(key, result);
+                done.set(done.get().put(key, result));
             }
         } else if (a instanceof Struct && b instanceof Struct) {
             Struct structa = (Struct) a;

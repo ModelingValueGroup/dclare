@@ -19,12 +19,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.*;
-import java.util.*;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public abstract class PeerTester extends WorkDaemon<String> {
@@ -47,16 +48,16 @@ public abstract class PeerTester extends WorkDaemon<String> {
     }
 
     public String getClassPath() {
-        List<String> cp = new ArrayList<>();
+        List<String> cp = List.of();
 
         String classLoaderRender = getClass().getClassLoader().toString();
         if (classLoaderRender.startsWith("AntClassLoader[")) {
             // the AntClassLoader can have classpath elements that are not in the java.class.path property
             // luckely it renders its classpath in a toString()!
             String[] classPath = classLoaderRender.replaceAll("AntClassLoader\\[", "").replaceAll("]", "").split(":");
-            cp.addAll(Arrays.stream(classPath).collect(Collectors.toList()));
+            cp = cp.addAll(Collection.of(classPath));
         }
-        cp.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).collect(Collectors.toList()));
+        cp = cp.addAll(Collection.of(System.getProperty("java.class.path").split(":")));
         return String.join(":", cp);
     }
 

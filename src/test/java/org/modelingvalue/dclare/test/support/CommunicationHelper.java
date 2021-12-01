@@ -20,42 +20,45 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.*;
-import java.util.*;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public class CommunicationHelper {
-    private static final boolean                WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
-    private static final int                    IDLE_DETECT_TIMEOUT                         = WE_ARE_DEBUGGED ? 24 * 60 * 60 * 1_000 : 5 * 1_000;
-    private static final int                    IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION = 10;
-    private static final int                    SIMULATED_NETWORK_DELAY                     = 100;
+    private static final boolean                            WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
+    private static final int                                IDLE_DETECT_TIMEOUT                         = WE_ARE_DEBUGGED ? 24 * 60 * 60 * 1_000 : 5 * 1_000;
+    private static final int                                IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION = 10;
+    private static final int                                SIMULATED_NETWORK_DELAY                     = 100;
     //
-    private static final List<ModelMaker>       ALL_MODEL_MAKERS                            = new ArrayList<>();
-    private static final List<TestDeltaAdaptor> ALL_DELTA_ADAPTORS                          = new ArrayList<>();
-    private static final List<WorkDaemon<?>>    ALL_DAEMONS                                 = new ArrayList<>();
-    private static final List<ContextPool>      ALL_POOLS                                   = new ArrayList<>();
+    private static final Concurrent<List<ModelMaker>>       ALL_MODEL_MAKERS                            = Concurrent.of(List.of());
+    private static final Concurrent<List<TestDeltaAdaptor>> ALL_DELTA_ADAPTORS                          = Concurrent.of(List.of());
+    private static final Concurrent<List<WorkDaemon<?>>>    ALL_DAEMONS                                 = Concurrent.of(List.of());
+    private static final Concurrent<List<ContextPool>>      ALL_POOLS                                   = Concurrent.of(List.of());
 
     public static void add(ModelMaker r) {
-        ALL_MODEL_MAKERS.add(r);
+        ALL_MODEL_MAKERS.set(List::add, r);
     }
 
     public static void add(TestDeltaAdaptor a) {
-        ALL_DELTA_ADAPTORS.add(a);
+        ALL_DELTA_ADAPTORS.set(List::add, a);
         add(a.getAdaptorDaemon());
     }
 
     public static void add(WorkDaemon<?> daemon) {
-        ALL_DAEMONS.add(daemon);
+        ALL_DAEMONS.set(List::add, daemon);
     }
 
     public static void add(ContextPool pool) {
-        ALL_POOLS.add(pool);
+        ALL_POOLS.set(List::add, pool);
     }
 
     public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm) {
@@ -82,20 +85,20 @@ public class CommunicationHelper {
     }
 
     public static void tearDownAll() {
-        ALL_MODEL_MAKERS.forEach(mm -> {
+        ALL_MODEL_MAKERS.get().forEach(mm -> {
             if (mm.getTx() != null) {
                 mm.getTx().stop();
             }
         });
-        ALL_MODEL_MAKERS.forEach(mm -> {
+        ALL_MODEL_MAKERS.get().forEach(mm -> {
             if (mm.getTx() != null) {
                 mm.getTx().waitForEnd();
             }
         });
-        ALL_DAEMONS.forEach(WorkDaemon::interruptAndClose);
-        ALL_DAEMONS.forEach(WorkDaemon::join_);
+        ALL_DAEMONS.get().forEach(WorkDaemon::interruptAndClose);
+        ALL_DAEMONS.get().forEach(WorkDaemon::join_);
         busyWaitAllForIdle();
-        ALL_POOLS.forEach(pool -> {
+        ALL_POOLS.get().forEach(pool -> {
             if (!ModelMaker.BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
                 pool.shutdownNow();
                 assertDoesNotThrow(() -> assertTrue(pool.awaitTermination(1, TimeUnit.SECONDS)));
@@ -113,8 +116,8 @@ public class CommunicationHelper {
         rethrowAllDaemonProblems();
     }
 
-    private static void rethrowAllDaemonProblems() {
-        assertAll(ALL_DAEMONS.stream().map(WorkDaemon::getThrowable).filter(Objects::nonNull).map(t -> () -> {
+    public static void rethrowAllDaemonProblems() {
+        assertAll(ALL_DAEMONS.get().map(WorkDaemon::getThrowable).filter(Objects::nonNull).map(t -> () -> {
             throw t;
         }));
     }
@@ -128,19 +131,19 @@ public class CommunicationHelper {
             for (int i = 0; i < IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION && !busy; i++) {
                 nap();
                 rethrowAllDaemonProblems();
-                busy = ALL_DAEMONS.stream().anyMatch(WorkDaemon::isBusy) || ALL_DELTA_ADAPTORS.stream().anyMatch(DeltaAdaptor::isBusy);
+                busy = ALL_DAEMONS.get().anyMatch(WorkDaemon::isBusy) || ALL_DELTA_ADAPTORS.get().anyMatch(DeltaAdaptor::isBusy);
             }
         } while (System.currentTimeMillis() < t0 + IDLE_DETECT_TIMEOUT && busy);
         //System.err.printf("busyWait ended after %d ms\n", System.currentTimeMillis() - t0);
         if (busy) {
             // darn,
-            System.err.println("this test did not get idle in time (" + ALL_MODEL_MAKERS.size() + " model-makers, " + ALL_DELTA_ADAPTORS.size() + " delta-adaptors, " + ALL_DAEMONS.size() + " daemons, " + ALL_POOLS.size() + " pools):");
-            for (TestDeltaAdaptor ad : ALL_DELTA_ADAPTORS) {
+            System.err.println("this test did not get idle in time (" + ALL_MODEL_MAKERS.get().size() + " model-makers, " + ALL_DELTA_ADAPTORS.get().size() + " delta-adaptors, " + ALL_DAEMONS.get().size() + " daemons, " + ALL_POOLS.get().size() + " pools):");
+            for (TestDeltaAdaptor ad : ALL_DELTA_ADAPTORS.get()) {
                 StringBuilder adWhy = new StringBuilder();
                 boolean adBusy = ad.isBusy(adWhy);
                 System.err.printf(" - modelmaker %-16s: %s (%s)\n", ad.getName(), adBusy ? "BUSY" : "idle", adWhy);
             }
-            for (WorkDaemon<?> wd : ALL_DAEMONS) {
+            for (WorkDaemon<?> wd : ALL_DAEMONS.get()) {
                 System.err.printf(" - workDaemon %-16s: %s\n", wd.getName(), wd.isBusy() ? "BUSY" : "idle");
             }
             TraceTimer.dumpStacks();
@@ -159,7 +162,7 @@ public class CommunicationHelper {
     }
 
     public static void interpreter(InputStream in, AtomicBoolean stop, Map<Character, BiConsumer<Character, String>> actions) throws IOException {
-        BiConsumer<Character, String> defaultAction = actions.get('*');
+        BiConsumer<Character, String> defaultAction = actions.get((Character) '*');
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
         String line;
         while (!stop.get() && (line = bufferedReader.readLine()) != null) {

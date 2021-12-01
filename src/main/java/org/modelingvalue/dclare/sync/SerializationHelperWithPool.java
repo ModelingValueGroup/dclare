@@ -15,9 +15,7 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.List;
-import java.util.stream.Stream;
-
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.SerialisationPool.Converter;
 
@@ -29,11 +27,7 @@ public abstract class SerializationHelperWithPool<C extends MutableClass, M exte
         serialisationPool = new SerialisationPool(converters);
     }
 
-    public SerializationHelperWithPool(List<Converter<?>> converters) {
-        serialisationPool = new SerialisationPool(converters);
-    }
-
-    public SerializationHelperWithPool(Stream<Converter<?>> converters) {
+    public SerializationHelperWithPool(Collection<Converter<?>> converters) {
         serialisationPool = new SerialisationPool(converters);
     }
 
@@ -50,7 +44,7 @@ public abstract class SerializationHelperWithPool<C extends MutableClass, M exte
 
     @Override
     public Object serializeValue(S setable, Object value) {
-        return serialisationPool.serialize(value);
+        return serialisationPool.serialize(value, setable);
     }
 
     //==================================================================================================================
@@ -68,6 +62,6 @@ public abstract class SerializationHelperWithPool<C extends MutableClass, M exte
 
     @Override
     public Object deserializeValue(S setable, Object value) {
-        return serialisationPool.deserialize((String) value);
+        return serialisationPool.deserialize((String) value, setable);
     }
 }

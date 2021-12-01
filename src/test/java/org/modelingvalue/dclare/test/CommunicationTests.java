@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWaitAllForIdle;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 
 import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.util.TraceTimer;
@@ -147,8 +148,13 @@ public class CommunicationTests {
 
     @AfterEach
     public void after() {
+        CommunicationHelper.rethrowAllDaemonProblems();
         TraceTimer.dumpLogs();
-        CommunicationHelper.tearDownAll();
+        try {
+            CommunicationHelper.tearDownAll();
+        } catch (ConcurrentModificationException e) {
+            System.err.println("ignored exception during tearDownAll(): " + e);
+        }
         ModelMaker.assertNoUncaughtThrowables();
         TraceTimer.dumpLogs();
     }
