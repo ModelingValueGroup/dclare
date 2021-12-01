@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.function.*;
+import java.util.function.Predicate;
 
 import org.modelingvalue.dclare.*;
 

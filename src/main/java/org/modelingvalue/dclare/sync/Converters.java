@@ -15,11 +15,13 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.dclare.sync.SerialisationPool.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.stream.Collectors;
 
-import java.math.*;
-import java.util.stream.*;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.dclare.sync.SerialisationPool.BaseConverter;
+import org.modelingvalue.dclare.sync.SerialisationPool.Converter;
 
 @SuppressWarnings("unused")
 public class Converters {

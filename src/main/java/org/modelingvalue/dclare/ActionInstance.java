@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.struct.impl.*;
+import org.modelingvalue.collections.struct.impl.Struct2Impl;
 
 @SuppressWarnings("rawtypes")
 public class ActionInstance extends Struct2Impl<Mutable, Action> {

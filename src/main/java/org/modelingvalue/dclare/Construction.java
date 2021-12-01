@@ -17,9 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.Optional;
 
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
 @SuppressWarnings("rawtypes")

@@ -21,10 +21,7 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.SetableModifier;
+import org.modelingvalue.dclare.*;
 
 public class TestObserved<O, T> extends Observed<O, T> {
     private static Map<Object, TestObserved<?, ?>>          staticObservedMap = Map.of();

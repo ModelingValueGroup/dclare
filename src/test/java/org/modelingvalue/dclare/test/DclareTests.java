@@ -15,10 +15,7 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
@@ -28,17 +25,10 @@ import java.math.BigInteger;
 
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.DclareConfig;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
-import org.modelingvalue.dclare.test.support.Fibonacci;
-import org.modelingvalue.dclare.test.support.TestMutable;
-import org.modelingvalue.dclare.test.support.TestMutableClass;
-import org.modelingvalue.dclare.test.support.TestUniverse;
+import org.modelingvalue.dclare.test.support.*;
 
 public class DclareTests {
     static {

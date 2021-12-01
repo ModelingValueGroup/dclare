@@ -18,9 +18,7 @@ package org.modelingvalue.dclare;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings("unused")

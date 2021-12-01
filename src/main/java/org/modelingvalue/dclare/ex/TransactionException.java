@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.*;
+import java.util.Arrays;
 
-import java.util.*;
+import org.modelingvalue.dclare.TransactionClass;
 
 @SuppressWarnings("unused")
 public final class TransactionException extends RuntimeException {

@@ -15,9 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {

@@ -17,9 +17,7 @@ package org.modelingvalue.dclare.sync;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.*;
 
 public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
     /////////////////////////////////

@@ -23,9 +23,7 @@ import java.util.stream.Stream;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.json.FromJsonBase;
-import org.modelingvalue.json.Json;
-import org.modelingvalue.json.ToJson;
+import org.modelingvalue.json.*;
 
 public class JsonIC extends Json {
     public static String toJson(Object o) {

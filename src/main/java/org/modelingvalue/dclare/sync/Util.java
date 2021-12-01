@@ -15,9 +15,11 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.collections.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
-import java.math.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
 
 @SuppressWarnings("unused")
 public class Util {

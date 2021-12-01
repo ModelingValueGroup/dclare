@@ -15,19 +15,20 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static java.lang.management.ManagementFactory.*;
+import static java.lang.management.ManagementFactory.getRuntimeMXBean;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.function.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
-import org.modelingvalue.collections.util.ContextThread.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.sync.*;
+import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.sync.DeltaAdaptor;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public class CommunicationHelper {
     private static final boolean                WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;

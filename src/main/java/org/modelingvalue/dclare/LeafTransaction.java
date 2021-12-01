@@ -15,14 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")

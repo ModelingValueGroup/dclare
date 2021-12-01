@@ -15,7 +15,8 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public interface SupplierAndConsumer<T> extends Supplier<T>, Consumer<T> {
 }

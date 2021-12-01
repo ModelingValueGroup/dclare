@@ -16,16 +16,16 @@
 package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
-import org.modelingvalue.dclare.sync.*;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public abstract class PeerTester extends WorkDaemon<String> {
     private final AtomicReference<String> lastLine = new AtomicReference<>("");

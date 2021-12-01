@@ -15,8 +15,8 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Mutable;
 
 public class TestMutable implements Mutable {
     private final Object           id;
