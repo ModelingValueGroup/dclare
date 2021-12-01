@@ -139,7 +139,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
+    protected void changed(LeafTransaction tx, O object, T preValue, T postValue) {
         init(postValue);
         if (changed != null) {
             changed.accept(tx, object, preValue, postValue);
