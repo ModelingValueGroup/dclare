@@ -15,14 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
+import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
-
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 public interface Newable extends Mutable {
 

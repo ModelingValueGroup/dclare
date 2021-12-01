@@ -15,13 +15,10 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-
 import java.util.Comparator;
 import java.util.stream.Collectors;
+
+import org.modelingvalue.collections.*;
 
 public class SerialisationPool {
     public static final boolean TRACE_SERIALIZATION = Boolean.getBoolean("TRACE_SERIALIZATION");

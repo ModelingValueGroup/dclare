@@ -15,15 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
+import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {

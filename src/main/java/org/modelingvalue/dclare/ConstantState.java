@@ -15,24 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.ex.NonDeterministicException;
-
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
+import java.lang.ref.*;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
+
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.NonDeterministicException;
 
 @SuppressWarnings("rawtypes")
 public class ConstantState {

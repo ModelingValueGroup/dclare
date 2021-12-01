@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import java.io.Serializable;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
-
-import java.io.Serializable;
 
 public final class This implements Mutable, Internable, Serializable {
 

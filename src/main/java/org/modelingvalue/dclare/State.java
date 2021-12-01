@@ -15,25 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.NotMergeableException;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TriConsumer;
-
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
+
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {

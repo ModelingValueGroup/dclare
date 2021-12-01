@@ -15,23 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.NotMergeableException;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.Construction.Reason;
-import org.modelingvalue.dclare.ex.TransactionException;
-
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
+
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.Construction.Reason;
+import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
     private final CurrentState currentSate = new CurrentState();

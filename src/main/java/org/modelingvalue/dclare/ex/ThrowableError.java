@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.Feature;
-
 import java.time.Instant;
+
+import org.modelingvalue.dclare.Feature;
 
 @SuppressWarnings("unused")
 public final class ThrowableError extends ConsistencyError {

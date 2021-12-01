@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
-
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Set;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 

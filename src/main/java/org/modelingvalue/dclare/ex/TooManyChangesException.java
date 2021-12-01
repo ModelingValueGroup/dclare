@@ -15,9 +15,7 @@
 
 package org.modelingvalue.dclare.ex;
 
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.ObserverTrace;
-import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("unused")
 public final class TooManyChangesException extends ConsistencyError {

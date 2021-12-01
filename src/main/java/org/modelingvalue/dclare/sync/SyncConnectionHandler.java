@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.util.Concurrent;
-
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.util.Concurrent;
 
 public class SyncConnectionHandler {
     private final SupplierAndConsumer<String>            sac;

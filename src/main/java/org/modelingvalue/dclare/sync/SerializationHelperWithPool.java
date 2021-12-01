@@ -16,9 +16,7 @@
 package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.SerialisationPool.Converter;
 
 @SuppressWarnings("unused")

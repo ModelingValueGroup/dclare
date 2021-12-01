@@ -15,16 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import java.util.function.Supplier;
+
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.EmptyMandatoryException;
-import org.modelingvalue.dclare.ex.TooManyObserversException;
-
-import java.util.function.Supplier;
+import org.modelingvalue.dclare.ex.*;
 
 public class Observed<O, T> extends Setable<O, T> {
 

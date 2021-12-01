@@ -15,6 +15,16 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import static java.lang.management.ManagementFactory.getRuntimeMXBean;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+
+import java.io.*;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Concurrent;
@@ -22,23 +32,6 @@ import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.WorkDaemon;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
-
-import static java.lang.management.ManagementFactory.getRuntimeMXBean;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 public class CommunicationHelper {
     private static final boolean                            WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;

@@ -15,12 +15,12 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.sync.WorkDaemon;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("PointlessBooleanExpression")
 public class CommunicationPeer {

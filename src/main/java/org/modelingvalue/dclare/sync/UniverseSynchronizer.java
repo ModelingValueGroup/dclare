@@ -15,12 +15,9 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-
 import java.util.function.Predicate;
+
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public interface UniverseSynchronizer<M extends Mutable> {

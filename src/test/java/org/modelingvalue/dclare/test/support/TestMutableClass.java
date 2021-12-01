@@ -15,18 +15,14 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.Setable;
-
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestMutableClass implements MutableClass {

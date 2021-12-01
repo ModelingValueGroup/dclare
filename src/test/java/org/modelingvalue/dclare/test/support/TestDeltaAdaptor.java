@@ -15,17 +15,14 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.SerializationHelper;
-
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 @SuppressWarnings("rawtypes")
 public class TestDeltaAdaptor extends DeltaAdaptor<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> {

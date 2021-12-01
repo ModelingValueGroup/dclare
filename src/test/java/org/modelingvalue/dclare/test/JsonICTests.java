@@ -15,17 +15,15 @@
 
 package org.modelingvalue.dclare.test;
 
-import org.junit.jupiter.api.RepeatedTest;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-
-import java.util.Arrays;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.modelingvalue.dclare.sync.JsonIC.fromJson;
 import static org.modelingvalue.dclare.sync.JsonIC.toJson;
+
+import java.util.Arrays;
+
+import org.junit.jupiter.api.RepeatedTest;
+import org.modelingvalue.collections.*;
 
 public class JsonICTests {
     @RepeatedTest(1)

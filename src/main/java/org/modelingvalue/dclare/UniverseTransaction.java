@@ -15,37 +15,27 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.State.ALL_SETTABLES;
+
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.*;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StatusProvider;
 import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.collections.util.TriConsumer;
 import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
-
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
-
-import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {

@@ -15,50 +15,28 @@
 
 package org.modelingvalue.dclare.test;
 
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.RepetitionInfo;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.struct.Struct;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.dclare.DclareConfig;
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Newable;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.Universe;
-import org.modelingvalue.dclare.UniverseTransaction;
-import org.modelingvalue.dclare.UniverseTransaction.Status;
-import org.modelingvalue.dclare.test.support.TestMutable;
-import org.modelingvalue.dclare.test.support.TestMutableClass;
-import org.modelingvalue.dclare.test.support.TestNewable;
-import org.modelingvalue.dclare.test.support.TestNewableClass;
-import org.modelingvalue.dclare.test.support.TestUniverse;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.dclare.CoreSetableModifier.*;
+import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
+import static org.modelingvalue.dclare.test.support.TestNewable.create;
+import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
-import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
-import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
-import static org.modelingvalue.dclare.CoreSetableModifier.synthetic;
-import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
-import static org.modelingvalue.dclare.test.support.TestNewable.create;
-import static org.modelingvalue.dclare.test.support.TestNewable.n;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.struct.Struct;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
+import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.UniverseTransaction.Status;
+import org.modelingvalue.dclare.test.support.*;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {

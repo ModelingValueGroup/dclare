@@ -15,17 +15,15 @@
 
 package org.modelingvalue.dclare.sync;
 
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.json.FromJsonBase;
-import org.modelingvalue.json.Json;
-import org.modelingvalue.json.ToJson;
-
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
+
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.json.*;
 
 public class JsonIC extends Json {
     public static String toJson(Object o) {

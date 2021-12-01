@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.StringUtil;
-
 import java.util.ConcurrentModificationException;
+
+import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Transaction {
 

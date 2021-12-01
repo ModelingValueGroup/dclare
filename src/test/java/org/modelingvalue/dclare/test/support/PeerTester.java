@@ -15,26 +15,18 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.dclare.sync.WorkDaemon;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public abstract class PeerTester extends WorkDaemon<String> {
     private final AtomicReference<String> lastLine = new AtomicReference<>("");

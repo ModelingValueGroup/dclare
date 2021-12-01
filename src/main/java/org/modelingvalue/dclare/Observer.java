@@ -15,23 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.*;
+
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
-
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 

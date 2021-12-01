@@ -15,16 +15,9 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.ImperativeTransaction;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.Universe;
-import org.modelingvalue.dclare.UniverseTransaction;
-
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {

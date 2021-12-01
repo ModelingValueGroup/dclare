@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.Setable;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestNewableClass extends TestMutableClass {

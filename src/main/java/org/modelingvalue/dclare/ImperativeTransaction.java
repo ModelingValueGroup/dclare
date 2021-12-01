@@ -15,16 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import java.util.Objects;
+import java.util.function.*;
+
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.collections.util.TriConsumer;
-
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 

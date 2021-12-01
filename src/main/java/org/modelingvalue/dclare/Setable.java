@@ -15,25 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Internable;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.OutOfScopeException;
-import org.modelingvalue.dclare.ex.ReferencedOrphanException;
-
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+
+import java.util.function.*;
+
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
 public class Setable<O, T> extends Getable<O, T> {
 
