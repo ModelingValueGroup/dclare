@@ -19,7 +19,7 @@ import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.*;
 
 public class TestMutable implements Mutable {
-    private final Object    id;
+    private final Object           id;
     private final TestMutableClass clazz;
 
     public static TestMutable of(Object id, TestMutableClass clazz) {

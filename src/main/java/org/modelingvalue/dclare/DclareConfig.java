@@ -18,77 +18,77 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 
 public class DclareConfig {
-    private static final int MAX_TOTAL_NR_OF_CHANGES_DEFAULT = 10000;
-    private static final int MAX_NR_OF_CHANGES_DEFAULT       = 200;
-    private static final int MAX_NR_OF_OBSERVED_DEFAULT      = 1000;
-    private static final int MAX_NR_OF_OBSERVERS_DEFAULT     = 1000;
-    private static final int MAX_IN_IN_QUEUE_DEFAULT         = 100;
-    private static final int MAX_NR_OF_HISTORY_DEFAULT       = 64;
+    private static final int     MAX_TOTAL_NR_OF_CHANGES_DEFAULT = 10000;
+    private static final int     MAX_NR_OF_CHANGES_DEFAULT       = 200;
+    private static final int     MAX_NR_OF_OBSERVED_DEFAULT      = 1000;
+    private static final int     MAX_NR_OF_OBSERVERS_DEFAULT     = 1000;
+    private static final int     MAX_IN_IN_QUEUE_DEFAULT         = 100;
+    private static final int     MAX_NR_OF_HISTORY_DEFAULT       = 64;
 
     //============================================================================
-    private static final boolean DEV_MODE                = Boolean.getBoolean("DEV_MODE");
-    private static final boolean CHECK_ORPHAN_STATE      = Boolean.getBoolean("CHECK_ORPHAN_STATE");
-    private static final boolean RUN_SEQUENTIAL          = Boolean.getBoolean("RUN_SEQUENTIAL");
-    private static final boolean TRACE_UNIVERSE          = Boolean.getBoolean("TRACE_UNIVERSE");
-    private static final boolean TRACE_MUTABLE           = Boolean.getBoolean("TRACE_MUTABLE");
-    private static final boolean TRACE_MATCHING          = Boolean.getBoolean("TRACE_MATCHING");
-    private static final boolean TRACE_ACTIONS           = Boolean.getBoolean("TRACE_ACTIONS");
-    private static final int     MAX_TOTAL_NR_OF_CHANGES = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", MAX_TOTAL_NR_OF_CHANGES_DEFAULT);
-    private static final int     MAX_NR_OF_CHANGES       = Integer.getInteger("MAX_NR_OF_CHANGES", MAX_NR_OF_CHANGES_DEFAULT);
-    private static final int     MAX_NR_OF_OBSERVED      = Integer.getInteger("MAX_NR_OF_OBSERVED", MAX_NR_OF_OBSERVED_DEFAULT);
-    private static final int     MAX_NR_OF_OBSERVERS     = Integer.getInteger("MAX_NR_OF_OBSERVERS", MAX_NR_OF_OBSERVERS_DEFAULT);
-    private static final int     MAX_IN_IN_QUEUE         = Integer.getInteger("MAX_IN_IN_QUEUE", MAX_IN_IN_QUEUE_DEFAULT);
-    private static final int     MAX_NR_OF_HISTORY       = Integer.getInteger("MAX_NR_OF_HISTORY", MAX_NR_OF_HISTORY_DEFAULT) + 3;
+    private static final boolean DEV_MODE                        = Boolean.getBoolean("DEV_MODE");
+    private static final boolean CHECK_ORPHAN_STATE              = Boolean.getBoolean("CHECK_ORPHAN_STATE");
+    private static final boolean RUN_SEQUENTIAL                  = Boolean.getBoolean("RUN_SEQUENTIAL");
+    private static final boolean TRACE_UNIVERSE                  = Boolean.getBoolean("TRACE_UNIVERSE");
+    private static final boolean TRACE_MUTABLE                   = Boolean.getBoolean("TRACE_MUTABLE");
+    private static final boolean TRACE_MATCHING                  = Boolean.getBoolean("TRACE_MATCHING");
+    private static final boolean TRACE_ACTIONS                   = Boolean.getBoolean("TRACE_ACTIONS");
+    private static final int     MAX_TOTAL_NR_OF_CHANGES         = Integer.getInteger("MAX_TOTAL_NR_OF_CHANGES", MAX_TOTAL_NR_OF_CHANGES_DEFAULT);
+    private static final int     MAX_NR_OF_CHANGES               = Integer.getInteger("MAX_NR_OF_CHANGES", MAX_NR_OF_CHANGES_DEFAULT);
+    private static final int     MAX_NR_OF_OBSERVED              = Integer.getInteger("MAX_NR_OF_OBSERVED", MAX_NR_OF_OBSERVED_DEFAULT);
+    private static final int     MAX_NR_OF_OBSERVERS             = Integer.getInteger("MAX_NR_OF_OBSERVERS", MAX_NR_OF_OBSERVERS_DEFAULT);
+    private static final int     MAX_IN_IN_QUEUE                 = Integer.getInteger("MAX_IN_IN_QUEUE", MAX_IN_IN_QUEUE_DEFAULT);
+    private static final int     MAX_NR_OF_HISTORY               = Integer.getInteger("MAX_NR_OF_HISTORY", MAX_NR_OF_HISTORY_DEFAULT) + 3;
 
     //============================================================================
-    private final State   start;
-    private final boolean devMode;
-    private final boolean checkOrphanState;
-    private final boolean runSequential;
-    private final boolean traceUniverse;
-    private final boolean traceMutable;
-    private final boolean traceMatching;
-    private final boolean traceActions;
-    private final int     maxInInQueue;
-    private final int     maxTotalNrOfChanges;
-    private final int     maxNrOfChanges;
-    private final int     maxNrOfObserved;
-    private final int     maxNrOfObservers;
-    private final int     maxNrOfHistory;
+    private final State          start;
+    private final boolean        devMode;
+    private final boolean        checkOrphanState;
+    private final boolean        runSequential;
+    private final boolean        traceUniverse;
+    private final boolean        traceMutable;
+    private final boolean        traceMatching;
+    private final boolean        traceActions;
+    private final int            maxInInQueue;
+    private final int            maxTotalNrOfChanges;
+    private final int            maxNrOfChanges;
+    private final int            maxNrOfObserved;
+    private final int            maxNrOfObservers;
+    private final int            maxNrOfHistory;
 
     //============================================================================
     public DclareConfig() {
-        this.start               = null;
-        this.devMode             = DEV_MODE;
-        this.checkOrphanState    = CHECK_ORPHAN_STATE;
-        this.runSequential       = RUN_SEQUENTIAL;
-        this.traceUniverse       = TRACE_UNIVERSE;
-        this.traceMutable        = TRACE_MUTABLE;
-        this.traceMatching       = TRACE_MATCHING;
-        this.traceActions        = TRACE_ACTIONS;
-        this.maxInInQueue        = MAX_IN_IN_QUEUE;
+        this.start = null;
+        this.devMode = DEV_MODE;
+        this.checkOrphanState = CHECK_ORPHAN_STATE;
+        this.runSequential = RUN_SEQUENTIAL;
+        this.traceUniverse = TRACE_UNIVERSE;
+        this.traceMutable = TRACE_MUTABLE;
+        this.traceMatching = TRACE_MATCHING;
+        this.traceActions = TRACE_ACTIONS;
+        this.maxInInQueue = MAX_IN_IN_QUEUE;
         this.maxTotalNrOfChanges = MAX_TOTAL_NR_OF_CHANGES;
-        this.maxNrOfChanges      = MAX_NR_OF_CHANGES;
-        this.maxNrOfObserved     = MAX_NR_OF_OBSERVED;
-        this.maxNrOfObservers    = MAX_NR_OF_OBSERVERS;
-        this.maxNrOfHistory      = MAX_NR_OF_HISTORY;
+        this.maxNrOfChanges = MAX_NR_OF_CHANGES;
+        this.maxNrOfObserved = MAX_NR_OF_OBSERVED;
+        this.maxNrOfObservers = MAX_NR_OF_OBSERVERS;
+        this.maxNrOfHistory = MAX_NR_OF_HISTORY;
     }
 
     protected DclareConfig(State start, boolean devMode, boolean checkOrphanState, boolean runSequential, boolean traceUniverse, boolean traceMutable, boolean traceMatching, boolean traceActions, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {
-        this.start               = start;
-        this.devMode             = devMode;
-        this.checkOrphanState    = checkOrphanState;
-        this.runSequential       = runSequential;
-        this.traceUniverse       = traceUniverse;
-        this.traceMutable        = traceMutable;
-        this.traceMatching       = traceMatching;
-        this.traceActions        = traceActions;
-        this.maxInInQueue        = maxInInQueue;
+        this.start = start;
+        this.devMode = devMode;
+        this.checkOrphanState = checkOrphanState;
+        this.runSequential = runSequential;
+        this.traceUniverse = traceUniverse;
+        this.traceMutable = traceMutable;
+        this.traceMatching = traceMatching;
+        this.traceActions = traceActions;
+        this.maxInInQueue = maxInInQueue;
         this.maxTotalNrOfChanges = maxTotalNrOfChanges;
-        this.maxNrOfChanges      = maxNrOfChanges;
-        this.maxNrOfObserved     = maxNrOfObserved;
-        this.maxNrOfObservers    = maxNrOfObservers;
-        this.maxNrOfHistory      = maxNrOfHistory;
+        this.maxNrOfChanges = maxNrOfChanges;
+        this.maxNrOfObserved = maxNrOfObserved;
+        this.maxNrOfObservers = maxNrOfObservers;
+        this.maxNrOfHistory = maxNrOfHistory;
     }
 
     protected DclareConfig create(State start, boolean devMode, boolean checkOrphanState, boolean runSequential, boolean traceUniverse, boolean traceMutable, boolean traceMatching, boolean traceActions, int maxInInQueue, int maxTotalNrOfChanges, int maxNrOfChanges, int maxNrOfObserved, int maxNrOfObservers, int maxNrOfHistory) {

@@ -22,9 +22,9 @@ import java.util.*;
 @SuppressWarnings("unused")
 public final class TransactionException extends RuntimeException {
 
-    private static final long serialVersionUID = 4787416569147173605L;
+    private static final long      serialVersionUID = 4787416569147173605L;
 
-    protected static final int MAX_STACK_DEPTH = Integer.getInteger("MAX_STACK_DEPTH", 4);
+    protected static final int     MAX_STACK_DEPTH  = Integer.getInteger("MAX_STACK_DEPTH", 4);
 
     private final TransactionClass cls;
 

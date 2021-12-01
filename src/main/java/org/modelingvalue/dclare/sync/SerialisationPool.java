@@ -57,16 +57,16 @@ public class SerialisationPool {
     }
 
     public abstract static class BaseConverter<T> implements Converter<T> {
-        private final Class<T>          clazz;
-        private final String            prefix;
-        protected     SerialisationPool serialisationPool;
+        private final Class<T>      clazz;
+        private final String        prefix;
+        protected SerialisationPool serialisationPool;
 
         protected BaseConverter(Class<T> clazz) {
             this(clazz, Util.PREFIX_MAP.getOrDefault(clazz, clazz.getSimpleName()));
         }
 
         protected BaseConverter(Class<T> clazz, String prefix) {
-            this.clazz  = clazz;
+            this.clazz = clazz;
             this.prefix = prefix;
         }
 
@@ -92,7 +92,7 @@ public class SerialisationPool {
 
     private final Map<String, Converter<?>>   deserialiseMap;
     private final Map<Class<?>, Converter<?>> serializeMap;
-    private       Map<Class<?>, Converter<?>> additionalMappingsCache = Map.of();
+    private Map<Class<?>, Converter<?>>       additionalMappingsCache = Map.of();
 
     public SerialisationPool(Converter<?>... converters) {
         this(Arrays.stream(converters));
@@ -107,38 +107,22 @@ public class SerialisationPool {
         sanityCheck(conv);
         conv.forEach(c -> c.setPool(this));
         deserialiseMap = conv.toMap(c -> Entry.of(c.getPrefix(), c));
-        serializeMap   = conv.toMap(c -> Entry.of(c.getClazz(), c));
+        serializeMap = conv.toMap(c -> Entry.of(c.getClazz(), c));
         if (TRACE) {
             System.err.println("serialisation pool vacabulary:");
             int maxLength = conv.mapToInt(c -> c.getClazz().getName().length()).max().orElse(0);
-            conv.sorted(Comparator.comparing(a -> a.getClazz().getSimpleName()))
-                    .toList() // this toList() should not be needed but is (bug in immutable collections?)
+            conv.sorted(Comparator.comparing(a -> a.getClazz().getSimpleName())).toList() // this toList() should not be needed but is (bug in immutable collections?)
                     .forEach(c -> System.err.printf("  - %-" + maxLength + "s %s%s\n", c.getClazz().getName(), c.getPrefix(), Converter.DELIMITER));
         }
     }
 
     private void sanityCheck(List<Converter<?>> conv) {
-        List<List<String>> doublePrefixes = Collection.of(
-                conv.map(Converter::getPrefix)
-                        .collect(Collectors.groupingBy(x -> x))
-                        .values()
-                        .stream()
-                        .filter(l -> l.size() != 1)
-                        .map(List::of)
-        ).toList();
+        List<List<String>> doublePrefixes = Collection.of(conv.map(Converter::getPrefix).collect(Collectors.groupingBy(x -> x)).values().stream().filter(l -> l.size() != 1).map(List::of)).toList();
         if (!doublePrefixes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes);
         }
         // NB: keep this next var separate to avoid java compiler error:
-        Collection<List<? extends Class<?>>> avoidCompilerError = Collection.of(
-                conv
-                        .map(Converter::getClazz)
-                        .collect(Collectors.groupingBy(x -> x))
-                        .values()
-                        .stream()
-                        .filter(l -> l.size() != 1)
-                        .map(List::of)
-        );
+        Collection<List<? extends Class<?>>> avoidCompilerError = Collection.of(conv.map(Converter::getClazz).collect(Collectors.groupingBy(x -> x)).values().stream().filter(l -> l.size() != 1).map(List::of));
         List<List<? extends Class<?>>> doubleClazzes = avoidCompilerError.toList();
         if (!doubleClazzes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes);
@@ -161,7 +145,7 @@ public class SerialisationPool {
                 Class<?> key = e.getKey();
                 if (key.isAssignableFrom(clazz) && (bestUntilNow == null || bestUntilNow.isAssignableFrom(key))) {
                     bestUntilNow = key;
-                    result       = getValue(e);
+                    result = getValue(e);
                 }
             }
             additionalMappingsCache = additionalMappingsCache.put(Entry.of(clazz, result));
@@ -177,9 +161,9 @@ public class SerialisationPool {
         if (string == null || string.isBlank()) {
             throw problem("[DESERIALIZE] " + ("no deserialisation possible for null or empty string"));
         }
-        int          i         = string.indexOf(Converter.DELIMITER);
-        String       prefix    = i < 0 ? string : string.substring(0, i);
-        String       rest      = i < 0 ? null : string.substring(i + 1);
+        int i = string.indexOf(Converter.DELIMITER);
+        String prefix = i < 0 ? string : string.substring(0, i);
+        String rest = i < 0 ? null : string.substring(i + 1);
         Converter<?> converter = deserialiseMap.get(prefix);
         if (converter == null) {
             throw problem("[DESERIALIZE] " + ("missing converter for '" + prefix + "' in \"" + string + "\" (no deserialisation possible)"));
@@ -208,7 +192,6 @@ public class SerialisationPool {
         }
         return string;
     }
-
 
     @SuppressWarnings("unchecked")
     private static <T> Converter<T> getConverter(Class<T> cls, Map<Class<?>, Converter<?>> map) {

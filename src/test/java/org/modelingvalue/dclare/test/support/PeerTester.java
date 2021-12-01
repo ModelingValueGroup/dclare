@@ -102,12 +102,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
             out.flush();
             assertTrue(process.waitFor(maxMs, TimeUnit.MILLISECONDS));
             Thread.sleep(10);
-            assertAll(
-                    () -> assertFalse(inSucker.isAlive()),
-                    () -> assertFalse(errSucker.isAlive()),
-                    () -> assertNull(inSucker.throwable),
-                    () -> assertNull(errSucker.throwable)
-            );
+            assertAll(() -> assertFalse(inSucker.isAlive()), () -> assertFalse(errSucker.isAlive()), () -> assertNull(inSucker.throwable), () -> assertNull(errSucker.throwable));
         });
         return process.exitValue();
     }
@@ -115,7 +110,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
     private static class Sucker extends Thread {
         private final BufferedReader   reader;
         private final Consumer<String> action;
-        private       Throwable        throwable;
+        private Throwable              throwable;
 
         public Sucker(String name, BufferedReader reader, Consumer<String> action) {
             super("peerSucker-" + name);
