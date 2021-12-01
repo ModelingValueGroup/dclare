@@ -106,7 +106,7 @@ public abstract class LeafTransaction extends Transaction {
             if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
                 set(container, Priority.backward.children, Set::remove, object);
             }
-            object    = container;
+            object = container;
             container = dParent(object);
         }
     }

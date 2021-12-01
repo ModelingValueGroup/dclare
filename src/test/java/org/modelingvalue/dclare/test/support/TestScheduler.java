@@ -26,7 +26,7 @@ public class TestScheduler implements Consumer<Runnable> {
     }
 
     private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
-    private       boolean                 stop;
+    private boolean                       stop;
 
     protected TestScheduler() {
     }

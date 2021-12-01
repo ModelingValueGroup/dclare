@@ -35,7 +35,7 @@ public class TestNewableClass extends TestMutableClass {
 
     protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, Setable... setables) {
         super(id, setables);
-        this.identity  = identity;
+        this.identity = identity;
         this.direction = direction;
     }
 

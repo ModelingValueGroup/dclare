@@ -27,7 +27,7 @@ public class TestMutable implements Mutable {
     }
 
     protected TestMutable(Object id, TestMutableClass clazz) {
-        this.id    = id;
+        this.id = id;
         this.clazz = clazz;
     }
 

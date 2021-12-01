@@ -39,14 +39,14 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final Set<Mutable>[]                          children = new Set[1];
     private final State[]                                 state    = new State[1];
 
-    private boolean    urgent;
-    private Set<State> states;
+    private boolean                                       urgent;
+    private Set<State>                                    states;
 
     @SuppressWarnings("unchecked")
 
     protected MutableTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
-        triggeredActions  = Concurrent.of();
+        triggeredActions = Concurrent.of();
         triggeredChildren = new Concurrent[]{Concurrent.of(), Concurrent.of(), Concurrent.of()};
     }
 
@@ -74,7 +74,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         urgent = parent() != null && parent().urgent;
         TraceTimer.traceBegin("compound");
         state[0] = pre;
-                   states = Set.of(pre);
+        states = Set.of(pre);
         try {
             if (parent() == null) {
                 move(mutable(), Priority.backward, Priority.scheduled);
@@ -100,10 +100,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             universeTransaction().handleException(new TransactionException(mutable(), t));
             return state[0];
         } finally {
-            states      = null;
-            urgent      = false;
-            state[0]    = null;
-            actions[0]  = null;
+            states = null;
+            urgent = false;
+            state[0] = null;
+            actions[0] = null;
             children[0] = null;
             TraceTimer.traceEnd("compound");
         }
@@ -193,13 +193,13 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @Override
     public void handleChange(Object o, DefaultMap<Setable, Object> ps, Entry<Setable, Object> p, DefaultMap<Setable, Object>[] psbs) {
         if (p.getKey() instanceof Observers) {
-            Observers<?, ?>                    os        = (Observers) p.getKey();
+            Observers<?, ?> os = (Observers) p.getKey();
             DefaultMap<Observer, Set<Mutable>> observers = (DefaultMap) p.getValue();
             os.observed().checkTooManyObservers(universeTransaction(), o, observers);
             observers = observers.removeAll(State.get(ps, os), Set::removeAll);
             if (!observers.isEmpty()) {
                 Observed<?, ?> observedProp = os.observed();
-                Object         baseValue    = State.get(ps, observedProp);
+                Object baseValue = State.get(ps, observedProp);
                 for (DefaultMap<Setable, Object> psb : psbs) {
                     Object branchValue = State.get(psb, observedProp);
                     if (!Objects.equals(branchValue, baseValue)) {
@@ -254,7 +254,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         Mutable parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         while (parent != null && !mutable().equals(object)) {
-            state  = state.set(parent, priority.children, Set::add, object);
+            state = state.set(parent, priority.children, Set::add, object);
             object = parent;
             parent = state.getA(object, Mutable.D_PARENT_CONTAINING);
         }

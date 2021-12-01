@@ -46,85 +46,85 @@ import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 @SuppressWarnings({"FieldCanBeLocal", "unchecked", "rawtypes"})
 public class ModelMaker {
     // TODO: need to fix the bug and remove this workaround:
-    public static final  boolean                                                    BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER = true;
-    public static final  int                                                        SOURCE_DEFAULT                           = 11;
-    public static final  int                                                        TARGET_DEFAULT                           = 12;
-    public static final  int                                                        TARGET2_DEFAULT                          = 13;
-    private static final Concurrent<List<Pair<Thread, Throwable>>>                  UNCAUGHT_THROWABLES                      = Concurrent.of(List.of());
+    public static final boolean                                                                               BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER = true;
+    public static final int                                                                                   SOURCE_DEFAULT                           = 11;
+    public static final int                                                                                   TARGET_DEFAULT                           = 12;
+    public static final int                                                                                   TARGET2_DEFAULT                          = 13;
+    private static final Concurrent<List<Pair<Thread, Throwable>>>                                            UNCAUGHT_THROWABLES                      = Concurrent.of(List.of());
     //
-    private static final Observed<TestMutable, Integer>                             source                                   = TestObserved.of("#source", ModelMaker::id, ModelMaker::desInt, SOURCE_DEFAULT);
-    private static final Observed<TestMutable, Integer>                             target                                   = TestObserved.of("#target", ModelMaker::id, ModelMaker::desInt, TARGET_DEFAULT);
-    private static final Observed<TestMutable, Integer>                             target2                                  = TestObserved.of("#target2", ModelMaker::id, ModelMaker::desInt, TARGET2_DEFAULT);
-    private static final Observed<TestMutable, TestMutable>                         extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, containment);
-    private static final Observed<TestMutable, Set<TestMutable>>                    extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), containment);
-    private static final Observed<TestMutable, String>                              extraString                              = TestObserved.of("#extra\n\"String", ModelMaker::id, ModelMaker::desString, "default");
-    private static final Observed<TestMutable, List<String>>                        aList                                    = TestObserved.of("#aList", ModelMaker::id, ModelMaker::desList, List.of());
-    private static final Observed<TestMutable, Set<String>>                         aSet                                     = TestObserved.of("#aSet", ModelMaker::id, ModelMaker::desSet, Set.of());
-    private static final Observed<TestMutable, Map<String, String>>                 aMap                                     = TestObserved.of("#aMap", ModelMaker::id, ModelMaker::desMap, Map.of());
-    private static final Observed<TestMutable, DefaultMap<String, String>>          aDefMap                                  = TestObserved.of("#aDefMap", ModelMaker::id, ModelMaker::desDefMap, DefaultMap.of(k -> "zut"));
-    private static final Observed<TestMutable, QualifiedSet<String, String>>        aQuaSet                                  = TestObserved.of("#aQuaSet", ModelMaker::id, ModelMaker::desQuaSet, QualifiedSet.of(v -> v));
-    private static final Observed<TestMutable, QualifiedDefaultSet<String, String>> aQuaDefSet                               = TestObserved.of("#aQuaDefSet", ModelMaker::id, ModelMaker::desQuaDefSet, QualifiedDefaultSet.of(v -> v, k -> "zutje"));
+    private static final Observed<TestMutable, Integer>                                                       source                                   = TestObserved.of("#source", ModelMaker::id, ModelMaker::desInt, SOURCE_DEFAULT);
+    private static final Observed<TestMutable, Integer>                                                       target                                   = TestObserved.of("#target", ModelMaker::id, ModelMaker::desInt, TARGET_DEFAULT);
+    private static final Observed<TestMutable, Integer>                                                       target2                                  = TestObserved.of("#target2", ModelMaker::id, ModelMaker::desInt, TARGET2_DEFAULT);
+    private static final Observed<TestMutable, TestMutable>                                                   extra                                    = TestObserved.of("#extraRef", ModelMaker::serTestObject, ModelMaker::desTestObject, null, containment);
+    private static final Observed<TestMutable, Set<TestMutable>>                                              extraSet                                 = TestObserved.of("#extraSet", ModelMaker::serTestObjectSet, ModelMaker::desTestObjectSet, Set.of(), containment);
+    private static final Observed<TestMutable, String>                                                        extraString                              = TestObserved.of("#extra\n\"String", ModelMaker::id, ModelMaker::desString, "default");
+    private static final Observed<TestMutable, List<String>>                                                  aList                                    = TestObserved.of("#aList", ModelMaker::id, ModelMaker::desList, List.of());
+    private static final Observed<TestMutable, Set<String>>                                                   aSet                                     = TestObserved.of("#aSet", ModelMaker::id, ModelMaker::desSet, Set.of());
+    private static final Observed<TestMutable, Map<String, String>>                                           aMap                                     = TestObserved.of("#aMap", ModelMaker::id, ModelMaker::desMap, Map.of());
+    private static final Observed<TestMutable, DefaultMap<String, String>>                                    aDefMap                                  = TestObserved.of("#aDefMap", ModelMaker::id, ModelMaker::desDefMap, DefaultMap.of(k -> "zut"));
+    private static final Observed<TestMutable, QualifiedSet<String, String>>                                  aQuaSet                                  = TestObserved.of("#aQuaSet", ModelMaker::id, ModelMaker::desQuaSet, QualifiedSet.of(v -> v));
+    private static final Observed<TestMutable, QualifiedDefaultSet<String, String>>                           aQuaDefSet                               = TestObserved.of("#aQuaDefSet", ModelMaker::id, ModelMaker::desQuaDefSet, QualifiedDefaultSet.of(v -> v, k -> "zutje"));
 
-    public static final SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> SERIALIZATION_HELPER = new SerializationHelper<>() {
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        @Override
-        public Predicate<Mutable> mutableFilter() {
-            return o -> o instanceof TestMutable;
-        }
+    public static final SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> SERIALIZATION_HELPER                     = new SerializationHelper<>() {
+                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                                                           @Override
+                                                                                                                                                           public Predicate<Mutable> mutableFilter() {
+                                                                                                                                                               return o -> o instanceof TestMutable;
+                                                                                                                                                           }
 
-        @Override
-        public Predicate<Setable<TestMutable, ?>> setableFilter() {
-            return s -> s instanceof TestObserved;
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public Predicate<Setable<TestMutable, ?>> setableFilter() {
+                                                                                                                                                               return s -> s instanceof TestObserved;
+                                                                                                                                                           }
 
-        @Override
-        public TestMutableClass getMutableClass(TestMutable s) {
-            return s.dClass();
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public TestMutableClass getMutableClass(TestMutable s) {
+                                                                                                                                                               return s.dClass();
+                                                                                                                                                           }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        private String serializeClass(TestMutableClass clazz) {
-            return clazz.serializeClass();
-        }
+                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                                                           private String serializeClass(TestMutableClass clazz) {
+                                                                                                                                                               return clazz.serializeClass();
+                                                                                                                                                           }
 
-        @Override
-        public String serializeMutable(TestMutable mutable) {
-            return Util.encodeWithLength(serializeClass(mutable.dClass()), mutable.serialize());
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public String serializeMutable(TestMutable mutable) {
+                                                                                                                                                               return Util.encodeWithLength(serializeClass(mutable.dClass()), mutable.serialize());
+                                                                                                                                                           }
 
-        @Override
-        public String serializeSetable(TestObserved setable) {
-            return setable.toString();
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public String serializeSetable(TestObserved setable) {
+                                                                                                                                                               return setable.toString();
+                                                                                                                                                           }
 
-        @Override
-        public Object serializeValue(TestObserved setable, Object value) {
-            return setable.getSerializeValue().apply(setable, value);
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public Object serializeValue(TestObserved setable, Object value) {
+                                                                                                                                                               return setable.getSerializeValue().apply(setable, value);
+                                                                                                                                                           }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        private TestMutableClass deserializeClass(String s) {
-            return TestMutableClass.existing(s);
-        }
+                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                                                           private TestMutableClass deserializeClass(String s) {
+                                                                                                                                                               return TestMutableClass.existing(s);
+                                                                                                                                                           }
 
-        @Override
-        public TestObserved<TestMutable, Object> deserializeSetable(TestMutableClass clazz, String s) {
-            return TestObserved.existing(s);
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public TestObserved<TestMutable, Object> deserializeSetable(TestMutableClass clazz, String s) {
+                                                                                                                                                               return TestObserved.existing(s);
+                                                                                                                                                           }
 
-        @Override
-        public TestMutable deserializeMutable(String s) {
-            String[] parts = Util.decodeFromLength(s, 2);
-            return TestMutable.of(parts[1], deserializeClass(parts[0]));
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public TestMutable deserializeMutable(String s) {
+                                                                                                                                                               String[] parts = Util.decodeFromLength(s, 2);
+                                                                                                                                                               return TestMutable.of(parts[1], deserializeClass(parts[0]));
+                                                                                                                                                           }
 
-        @Override
-        public Object deserializeValue(TestObserved setable, Object value) {
-            return setable.getDeserializeValue().apply(setable, value);
-        }
+                                                                                                                                                           @Override
+                                                                                                                                                           public Object deserializeValue(TestObserved setable, Object value) {
+                                                                                                                                                               return setable.getDeserializeValue().apply(setable, value);
+                                                                                                                                                           }
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    };
+                                                                                                                                                           ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                                                                                                                                       };
 
     private static <S, T> T id(S s, T a) {
         return a;
@@ -183,40 +183,40 @@ public class ModelMaker {
         return obs.getDefault().addAll(oo);
     }
 
-    private static final TestMutableClass                   extraClass      = TestMutableClass.of("ExtraClass");
-    private static final TestMutableClass                   plughClassMain  = TestMutableClass.of("PlughClass").observe(                                  //
+    private static final TestMutableClass            extraClass      = TestMutableClass.of("ExtraClass");
+    private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                  //
             o -> target.set(o, source.get(o)),                                                                                                     //
             o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@"),                                                                        //
             o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)));
-    private static final TestMutableClass                   plughClassRobot = TestMutableClass.of("PlughClass").observe(                                  //
+    private static final TestMutableClass            plughClassRobot = TestMutableClass.of("PlughClass").observe(                                  //
             o -> target.set(o, source.get(o)),                                                                                                     //
             o -> target2.set(o, source.get(o)),                                                                                                    //
             o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@"),                                                                        //
             o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)),                                                                     //
-            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet()),       //
+            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet()),   //
             o -> target.set(extra.get(o), target.get(o)),                                                                                          //
             o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList()),                                                      //
-            o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet()),                            //
+            o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet()),                        //
             o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!"))),                                   //
             o -> aDefMap.set(o, aDefMap.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!")))),   //
             o -> aQuaSet.set(o, aQuaSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i))),                               //
             o -> aQuaDefSet.set(o, aQuaDefSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
-    private final        String                             name;
-    private final        TestMutable                        xyzzy;
-    private final        Constant<TestMutable, TestMutable> plugConst;
-    private final        TestMutableClass                   universeClass;
-    private final        TestUniverse                       universe;
-    private final        ContextPool                        pool;
-    private final        UniverseTransaction                tx;
+    private final String                             name;
+    private final TestMutable                        xyzzy;
+    private final Constant<TestMutable, TestMutable> plugConst;
+    private final TestMutableClass                   universeClass;
+    private final TestUniverse                       universe;
+    private final ContextPool                        pool;
+    private final UniverseTransaction                tx;
 
     public ModelMaker(String name, boolean isRobot) {
-        this.name     = name;
-        xyzzy         = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
-        plugConst     = Constant.of("plugConst", u -> xyzzy, containment);
+        this.name = name;
+        xyzzy = TestMutable.of("xyzzy\n\"", isRobot ? plughClassRobot : plughClassMain);
+        plugConst = Constant.of("plugConst", u -> xyzzy, containment);
         universeClass = TestMutableClass.of("Universe-" + name, plugConst);
-        universe      = TestUniverse.of("universe-" + name, universeClass);
-        pool          = newPool();
-        tx            = new UniverseTransaction(universe, pool, new DclareConfig().withDevMode(true));
+        universe = TestUniverse.of("universe-" + name, universeClass);
+        pool = newPool();
+        tx = new UniverseTransaction(universe, pool, new DclareConfig().withDevMode(true));
 
         CommunicationHelper.add(this);
         CommunicationHelper.add(pool);

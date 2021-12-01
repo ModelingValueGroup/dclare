@@ -124,17 +124,14 @@ public class CommunicationHelper {
     }
 
     public static void rethrowAllDaemonProblems() {
-        assertAll(ALL_DAEMONS.get()
-                .map(WorkDaemon::getThrowable)
-                .filter(Objects::nonNull)
-                .map(t -> () -> {
-                    throw t;
-                }));
+        assertAll(ALL_DAEMONS.get().map(WorkDaemon::getThrowable).filter(Objects::nonNull).map(t -> () -> {
+            throw t;
+        }));
     }
 
     public static void busyWaitAllForIdle() {
         final long t0 = System.currentTimeMillis();
-        boolean    busy;
+        boolean busy;
         do {
             // probe isBusy() 10 times and 1 ms apart until we find a busy sample or conclude that we are idle
             busy = false;
@@ -149,8 +146,8 @@ public class CommunicationHelper {
             // darn,
             System.err.println("this test did not get idle in time (" + ALL_MODEL_MAKERS.get().size() + " model-makers, " + ALL_DELTA_ADAPTORS.get().size() + " delta-adaptors, " + ALL_DAEMONS.get().size() + " daemons, " + ALL_POOLS.get().size() + " pools):");
             for (TestDeltaAdaptor ad : ALL_DELTA_ADAPTORS.get()) {
-                StringBuilder adWhy  = new StringBuilder();
-                boolean       adBusy = ad.isBusy(adWhy);
+                StringBuilder adWhy = new StringBuilder();
+                boolean adBusy = ad.isBusy(adWhy);
                 System.err.printf(" - modelmaker %-16s: %s (%s)\n", ad.getName(), adBusy ? "BUSY" : "idle", adWhy);
             }
             for (WorkDaemon<?> wd : ALL_DAEMONS.get()) {
@@ -172,9 +169,9 @@ public class CommunicationHelper {
     }
 
     public static void interpreter(InputStream in, AtomicBoolean stop, Map<Character, BiConsumer<Character, String>> actions) throws IOException {
-        BiConsumer<Character, String> defaultAction  = actions.get((Character) '*');
-        BufferedReader                bufferedReader = new BufferedReader(new InputStreamReader(in));
-        String                        line;
+        BiConsumer<Character, String> defaultAction = actions.get((Character) '*');
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
+        String line;
         while (!stop.get() && (line = bufferedReader.readLine()) != null) {
             busyWaitAllForIdle();
             traceLog("got line: " + line);

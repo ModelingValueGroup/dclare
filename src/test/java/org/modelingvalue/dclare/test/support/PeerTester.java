@@ -47,9 +47,9 @@ public abstract class PeerTester extends WorkDaemon<String> {
         super("PEER-" + mainClass.getName());
         process = new ProcessBuilder("java", "-cp", getClassPath(), mainClass.getName()).start();
 
-        inSucker  = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
+        inSucker = new Sucker("in", new BufferedReader(new InputStreamReader(process.getInputStream())), this::handleStdinLine);
         errSucker = new Sucker("err", new BufferedReader(new InputStreamReader(process.getErrorStream())), this::handleStderrLine);
-        out       = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+        out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
 
         CommunicationHelper.add(this);
         start();
@@ -111,12 +111,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
             out.flush();
             assertTrue(process.waitFor(maxMs, TimeUnit.MILLISECONDS));
             Thread.sleep(10);
-            assertAll(
-                    () -> assertFalse(inSucker.isAlive()),
-                    () -> assertFalse(errSucker.isAlive()),
-                    () -> assertNull(inSucker.throwable),
-                    () -> assertNull(errSucker.throwable)
-            );
+            assertAll(() -> assertFalse(inSucker.isAlive()), () -> assertFalse(errSucker.isAlive()), () -> assertNull(inSucker.throwable), () -> assertNull(errSucker.throwable));
         });
         return process.exitValue();
     }
@@ -124,7 +119,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
     private static class Sucker extends Thread {
         private final BufferedReader   reader;
         private final Consumer<String> action;
-        private       Throwable        throwable;
+        private Throwable              throwable;
 
         public Sucker(String name, BufferedReader reader, Consumer<String> action) {
             super("peerSucker-" + name);

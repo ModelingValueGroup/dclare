@@ -44,10 +44,10 @@ public class CommunicationTests {
     //@RepeatedTest(50)
     @Test
     public void universeSyncWithinOneJVM() {
-        ModelMaker       a        = new ModelMaker("a", false);
+        ModelMaker a = new ModelMaker("a", false);
         TestDeltaAdaptor aAdaptor = CommunicationHelper.hookupDeltaAdaptor(a);
 
-        ModelMaker       b        = new ModelMaker("b", true);
+        ModelMaker b = new ModelMaker("b", true);
         TestDeltaAdaptor bAdaptor = CommunicationHelper.hookupDeltaAdaptor(b);
 
         CommunicationHelper.hookupTransportDaemon("a->b", aAdaptor, bAdaptor);
@@ -106,7 +106,7 @@ public class CommunicationTests {
     @Test
     @Disabled
     public void universeSyncBetweenJVMs() throws IOException {
-        ModelMaker       mmMain        = new ModelMaker("mmMain", false);
+        ModelMaker mmMain = new ModelMaker("mmMain", false);
         TestDeltaAdaptor mmMainAdaptor = CommunicationHelper.hookupDeltaAdaptor(mmMain);
 
         PeerTester peer = new PeerTester(CommunicationPeer.class) {

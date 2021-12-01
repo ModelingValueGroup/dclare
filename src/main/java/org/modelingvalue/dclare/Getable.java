@@ -28,7 +28,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
     protected final T      def;
 
     protected Getable(Object id, T def) {
-        this.id  = id;
+        this.id = id;
         this.def = def;
     }
 

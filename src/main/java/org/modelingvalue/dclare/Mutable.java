@@ -28,29 +28,29 @@ import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
 
-    Mutable THIS = new This();
+    Mutable                                               THIS                     = new This();
 
-    Set<Mutable> THIS_SINGLETON = Set.of(THIS);
+    Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, plumbing) {
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        }
-    };
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, plumbing) {
+                                                                                       @SuppressWarnings("rawtypes")
+                                                                                       @Override
+                                                                                       protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
+                                                                                       }
+                                                                                   };
 
-    Setable<Mutable, Byte> D_CHANGE_NR = Setable.of("D_CHANGE_NR", (byte) 0);
+    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>> D_OBSERVERS = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
             added -> added.trigger(obj),                                                                                                                                                                                     //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable> D_OBSERVERS_RULE = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
+    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable> D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
         return D_PARENT_CONTAINING.get(this);
@@ -104,7 +104,7 @@ public interface Mutable extends TransactionClass {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
-        Mutable                            result = this;
+        Mutable result = this;
         Pair<Mutable, Setable<Mutable, ?>> pair;
         while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
             if (cls.isInstance(result) && containing.test(pair.b())) {

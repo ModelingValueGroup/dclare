@@ -22,8 +22,8 @@ import java.util.ConcurrentModificationException;
 public abstract class Transaction {
 
     private final UniverseTransaction universeTransaction;
-    private       MutableTransaction  parent;
-    private       TransactionClass    cls;
+    private MutableTransaction        parent;
+    private TransactionClass          cls;
 
     protected Transaction(UniverseTransaction universeTransaction) {
         this.universeTransaction = universeTransaction;
@@ -59,7 +59,7 @@ public abstract class Transaction {
         if (this.cls != null) {
             throw new ConcurrentModificationException();
         }
-        this.cls    = cls;
+        this.cls = cls;
         this.parent = parent;
     }
 
@@ -67,7 +67,7 @@ public abstract class Transaction {
         if (cls == null) {
             throw new ConcurrentModificationException();
         }
-        cls    = null;
+        cls = null;
         parent = null;
     }
 

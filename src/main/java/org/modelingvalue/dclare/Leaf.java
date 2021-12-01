@@ -23,7 +23,7 @@ public abstract class Leaf implements TransactionClass, Feature {
     private final Priority initPriority;
 
     protected Leaf(Object id, Priority initPriority) {
-        this.id           = id;
+        this.id = id;
         this.initPriority = initPriority;
     }
 

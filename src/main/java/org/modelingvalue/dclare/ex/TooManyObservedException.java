@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public final class TooManyObservedException extends ConsistencyError {
 
-    private static final long serialVersionUID = 2091236807252565002L;
+    private static final long                        serialVersionUID = 2091236807252565002L;
 
     private final Observer<?>                        observer;
     @SuppressWarnings("rawtypes")
@@ -39,8 +39,8 @@ public final class TooManyObservedException extends ConsistencyError {
     @SuppressWarnings("rawtypes")
     public TooManyObservedException(Mutable mutable, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observed, UniverseTransaction universeTransaction) {
         super(mutable, observer, 1, universeTransaction.preState().get(() -> "Too many observed (" + LeafTransaction.size(observed) + ") by " + StringUtil.toString(mutable) + "." + StringUtil.toString(observer)));
-        this.observer            = observer;
-        this.observed            = observed;
+        this.observer = observer;
+        this.observed = observed;
         this.universeTransaction = universeTransaction;
     }
 

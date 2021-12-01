@@ -46,16 +46,11 @@ public class SerialisationPoolTests {
 
     @Test
     public void absentTests() {
-        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string",
-                assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, null)).getMessage());
-        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string",
-                assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "")).getMessage());
-        assertEquals("[DESERIALIZE] missing converter for 'just some string' in \"just some string\" (no deserialisation possible)",
-                assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "just some string")).getMessage());
-        assertEquals("[DESERIALIZE] missing converter for 'unknown' in \"unknown:#$%^&\" (no deserialisation possible)",
-                assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "unknown:#$%^&")).getMessage());
-        assertEquals("[  SERIALIZE] null                     : no converter available for class int[]\n",
-                assertThrows(IllegalArgumentException.class, () -> h.serializeValue(null, new int[3])).getMessage());
+        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, null)).getMessage());
+        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "")).getMessage());
+        assertEquals("[DESERIALIZE] missing converter for 'just some string' in \"just some string\" (no deserialisation possible)", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "just some string")).getMessage());
+        assertEquals("[DESERIALIZE] missing converter for 'unknown' in \"unknown:#$%^&\" (no deserialisation possible)", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "unknown:#$%^&")).getMessage());
+        assertEquals("[  SERIALIZE] null                     : no converter available for class int[]\n", assertThrows(IllegalArgumentException.class, () -> h.serializeValue(null, new int[3])).getMessage());
     }
 
     @Test
@@ -105,7 +100,6 @@ public class SerialisationPoolTests {
         assertEquals("immutableMap:{\"C:c\":\"J:88\",\"s:@\":\"Z:true\"}", h.serializeValue(null, Map.of(Entry.of('c', 88L), Entry.of("@", true))));
         assertEquals(Map.of(Entry.of(false, "no"), Entry.of(true, "yes")), h.deserializeValue(null, "immutableMap:{\"Z:true\":\"s:yes\",\"Z:false\":\"s:no\"}"));
     }
-
 
     private static class TestSerializationHelperWithPool extends SerializationHelperWithPool<MutableClass, Mutable, Setable<Mutable, ?>> {
         public TestSerializationHelperWithPool() {

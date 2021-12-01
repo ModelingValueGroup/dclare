@@ -126,26 +126,26 @@ public class Construction extends IdentifiedByArray {
         private final Newable              newable;
         private final Map<Reason, Newable> constructions;
 
-        private Object         identity;
-        private Boolean        isCarvedInStone;
-        private Set<Newable>   notDerivedSources;
-        private Comparable     sortKey;
-        private Set<Direction> directions;
+        private Object                     identity;
+        private Boolean                    isCarvedInStone;
+        private Set<Newable>               notDerivedSources;
+        private Comparable                 sortKey;
+        private Set<Direction>             directions;
 
         public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions) {
             return new MatchInfo(newable, constructions);
         }
 
         private MatchInfo(Newable newable, Map<Reason, Newable> constructions) {
-            this.newable       = newable;
+            this.newable = newable;
             this.constructions = constructions;
         }
 
         public boolean mustBeTheSame(MatchInfo from) {
             return newable().dNewableType().equals(from.newable().dNewableType()) && //
-                   from.directions().noneMatch(directions()::contains) && //
-                   (from.sources().contains(newable()) || //
-                    (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
+                    from.directions().noneMatch(directions()::contains) && //
+                    (from.sources().contains(newable()) || //
+                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
         }
 
         public void mergeIn(MatchInfo from) {
@@ -154,8 +154,8 @@ public class Construction extends IdentifiedByArray {
 
         public Set<Direction> directions() {
             if (directions == null) {
-                Set<Reason>      reasons = newable.dConstructions().map(Construction::reason).toSet();
-                Optional<Reason> local   = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
+                Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
+                Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
                 if (local.isPresent()) {
                     reasons = reasons.add(local.get());
                 }
