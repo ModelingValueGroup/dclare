@@ -143,13 +143,14 @@ public class UniverseTransaction extends MutableTransaction {
         this.inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
-        preState = emptyState;
-        pool.execute(() -> mainLoop(config.getStart()));
+        State start = config.getStart();
+        state = start != null ? start.clone(this) : emptyState;
+        preState = state;
+        pool.execute(this::mainLoop);
         init();
     }
 
-    protected void mainLoop(State start) {
-        state = start != null ? start.clone(this) : emptyState;
+    private void mainLoop() {
         if (config.isTraceUniverse()) {
             System.err.println("DCLARE: START UNIVERSE " + this);
         }
@@ -162,12 +163,12 @@ public class UniverseTransaction extends MutableTransaction {
         while (!killed) {
             try {
                 handling = false; //TODO wire onto MoodManager
+                preState = state;
                 setIdleMood(state);
                 //==========================================================================
                 Action<Universe> action = take();
                 //==========================================================================
                 setBusyMood(action);
-                preState = state;
                 universeStatistics.setDebugging(false);
                 handling = true; //TODO wire onto MoodManager
                 if (config.isTraceUniverse()) {
