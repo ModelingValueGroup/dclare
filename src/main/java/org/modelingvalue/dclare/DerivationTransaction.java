@@ -15,19 +15,17 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+import java.util.function.*;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 public class DerivationTransaction extends ReadOnlyTransaction {
 
     @SuppressWarnings("rawtypes")
-    private static final Context<Set<Pair<Object, Observed>>> DERIVED         = Context.of(Set.of());
+    private static final Context<Set<Pair<Object, Observed>>> DERIVED = Context.of(Set.of());
 
     protected DerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
