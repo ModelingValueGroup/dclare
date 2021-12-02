@@ -21,11 +21,13 @@ import java.util.function.*;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.CircularDerivationException;
 
 public class DerivationTransaction extends ReadOnlyTransaction {
 
     @SuppressWarnings("rawtypes")
-    public static final Context<Set<Pair<Object, Observed>>> DERIVED = Context.of(Set.of());
+    private static final Context<Set<Pair<Object, Observed>>> DERIVED         = Context.of(Set.of());
+    private static final Context<Boolean>                     DERIVE_DERIVERS = Context.of(false);
 
     protected DerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -74,12 +76,17 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
         if (!constantState.isSet(leafTransaction, object, constant)) {
             Pair<Object, Observed> slot = Pair.of(object, observed);
-            Set<Pair<Object, Observed>> derived = DERIVED.get();
-            if (derived.contains(slot)) {
-                return observed.getDefault();
+            Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
+            Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
+            if (oldDerived == newDerived) {
+                if (DERIVE_DERIVERS.get()) {
+                    return observed.getDefault();
+                } else {
+                    throw new CircularDerivationException("Deriving " + observed);
+                }
             } else {
-                DERIVED.run(derived.add(slot), () -> {
-                    for (Observer deriver : MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed)) {
+                DERIVED.run(newDerived, () -> {
+                    for (Observer deriver : DERIVE_DERIVERS.get(true, () -> MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed))) {
                         deriver.run((Mutable) object);
                     }
                 });
