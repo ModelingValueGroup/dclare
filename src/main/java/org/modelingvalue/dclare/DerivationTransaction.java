@@ -21,6 +21,7 @@ import java.util.function.*;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.TransactionException;
 
 public class DerivationTransaction extends ReadOnlyTransaction {
 
@@ -81,7 +82,11 @@ public class DerivationTransaction extends ReadOnlyTransaction {
             } else {
                 DERIVED.run(newDerived, () -> {
                     for (Observer deriver : MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed)) {
-                        deriver.run((Mutable) object);
+                        try {
+                            deriver.run((Mutable) object);
+                        } catch (Throwable t) {
+                            universeTransaction().handleException(new TransactionException((Mutable) object, new TransactionException(deriver, t)));
+                        }
                     }
                 });
             }
