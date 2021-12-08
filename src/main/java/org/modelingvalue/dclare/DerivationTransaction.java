@@ -113,6 +113,9 @@ public class DerivationTransaction extends ReadOnlyTransaction {
             T pre = derivation.value;
             derivation.value = value;
             return pre;
+        } else if (doDeriver(object, setable)) {
+            constantState.set(LeafTransaction.getCurrent(), object, setable.constant(), value, true);
+            return setable.getDefault();
         } else if (!Objects.equals(state().get(object, setable), value)) {
             return super.set(object, setable, value);
         } else {
