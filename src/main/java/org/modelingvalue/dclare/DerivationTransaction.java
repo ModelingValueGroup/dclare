@@ -26,7 +26,7 @@ import org.modelingvalue.dclare.ex.TransactionException;
 public class DerivationTransaction extends ReadOnlyTransaction {
 
     @SuppressWarnings("rawtypes")
-    private static final Context<Set<Pair<Object, Observed>>> DERIVED = Context.of(Set.of());
+    private static final Context<Set<Derivation>> DERIVED = Context.of(Set.of());
 
     protected DerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -74,11 +74,11 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         Constant<O, T> constant = observed.constant();
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
         if (!constantState.isSet(leafTransaction, object, constant)) {
-            Pair<Object, Observed> slot = Pair.of(object, observed);
-            Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
-            Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
+            Derivation<O, T> derivation = new Derivation<O, T>(object, observed);
+            Set<Derivation> oldDerived = DERIVED.get();
+            Set<Derivation> newDerived = oldDerived.add(derivation);
             if (oldDerived == newDerived) {
-                return observed.getDefault();
+                return (T) oldDerived.get(derivation).value;
             } else {
                 DERIVED.run(newDerived, () -> {
                     for (Observer deriver : MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed)) {
@@ -89,6 +89,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                         }
                     }
                 });
+                constantState.set(LeafTransaction.getCurrent(), object, observed.constant(), derivation.value, true);
             }
         }
         return constantState.get(leafTransaction, object, constant);
@@ -104,15 +105,29 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         return set(object, setable, oper.apply(setable.getDefault()));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T value) {
         if (doDeriver(object, setable)) {
-            constantState.set(LeafTransaction.getCurrent(), object, setable.constant(), value, true);
-            return setable.getDefault();
+            Derivation<O, T> derivation = DERIVED.get().get(new Derivation<O, T>(object, (Observed<O, T>) setable));
+            T pre = derivation.value;
+            derivation.value = value;
+            return pre;
         } else if (!Objects.equals(state().get(object, setable), value)) {
             return super.set(object, setable, value);
         } else {
             return value;
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static class Derivation<O, T> extends Pair<O, Observed<O, T>> {
+        private static final long serialVersionUID = -4899856581075715796L;
+        private T                 value;
+
+        private Derivation(O a, Observed<O, T> b) {
+            super(a, b);
+            value = b.getDefault();
         }
     }
 
