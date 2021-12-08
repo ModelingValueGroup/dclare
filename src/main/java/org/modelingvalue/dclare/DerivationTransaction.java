@@ -108,8 +108,8 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T value) {
-        if (doDeriver(object, setable)) {
-            Derivation<O, T> derivation = DERIVED.get().get(new Derivation<O, T>(object, (Observed<O, T>) setable));
+        Derivation<O, T> derivation = DERIVED.get().get(new Derivation<O, T>(object, (Observed<O, T>) setable));
+        if (derivation != null) {
             T pre = derivation.value;
             derivation.value = value;
             return pre;
