@@ -185,10 +185,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         instances++;
     }
 
-    protected final void removeInstance() {
-        instances--;
-    }
-
     protected final boolean isStopped() {
         return stopped;
     }

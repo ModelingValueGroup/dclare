@@ -158,7 +158,8 @@ public class ConstantState {
 
         @Override
         public String toString() {
-            return "Constants:" + ref.get();
+            O o = ref.get();
+            return "Constants:" + (o != null ? o.getClass().getSimpleName() + "@" + hash : "@" + System.identityHashCode(this));
         }
 
         @SuppressWarnings("unchecked")

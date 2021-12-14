@@ -27,7 +27,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
@@ -509,27 +508,18 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings("rawtypes")
     protected void clearOrphans(Universe universe) {
+        orphansDetected = false;
         LeafTransaction tx = LeafTransaction.getCurrent();
         State postState = tx.state();
-        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = startState//
-                .diff(postState, o -> {
-                    if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
-                        return !tx.toBeCleared((Mutable) o).isEmpty();
-                    } else {
-                        return false;
-                    }
-                }, ALL_SETTABLES)//
-                .toMap(Function.identity());
-        orphansDetected = !orphans.isEmpty();
-        orphans.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
+        startState.diff(postState, o -> o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty(), ALL_SETTABLES)//
+                .forEach(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
     private void clear(LeafTransaction tx, Mutable orphan) {
+        orphansDetected = true;
         orphan.dDeactivate();
         tx.clear(orphan);
-        for (Mutable child : orphan.dChildren()) {
-            clear(tx, child);
-        }
+        orphan.dChildren().forEach(c -> clear(tx, c));
     }
 
     public boolean isStopped(State state) {

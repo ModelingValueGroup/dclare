@@ -125,8 +125,7 @@ public class ObserverTransaction extends ActionTransaction {
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
             observer.addInstance();
-        } else if (!preSources.isEmpty() && observeds.isEmpty()) {
-            observer.removeInstance();
+            universeTransaction().stats().bumpAndGetTotalChanges();
         }
     }
 
@@ -511,6 +510,7 @@ public class ObserverTransaction extends ActionTransaction {
             Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
             return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
         }, from.newable());
+        clear(from.newable());
     }
 
 }
