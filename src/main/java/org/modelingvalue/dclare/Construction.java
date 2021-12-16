@@ -19,9 +19,10 @@ import java.util.Optional;
 
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.IdentifiedByArray;
+import org.modelingvalue.collections.util.Mergeable;
 
 @SuppressWarnings("rawtypes")
-public class Construction extends IdentifiedByArray {
+public class Construction extends IdentifiedByArray implements Mergeable<Construction> {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null);
@@ -222,6 +223,28 @@ public class Construction extends IdentifiedByArray {
             return newable() + ":" + directions().toString().substring(3) + newable().dSources().toString().substring(3);
         }
 
+    }
+
+    private final static Construction MERGER = Construction.of(null);;
+
+    @Override
+    public Construction merge(Construction[] branches, int length) {
+        for (int i = length - 1; i >= 0; i--) {
+            if (branches[i] != null) {
+                return branches[i];
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Construction getMerger() {
+        return MERGER;
+    }
+
+    @Override
+    public Class<?> getMeetClass() {
+        return Construction.class;
     }
 
 }
