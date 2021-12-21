@@ -23,8 +23,9 @@ import static org.modelingvalue.dclare.test.support.Shared.printState;
 
 import java.math.BigInteger;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
@@ -253,5 +254,51 @@ public class DclareTests {
         ReferencedOrphanException t = assertThrows(ReferencedOrphanException.class, () -> universe.waitForEnd(universeTransaction));
         assertEquals("Property 'ref' of object 'Object@object' references orphan 'Object@orphan'", t.getMessage());
         printState(universeTransaction, null);
+    }
+
+    @RepeatedTest(32)
+    public void rippleOutTest() {
+        Observed<TestMutable, List<TestMutable>> children = Observed.of("children", List.of(), containment);
+        Observed<TestMutable, List<TestMutable>> begin = Observed.of("begin", List.of());
+        Observed<TestMutable, List<TestMutable>> end = Observed.of("end", List.of());
+        Observed<TestMutable, Boolean> property = Observed.of("property", false);
+        TestMutableClass clazz = TestMutableClass.of("Object", property);
+        TestMutable one = TestMutable.of(1, clazz);
+        TestMutable two = TestMutable.of(2, clazz);
+        TestMutableClass universeClass = TestMutableClass.of("Universe", children, begin, end).observe(u -> {
+            List<TestMutable> list = children.get(u);
+            List<TestMutable> before = list.exclude(property::get).toList();
+            begin.set(u, before);
+        }, u -> {
+            List<TestMutable> list = children.get(u);
+            List<TestMutable> after = list.filter(property::get).toList();
+            end.set(u, after);
+        }, u -> {
+            List<TestMutable> before = begin.get(u);
+            List<TestMutable> after = end.get(u);
+            children.set(u, Collection.concat(before, after).distinct().toList());
+        }, u -> {
+            List<TestMutable> list = children.get(u);
+            if (list.isEmpty()) {
+                children.set(u, List.of(one, two));
+            }
+        }, u -> {
+            List<TestMutable> list = children.get(u);
+            if (list.filter(property::get).isEmpty()) {
+                property.set(list.last(), true);
+            }
+        });
+        TestUniverse universe = TestUniverse.of("universe", universeClass);
+        UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withRunSequential(true).withTraceUniverse(true).withTraceActions(true));
+        universeTransaction.stop();
+        State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
+        List<TestMutable> before = result.get(universe, begin);
+        List<TestMutable> after = result.get(universe, end);
+        List<TestMutable> list = result.get(universe, children);
+        assertEquals(List.of(one, two), list);
+        assertEquals(List.of(one), before);
+        assertEquals(List.of(two), after);
+        assertEquals(false, result.get(one, property));
+        assertEquals(true, result.get(two, property));
     }
 }

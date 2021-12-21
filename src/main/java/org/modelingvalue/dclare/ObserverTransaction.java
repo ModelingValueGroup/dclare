@@ -354,9 +354,6 @@ public class ObserverTransaction extends ActionTransaction {
                     post = result;
                 }
             } else if (pre instanceof Mutable && isChanged((Mutable) pre)) {
-                //                if (inputIsChanged()) {
-                //                    runNonObserving(() -> System.err.println("!!!!!!!!!!!!!!!!!! " + observed + " " + pre));
-                //                }
                 backwards.set(TRUE);
                 return pre;
 
