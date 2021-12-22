@@ -51,8 +51,28 @@ public class DclareTests {
         universeTransaction.put("step2", () -> source.set(object, 10));
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
-
         printState(universeTransaction, result);
+
+        assertEquals(10, (int) result.get(object, source));
+        assertEquals(10, (int) result.get(object, target));
+    }
+
+    @RepeatedTest(32)
+    public void simpleBiDirectional() {
+        Observed<TestUniverse, TestMutable> child = Observed.of("child", null, containment);
+        Observed<TestMutable, Integer> source = Observed.of("source", 0);
+        Setable<TestMutable, Integer> target = Setable.of("target", 0);
+        TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
+        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> target.set(o, source.get(o)), o -> source.set(o, target.get(o)));
+        TestMutable object = TestMutable.of("object", clazz);
+        UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withRunSequential(true));
+        universeTransaction.put("step1", () -> child.set(universe, object));
+        universeTransaction.put("step2", () -> source.set(object, 10));
+        universeTransaction.stop();
+        State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
+        printState(universeTransaction, result);
+
+        assertEquals(10, (int) result.get(object, source));
         assertEquals(10, (int) result.get(object, target));
     }
 
@@ -288,10 +308,13 @@ public class DclareTests {
                 property.set(list.last(), true);
             }
         });
+
         TestUniverse universe = TestUniverse.of("universe", universeClass);
-        UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withRunSequential(true).withTraceUniverse(true).withTraceActions(true));
+        UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withRunSequential(true));
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
+        printState(universeTransaction, result);
+
         List<TestMutable> before = result.get(universe, begin);
         List<TestMutable> after = result.get(universe, end);
         List<TestMutable> list = result.get(universe, children);
