@@ -31,7 +31,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         return new NonCheckingObserver<>(id, action, initPriority);
     }
 
-    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<M, V> setable, Function<M, V> value, Priority initPriority) {
+    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
         return new NonCheckingObserver<>(setable, value, initPriority);
     }
 

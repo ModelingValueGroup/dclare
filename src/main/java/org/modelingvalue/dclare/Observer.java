@@ -35,19 +35,19 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, action, Priority.forward);
     }
 
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value) {
         return new Observer<M>(id, setable, value, Priority.forward);
     }
 
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value, Priority initPriority) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
         return new Observer<M>(id, setable, value, initPriority);
     }
 
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Predicate<M> predicate, Function<M, V> value) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value) {
         return new Observer<M>(id, setable, predicate, value, Priority.forward);
     }
 
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Predicate<M> predicate, Function<M, V> value, Priority initPriority) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value, Priority initPriority) {
         return new Observer<M>(id, setable, predicate, value, initPriority);
     }
 
@@ -85,12 +85,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable<O, T> setable, Function<O, T> value, Priority initPriority) {
+    protected <T> Observer(Object id, Setable setable, Function<O, T> value, Priority initPriority) {
         this(id, o -> setable.set(o, value.apply(o)), (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, Set.of(setable));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable<O, T> setable, Predicate<O> predicate, Function<O, T> value, Priority initPriority) {
+    protected <T> Observer(Object id, Setable setable, Predicate<O> predicate, Function<O, T> value, Priority initPriority) {
         this(id, o -> {
             if (predicate.test(o)) {
                 setable.set(o, value.apply(o));
