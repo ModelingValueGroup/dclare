@@ -360,7 +360,7 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         if (!Objects.equals(pre, start)) {
-            if (start instanceof Mergeable) {
+            if (start instanceof Mergeable && pre instanceof Mergeable && post instanceof Mergeable) {
                 T result = ((Mergeable<T>) start).merge(pre, post);
                 if (!result.equals(post)) {
                     backwards.set(TRUE);
