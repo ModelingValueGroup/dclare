@@ -72,6 +72,7 @@ public class ObserverTransaction extends ActionTransaction {
             gets.init(Observed.OBSERVED_MAP);
             sets.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
+            directConstructions.init(Map.of());
 
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
@@ -96,6 +97,7 @@ public class ObserverTransaction extends ActionTransaction {
                 } while (true);
             } finally {
                 observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.result(), sets.result()));
+                directConstructions.clear();
                 Map<Reason, Newable> cons = constructions.result();
                 if (throwable == null) {
                     observer.constructed().set(mutable(), cons);
