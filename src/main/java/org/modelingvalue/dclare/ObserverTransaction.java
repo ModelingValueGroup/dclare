@@ -27,18 +27,19 @@ import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.*;
 
 public class ObserverTransaction extends ActionTransaction {
-    private static final Set<Boolean>                            FALSE          = Set.of();
-    private static final Set<Boolean>                            TRUE           = Set.of(true);
-    public static final Context<Boolean>                         OBSERVE        = Context.of(true);
+    private static final Set<Boolean>                            FALSE               = Set.of();
+    private static final Set<Boolean>                            TRUE                = Set.of(true);
+    public static final Context<Boolean>                         OBSERVE             = Context.of(true);
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets                = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets                = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  constructions       = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  directConstructions = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       emptyMandatory      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       changed             = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       backwards           = Concurrent.of();
     //
     private State                                                startState;
 
@@ -71,6 +72,7 @@ public class ObserverTransaction extends ActionTransaction {
             gets.init(Observed.OBSERVED_MAP);
             sets.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
+
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             backwards.init(FALSE);
@@ -339,7 +341,9 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        return super.construct(reason, supplier);
+        O result = super.construct(reason, supplier);
+        directConstructions.set((map, e) -> map.put(reason, e), result);
+        return result;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
@@ -401,10 +405,11 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Observed observed, Object start, Object before, Object after) {
         Map<Reason, Newable> cons = constructions.merge();
+        Map<Reason, Newable> dirs = directConstructions.merge();
         if (before instanceof Newable && after instanceof Newable) {
-            if (hasNoConstructions((Newable) before, cons)) {
+            if (hasNoConstructions((Newable) before, cons, dirs)) {
                 return after;
-            } else if (hasNoConstructions((Newable) after, cons)) {
+            } else if (hasNoConstructions((Newable) after, cons, dirs)) {
                 return before;
             } else if (((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
                 MatchInfo pre = MatchInfo.of((Newable) before, cons);
@@ -441,11 +446,12 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         Map<Reason, Newable> cons = constructions.merge();
+        Map<Reason, Newable> dirs = directConstructions.merge();
         if (before != null) {
             if (after == null) {
                 after = before.clear();
             }
-            for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> hasNoConstructions(n, cons))) {
+            for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> hasNoConstructions(n, cons, dirs))) {
                 before = before.remove(n);
             }
         }
@@ -453,7 +459,7 @@ public class ObserverTransaction extends ActionTransaction {
             if (before == null) {
                 before = after.clear();
             }
-            for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons))) {
+            for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons, dirs))) {
                 after = after.remove(n);
             }
         }
@@ -471,7 +477,7 @@ public class ObserverTransaction extends ActionTransaction {
         ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
         ContainingCollection<Object> post = pre;
         if (post != null && post.size() > 1) {
-            List<MatchInfo> list = post.filter(Newable.class).exclude(n -> hasNoConstructions(n, Map.of())).map(n -> MatchInfo.of(n, Map.of())).toList();
+            List<MatchInfo> list = post.filter(Newable.class).exclude(n -> hasNoConstructions(n, Map.of(), Map.of())).map(n -> MatchInfo.of(n, Map.of())).toList();
             if (!(post instanceof List)) {
                 list = list.sortedBy(MatchInfo::sortKey).toList();
             }
@@ -490,8 +496,8 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private boolean hasNoConstructions(Newable n, Map<Reason, Newable> cons) {
-        return n.dConstructions().isEmpty() && cons.toValues().noneMatch(n::equals);
+    private boolean hasNoConstructions(Newable n, Map<Reason, Newable> cons, Map<Reason, Newable> dirs) {
+        return n.dConstructions().isEmpty() && cons.toValues().noneMatch(n::equals) && dirs.toValues().noneMatch(n::equals);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
