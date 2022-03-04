@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+
 import java.util.Optional;
 
 import org.modelingvalue.collections.*;
@@ -25,7 +27,7 @@ import org.modelingvalue.collections.util.Mergeable;
 public class Construction extends IdentifiedByArray implements Mergeable<Construction> {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
-            Constant.of("D_CONSTRUCTED", (Newable) null);
+            Constant.of("D_CONSTRUCTED", (Newable) null, durable);
 
     public static Construction of(Reason reason) {
         return new Construction(reason);

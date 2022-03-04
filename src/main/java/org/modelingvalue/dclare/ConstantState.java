@@ -61,6 +61,10 @@ public class ConstantState {
     }
 
     private interface Ref<O> {
+        O get();
+
+        void clear();
+
         Constants<O> constants();
     }
 
@@ -88,14 +92,43 @@ public class ConstantState {
             }
         }
 
+        private class DurableRef implements Ref<O> {
+            private O referent;
+
+            private DurableRef(O referent) {
+                this.referent = referent;
+            }
+
+            @Override
+            public Constants<O> constants() {
+                return Constants.this;
+            }
+
+            @Override
+            public O get() {
+                return referent;
+            }
+
+            @Override
+            public void clear() {
+                referent = null;
+            }
+        }
+
         public volatile Map<Constant<O, ?>, Object> constants;
         private final int                           hash;
-        private final Reference<O>                  ref;
+        private Ref<O>                              ref;
 
-        public Constants(O object, boolean weak, ReferenceQueue<? super O> queue) {
-            ref = weak ? new WeakRef(object, queue) : new SoftRef(object, queue);
+        public Constants(O object, Boolean weak, ReferenceQueue<? super O> queue) {
+            ref = weak == null ? new DurableRef(object) : weak ? new WeakRef(object, queue) : new SoftRef(object, queue);
             UPDATOR.lazySet(this, Map.of());
             hash = object.hashCode();
+        }
+
+        protected void makeDurable(O object) {
+            if (!(ref instanceof Constants.DurableRef)) {
+                ref = new DurableRef(object);
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -236,32 +269,32 @@ public class ConstantState {
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object).get(leafTransaction, object, constant, constant.deriver());
+        return getConstants(leafTransaction, object, constant.isDurable()).get(leafTransaction, object, constant, constant.deriver());
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
-        return getConstants(leafTransaction, object).get(leafTransaction, object, constant, deriver);
+        return getConstants(leafTransaction, object, constant.isDurable()).get(leafTransaction, object, constant, deriver);
     }
 
     public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object).isSet(constant);
+        return getConstants(leafTransaction, object, constant.isDurable()).isSet(constant);
     }
 
     public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
-        return getConstants(leafTransaction, object).set(leafTransaction, object, constant, value, forced);
+        return getConstants(leafTransaction, object, constant.isDurable()).set(leafTransaction, object, constant, value, forced);
     }
 
     public <O, V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
-        return getConstants(leafTransaction, object).set(leafTransaction, object, constant, deriver, element);
+        return getConstants(leafTransaction, object, constant.isDurable()).set(leafTransaction, object, constant, deriver, element);
     }
 
     @SuppressWarnings("unchecked")
-    private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object) {
+    private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object, boolean durable) {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants<>(object, WEAK.get(), queue);
+            constants = new Constants<>(object, durable ? null : WEAK.get(), queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {
@@ -269,10 +302,15 @@ public class ConstantState {
                 now = prev.get(object);
                 if (now != null) {
                     constants.ref.clear();
+                    if (durable) {
+                        now.makeDurable(object);
+                    }
                     return now;
                 }
                 next = prev.add(constants);
             }
+        } else if (durable) {
+            constants.makeDurable(object);
         }
         return constants;
     }
