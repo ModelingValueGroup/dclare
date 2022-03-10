@@ -95,11 +95,6 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    public boolean isChanged() {
-        return false;
-    }
-
-    @Override
     public void stop() {
         super.stop();
         state = null;

@@ -265,11 +265,6 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
-    public boolean isChanged() {
-        return changed.merge().equals(TRUE);
-    }
-
-    @Override
     public void runNonObserving(Runnable action) {
         if (gets.isInitialized()) {
             OBSERVE.run(false, action);
@@ -350,7 +345,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private <T, O> T rippleOut(Observed<O, T> observed, T start, T pre, T post) {
-        if (observed.containment()) {
+        if (observed.containment() && !Setable.MOVING.get()) {
             if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;

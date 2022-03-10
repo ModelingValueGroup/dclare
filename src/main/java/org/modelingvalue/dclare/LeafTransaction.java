@@ -153,6 +153,4 @@ public abstract class LeafTransaction extends Transaction {
     protected <O> void trigger(Observed<O, ?> observed, O o) {
     }
 
-    public abstract boolean isChanged();
-
 }

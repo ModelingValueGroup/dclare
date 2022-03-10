@@ -95,11 +95,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    @Override
-    public boolean isChanged() {
-        return !preState.equals(currentSate.merge());
-    }
-
     protected String traceId() {
         return "leaf";
     }
