@@ -113,11 +113,11 @@ public class CommunicationHelper {
             assertEquals(0, pool.getNumInOverflow(), "the contextFactory had to create overflow Threads as a fall back");
         });
 
-        ALL_MODEL_MAKERS.clear();
-        ALL_DELTA_ADAPTORS.clear();
-        ALL_DAEMONS.clear();
+        ALL_MODEL_MAKERS.update(__ -> List.of());
+        ALL_DELTA_ADAPTORS.update(__ -> List.of());
+        ALL_DAEMONS.update(__ -> List.of());
         if (!ModelMaker.BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
-            ALL_POOLS.clear();
+            ALL_POOLS.update(__ -> List.of());
         }
 
         rethrowAllDaemonProblems();
