@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,13 +20,7 @@ import java.util.function.Consumer;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.Construction;
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Newable;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
@@ -90,8 +84,9 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     @Override
-    public Collection<? extends Observer<?>> dMutableObservers() {
-        return Collection.concat(Newable.super.dMutableObservers(), dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
+    public Collection<? extends Observer<?>> dAllObservers() {
+        return Collection.concat(Newable.super.dAllObservers(), //
+                dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
     }
 
     @Override

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,16 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 
 @SuppressWarnings("unused")
 public class Constant<O, T> extends Setable<O, T> {
@@ -60,10 +54,12 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     private final Function<O, T> deriver;
+    private final boolean        durable;
 
     protected Constant(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.deriver = deriver;
+        this.durable = CoreSetableModifier.durable.in(modifiers);
     }
 
     public Function<O, T> deriver() {
@@ -71,9 +67,18 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     @Override
+    protected Constant<O, T> constant() {
+        return this;
+    }
+
+    public boolean isDurable() {
+        return durable;
+    }
+
+    @Override
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, function, element);
     }
 
@@ -83,32 +88,32 @@ public class Constant<O, T> extends Setable<O, T> {
             throw new Error("Constant " + this + " is derived");
         }
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, false);
     }
 
     public T force(O object, T value) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, true);
     }
 
     @Override
     public T get(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this);
     }
 
     public T get(O object, Function<O, T> deriver) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this, deriver);
     }
 
     public boolean isSet(O object) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        ConstantState constants = leafTransaction.universeTransaction().constantState;
+        ConstantState constants = leafTransaction.constantState();
         return constants.isSet(leafTransaction, object, this);
     }
 

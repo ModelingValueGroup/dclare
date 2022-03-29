@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,15 +17,10 @@ package org.modelingvalue.dclare;
 
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.EmptyMandatoryException;
-import org.modelingvalue.dclare.ex.TooManyObserversException;
+import org.modelingvalue.dclare.ex.*;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -55,7 +50,6 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private final boolean                             mandatory;
-    private final boolean                             checkMandatory;
     private final Observers<O, T>                     observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -63,8 +57,7 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory = CoreSetableModifier.mandatory.in(modifiers) || CoreSetableModifier.softMandatory.in(modifiers);
-        this.checkMandatory = mandatory && !CoreSetableModifier.softMandatory.in(modifiers);
+        this.mandatory = CoreSetableModifier.mandatory.in(modifiers);
         this.observers = new Observers<>(this);
     }
 
@@ -84,12 +77,9 @@ public class Observed<O, T> extends Setable<O, T> {
         return observers;
     }
 
+    @Override
     public boolean mandatory() {
         return mandatory;
-    }
-
-    public boolean checkMandatory() {
-        return checkMandatory;
     }
 
     public Setable<Object, Set<ObserverTrace>> readers() {
@@ -134,21 +124,16 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @Override
     public boolean checkConsistency() {
-        return !isPlumbing() && ((mandatory && checkMandatory) || super.checkConsistency());
+        return !isPlumbing() && (mandatory || super.checkConsistency());
     }
 
     @Override
     public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
         Set<ConsistencyError> errors = super.checkConsistency() ? super.checkConsistency(state, object, post) : Set.of();
-        if (!isPlumbing() && mandatory && checkMandatory && isEmpty(post)) {
+        if (!isPlumbing() && mandatory && isEmpty(post)) {
             errors = errors.add(new EmptyMandatoryException(object, this));
         }
         return errors;
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected boolean isEmpty(T result) {
-        return result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty());
     }
 
 }

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,37 +20,26 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.Construction.MatchInfo;
 import org.modelingvalue.dclare.Construction.Reason;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.NonDeterministicException;
-import org.modelingvalue.dclare.ex.TooManyChangesException;
-import org.modelingvalue.dclare.ex.TooManyObservedException;
+import org.modelingvalue.dclare.ex.*;
 
 public class ObserverTransaction extends ActionTransaction {
-    private static final Set<Boolean>                            FALSE          = Set.of();
-    private static final Set<Boolean>                            TRUE           = Set.of(true);
-    public static final Context<Boolean>                         OBSERVE        = Context.of(true);
+    private static final Set<Boolean>                            FALSE               = Set.of();
+    private static final Set<Boolean>                            TRUE                = Set.of(true);
+    public static final Context<Boolean>                         OBSERVE             = Context.of(true);
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets                = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets                = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  constructions       = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  directConstructions = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       emptyMandatory      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       changed             = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       backwards           = Concurrent.of();
     //
     private State                                                startState;
 
@@ -83,6 +72,8 @@ public class ObserverTransaction extends ActionTransaction {
             gets.init(Observed.OBSERVED_MAP);
             sets.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
+            directConstructions.init(Map.of());
+
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             backwards.init(FALSE);
@@ -106,6 +97,7 @@ public class ObserverTransaction extends ActionTransaction {
                 } while (true);
             } finally {
                 observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.result(), sets.result()));
+                directConstructions.clear();
                 Map<Reason, Newable> cons = constructions.result();
                 if (throwable == null) {
                     observer.constructed().set(mutable(), cons);
@@ -239,14 +231,13 @@ public class ObserverTransaction extends ActionTransaction {
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
         T result = post;
         if (observing(object, setable)) {
-            //            if (((Observed) setable).mandatory() && ((Observed) setable).checkMandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.result().equals(TRUE)) {
-            //                throw new NullPointerException(setable.toString());
-            //            }
+            if (((Observed) setable).mandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
+                throw new NullPointerException(setable.toString());
+            }
             observe(object, (Observed<O, T>) setable, sets);
             if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
                 T start = startState.get(object, setable);
                 if (pre instanceof Newable || post instanceof Newable) {
-                    // runNonObserving(() -> System.err.println("!!! SET SINGLE !!!! " + object + "." + setable + " = " + pre + "-> " + post));
                     result = (T) singleMatch((Observed) setable, start, pre, post);
                 } else if (isNewableCollection(pre) || isNewableCollection(post)) {
                     result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) start, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
@@ -271,11 +262,6 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings("rawtypes")
     @Override
     public void handleMergeConflict(Object object, Setable property, Object pre, Object... branches) {
-    }
-
-    @Override
-    public boolean isChanged() {
-        return changed.merge().equals(TRUE);
     }
 
     @Override
@@ -352,12 +338,14 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        return super.construct(reason, supplier);
+        O result = super.construct(reason, supplier);
+        directConstructions.set((map, e) -> map.put(reason, e), result);
+        return result;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private <T, O> T rippleOut(Observed<O, T> observed, T start, T pre, T post) {
-        if (observed.containment()) {
+        if (observed.containment() && !Setable.MOVING.get()) {
             if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
@@ -367,16 +355,13 @@ public class ObserverTransaction extends ActionTransaction {
                     post = result;
                 }
             } else if (pre instanceof Mutable && isChanged((Mutable) pre)) {
-                //                if (inputIsChanged()) {
-                //                    runNonObserving(() -> System.err.println("!!!!!!!!!!!!!!!!!! " + observed + " " + pre));
-                //                }
                 backwards.set(TRUE);
                 return pre;
 
             }
         }
         if (!Objects.equals(pre, start)) {
-            if (start instanceof Mergeable) {
+            if (start instanceof Mergeable && pre instanceof Mergeable && post instanceof Mergeable) {
                 T result = ((Mergeable<T>) start).merge(pre, post);
                 if (!result.equals(post)) {
                     backwards.set(TRUE);
@@ -417,30 +402,32 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Observed observed, Object start, Object before, Object after) {
         Map<Reason, Newable> cons = constructions.merge();
-        if (before instanceof Newable && hasNoConstructions((Newable) before, cons)) {
-            return after;
-        } else if (after instanceof Newable && hasNoConstructions((Newable) after, cons)) {
-            return before;
-        } else if (before instanceof Newable && after instanceof Newable && //
-                ((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
-            MatchInfo pre = MatchInfo.of((Newable) before, cons);
-            MatchInfo post = MatchInfo.of((Newable) after, cons);
-            // runNonObserving(() -> System.err.println("!!!!!!!!!!!!! " + post + "  " + pre.directions() + "  " + post.directions()));
-            if (pre.directions().noneMatch(post.directions()::contains)) {
-                if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
-                    if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
+        Map<Reason, Newable> dirs = directConstructions.merge();
+        if (before instanceof Newable && after instanceof Newable) {
+            if (hasNoConstructions((Newable) before, cons, dirs)) {
+                return after;
+            } else if (hasNoConstructions((Newable) after, cons, dirs)) {
+                return before;
+            } else if (((Newable) before).dNewableType().equals(((Newable) after).dNewableType())) {
+                MatchInfo pre = MatchInfo.of((Newable) before, cons);
+                MatchInfo post = MatchInfo.of((Newable) after, cons);
+                // runNonObserving(() -> System.err.println("!!!!!!!!!!!!! " + post + "  " + pre.directions() + "  " + post.directions()));
+                if (pre.directions().noneMatch(post.directions()::contains)) {
+                    if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
+                        if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
+                            makeTheSame(pre, post);
+                            return before;
+                        } else {
+                            makeTheSame(post, pre);
+                            return after;
+                        }
+                    } else if (!post.isCarvedInStone()) {
                         makeTheSame(pre, post);
                         return before;
                     } else {
                         makeTheSame(post, pre);
                         return after;
                     }
-                } else if (!post.isCarvedInStone()) {
-                    makeTheSame(pre, post);
-                    return before;
-                } else {
-                    makeTheSame(post, pre);
-                    return after;
                 }
             }
         }
@@ -456,13 +443,20 @@ public class ObserverTransaction extends ActionTransaction {
             }
         }
         Map<Reason, Newable> cons = constructions.merge();
+        Map<Reason, Newable> dirs = directConstructions.merge();
         if (before != null) {
-            for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> hasNoConstructions(n, cons))) {
+            if (after == null) {
+                after = before.clear();
+            }
+            for (Newable n : before.filter(Newable.class).exclude(after::contains).filter(n -> hasNoConstructions(n, cons, dirs))) {
                 before = before.remove(n);
             }
         }
         if (after != null) {
-            for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons))) {
+            if (before == null) {
+                before = after.clear();
+            }
+            for (Newable n : after.filter(Newable.class).exclude(before::contains).filter(n -> hasNoConstructions(n, cons, dirs))) {
                 after = after.remove(n);
             }
         }
@@ -480,7 +474,7 @@ public class ObserverTransaction extends ActionTransaction {
         ContainingCollection<Object> pre = (ContainingCollection<Object>) get(mutable, observed);
         ContainingCollection<Object> post = pre;
         if (post != null && post.size() > 1) {
-            List<MatchInfo> list = post.filter(Newable.class).exclude(n -> hasNoConstructions(n, Map.of())).map(n -> MatchInfo.of(n, Map.of())).toList();
+            List<MatchInfo> list = post.filter(Newable.class).exclude(n -> hasNoConstructions(n, Map.of(), Map.of())).map(n -> MatchInfo.of(n, Map.of())).toList();
             if (!(post instanceof List)) {
                 list = list.sortedBy(MatchInfo::sortKey).toList();
             }
@@ -499,8 +493,8 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private boolean hasNoConstructions(Newable n, Map<Reason, Newable> cons) {
-        return n.dConstructions().isEmpty() && cons.toValues().noneMatch(n::equals);
+    private boolean hasNoConstructions(Newable n, Map<Reason, Newable> cons, Map<Reason, Newable> dirs) {
+        return n.dConstructions().isEmpty() && cons.toValues().noneMatch(n::equals) && dirs.toValues().noneMatch(n::equals);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})

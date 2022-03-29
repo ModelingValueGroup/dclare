@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,23 +15,23 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static java.math.BigInteger.*;
+import static java.math.BigInteger.ZERO;
 
-import java.math.*;
+import java.math.BigInteger;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Constant;
 
 public class Fibonacci {
-    static final BigInteger ONE = BigInteger.valueOf(1);
-    static final BigInteger TWO = BigInteger.valueOf(2);
+    static final BigInteger                              ONE       = BigInteger.valueOf(1);
+    static final BigInteger                              TWO       = BigInteger.valueOf(2);
 
     public static final Constant<BigInteger, BigInteger> FIBONACCI = Constant.of("FIBONACCI", n -> {
-        if (n.equals(ZERO) || n.equals(ONE)) {
-            return n;
-        } else {
-            BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
-            BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
-            return one.add(two);
-        }
-    });
+                                                                       if (n.equals(ZERO) || n.equals(ONE)) {
+                                                                           return n;
+                                                                       } else {
+                                                                           BigInteger one = Fibonacci.FIBONACCI.get(n.subtract(ONE));
+                                                                           BigInteger two = Fibonacci.FIBONACCI.get(n.subtract(TWO));
+                                                                           return one.add(two);
+                                                                       }
+                                                                   });
 }

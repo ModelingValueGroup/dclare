@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,14 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
@@ -140,11 +135,15 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        Newable result = universeTransaction().constantState.get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction)) {
+        Newable result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction) || LeafTransaction.getCurrent() instanceof DerivationTransaction) {
             Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
         }
         return (O) result;
+    }
+
+    protected ConstantState constantState() {
+        return universeTransaction().constantState();
     }
 
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
@@ -153,7 +152,5 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O> void trigger(Observed<O, ?> observed, O o) {
     }
-
-    public abstract boolean isChanged();
 
 }

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,22 +20,14 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.NotMergeableException;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
     private final CurrentState currentSate = new CurrentState();
-    private       State        preState;
+    private State              preState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -101,11 +93,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 }
             }
         }
-    }
-
-    @Override
-    public boolean isChanged() {
-        return !preState.equals(currentSate.merge());
     }
 
     protected String traceId() {
@@ -175,7 +162,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
-        byte     cnr      = get(universe, Mutable.D_CHANGE_NR);
+        byte cnr = get(universe, Mutable.D_CHANGE_NR);
         while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
             changed = dParent(changed);
         }

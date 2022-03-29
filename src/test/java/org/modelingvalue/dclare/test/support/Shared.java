@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,15 +17,17 @@ package org.modelingvalue.dclare.test.support;
 
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 
 public class Shared {
 
-    public static final boolean     PRINT_STATE = true;
+    public static final boolean     PRINT_STATE = false;
     public static final ContextPool THE_POOL    = ContextThread.createPool();
 
     public static void printState(UniverseTransaction universeTransaction, State result, String... extraLines) {
+        TraceTimer.dumpLogs();
         if (PRINT_STATE) {
             int num = result == null ? -1 : result.getObjects(TestMutable.class).size();
 

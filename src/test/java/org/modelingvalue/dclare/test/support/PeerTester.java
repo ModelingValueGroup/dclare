@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -16,16 +16,17 @@
 package org.modelingvalue.dclare.test.support;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.*;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
-import org.modelingvalue.dclare.sync.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
 public abstract class PeerTester extends WorkDaemon<String> {
     private final AtomicReference<String> lastLine = new AtomicReference<>("");
@@ -47,16 +48,16 @@ public abstract class PeerTester extends WorkDaemon<String> {
     }
 
     public String getClassPath() {
-        List<String> cp = new ArrayList<>();
+        List<String> cp = List.of();
 
         String classLoaderRender = getClass().getClassLoader().toString();
         if (classLoaderRender.startsWith("AntClassLoader[")) {
             // the AntClassLoader can have classpath elements that are not in the java.class.path property
             // luckely it renders its classpath in a toString()!
             String[] classPath = classLoaderRender.replaceAll("AntClassLoader\\[", "").replaceAll("]", "").split(":");
-            cp.addAll(Arrays.stream(classPath).collect(Collectors.toList()));
+            cp = cp.addAll(Collection.of(classPath));
         }
-        cp.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).collect(Collectors.toList()));
+        cp = cp.addAll(Collection.of(System.getProperty("java.class.path").split(":")));
         return String.join(":", cp);
     }
 
@@ -102,12 +103,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
             out.flush();
             assertTrue(process.waitFor(maxMs, TimeUnit.MILLISECONDS));
             Thread.sleep(10);
-            assertAll(
-                    () -> assertFalse(inSucker.isAlive()),
-                    () -> assertFalse(errSucker.isAlive()),
-                    () -> assertNull(inSucker.throwable),
-                    () -> assertNull(errSucker.throwable)
-            );
+            assertAll(() -> assertFalse(inSucker.isAlive()), () -> assertFalse(errSucker.isAlive()), () -> assertNull(inSucker.throwable), () -> assertNull(errSucker.throwable));
         });
         return process.exitValue();
     }
@@ -115,7 +111,7 @@ public abstract class PeerTester extends WorkDaemon<String> {
     private static class Sucker extends Thread {
         private final BufferedReader   reader;
         private final Consumer<String> action;
-        private       Throwable        throwable;
+        private Throwable              throwable;
 
         public Sucker(String name, BufferedReader reader, Consumer<String> action) {
             super("peerSucker-" + name);

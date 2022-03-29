@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,16 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWaitAllForIdle;
 
 import java.io.IOException;
+import java.util.ConcurrentModificationException;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.test.support.CommunicationHelper;
-import org.modelingvalue.dclare.test.support.CommunicationPeer;
-import org.modelingvalue.dclare.test.support.ModelMaker;
-import org.modelingvalue.dclare.test.support.PeerTester;
-import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
+import org.modelingvalue.dclare.test.support.*;
 
 public class CommunicationTests {
     static {
@@ -57,7 +52,7 @@ public class CommunicationTests {
         for (int NEW_VALUE : new int[]{3, 6, 9, 10}) {
             busyWaitAllForIdle();
 
-            System.err.printf("universeSyncWithinOneJVM: setting value to %d\n", NEW_VALUE);
+            //System.err.printf("universeSyncWithinOneJVM: setting value to %d\n", NEW_VALUE);
             a.setXyzzy_source(NEW_VALUE);
 
             busyWaitAllForIdle();
@@ -153,8 +148,13 @@ public class CommunicationTests {
 
     @AfterEach
     public void after() {
+        CommunicationHelper.rethrowAllDaemonProblems();
         TraceTimer.dumpLogs();
-        CommunicationHelper.tearDownAll();
+        try {
+            CommunicationHelper.tearDownAll();
+        } catch (ConcurrentModificationException e) {
+            System.err.println("ignored exception during tearDownAll(): " + e);
+        }
         ModelMaker.assertNoUncaughtThrowables();
         TraceTimer.dumpLogs();
     }

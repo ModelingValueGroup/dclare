@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,9 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.StringUtil;
 
@@ -112,6 +110,10 @@ public abstract class Getable<O, T> implements Feature, Internable {
         return null;
     }
 
+    public boolean mandatory() {
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     public static <T, E> Collection<Mutable> mutables(T value) {
         if (value instanceof ContainingCollection) {
@@ -121,6 +123,11 @@ public abstract class Getable<O, T> implements Feature, Internable {
         } else {
             return Set.of();
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected boolean isEmpty(T result) {
+        return result == null || (result instanceof ContainingCollection && ((ContainingCollection) result).isEmpty());
     }
 
 }

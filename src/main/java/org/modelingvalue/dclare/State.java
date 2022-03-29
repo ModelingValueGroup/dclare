@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,22 +18,10 @@ package org.modelingvalue.dclare;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Mergeable;
-import org.modelingvalue.collections.util.NotMergeableException;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TriConsumer;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -210,10 +198,19 @@ public class State implements Serializable {
     }
 
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return get(() -> "State{" + filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + //
-                "{" + e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> s2 + "\n    " + StringUtil.toString(e2.getKey()) + "=" + //
-                        (e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue())), CONCAT) + "}", //
-                CONCAT) + "}");
+        return get(() -> {
+            String stateRender = filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> {
+                String keyRender = StringUtil.toString(e1.getKey());
+                String valueRender = e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> {
+                    String subKeyRender = StringUtil.toString(e2.getKey());
+                    String subValueRender = e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue());
+                    return String.format("%s\n        %-60s = %s", s2, subKeyRender, subValueRender);
+                }, CONCAT);
+                return s1 + "\n" + "    " + keyRender + " {" + valueRender + "\n" + "    }";
+            }, //
+                    CONCAT);
+            return "State{" + stateRender + "\n" + "}";
+        });
     }
 
     public Map<Setable, Integer> count() {
@@ -238,6 +235,15 @@ public class State implements Serializable {
             tx.run(action, this);
         } finally {
             universeTransaction.runOnState.closeTransaction(tx);
+        }
+    }
+
+    public <R> R derive(Supplier<R> supplier) {
+        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(supplier, this, new ConstantState(universeTransaction::handleException));
+        } finally {
+            universeTransaction.derivation.closeTransaction(tx);
         }
     }
 

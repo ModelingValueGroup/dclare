@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,15 +17,9 @@ package org.modelingvalue.dclare;
 
 import java.time.Instant;
 import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
@@ -39,6 +33,22 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
         return new Observer<M>(id, action, Priority.forward);
+    }
+
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value) {
+        return new Observer<M>(id, setable, value, Priority.forward);
+    }
+
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
+        return new Observer<M>(id, setable, value, initPriority);
+    }
+
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value) {
+        return new Observer<M>(id, setable, predicate, value, Priority.forward);
+    }
+
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value, Priority initPriority) {
+        return new Observer<M>(id, setable, predicate, value, initPriority);
     }
 
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
@@ -58,6 +68,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Observerds                    observeds;
     private final Constructed                   constructed;
     private final PreConstructed                preConstructed;
+    @SuppressWarnings("rawtypes")
+    private final Set<Setable<O, ?>>            targets;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -72,13 +84,38 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected <T> Observer(Object id, Setable setable, Function<O, T> value, Priority initPriority) {
+        this(id, o -> setable.set(o, value.apply(o)), (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, Set.of(setable));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected <T> Observer(Object id, Setable setable, Predicate<O> predicate, Function<O, T> value, Priority initPriority) {
+        this(id, o -> {
+            if (predicate.test(o)) {
+                setable.set(o, value.apply(o));
+            }
+        }, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, Set.of(setable));
+    }
+
     protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        this(id, action, direction, initPriority, Set.of());
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Observer(Object id, Consumer<O> action, Priority initPriority, @SuppressWarnings("rawtypes") Set<Setable<O, ?>> targets) {
+        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, targets);
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable<O, ?>> targets) {
         super(id, action, direction, initPriority);
         traces = new Traces(Pair.of(this, "TRACES"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
         preConstructed = PreConstructed.of(this);
+        this.targets = targets;
     }
 
     public Observerds observeds() {
@@ -281,6 +318,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     private Entry entry(Mutable object, Mutable self) {
         return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
+    }
+
+    @SuppressWarnings("rawtypes")
+    public Set<Setable<O, ?>> targets() {
+        return targets;
     }
 
 }

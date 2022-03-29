@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,49 +15,37 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
-import org.modelingvalue.dclare.Direction;
-import org.modelingvalue.dclare.ImperativeTransaction;
-import org.modelingvalue.dclare.LeafTransaction;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State;
-import org.modelingvalue.dclare.Universe;
-import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
 
     public static final Direction INIT = Direction.of("INIT");
 
-    public static TestUniverse of(Object id, TestMutableClass clazz, TestImperative scheduler) {
-        return new TestUniverse(id, u -> {
-        }, clazz, scheduler);
+    public static TestUniverse of(Object id, TestMutableClass clazz) {
+        return new TestUniverse(id, clazz);
     }
 
     private static final Setable<TestUniverse, Long> DUMMY     = Setable.of("$DUMMY", 0l);
 
-    private final TestImperative                     scheduler;
-    private final BlockingQueue<Boolean>             idleQueue = new LinkedBlockingQueue<>(1);
+    private final TestScheduler                      scheduler = TestScheduler.of();
     private final AtomicInteger                      counter   = new AtomicInteger(0);
 
-    private Thread                                   waitForEndThread;
+    private UniverseTransaction                      universeTransaction;
     private ImperativeTransaction                    imperativeTransaction;
 
-    protected TestUniverse(Object id, Consumer<Universe> init, TestMutableClass clazz, TestImperative scheduler) {
+    private TestUniverse(Object id, TestMutableClass clazz) {
         super(id, clazz);
-        this.scheduler = scheduler;
     }
 
     @Override
     public void init() {
+        scheduler.start();
         Universe.super.init();
-        UniverseTransaction utx = LeafTransaction.getCurrent().universeTransaction();
-        imperativeTransaction = utx.addImperative("$TEST_CONNECTOR", null, (pre, post, last) -> {
+        universeTransaction = LeafTransaction.getCurrent().universeTransaction();
+        imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
@@ -66,21 +54,13 @@ public class TestUniverse extends TestMutable implements Universe {
                     }
                 }
             });
-            if (last) {
-                idle();
-            }
         }, scheduler, false);
-        utx.dummy();
-        waitForEndThread = new Thread(() -> {
-            try {
-                utx.waitForEnd();
-            } catch (Throwable t) {
-                idle();
-            }
-        }, "TestUniverse.waitForEndThread");
-        waitForEndThread.setDaemon(true);
-        waitForEndThread.start();
-        idle();
+    }
+
+    @Override
+    public void exit() {
+        scheduler.stop();
+        Universe.super.exit();
     }
 
     public int uniqueInt() {
@@ -88,33 +68,10 @@ public class TestUniverse extends TestMutable implements Universe {
     }
 
     public void schedule(Runnable action) {
-        waitForIdle();
-        if (!imperativeTransaction.universeTransaction().isKilled()) {
-            imperativeTransaction.schedule(() -> {
-                DUMMY.set(this, Long::sum, 1l);
-                action.run();
-            });
-        }
-    }
-
-    private void idle() {
-        try {
-            idleQueue.put(Boolean.TRUE);
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-    }
-
-    private void waitForIdle() {
-        try {
-            idleQueue.take();
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-    }
-
-    public State waitForEnd() {
-        return imperativeTransaction.waitForEnd();
+        imperativeTransaction.schedule(() -> {
+            DUMMY.set(this, Long::sum, 1l);
+            action.run();
+        });
     }
 
     public State waitForEnd(UniverseTransaction universeTransaction) throws Throwable {
@@ -123,6 +80,11 @@ public class TestUniverse extends TestMutable implements Universe {
         } catch (Error e) {
             throw e.getCause();
         }
+    }
+
+    @Override
+    public boolean dIsOrphan(State state) {
+        return Universe.super.dIsOrphan(state);
     }
 
 }

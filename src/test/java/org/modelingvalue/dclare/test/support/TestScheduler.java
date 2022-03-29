@@ -13,44 +13,68 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.test.support;
 
-import java.util.stream.Collectors;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Consumer;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.*;
+public class TestScheduler implements Consumer<Runnable> {
 
-@SuppressWarnings({"rawtypes", "unused"})
-public final class TooManyObserversException extends ConsistencyError {
+    public static TestScheduler of() {
+        return new TestScheduler();
+    }
 
-    private static final long                        serialVersionUID = -1059588522731393631L;
+    private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+    private boolean                       stop;
 
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
-
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
+    protected TestScheduler() {
     }
 
     @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
-        return getSimpleMessage() + ":\n" + observersMap;
+    public void accept(Runnable action) {
+        if (!stop) {
+            try {
+                queue.put(action);
+            } catch (InterruptedException e) {
+                throw new Error(e);
+            }
+        }
     }
 
-    public String getSimpleMessage() {
-        return super.getMessage();
+    private Runnable take() {
+        try {
+            return queue.take();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
     }
 
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
+    public boolean isEmpty() {
+        return queue.isEmpty();
     }
 
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
+    public void start() {
+        queue.clear();
+        stop = false;
+        Thread imperativeThread = new Thread(() -> {
+            while (!stop) {
+                take().run();
+            }
+        }, "TestUniverse.imperativeThread");
+        imperativeThread.setDaemon(true);
+        imperativeThread.start();
+    }
+
+    public void stop() {
+        stop = true;
+        queue.clear();
+        try {
+            queue.put(() -> {
+            });
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
     }
 
 }

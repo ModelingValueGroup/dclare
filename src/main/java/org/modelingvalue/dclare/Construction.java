@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,18 +15,19 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+
 import java.util.Optional;
 
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.IdentifiedByArray;
+import org.modelingvalue.collections.util.Mergeable;
 
 @SuppressWarnings("rawtypes")
-public class Construction extends IdentifiedByArray {
+public class Construction extends IdentifiedByArray implements Mergeable<Construction> {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
-            Constant.of("D_CONSTRUCTED", (Newable) null);
+            Constant.of("D_CONSTRUCTED", (Newable) null, durable);
 
     public static Construction of(Reason reason) {
         return new Construction(reason);
@@ -224,6 +225,28 @@ public class Construction extends IdentifiedByArray {
             return newable() + ":" + directions().toString().substring(3) + newable().dSources().toString().substring(3);
         }
 
+    }
+
+    private final static Construction MERGER = Construction.of(null);;
+
+    @Override
+    public Construction merge(Construction[] branches, int length) {
+        for (int i = length - 1; i >= 0; i--) {
+            if (branches[i] != null) {
+                return branches[i];
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Construction getMerger() {
+        return MERGER;
+    }
+
+    @Override
+    public Class<?> getMeetClass() {
+        return Construction.class;
     }
 
 }

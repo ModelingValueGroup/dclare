@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -19,10 +19,7 @@ import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
@@ -43,14 +40,14 @@ public interface Mutable extends TransactionClass {
     Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,          //
-            added -> added.trigger(obj),                                                                                                                                                                                 //
+    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
+            added -> added.trigger(obj),                                                                                                                                                                                     //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable>                                     D_OBSERVERS_RULE         = Observer.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, Collection.concat(m.dClass().dObservers(), m.dMutableObservers()).toSet()));
+    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = Observer.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
+    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
         return D_PARENT_CONTAINING.get(this);
@@ -135,8 +132,8 @@ public interface Mutable extends TransactionClass {
 
     MutableClass dClass();
 
-    default Collection<? extends Observer<?>> dMutableObservers() {
-        return Set.of();
+    default Collection<? extends Observer<?>> dAllObservers() {
+        return dClass().dObservers();
     }
 
     @SuppressWarnings("unchecked")
@@ -192,6 +189,14 @@ public interface Mutable extends TransactionClass {
         for (Observer o : D_OBSERVERS.get(this)) {
             o.constructed().setDefault(this);
         }
+    }
+
+    default boolean dCheckConsistency() {
+        return true;
+    }
+
+    default boolean dIsOrphan(State state) {
+        return state.get(this, Mutable.D_PARENT_CONTAINING) == null;
     }
 
 }

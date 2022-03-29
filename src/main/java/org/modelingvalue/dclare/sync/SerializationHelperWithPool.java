@@ -13,44 +13,55 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare.sync;
 
-import java.util.stream.Collectors;
-
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.sync.SerialisationPool.Converter;
 
-@SuppressWarnings({"rawtypes", "unused"})
-public final class TooManyObserversException extends ConsistencyError {
+@SuppressWarnings("unused")
+public abstract class SerializationHelperWithPool<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> implements SerializationHelper<C, M, S> {
+    protected final SerialisationPool serialisationPool;
 
-    private static final long                        serialVersionUID = -1059588522731393631L;
+    public SerializationHelperWithPool(Converter<?>... converters) {
+        serialisationPool = new SerialisationPool(converters);
+    }
 
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
+    public SerializationHelperWithPool(Collection<Converter<?>> converters) {
+        serialisationPool = new SerialisationPool(converters);
+    }
 
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
+    //==================================================================================================================
+    @Override
+    public String serializeSetable(S setable) {
+        return serialisationPool.serialize(setable);
     }
 
     @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
-        return getSimpleMessage() + ":\n" + observersMap;
+    public String serializeMutable(M mutable) {
+        return serialisationPool.serialize(mutable);
     }
 
-    public String getSimpleMessage() {
-        return super.getMessage();
+    @Override
+    public Object serializeValue(S setable, Object value) {
+        return serialisationPool.serialize(value, setable);
     }
 
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
+    //==================================================================================================================
+    @SuppressWarnings("unchecked")
+    @Override
+    public S deserializeSetable(C clazz, String s) {
+        return (S) serialisationPool.deserialize(s, clazz);
     }
 
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
+    @SuppressWarnings("unchecked")
+    @Override
+    public M deserializeMutable(String string) {
+        return (M) serialisationPool.deserialize(string);
     }
 
+    @Override
+    public Object deserializeValue(S setable, Object value) {
+        return serialisationPool.deserialize((String) value, setable);
+    }
 }

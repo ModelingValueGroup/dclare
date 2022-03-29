@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,11 +15,6 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.util.Pair;
@@ -32,29 +27,34 @@ import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
-    private final String                       name;
-    private final UniverseTransaction          tx;
+    private final   String                       name;
+    private final   UniverseTransaction          tx;
     protected final SerializationHelper<C, M, S> helper;
-    private final AdaptorDaemon                adaptorDaemon;
-    private final ImperativeTransaction        imperativeTransaction;
-    protected final BlockingQueue<String>      deltaQueue = new ArrayBlockingQueue<>(10);
+    private final   AdaptorDaemon                adaptorDaemon;
+    private final   ImperativeTransaction        imperativeTransaction;
+    protected final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
-        this.name = name;
-        this.tx = tx;
-        this.helper = helper;
+        this.name     = name;
+        this.tx       = tx;
+        this.helper   = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
-        this.imperativeTransaction = tx.addImperative("sync-" + name, null, this::queueDelta, adaptorDaemon, false);
+        this.imperativeTransaction = tx.addImperative(name, this::queueDelta, adaptorDaemon, false);
     }
 
     /**
      * When a delta is received from a remote party it can be given to the local model through this method.
      * The delta will be queued and applied to the model async but in order of arrival.
      *
-     * @param delta
-     *            the delta to apply to our model
+     * @param delta the delta to apply to our model
      */
     @Override
     public void accept(String delta) {
@@ -62,6 +62,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             try {
                 new FromJsonDeltas(delta).parse(); // return value ignored: parser handles the impact on the fly
             } catch (Throwable e) {
+                e.printStackTrace();
                 throw new Error(e);
             }
         });
@@ -86,14 +87,25 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     /**
+     * Retrieve the delta's that happen in our model to send to a remote party.
+     *
+     * @param timeout the max number of millis to wait for a delta
+     * @return the next delta that happened in our model, or null if timeout expires
+     */
+    public String poll(long timeout) {
+        try {
+            return deltaQueue.poll(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
+    }
+
+    /**
      * Serialize the delta coming from the local model and queue it for async retrieval through get().
      *
-     * @param pre
-     *            the pre state
-     * @param post
-     *            the post state
-     * @param last
-     *            indication if this is the last delta in a sequence
+     * @param pre  the pre state
+     * @param post the post state
+     * @param last indication if this is the last delta in a sequence
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void queueDelta(State pre, State post, Boolean last) {
@@ -107,8 +119,9 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected Predicate<Object> getObjectFilter() {
-        return o -> o instanceof Mutable && helper.mutableFilter().test((Mutable) o);
+        return o -> o instanceof Mutable && helper.mutableFilter().test((M) o);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -180,17 +193,16 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     }
 
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
-	public class ToJsonDeltas extends ToJsonIC {
+    public class ToJsonDeltas extends ToJsonIC {
         private M      currentMutable;
         private S      currentSetable;
         private Object currentOldValue;
         private Object currentNewValue;
 
-        @SuppressWarnings("rawtypes")
         private ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
             super(root);
         }
-      
+
         @SuppressWarnings("unchecked")
         @Override
         protected Object filter(Object o) {
@@ -224,18 +236,23 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 }
                 //noinspection unchecked
                 currentMutable = (M) keyObj;
-                key = helper.serializeMutable(currentMutable);
+                key            = helper.serializeMutable(currentMutable);
             } else if (getLevel() == 2) {
                 if (!(keyObj instanceof Setable)) {
                     throw new Error("bad delta format");
                 }
                 //noinspection unchecked
                 currentSetable = (S) keyObj;
-                key = helper.serializeSetable(currentSetable);
+                key            = helper.serializeSetable(currentSetable);
             } else {
                 key = super.stringFromKey(keyObj);
             }
             return key;
+        }
+
+        @Override
+        protected java.util.Map<String, Object> getIntrospectionMap(Object o) {
+            throw new IllegalArgumentException("No serialization found for " + o + " of class " + o.getClass().getSimpleName());
         }
     }
 
@@ -255,7 +272,6 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             return getLevel() < 2 ? null : super.makeMap();
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         protected String makeMapKey(String key) {
             switch (getLevel()) {
@@ -263,11 +279,11 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 currentMutable = helper.deserializeMutable(key);
                 break;
             case 2:
-                //noinspection unchecked
-                currentSetable = helper.deserializeSetable((C) currentMutable.dClass(), key);
+                //noinspection
+                currentSetable = helper.deserializeSetable(helper.getMutableClass(currentMutable), key);
                 break;
             }
-            return super.makeMapKey(key);
+            return super.makeMapKey(key).toString();
         }
 
         @Override
