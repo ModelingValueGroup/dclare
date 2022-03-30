@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare.sync;
 
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.util.MutationWrapper;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.util.Concurrent;
-
 public class SyncConnectionHandler {
-    private final SupplierAndConsumer<String>            sac;
-    private final Concurrent<List<SocketSyncConnection>> connectionList = Concurrent.of(List.of());
-    private final AsyncConnectorDaemon                   asyncConnector = new AsyncConnectorDaemon();
+    private final SupplierAndConsumer<String>                 sac;
+    private final MutationWrapper<List<SocketSyncConnection>> connectionList = new MutationWrapper<>(List.of());
+    private final AsyncConnectorDaemon                        asyncConnector = new AsyncConnectorDaemon();
 
     public SyncConnectionHandler(SupplierAndConsumer<String> sac) {
         this.sac = sac;
@@ -39,11 +39,11 @@ public class SyncConnectionHandler {
             @Override
             public void close() {
                 super.close();
-                connectionList.set(List::remove, this);
+                connectionList.update(List::remove, this);
             }
         };
         try {
-            connectionList.set(List::add, newConnection);
+            connectionList.update(List::add, newConnection);
             asyncConnector.queue.put(newConnection);
         } catch (InterruptedException e) {
             throw new Error("connect to " + newConnection.getName() + " failed", e);
