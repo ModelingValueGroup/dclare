@@ -30,7 +30,7 @@ if(inEclipse!=null && inEclipse.equals("true")) {
 	    }
 	}
 	
-	includeBuild("../mvgJson") {
+	includeBuild("../mvg-json") {
 	    dependencySubstitution {
 	       substitute(module("org.modelingvalue:mvg-json")).using(project(":"))
 	    }

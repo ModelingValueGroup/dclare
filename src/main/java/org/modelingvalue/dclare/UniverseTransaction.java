@@ -17,11 +17,17 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.State.ALL_SETTABLES;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -29,10 +35,13 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StatusProvider;
 import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
+import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -588,10 +597,10 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public Action<Universe> addDiffHandler(String id, TriConsumer<State, State, Boolean> diffHandler) {
+    public Action<Universe> addDiffHandler(String id, StateDeltaHandler diffHandler) {
         Action<Universe> action = Action.of(id, o -> {
             LeafTransaction tx = ActionTransaction.getCurrent();
-            diffHandler.accept(tx.universeTransaction().preState(), tx.state(), true);
+            diffHandler.handleDelta(tx.universeTransaction().preState(), tx.state(), true, ImperativeTransaction.SETTED_MAP);
         });
         addPostAction(action);
         return action;
@@ -603,7 +612,8 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public ImperativeTransaction addImperative(String id, TriConsumer<State, State, Boolean> diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
+    @SuppressWarnings("rawtypes")
+    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
         synchronized (this) {
             imperativeTransactions = imperativeTransactions.add(n);

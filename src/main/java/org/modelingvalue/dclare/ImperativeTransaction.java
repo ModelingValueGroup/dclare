@@ -16,25 +16,30 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
-import org.modelingvalue.collections.util.TriConsumer;
 
 public class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings("rawtypes")
-    private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
+    protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
-    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    @SuppressWarnings("rawtypes")
+    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
-    private final TriConsumer<State, State, Boolean>          diffHandler;
+    @SuppressWarnings("rawtypes")
+    private final StateDeltaHandler                           diffHandler;
     private final NamedIdentity                               actionId  = NamedIdentity.of(this, "$toDClare");
 
     private State                                             pre;
@@ -46,7 +51,8 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private DefaultMap<Object, Set<Setable>>                  allSetted;
 
-    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    @SuppressWarnings("rawtypes")
+    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
         this.state = init;
@@ -109,10 +115,11 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void dclare2imper(State dclare, boolean timeTraveling, boolean insync) {
         State imper = state;
+        DefaultMap<Object, Set<Setable>> finalAllSetted = allSetted;
         if (insync) {
             allSetted = SETTED_MAP;
         } else {
-            for (Entry<Object, Set<Setable>> e : allSetted) {
+            for (Entry<Object, Set<Setable>> e : finalAllSetted) {
                 Object object = e.getKey();
                 DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                 DefaultMap<Setable, Object> imperProps = imper.getProperties(object);
@@ -123,7 +130,7 @@ public class ImperativeTransaction extends LeafTransaction {
             }
         }
         state = dclare;
-        diffHandler.accept(imper, dclare, insync);
+        diffHandler.handleDelta(imper, dclare, insync, finalAllSetted);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

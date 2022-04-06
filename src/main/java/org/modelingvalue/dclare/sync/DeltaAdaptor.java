@@ -15,8 +15,16 @@
 
 package org.modelingvalue.dclare.sync;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
+import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.ImperativeTransaction;
 import org.modelingvalue.dclare.Mutable;
@@ -27,24 +35,18 @@ import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
-    private final   String                       name;
-    private final   UniverseTransaction          tx;
+    private final String                         name;
+    private final UniverseTransaction            tx;
     protected final SerializationHelper<C, M, S> helper;
-    private final   AdaptorDaemon                adaptorDaemon;
-    private final   ImperativeTransaction        imperativeTransaction;
+    private final AdaptorDaemon                  adaptorDaemon;
+    private final ImperativeTransaction          imperativeTransaction;
     protected final BlockingQueue<String>        deltaQueue = new ArrayBlockingQueue<>(10);
 
     public DeltaAdaptor(String name, UniverseTransaction tx, SerializationHelper<C, M, S> helper) {
-        this.name     = name;
-        this.tx       = tx;
-        this.helper   = helper;
+        this.name = name;
+        this.tx = tx;
+        this.helper = helper;
         adaptorDaemon = new AdaptorDaemon("adaptor-" + name);
         adaptorDaemon.start();
         this.imperativeTransaction = tx.addImperative(name, this::queueDelta, adaptorDaemon, false);
@@ -54,7 +56,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
      * When a delta is received from a remote party it can be given to the local model through this method.
      * The delta will be queued and applied to the model async but in order of arrival.
      *
-     * @param delta the delta to apply to our model
+     * @param delta
+     *            the delta to apply to our model
      */
     @Override
     public void accept(String delta) {
@@ -89,7 +92,8 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     /**
      * Retrieve the delta's that happen in our model to send to a remote party.
      *
-     * @param timeout the max number of millis to wait for a delta
+     * @param timeout
+     *            the max number of millis to wait for a delta
      * @return the next delta that happened in our model, or null if timeout expires
      */
     public String poll(long timeout) {
@@ -103,12 +107,15 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
     /**
      * Serialize the delta coming from the local model and queue it for async retrieval through get().
      *
-     * @param pre  the pre state
-     * @param post the post state
-     * @param last indication if this is the last delta in a sequence
+     * @param pre
+     *            the pre state
+     * @param post
+     *            the post state
+     * @param last
+     *            indication if this is the last delta in a sequence
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected void queueDelta(State pre, State post, Boolean last) {
+    protected void queueDelta(State pre, State post, Boolean last, DefaultMap<Object, Set<Setable>> setted) {
         Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
@@ -236,14 +243,14 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 }
                 //noinspection unchecked
                 currentMutable = (M) keyObj;
-                key            = helper.serializeMutable(currentMutable);
+                key = helper.serializeMutable(currentMutable);
             } else if (getLevel() == 2) {
                 if (!(keyObj instanceof Setable)) {
                     throw new Error("bad delta format");
                 }
                 //noinspection unchecked
                 currentSetable = (S) keyObj;
-                key            = helper.serializeSetable(currentSetable);
+                key = helper.serializeSetable(currentSetable);
             } else {
                 key = super.stringFromKey(keyObj);
             }

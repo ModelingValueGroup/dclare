@@ -45,7 +45,7 @@ public class TestUniverse extends TestMutable implements Universe {
         scheduler.start();
         Universe.super.init();
         universeTransaction = LeafTransaction.getCurrent().universeTransaction();
-        imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
+        imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last, setted) -> {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
