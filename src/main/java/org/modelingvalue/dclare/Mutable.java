@@ -19,7 +19,10 @@ import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
@@ -131,6 +134,11 @@ public interface Mutable extends TransactionClass {
     }
 
     MutableClass dClass();
+
+    @SuppressWarnings("rawtypes")
+    default Set<Observer> dDerivers(Setable setable) {
+        return dClass().dDerivers(setable);
+    }
 
     default Collection<? extends Observer<?>> dAllObservers() {
         return dClass().dObservers();

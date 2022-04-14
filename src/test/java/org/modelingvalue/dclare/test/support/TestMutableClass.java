@@ -15,14 +15,20 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.MutationWrapper;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.SerializableConsumer;
+import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.Triple;
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Observer;
+import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class TestMutableClass implements MutableClass {
@@ -37,44 +43,50 @@ public class TestMutableClass implements MutableClass {
         return new TestMutableClass(id, setables);
     }
 
-    private final AtomicInteger                counter = new AtomicInteger(0);
-    private final Object                       id;
-    private Set<Setable<? extends Mutable, ?>> setables;
-    private Set<Observer<?>>                   observers;
+    protected final Object                            id;
+    private final Set<Setable>                        setables;
+    protected final MutationWrapper<Set<Observer<?>>> observers;
 
     @SuppressWarnings("unchecked")
     protected TestMutableClass(Object id, Setable[] setables) {
         this.id = id;
-        this.setables = Set.of();
-        for (int i = 0; i < setables.length; i++) {
-            this.setables = this.setables.add(setables[i]);
-        }
-        this.observers = Set.of();
+        this.setables = Collection.of(setables).toSet();
+        this.observers = new MutationWrapper(Set.of());
         synchronized (TestMutableClass.class) {
             staticTestClassMap = staticTestClassMap.put(id, this);
         }
     }
 
-    @SafeVarargs
     @SuppressWarnings("unchecked")
-    public final TestMutableClass observe(Consumer<TestMutable>... actions) {
-        return observe(Observer.DEFAULT_DIRECTION, actions);
+    public TestMutableClass observe(SerializableConsumer<TestMutable> action) {
+        return observe(Observer.DEFAULT_DIRECTION, action);
     }
 
-    @SafeVarargs
     @SuppressWarnings("unchecked")
-    public final TestMutableClass observe(Direction direction, Consumer<TestMutable>... actions) {
-        for (int i = 0; i < actions.length; i++) {
-            Observer<?> of = Observer.of(Pair.of(this, counter.getAndIncrement()), actions[i], m -> direction);
-            observers = observers.add(of);
-        }
+    public TestMutableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+        action = action.of();
+        Observer<?> of = Observer.of(Pair.of(this, action), action, m -> direction);
+        observers.update(Set::add, of);
+        return this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <V> TestMutableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+        return observe(Observer.DEFAULT_DIRECTION, setable, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <V> TestMutableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+        value = value.of();
+        Observer<?> of = Observer.of(Triple.of(this, setable, value), setable, value, m -> direction);
+        observers.update(Set::add, of);
         return this;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Set<? extends Observer<?>> dObservers() {
-        return (Set<? extends Observer<?>>) observers;
+        return (Set<? extends Observer<?>>) observers.get();
     }
 
     @SuppressWarnings("unchecked")
@@ -90,6 +102,10 @@ public class TestMutableClass implements MutableClass {
     @Override
     public String toString() {
         return StringUtil.toString(id);
+    }
+
+    protected Object id() {
+        return id;
     }
 
     @Override

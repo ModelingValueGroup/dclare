@@ -86,6 +86,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                             future                  = List.of();
     private State                                                                                   preState;
     private State                                                                                   startState;
+    private ConstantState                                                                           startConstants;
     private State                                                                                   state;
     private boolean                                                                                 initialized;
     private boolean                                                                                 killed;
@@ -348,10 +349,12 @@ public class UniverseTransaction extends MutableTransaction {
     protected State run(State state) {
         do {
             startState = state;
+            startConstants = new ConstantState(this::handleException);
             state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
             state = super.run(state);
             universeStatistics.completeForward();
             state = clearOrphans(state);
+            startConstants.stop();
         } while (!killed && hasBackwardActionsQueued(state));
         return state;
     }
@@ -658,6 +661,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State startState() {
         return startState;
+    }
+
+    public ConstantState startConstantState() {
+        return startConstants;
     }
 
     protected boolean isTimeTraveling() {

@@ -17,12 +17,16 @@ package org.modelingvalue.dclare.test.support;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
-
-    public static final Direction INIT = Direction.of("INIT");
 
     public static TestUniverse of(Object id, TestMutableClass clazz) {
         return new TestUniverse(id, clazz);
@@ -50,7 +54,7 @@ public class TestUniverse extends TestMutable implements Universe {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
                     if (n.dDirectConstruction() == null) {
-                        TestNewable.construct(n, TestUniverse.INIT, "init" + uniqueInt());
+                        TestNewable.construct(n, "init" + uniqueInt());
                     }
                 }
             });

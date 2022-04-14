@@ -18,10 +18,22 @@ package org.modelingvalue.dclare;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -239,9 +251,18 @@ public class State implements Serializable {
     }
 
     public <R> R derive(Supplier<R> supplier) {
+        ConstantState constantState = new ConstantState(universeTransaction::handleException);
+        try {
+            return derive(supplier, null, constantState);
+        } finally {
+            constantState.stop();
+        }
+    }
+
+    public <R> R derive(Supplier<R> supplier, LeafTransaction original, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, new ConstantState(universeTransaction::handleException));
+            return tx.derive(supplier, this, original, constantState);
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
         }

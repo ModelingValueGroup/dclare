@@ -15,7 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
@@ -98,6 +100,11 @@ public class ReadOnlyTransaction extends LeafTransaction {
     public void stop() {
         super.stop();
         state = null;
+    }
+
+    @Override
+    public Direction direction() {
+        return TransactionClass.DEFAULT_DIRECTION;
     }
 
 }

@@ -16,11 +16,14 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 
 public class DerivationTransaction extends ReadOnlyTransaction {
 
@@ -35,9 +38,11 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         super(universeTransaction);
     }
 
-    private ConstantState constantState;
+    private ConstantState   constantState;
+    private LeafTransaction original;
 
-    public <R> R derive(Supplier<R> action, State state, ConstantState constantState) {
+    public <R> R derive(Supplier<R> action, State state, LeafTransaction original, ConstantState constantState) {
+        this.original = original;
         this.constantState = constantState;
         try {
             return get(action, state);
@@ -45,38 +50,39 @@ public class DerivationTransaction extends ReadOnlyTransaction {
             universeTransaction().handleException(t);
             return null;
         } finally {
-            constantState.stop();
             this.constantState = null;
+            this.original = null;
         }
     }
 
     @Override
     public <O, T> T get(O object, Getable<O, T> getable) {
-        if (doDeriver(object, getable)) {
+        T value = super.get(object, getable);
+        if (doDeriver(object, getable) && Objects.equals(getable.getDefault(), value)) {
             return derive(object, (Observed<O, T>) getable);
         } else {
-            return super.get(object, getable);
+            return value;
         }
     }
 
     @Override
     protected <O, T> T current(O object, Getable<O, T> getable) {
-        if (doDeriver(object, getable)) {
+        T value = original != null ? original.current().get(object, getable) : super.current(object, getable);
+        if (doDeriver(object, getable) && Objects.equals(getable.getDefault(), value)) {
             return derive(object, (Observed<O, T>) getable);
         } else {
-            return super.current(object, getable);
+            return value;
         }
     }
 
     private <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && state().get((Mutable) object, Mutable.D_PARENT_CONTAINING) == null;
+        return object instanceof Mutable && getable instanceof Observed;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T> T derive(O object, Observed<O, T> observed) {
         Constant<O, T> constant = observed.constant();
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        if (!constantState.isSet(leafTransaction, object, constant)) {
+        if (!constantState.isSet(this, object, constant)) {
             Pair<Object, Observed> slot = Pair.of(object, observed);
             Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
             Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
@@ -84,13 +90,13 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                 return observed.getDefault();
             } else {
                 DERIVED.run(newDerived, () -> {
-                    for (Observer deriver : MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed)) {
+                    for (Observer deriver : ((Mutable) object).dDerivers(observed)) {
                         deriver.run((Mutable) object);
                     }
                 });
             }
         }
-        return constantState.get(leafTransaction, object, constant);
+        return constantState.get(this, object, constant);
     }
 
     @Override
@@ -106,7 +112,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T value) {
         if (doDeriver(object, setable)) {
-            constantState.set(LeafTransaction.getCurrent(), object, setable.constant(), value, true);
+            constantState.set(this, object, setable.constant(), value, true);
             return setable.getDefault();
         } else if (!Objects.equals(state().get(object, setable), value)) {
             return super.set(object, setable, value);
@@ -115,4 +121,8 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         }
     }
 
+    @Override
+    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+        return original != null ? original.construct(reason, supplier) : super.construct(reason, supplier);
+    }
 }

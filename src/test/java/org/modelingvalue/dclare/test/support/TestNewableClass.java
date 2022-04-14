@@ -17,7 +17,11 @@ package org.modelingvalue.dclare.test.support;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.util.SerializableConsumer;
+import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.collections.util.Triple;
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.Setable;
 
@@ -26,29 +30,72 @@ public class TestNewableClass extends TestMutableClass {
 
     @SafeVarargs
     public static TestNewableClass of(Object id, Direction direction, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
-        return new TestNewableClass(id, direction, identity, setables);
+        return new TestNewableClass(id, direction, identity, new AtomicInteger(0), setables);
     }
 
     private final Direction                     direction;
     private final Function<TestNewable, Object> identity;
-    private final AtomicInteger                 counter = new AtomicInteger(0);
+    private final AtomicInteger                 objectCounter;
 
-    protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, Setable... setables) {
+    protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, AtomicInteger objectCounter, Setable... setables) {
         super(id, setables);
         this.identity = identity;
         this.direction = direction;
+        this.objectCounter = objectCounter;
     }
 
     public Function<TestNewable, Object> identity() {
         return identity;
     }
 
-    public int uniqueInt() {
-        return counter.getAndIncrement();
+    public int newObjectInt() {
+        return objectCounter.getAndIncrement();
     }
 
     public Direction direction() {
         return direction;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final TestNewableClass observe(SerializableConsumer<TestMutable> action) {
+        return (TestNewableClass) super.observe(action);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+        return (TestNewableClass) super.observe(direction, action);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+        return (TestNewableClass) super.observe(setable, value);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public final <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+        return (TestNewableClass) super.observe(direction, setable, value);
+    }
+
+    @Override
+    public String toString() {
+        return super.toString().replace("Triple", "").replace("Pair", "");
+    }
+
+    private static final class AnonymousKey extends Triple<TestNewableClass, TestMutable, String> {
+
+        private static final long                     serialVersionUID = -7004150121696331537L;
+
+        private final UnaryOperator<TestNewableClass> init;
+
+        private AnonymousKey(TestNewableClass original, TestMutable ctx, String id, UnaryOperator<TestNewableClass> init) {
+            super(original, ctx, id);
+            this.init = init;
+        }
+
     }
 
 }

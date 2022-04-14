@@ -15,11 +15,9 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.function.Consumer;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Triple;
+import org.modelingvalue.collections.util.SerializableUnaryOperator;
 import org.modelingvalue.dclare.*;
 
 @SuppressWarnings("rawtypes")
@@ -27,26 +25,29 @@ public class TestNewable extends TestMutable implements Newable {
 
     public static final Observed<TestMutable, String> n = Observed.of("n", null);
 
-    @SafeVarargs
-    public static TestNewable create(Direction direction, Object reason, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(TestNewableClass clazz, Object reason) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason}, observers));
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}));
     }
 
-    @SafeVarargs
-    public static TestNewable create(Direction direction, Object reason1, Object reason2, TestNewableClass clazz, Consumer<TestNewable>... observers) {
+    public static TestNewable create(TestNewableClass clazz, Object reason1, Object reason2) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(direction, tx.mutable(), new Object[]{reason1, reason2}, observers));
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason1, reason2}));
+    }
+
+    public static TestNewable create(TestNewableClass clazz, SerializableUnaryOperator<TestNewableClass> init) {
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), init.of()}));
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
-        return tx.construct(reason, () -> new TestNewable(clazz.uniqueInt(), clazz));
+        return tx.construct(reason, () -> new TestNewable(clazz.newObjectInt(), clazz));
     }
 
     @SuppressWarnings("unchecked")
-    public static void construct(TestNewable newable, Direction direction, Object reason) {
+    public static void construct(TestNewable newable, Object reason) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        tx.construct(new TestReason(direction, tx.mutable(), new Object[]{reason}, new Consumer[0]), () -> newable);
+        tx.construct(new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}), () -> newable);
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -83,10 +84,19 @@ public class TestNewable extends TestMutable implements Newable {
         return dClass().direction();
     }
 
+    private Collection<TestNewableClass> anonymous() {
+        return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
+    }
+
     @Override
     public Collection<? extends Observer<?>> dAllObservers() {
-        return Collection.concat(Newable.super.dAllObservers(), //
-                dDerivedConstructions().map(Construction::reason).filter(TestReason.class).flatMap(TestReason::observers));
+        return Collection.concat(Newable.super.dAllObservers(), anonymous().flatMap(TestNewableClass::dObservers));
+    }
+
+    @Override
+    @SuppressWarnings("rawtypes")
+    public Set<Observer> dDerivers(Setable setable) {
+        return Collection.concat(Newable.super.dDerivers(setable), anonymous().flatMap(a -> a.dDerivers(setable))).toSet();
     }
 
     @Override
@@ -97,35 +107,32 @@ public class TestNewable extends TestMutable implements Newable {
 
     private static class TestReason extends Construction.Reason {
 
-        private final Direction        direction;
-        private final Set<Observer<?>> observers;
+        @SuppressWarnings("unchecked")
+        private final Constant<TestReason, TestNewableClass> ANONYMOUS = Constant.of("ANONYMOUS", null, r -> {
+            TestNewableClass anon = TestNewableClass.of(r, r.direction(), null);
+            if (r.get(null, 1) instanceof SerializableUnaryOperator) {
+                ((SerializableUnaryOperator<TestNewableClass>) r.get(null, 1)).apply(anon);
+            }
+            return anon;
+        });
 
         @SuppressWarnings("unchecked")
-        private TestReason(Direction direction, Mutable thiz, Object[] id, Consumer<TestNewable>[] observers) {
+        private TestReason(Mutable thiz, Object[] id) {
             super(thiz, id);
-            Set<Observer<?>> obs = Set.of();
-            for (int i = 0; i < observers.length; i++) {
-                Consumer<TestNewable> finalCons = observers[i];
-                Observer observer = Observer.<TestNewable> of(Triple.of(thiz, this, i), n -> {
-                    Mutable t = ((Triple<Mutable, ?, ?>) LeafTransaction.getCurrent().leaf().id()).a();
-                    if (n.dDerivedConstructions().anyMatch(c -> c.reason().equals(this) && c.object().equals(t) && !Newable.D_SUPER_POSITION.get(n).contains(c.reason().direction()))) {
-                        finalCons.accept(n);
-                    }
-                }, m -> direction);
-                obs = obs.add(observer);
-            }
-            this.observers = obs;
-            this.direction = direction;
         }
 
-        @SuppressWarnings("unchecked")
-        public Set<? extends Observer<?>> observers() {
-            return (Set<? extends Observer<?>>) observers;
+        public TestNewableClass anonymous() {
+            return ANONYMOUS.get(this);
         }
 
         @Override
         public Direction direction() {
-            return direction;
+            return (Direction) get(null, 0);
+        }
+
+        @Override
+        public String toString() {
+            return super.toString().substring(getClass().getSimpleName().length());
         }
 
     }

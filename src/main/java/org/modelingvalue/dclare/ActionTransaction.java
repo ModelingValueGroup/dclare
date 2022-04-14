@@ -20,9 +20,16 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.Construction.Reason;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
@@ -85,11 +92,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 if (!cls().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, Priority.forward);
                     // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
-                    if (!observed.isPlumbing()) {
-                        for (Entry<Reason, Newable> rn : get(target, observer.constructed())) {
-                            set(rn.getValue(), Newable.D_SUPER_POSITION, Set::add, rn.getKey().direction());
-                        }
-                    }
                 }
             }
         }
@@ -189,6 +191,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public ActionInstance actionInstance() {
         return ActionInstance.of(mutable(), action());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Direction direction() {
+        return ((Action<Mutable>) cls()).direction(mutable());
     }
 
 }

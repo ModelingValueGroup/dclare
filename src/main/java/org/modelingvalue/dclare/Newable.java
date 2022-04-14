@@ -17,9 +17,9 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction.Reason;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
 
 public interface Newable extends Mutable {
 
@@ -28,36 +28,12 @@ public interface Newable extends Mutable {
                                                                                          Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                  //
                                                                                                  add -> add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o)),                                                                       //
                                                                                                  rem -> rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o)));
-                                                                                         if (a.isEmpty() && o.dDirectConstruction() == null) {
-                                                                                             for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
-                                                                                                 obs.constructed().setDefault(o);
-                                                                                             }
-                                                                                         }
+                                                                                         //                                                                                         if (a.isEmpty() && o.dDirectConstruction() == null) {
+                                                                                         //                                                                                             for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
+                                                                                         //                                                                                                 obs.constructed().setDefault(o);
+                                                                                         //                                                                                             }
+                                                                                         //                                                                                         }
                                                                                      }, plumbing);
-    Observed<Newable, Set<Newable>>                          D_SOURCES               = Observed.of("D_SOURCES", Set.of(), plumbing);
-    Observer<Newable>                                        D_SOURCES_RULE          = NonCheckingObserver.of(D_SOURCES, n -> {
-                                                                                         Set<Newable> sources = n.dDerivedConstructions().flatMap(Construction::derivers).toSet();
-                                                                                         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(n);
-                                                                                         if (pair.a() instanceof Newable && n.equals(pair.b().get(pair.a()))) {
-                                                                                             sources = sources.add((Newable) pair.a());
-                                                                                         }
-                                                                                         sources = sources.flatMap(s -> s.dDirectConstruction() != null ? Set.of(s) : D_SOURCES.get(s).remove(n)).toSet();
-                                                                                         D_SOURCES.set(n, sources);
-                                                                                     });
-    Observed<Newable, Set<Direction>>                        D_DIRECTIONS            = Observed.of("D_DIRECTIONS", Set.of(), plumbing);
-    Observer<Newable>                                        D_DIRECTIONS_RULE       = NonCheckingObserver.of(D_DIRECTIONS, n -> {
-                                                                                         Construction direct = n.dDirectConstruction();
-                                                                                         if (direct != null) {
-                                                                                             D_DIRECTIONS.set(n, Set.of());
-                                                                                         } else {
-                                                                                             QualifiedSet<Direction, Construction> cons = n.dDerivedConstructions();
-                                                                                             D_DIRECTIONS.set(n, cons.toKeys().toSet().addAll(cons.flatMap(Construction::derivers).flatMap(Newable::dDirections)));
-                                                                                         }
-                                                                                     });
-    Observed<Newable, Set<Direction>>                        D_SUPER_POSITION        = Observed.of("D_SUPER_POSITION", Set.of(), plumbing);
-    Observer<Newable>                                        D_SUPER_POSITION_RULE   = NonCheckingObserver.of("D_SUPER_POSITION_RULE", n -> {
-                                                                                         D_SUPER_POSITION.set(n, Set::retainAll, D_DERIVED_CONSTRUCTIONS.get(n).map(Construction::reason).map(Reason::direction).toSet());
-                                                                                     });
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();
@@ -89,28 +65,14 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
-    default Set<Newable> dSources() {
-        return D_SOURCES.get(this);
-    }
-
-    default Set<Direction> dDirections() {
-        return D_DIRECTIONS.get(this);
-    }
-
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
-        D_SOURCES_RULE.trigger(this);
-        D_DIRECTIONS_RULE.trigger(this);
-        D_SUPER_POSITION_RULE.trigger(this);
     }
 
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
-        D_SOURCES_RULE.deObserve(this);
-        D_DIRECTIONS_RULE.deObserve(this);
-        D_SUPER_POSITION_RULE.deObserve(this);
     }
 
     @Override

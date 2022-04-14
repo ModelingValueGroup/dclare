@@ -41,6 +41,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private final StateDeltaHandler                           diffHandler;
     private final NamedIdentity                               actionId  = NamedIdentity.of(this, "$toDClare");
+    private final Direction                                   direction;
 
     private State                                             pre;
     private State                                             state;
@@ -59,6 +60,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
         this.diffHandler = diffHandler;
+        this.direction = Direction.of(cls.id());
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
             LeafTransaction.getContext().setOnThread(this);
@@ -208,6 +210,11 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public ActionInstance actionInstance() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Direction direction() {
+        return direction;
     }
 
 }

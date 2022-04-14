@@ -38,5 +38,10 @@ public interface MutableClass extends Internable {
     Collection<? extends Observer<?>> dObservers();
 
     Collection<? extends Setable<? extends Mutable, ?>> dSetables();
+    
+    @SuppressWarnings("rawtypes")
+    default Set<Observer> dDerivers(Setable setable) {
+        return D_DERIVERS.get(this).get(setable);
+    }
 
 }
