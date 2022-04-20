@@ -15,7 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
 public interface MutableClass extends Internable {
@@ -38,9 +41,9 @@ public interface MutableClass extends Internable {
     Collection<? extends Observer<?>> dObservers();
 
     Collection<? extends Setable<? extends Mutable, ?>> dSetables();
-    
+
     @SuppressWarnings("rawtypes")
-    default Set<Observer> dDerivers(Setable setable) {
+    default Collection<Observer> dDerivers(Setable setable) {
         return D_DERIVERS.get(this).get(setable);
     }
 

@@ -30,18 +30,18 @@ public class TestNewableClass extends TestMutableClass {
 
     @SafeVarargs
     public static TestNewableClass of(Object id, Direction direction, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
-        return new TestNewableClass(id, direction, identity, new AtomicInteger(0), setables);
+        return new TestNewableClass(id, direction, identity, setables);
     }
 
     private final Direction                     direction;
     private final Function<TestNewable, Object> identity;
     private final AtomicInteger                 objectCounter;
 
-    protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, AtomicInteger objectCounter, Setable... setables) {
+    protected TestNewableClass(Object id, Direction direction, Function<TestNewable, Object> identity, Setable... setables) {
         super(id, setables);
         this.identity = identity;
         this.direction = direction;
-        this.objectCounter = objectCounter;
+        this.objectCounter = new AtomicInteger(0);
     }
 
     public Function<TestNewable, Object> identity() {
@@ -58,25 +58,25 @@ public class TestNewableClass extends TestMutableClass {
 
     @Override
     @SuppressWarnings("unchecked")
-    public final TestNewableClass observe(SerializableConsumer<TestMutable> action) {
-        return (TestNewableClass) super.observe(action);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public final TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+    public TestNewableClass observe(SerializableConsumer<TestMutable> action) {
         return (TestNewableClass) super.observe(direction, action);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-        return (TestNewableClass) super.observe(setable, value);
+    public TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+        return (TestNewableClass) super.observe(direction, action);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+    public <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+        return (TestNewableClass) super.observe(direction, setable, value);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
         return (TestNewableClass) super.observe(direction, setable, value);
     }
 

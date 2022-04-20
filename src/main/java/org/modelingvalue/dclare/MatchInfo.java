@@ -16,30 +16,25 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.Optional;
 
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public class MatchInfo {
 
-    private final Newable              newable;
-    private final Map<Reason, Newable> constructions;
-    private final ObserverTransaction  tx;
+    private final Newable             newable;
+    private final ObserverTransaction tx;
 
-    private Object                     identity;
-    private Boolean                    isCarvedInStone;
-    private Set<Direction>             directions;
+    private Object                    identity;
+    private Boolean                   isCarvedInStone;
+    private Set<Direction>            directions;
 
-    public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions, ObserverTransaction tx) {
-        return new MatchInfo(newable, constructions, tx);
+    public static MatchInfo of(Newable newable, ObserverTransaction tx) {
+        return new MatchInfo(newable, tx);
     }
 
-    private MatchInfo(Newable newable, Map<Reason, Newable> constructions, ObserverTransaction tx) {
+    private MatchInfo(Newable newable, ObserverTransaction tx) {
         this.newable = newable;
-        this.constructions = constructions;
         this.tx = tx;
     }
 
@@ -62,12 +57,7 @@ public class MatchInfo {
 
     public Set<Direction> directions() {
         if (directions == null) {
-            Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
-            Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
-            if (local.isPresent()) {
-                reasons = reasons.add(local.get());
-            }
-            directions = reasons.map(Reason::direction).toSet();
+            directions = newable.dConstructions().map(Construction::reason).map(Reason::direction).toSet();
         }
         return directions;
     }
@@ -84,10 +74,6 @@ public class MatchInfo {
             }
         }
         return identity == ConstantState.NULL ? null : identity;
-    }
-
-    public boolean hasConstruction() {
-        return isCarvedInStone() || !directions().isEmpty();
     }
 
     public boolean isCarvedInStone() {

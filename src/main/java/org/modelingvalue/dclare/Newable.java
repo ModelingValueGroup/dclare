@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotMerge;
 import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import org.modelingvalue.collections.Entry;
@@ -28,12 +29,7 @@ public interface Newable extends Mutable {
                                                                                          Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                  //
                                                                                                  add -> add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o)),                                                                       //
                                                                                                  rem -> rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o)));
-                                                                                         //                                                                                         if (a.isEmpty() && o.dDirectConstruction() == null) {
-                                                                                         //                                                                                             for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
-                                                                                         //                                                                                                 obs.constructed().setDefault(o);
-                                                                                         //                                                                                             }
-                                                                                         //                                                                                         }
-                                                                                     }, plumbing);
+                                                                                     }, plumbing, doNotMerge);
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();
@@ -56,7 +52,7 @@ public interface Newable extends Mutable {
     }
 
     default QualifiedSet<Direction, Construction> dDerivedConstructions() {
-        return D_DERIVED_CONSTRUCTIONS.get(this);
+        return D_DERIVED_CONSTRUCTIONS.current(this);
     }
 
     default QualifiedSet<Direction, Construction> dConstructions() {

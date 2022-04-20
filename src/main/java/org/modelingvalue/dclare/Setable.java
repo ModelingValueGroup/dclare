@@ -17,11 +17,23 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.OutOfScopeException;
+import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
@@ -55,6 +67,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Constant<T, Entry<Setable, Object>>    internal;
     private final boolean                                plumbing;
     private final boolean                                synthetic;
+    private final boolean                                doNotMerge;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -79,6 +92,7 @@ public class Setable<O, T> extends Getable<O, T> {
             throw new Error("The containment setable " + this + " has an opposite");
         }
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.doNotMerge = CoreSetableModifier.doNotMerge.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -119,6 +133,10 @@ public class Setable<O, T> extends Getable<O, T> {
             TraceTimer.traceEnd("deduplicate");
         }
 
+    }
+
+    public boolean doNotMerge() {
+        return doNotMerge;
     }
 
     public boolean isReference() {

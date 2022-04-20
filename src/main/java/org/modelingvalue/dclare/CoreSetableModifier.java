@@ -21,5 +21,6 @@ public enum CoreSetableModifier implements SetableModifier {
     mandatory,
     synthetic,
     plumbing,
-    durable;
+    durable,
+    doNotMerge;
 }

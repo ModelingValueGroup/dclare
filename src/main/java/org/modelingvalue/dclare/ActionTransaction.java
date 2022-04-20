@@ -90,11 +90,16 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 //noinspection ConstantConditions
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, Priority.forward);
+                    trigger(target, observer, triggerPriority(target, observer));
                     // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
                 }
             }
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected Priority triggerPriority(Mutable targe, Observer observer) {
+        return Priority.forward;
     }
 
     protected String traceId() {
@@ -114,7 +119,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return currentSate.get();
     }
 
-    public State merge() {
+    protected State merge() {
         return currentSate.merge();
     }
 
@@ -142,7 +147,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         if (currentSate.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
-            } else if (!Objects.equals(br, pre)) {
+            } else if (!property.doNotMerge() && !Objects.equals(br, pre)) {
                 if (pre instanceof Mergeable) {
                     po = (T) ((Mergeable) pre).merge(br, po);
                 } else if (br != null && po != null) {

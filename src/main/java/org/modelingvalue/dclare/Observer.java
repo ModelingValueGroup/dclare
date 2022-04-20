@@ -42,6 +42,22 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, action, Priority.forward);
     }
 
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
+        return new Observer<M>(id, action, direction, Priority.forward);
+    }
+
+    public static <M extends Mutable> Observer<M> of(Object id, Predicate<M> predicate, Consumer<M> action, Function<M, Direction> direction) {
+        return new Observer<M>(id, predicate, action, direction, Priority.forward);
+    }
+
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority initPriority) {
+        return new Observer<M>(id, action, initPriority);
+    }
+
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
+        return new Observer<M>(id, action, direction, initPriority);
+    }
+
     @SuppressWarnings("unchecked")
     public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value) {
         return new Observer<M>(id, setable, value, (Function<M, Direction>) DEFAULT_DIRECTION_FUNCTION, Priority.forward);
@@ -78,23 +94,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, setable, predicate, value, direction, initPriority);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
-        return new Observer<M>(id, action, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new Observer<M>(id, action, initPriority);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
-        return new Observer<M>(id, action, direction, initPriority);
-    }
-
     public final Traces                         traces;
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
-    private final PreConstructed                preConstructed;
     @SuppressWarnings("rawtypes")
     private final Set<Setable<O, ?>>            targets;
 
@@ -111,6 +114,23 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
     }
 
+    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        this(id, action, direction, initPriority, Set.of());
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Observer(Object id, Consumer<O> action, Priority initPriority, @SuppressWarnings("rawtypes") Set<Setable<O, ?>> targets) {
+        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, targets);
+    }
+
+    protected Observer(Object id, Predicate<O> predicate, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+        this(id, o -> {
+            if (predicate.test(o)) {
+                action.accept(o);
+            }
+        }, direction, initPriority, Set.of());
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T> Observer(Object id, Setable setable, Function<O, T> value, Function<O, Direction> direction, Priority initPriority) {
         this(id, o -> setable.set(o, value.apply(o)), direction, initPriority, Set.of(setable));
@@ -125,15 +145,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }, direction, initPriority, Set.of(setable));
     }
 
-    protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
-        this(id, action, direction, initPriority, Set.of());
-    }
-
-    @SuppressWarnings("unchecked")
-    protected Observer(Object id, Consumer<O> action, Priority initPriority, @SuppressWarnings("rawtypes") Set<Setable<O, ?>> targets) {
-        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority, targets);
-    }
-
     @SuppressWarnings("rawtypes")
     protected Observer(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority, Set<Setable<O, ?>> targets) {
         super(id, action, direction, initPriority);
@@ -141,7 +152,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
-        preConstructed = PreConstructed.of(this);
         this.targets = targets;
     }
 
@@ -155,10 +165,6 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Constructed constructed() {
         return constructed;
-    }
-
-    public PreConstructed preConstructed() {
-        return preConstructed;
     }
 
     @Override
@@ -316,24 +322,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         }
                     }
                 }
-            }, CoreSetableModifier.plumbing);
-        }
-
-        @Override
-        public String toString() {
-            return getClass().getSimpleName() + ":" + super.toString();
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    public static class PreConstructed extends Setable<Mutable, Map<Reason, Newable>> {
-
-        public static PreConstructed of(Observer observer) {
-            return new PreConstructed(observer);
-        }
-
-        private PreConstructed(Observer observer) {
-            super(observer, Map.of(), null, null, null, CoreSetableModifier.plumbing);
+            }, CoreSetableModifier.plumbing, CoreSetableModifier.doNotMerge);
         }
 
         @Override

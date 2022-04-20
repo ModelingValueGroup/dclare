@@ -38,19 +38,18 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
 
 public class ObserverTransaction extends ActionTransaction {
-    private static final Set<Boolean>                            FALSE               = Set.of();
-    private static final Set<Boolean>                            TRUE                = Set.of(true);
-    public static final Context<Boolean>                         OBSERVE             = Context.of(true);
+    private static final Set<Boolean>                            FALSE          = Set.of();
+    private static final Set<Boolean>                            TRUE           = Set.of(true);
+    public static final Context<Boolean>                         OBSERVE        = Context.of(true);
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets                = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets                = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets           = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private final Concurrent<Map<Construction.Reason, Newable>>  constructions       = Concurrent.of();
-    private final Concurrent<Map<Construction.Reason, Newable>>  directConstructions = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       emptyMandatory      = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       changed             = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       backwards           = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
     //
     private State                                                startState;
 
@@ -67,6 +66,17 @@ public class ObserverTransaction extends ActionTransaction {
         return "observer";
     }
 
+    @Override
+    protected State merge() {
+        gets.merge();
+        sets.merge();
+        constructions.merge();
+        emptyMandatory.merge();
+        changed.merge();
+        backwards.merge();
+        return super.merge();
+    }
+
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     @Override
     protected final void run(State pre, UniverseTransaction universeTransaction) {
@@ -80,14 +90,14 @@ public class ObserverTransaction extends ActionTransaction {
             gets.init(Observed.OBSERVED_MAP);
             sets.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
-            directConstructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             backwards.init(FALSE);
             startState = universeTransaction.startState();
             try {
-                observe(mutable(), observer().constructed(), gets);
+                // if (mutable().dAllObservers().toSet().contains(observer())) {
                 doRun(pre, universeTransaction);
+                // }
             } catch (Throwable t) {
                 do {
                     if (t instanceof ConsistencyError) {
@@ -103,34 +113,45 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 } while (true);
             } finally {
-                observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.result(), sets.result()));
-                directConstructions.clear();
-                Map<Reason, Newable> cons = constructions.result();
+                merge();
+                observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.get(), sets.get()));
+                Map<Reason, Newable> cons = constructions.get();
                 if (throwable == null) {
                     observer.constructed().set(mutable(), cons);
                 }
-                if (emptyMandatory.result().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
+                if (emptyMandatory.get().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
                     throwable = null;
                 }
                 observer.exception().set(mutable(), throwable);
                 changed.clear();
                 backwards.clear();
+                gets.clear();
+                sets.clear();
+                constructions.clear();
+                emptyMandatory.clear();
                 startState = null;
             }
         }
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
+        observe(mutable(), observer().constructed(), gets);
         super.run(pre, universeTransaction);
     }
+
+    //    @Override
+    //    @SuppressWarnings({"rawtypes", "unchecked"})
+    //    protected Priority triggerPriority(Mutable target, Observer observer) {
+    //        return direction().equals(observer.direction(target)) ? Priority.forward : Priority.backward;
+    //    }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observeds) {
         checkTooManyObserved(observeds);
-        if (changed.result().equals(TRUE)) {
+        if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
             trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
-        } else if (backwards.result().equals(TRUE)) {
+        } else if (backwards.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
@@ -170,14 +191,14 @@ public class ObserverTransaction extends ActionTransaction {
                     pre.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).toMap(e -> e));
             observer.traces.set(mutable, traces.add(trace));
             if (changesPerInstance > stats.maxNrOfChanges() * 2) {
-                hadleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
+                handleTooManyChanges(universeTransaction, mutable, observer, changesPerInstance);
             } else if (totalChanges > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges()) {
-                hadleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
+                handleTooManyChanges(universeTransaction, mutable, observer, totalChanges);
             }
         }
     }
 
-    private void hadleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
+    private void handleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
         State result = merge();
         ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
         if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
@@ -243,6 +264,7 @@ public class ObserverTransaction extends ActionTransaction {
             }
             observe(object, (Observed<O, T>) setable, sets);
             if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
+                merge();
                 if (pre instanceof Newable && post instanceof Newable) {
                     result = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
                 } else if (isNewableCollection(pre) && isNewableCollection(post)) {
@@ -293,6 +315,7 @@ public class ObserverTransaction extends ActionTransaction {
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
         if (observing(object, setable)) {
             changed.set(TRUE);
+            // runNonObserving(() -> System.err.println("!!!!!!!!!!! " + this + "   " + object + "." + setable + "=" + postValue));
         }
         runNonObserving(() -> super.changed(object, setable, preValue, postValue));
     }
@@ -309,13 +332,7 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = (O) current(mutable(), observer().preConstructed()).get(reason);
-                if (result == null) {
-                    result = (O) startState.get(mutable(), observer().constructed()).get(reason);
-                    if (result == null) {
-                        result = supplier.get();
-                    }
-                }
+                result = supplier.get();
                 if (universeTransaction().getConfig().isTraceMatching()) {
                     O finalResult = result;
                     runNonObserving(() -> {
@@ -325,17 +342,12 @@ public class ObserverTransaction extends ActionTransaction {
                     });
                 }
             }
-            set(mutable(), observer().preConstructed(), (m, r) -> m.put(reason, r), result);
-            constructions.set((map, e) -> map.put(reason, e), result);
+            observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
+            if (!(LeafTransaction.getCurrent() instanceof DerivationTransaction)) {
+                constructions.set((map, e) -> map.put(reason, e), result);
+            }
             return result;
         }
-    }
-
-    @Override
-    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        O result = super.construct(reason, supplier);
-        directConstructions.set((map, e) -> map.put(reason, e), result);
-        return result;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
@@ -379,7 +391,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
     private boolean isChildChanged(Mutable mutable) {
         if (startState.get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
-            return changeNr(startState, mutable) != changeNr(state(), mutable) && !(derivations(startState, mutable) > 0 && derivations(state(), mutable) == 0);
+            return changeNr(startState, mutable) != changeNr(state(), mutable) && !(derivations(startState, mutable) > 0 && derivations(current(), mutable) == 0);
         } else {
             return false;
         }
@@ -395,7 +407,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private boolean inputIsChanged() {
-        return gets.merge().removeAll(sets.merge(), Set::removeAll).filter(e -> !e.getKey().isPlumbing()).anyMatch(e -> e.getValue().anyMatch(m -> {
+        return gets.get().removeAll(sets.get(), Set::removeAll).filter(e -> !e.getKey().isPlumbing()).anyMatch(e -> e.getValue().anyMatch(m -> {
             Mutable object = m.dResolve(mutable());
             return !Objects.equals(state().get(object, e.getKey()), startState.get(object, e.getKey()));
         }));
@@ -403,21 +415,14 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
-        Map<Reason, Newable> cons = constructions.merge();
-        MatchInfo pre = MatchInfo.of((Newable) before, cons, this);
-        MatchInfo post = MatchInfo.of((Newable) after, cons, this);
-        if (pre.haveSameType(post)) {
-            if (!post.hasConstruction()) {
+        MatchInfo pre = MatchInfo.of((Newable) before, this);
+        MatchInfo post = MatchInfo.of((Newable) after, this);
+        if (pre.haveSameType(post) && pre.mustBeTheSame(post)) {
+            MatchInfo dir = matchDirection(pre, post);
+            if (dir == pre) {
                 return before;
-            } else if (!pre.hasConstruction()) {
+            } else if (dir == post) {
                 return after;
-            } else if (pre.mustBeTheSame(post)) {
-                MatchInfo dir = matchDirection(pre, post);
-                if (dir == pre) {
-                    return before;
-                } else if (dir == post) {
-                    return after;
-                }
             }
         }
         return rippleOut(object, observed, before, after);
@@ -425,36 +430,29 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        Map<Reason, Newable> cons = constructions.merge();
-        List<MatchInfo> pres = before.exclude(after::contains).filter(Newable.class).map(n -> MatchInfo.of(n, cons, this)).toList();
-        List<MatchInfo> posts = after.exclude(before::contains).filter(Newable.class).map(n -> MatchInfo.of(n, cons, this)).toList();
+        List<MatchInfo> pres = before.exclude(after::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> posts = after.exclude(before::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
         if (!(after instanceof List)) {
             pres = pres.sortedBy(MatchInfo::sortKey).toList();
             posts = posts.sortedBy(MatchInfo::sortKey).toList();
         }
         for (MatchInfo post : posts) {
             for (MatchInfo pre : pres) {
-                if (pre.haveSameType(post)) {
-                    if (!post.hasConstruction()) {
-                        after = after.remove(post.newable());
+                if (pre.haveSameType(post) && pre.mustBeTheSame(post)) {
+                    MatchInfo dir = matchDirection(pre, post);
+                    if (dir == pre) {
+                        after = after.replace(post.newable(), pre.newable());
                         break;
-                    } else if (!pre.hasConstruction()) {
-                        before = before.remove(pre.newable());
-                        pres = pres.remove(pre);
-                    } else if (pre.mustBeTheSame(post)) {
-                        MatchInfo dir = matchDirection(pre, post);
-                        if (dir == pre) {
-                            after = after.replace(post.newable(), pre.newable());
-                            break;
-                        } else if (dir == post) {
-                            before = before.replace(pre.newable(), post.newable());
-                            break;
-                        }
+                    } else if (dir == post) {
+                        before = before.replace(pre.newable(), post.newable());
+                        break;
                     }
                 }
             }
         }
-        return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
+        return Objects.equals(before, after) ? after :
+
+                rippleOut(object, observed, before, after);
     }
 
     @SuppressWarnings("unchecked")

@@ -16,7 +16,8 @@
 package org.modelingvalue.dclare.test.support;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.SerializableConsumer;
+import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializableUnaryOperator;
 import org.modelingvalue.dclare.*;
 
@@ -84,7 +85,7 @@ public class TestNewable extends TestMutable implements Newable {
         return dClass().direction();
     }
 
-    private Collection<TestNewableClass> anonymous() {
+    private Collection<AnonymousClass> anonymous() {
         return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
     }
 
@@ -95,8 +96,8 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     @SuppressWarnings("rawtypes")
-    public Set<Observer> dDerivers(Setable setable) {
-        return Collection.concat(Newable.super.dDerivers(setable), anonymous().flatMap(a -> a.dDerivers(setable))).toSet();
+    public Collection<Observer> dDerivers(Setable setable) {
+        return Collection.concat(Newable.super.dDerivers(setable), anonymous().flatMap(a -> a.dDerivers(setable)));
     }
 
     @Override
@@ -106,10 +107,9 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private static class TestReason extends Construction.Reason {
-
         @SuppressWarnings("unchecked")
-        private final Constant<TestReason, TestNewableClass> ANONYMOUS = Constant.of("ANONYMOUS", null, r -> {
-            TestNewableClass anon = TestNewableClass.of(r, r.direction(), null);
+        private final static Constant<TestReason, AnonymousClass> ANONYMOUS = Constant.of("ANONYMOUS", null, r -> {
+            AnonymousClass anon = new AnonymousClass(r);
             if (r.get(null, 1) instanceof SerializableUnaryOperator) {
                 ((SerializableUnaryOperator<TestNewableClass>) r.get(null, 1)).apply(anon);
             }
@@ -121,7 +121,7 @@ public class TestNewable extends TestMutable implements Newable {
             super(thiz, id);
         }
 
-        public TestNewableClass anonymous() {
+        public AnonymousClass anonymous() {
             return ANONYMOUS.get(this);
         }
 
@@ -134,7 +134,45 @@ public class TestNewable extends TestMutable implements Newable {
         public String toString() {
             return super.toString().substring(getClass().getSimpleName().length());
         }
+    }
 
+    private static final class AnonymousClass extends TestNewableClass {
+        private AnonymousClass(TestReason reason) {
+            super(reason, reason.direction(), null, new Setable[0]);
+        }
+
+        @SuppressWarnings("unused")
+        private TestReason reason() {
+            return (TestReason) id();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final TestNewableClass observe(SerializableConsumer<TestMutable> action) {
+            return (TestNewableClass) super.observe(direction(), this::isActive, action);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+            return (TestNewableClass) super.observe(direction, this::isActive, action);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+            return (TestNewableClass) super.observe(direction(), this::isActive, setable, value);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+            return (TestNewableClass) super.observe(direction, this::isActive, setable, value);
+        }
+
+        private boolean isActive(TestMutable object) {
+            return object instanceof TestNewable && ((TestNewable) object).anonymous().anyMatch(this::equals);
+        }
     }
 
 }
