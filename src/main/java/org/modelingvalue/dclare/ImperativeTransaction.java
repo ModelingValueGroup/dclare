@@ -40,7 +40,7 @@ public class ImperativeTransaction extends LeafTransaction {
     private final Consumer<Runnable>                          scheduler;
     @SuppressWarnings("rawtypes")
     private final StateDeltaHandler                           diffHandler;
-    private final NamedIdentity                               actionId  = NamedIdentity.of(this, "$toDClare");
+    private final NamedIdentity                               actionId;
     private final Direction                                   direction;
 
     private State                                             pre;
@@ -61,6 +61,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.allSetted = SETTED_MAP;
         this.diffHandler = diffHandler;
         this.direction = Direction.of(cls.id());
+        this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
             LeafTransaction.getContext().setOnThread(this);
@@ -140,7 +141,7 @@ public class ImperativeTransaction extends LeafTransaction {
         State imper = state;
         DefaultMap<Object, Set<Setable>> finalSetted = setted;
         setted = SETTED_MAP;
-        universeTransaction().put(actionId, () -> {
+        universeTransaction().put(Action.of(actionId, u -> {
             try {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
@@ -152,7 +153,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
-        });
+        }, u -> direction, Priority.urgent));
     }
 
     @SuppressWarnings("unchecked")

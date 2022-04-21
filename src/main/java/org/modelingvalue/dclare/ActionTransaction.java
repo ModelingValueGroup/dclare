@@ -90,7 +90,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 //noinspection ConstantConditions
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, triggerPriority(target, observer));
+                    trigger(target, observer, triggerPriority(observer.initPriority()));
                     // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
                 }
             }
@@ -98,8 +98,13 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @SuppressWarnings("rawtypes")
-    protected Priority triggerPriority(Mutable targe, Observer observer) {
-        return Priority.forward;
+    protected Priority triggerPriority(Priority priority) {
+        return action().initPriority() == Priority.urgent && priority != Priority.urgent ? Priority.backward : priority;
+    }
+
+    @Override
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
+        super.trigger(target, action, triggerPriority(priority));
     }
 
     protected String traceId() {
@@ -167,6 +172,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
+    @SuppressWarnings("rawtypes")
     protected void setChanged(Mutable changed) {
         Universe universe = universeTransaction().universe();
         byte cnr = get(universe, Mutable.D_CHANGE_NR);

@@ -17,8 +17,14 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Observed.Observers;
 import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
@@ -70,7 +76,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         state[0] = pre;
         states = Set.of(pre);
         try {
-            if (parent() == null) {
+            if (parent() == null && !hasQueued(state[0], mutable(), Priority.scheduled)) {
                 move(mutable(), Priority.backward, Priority.scheduled);
             }
             while (!universeTransaction().isKilled()) {

@@ -50,8 +50,6 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
-    //
-    private State                                                startState;
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -93,7 +91,6 @@ public class ObserverTransaction extends ActionTransaction {
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             backwards.init(FALSE);
-            startState = universeTransaction.startState();
             try {
                 // if (mutable().dAllObservers().toSet().contains(observer())) {
                 doRun(pre, universeTransaction);
@@ -129,7 +126,6 @@ public class ObserverTransaction extends ActionTransaction {
                 sets.clear();
                 constructions.clear();
                 emptyMandatory.clear();
-                startState = null;
             }
         }
     }
@@ -139,11 +135,11 @@ public class ObserverTransaction extends ActionTransaction {
         super.run(pre, universeTransaction);
     }
 
-    //    @Override
-    //    @SuppressWarnings({"rawtypes", "unchecked"})
-    //    protected Priority triggerPriority(Mutable target, Observer observer) {
-    //        return direction().equals(observer.direction(target)) ? Priority.forward : Priority.backward;
-    //    }
+    @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    protected Priority triggerPriority(Priority priority) {
+        return priority;
+    }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observeds) {
@@ -367,15 +363,16 @@ public class ObserverTransaction extends ActionTransaction {
 
             }
         }
-        T start = startState.get(object, observed);
-        if (!Objects.equals(pre, start)) {
-            if (start instanceof Mergeable && pre instanceof Mergeable && post instanceof Mergeable) {
-                T result = ((Mergeable<T>) start).merge(pre, post);
-                if (!result.equals(post)) { // && post.equals(((Mergeable<T>) pre).merge(start, post)) && !inputIsChanged()) {
+        T preDelta = preDeltaState().get(object, observed);
+        T postDelta = postDeltaState().get(object, observed);
+        if (!Objects.equals(preDelta, postDelta)) {
+            if (preDelta instanceof Mergeable && postDelta instanceof Mergeable && post instanceof Mergeable) {
+                T result = ((Mergeable<T>) preDelta).merge(postDelta, post);
+                if (!result.equals(post)) {
                     backwards.set(TRUE);
                     post = result;
                 }
-            } else if (Objects.equals(start, post) && !inputIsChanged()) {
+            } else {
                 backwards.set(TRUE);
                 return pre;
             }
@@ -383,15 +380,10 @@ public class ObserverTransaction extends ActionTransaction {
         return post;
     }
 
-    @Override
-    protected void setChanged(Mutable changed) {
-        // Do nothing
-    }
-
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
     private boolean isChildChanged(Mutable mutable) {
-        if (startState.get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
-            return changeNr(startState, mutable) != changeNr(state(), mutable) && !(derivations(startState, mutable) > 0 && derivations(current(), mutable) == 0);
+        if (preDeltaState().get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
+            return changeNr(preDeltaState(), mutable) != changeNr(postDeltaState(), mutable);
         } else {
             return false;
         }
@@ -399,18 +391,6 @@ public class ObserverTransaction extends ActionTransaction {
 
     private static byte changeNr(State state, Mutable mutable) {
         return state.get(mutable, Mutable.D_CHANGE_NR);
-    }
-
-    private static int derivations(State state, Mutable mutable) {
-        return mutable instanceof Newable ? state.get((Newable) mutable, Newable.D_DERIVED_CONSTRUCTIONS).size() : -1;
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean inputIsChanged() {
-        return gets.get().removeAll(sets.get(), Set::removeAll).filter(e -> !e.getKey().isPlumbing()).anyMatch(e -> e.getValue().anyMatch(m -> {
-            Mutable object = m.dResolve(mutable());
-            return !Objects.equals(state().get(object, e.getKey()), startState.get(object, e.getKey()));
-        }));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -450,9 +430,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        return Objects.equals(before, after) ? after :
-
-                rippleOut(object, observed, before, after);
+        return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
     }
 
     @SuppressWarnings("unchecked")
@@ -488,6 +466,14 @@ public class ObserverTransaction extends ActionTransaction {
         }, from.newable());
         to.mergeIn(from);
         return to;
+    }
+
+    private State preDeltaState() {
+        return universeTransaction().preDeltaState();
+    }
+
+    private State postDeltaState() {
+        return universeTransaction().postDeltaState();
     }
 
 }
