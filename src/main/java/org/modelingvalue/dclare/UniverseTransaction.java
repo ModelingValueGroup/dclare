@@ -88,6 +88,7 @@ public class UniverseTransaction extends MutableTransaction {
     private State                                                                                   preDeltaState;
     private State                                                                                   postDeltaState;
     private State                                                                                   orphansPreState;
+    private State                                                                                   startState;
     private ConstantState                                                                           tmpConstants;
     private State                                                                                   state;
     private boolean                                                                                 initialized;
@@ -356,10 +357,17 @@ public class UniverseTransaction extends MutableTransaction {
                 preDeltaState = postDeltaState;
                 postDeltaState = state;
                 state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
-                state = super.run(state);
+                try {
+                    do {
+                        startState = state;
+                        state = super.run(state);
+                    } while (!killed && hasDeferredQueued(state));
+                } finally {
+                    startState = null;
+                }
                 universeStatistics.completeForward();
                 state = clearOrphans(state);
-            } while (!killed && hasBackwardActionsQueued(state));
+            } while (!killed && hasBackwardQueued(state));
             return state;
         } finally {
             postDeltaState = null;
@@ -368,10 +376,18 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    private boolean hasBackwardActionsQueued(State state) {
+    private boolean hasBackwardQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.backward);
         if (config.isTraceUniverse() && result) {
             System.err.println("DCLARE: BACKWARD UNIVERSE " + this);
+        }
+        return result;
+    }
+
+    private boolean hasDeferredQueued(State state) {
+        boolean result = hasQueued(state, universe(), Priority.deferred);
+        if (config.isTraceUniverse() && result) {
+            System.err.println("DCLARE: DEFERRED UNIVERSE " + this);
         }
         return result;
     }
@@ -678,6 +694,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State postDeltaState() {
         return postDeltaState;
+    }
+
+    public State startState() {
+        return startState;
     }
 
     public ConstantState tmpConstants() {

@@ -58,7 +58,7 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                                                                                                                                                                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int            MANY_NR            = 2;
+    private static final int            MANY_NR            = 32;
     private static final boolean        PRINT_RESULT_STATE = false;                                                                                                                                                                                                                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
@@ -278,10 +278,6 @@ public class NewableTests {
         }
     }
 
-    private static String name(TestNewable obj) {
-        return obj != null ? n.get(obj) : null;
-    }
-
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     private State oofb(DclareConfig config, boolean oo2fb, boolean fb2oo, boolean ooIn, boolean fbIn, String debug_info) {
 
@@ -332,13 +328,15 @@ public class NewableTests {
             return rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft);
         });
 
-        FAT.observe(defDir, left, ft -> {
-            TestNewable l = left.get(ft);
-            return l != null ? l : create(ROL, "L", ft);
-        }).observe(defDir, right, ft -> {
-            TestNewable r = right.get(ft);
-            return r != null ? r : create(ROL, "R", ft);
-        }).observe(defDir, n, ft -> {
+        //        FAT.observe(defDir, left, ft -> {
+        //            TestNewable l = left.get(ft);
+        //            return l != null ? l : create(ROL, "L", ft);
+        //        }).observe(defDir, right, ft -> {
+        //            TestNewable r = right.get(ft);
+        //            return r != null ? r : create(ROL, "R", ft);
+        //        })
+
+        FAT.observe(defDir, n, ft -> {
             String ln = n.get(left.get(ft));
             ln = "~".equals(ln) ? null : ln;
             String rn = n.get(right.get(ft));
@@ -368,7 +366,7 @@ public class NewableTests {
                     observe(n, rl -> n.get(rf)). //
                     observe(otr, rl -> typ.get(rf) != null ? mobt.get(typ.get(rf)) : null)) //
             );
-            REF.observe(ooDir, mfat, rf -> opp.get(rf) == null || n.get(rf).compareTo(n.get(opp.get(rf))) > 0 ? //
+            REF.observe(ooDir, mfat, rf -> opp.get(rf) == null || compare(n.get(rf), n.get(opp.get(rf))) > 0 ? //
                     create(FAT, x -> x.//
                             observe(right, ft -> mrol.get(rf)). //
                             observe(left, ft -> opp.get(rf) == null ? //
@@ -832,6 +830,12 @@ public class NewableTests {
         });
 
         return result;
+    }
+
+    private int compare(String a, String b) {
+        a = a != null ? a : "";
+        b = b != null ? b : "";
+        return a.compareTo(b);
     }
 
     private State checkState(State pre) {

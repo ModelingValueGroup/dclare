@@ -91,7 +91,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, triggerPriority(observer.initPriority()));
-                    // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer));
+                    // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer + "  " + triggerPriority(observer.initPriority())));
                 }
             }
         }

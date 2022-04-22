@@ -25,9 +25,11 @@ public enum Priority implements Internable {
 
     forward(1),
 
-    backward(2),
+    deferred(2),
 
-    scheduled(3);
+    backward(3),
+
+    scheduled(4);
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;

@@ -99,12 +99,18 @@ public abstract class LeafTransaction extends Transaction {
         set(object, priority.actions, Set::add, action);
         if (priority == Priority.forward || priority == Priority.urgent) {
             set(object, Priority.backward.actions, Set::remove, action);
+            set(object, Priority.deferred.actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
-                set(container, Priority.backward.children, Set::remove, object);
+            if (priority == Priority.forward || priority == Priority.urgent) {
+                if (current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
+                    set(container, Priority.backward.children, Set::remove, object);
+                }
+                if (current(object, Priority.deferred.actions).isEmpty() && current(object, Priority.deferred.children).isEmpty()) {
+                    set(container, Priority.deferred.children, Set::remove, object);
+                }
             }
             object = container;
             container = dParent(object);

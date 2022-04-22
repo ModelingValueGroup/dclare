@@ -18,9 +18,11 @@ package org.modelingvalue.dclare;
 import static org.modelingvalue.dclare.CoreSetableModifier.doNotMerge;
 import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 
 public interface Newable extends Mutable {
 
@@ -29,6 +31,11 @@ public interface Newable extends Mutable {
                                                                                          Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                  //
                                                                                                  add -> add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o)),                                                                       //
                                                                                                  rem -> rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o)));
+                                                                                         if (a.isEmpty() && o.dDirectConstruction() == null) {
+                                                                                             for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
+                                                                                                 obs.constructed().setDefault(o);
+                                                                                             }
+                                                                                         }
                                                                                      }, plumbing, doNotMerge);
 
     @SuppressWarnings("rawtypes")
@@ -77,11 +84,10 @@ public interface Newable extends Mutable {
         return Mutable.super.dToBeCleared(setable) && setable != D_DERIVED_CONSTRUCTIONS;
     }
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    default void dHandleRemoved(Mutable parent) {
-        Mutable.super.dHandleRemoved(parent);
-
+    default Collection<Direction> dDirections() {
+        Construction direct = dDirectConstruction();
+        Collection<Direction> derived = dDerivedConstructions().toKeys();
+        return Collection.concat(derived, direct != null ? Set.of(direct.reason().direction()) : Set.of());
     }
 
 }

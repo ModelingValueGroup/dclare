@@ -49,6 +49,7 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       deferred       = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
@@ -71,6 +72,7 @@ public class ObserverTransaction extends ActionTransaction {
         constructions.merge();
         emptyMandatory.merge();
         changed.merge();
+        deferred.merge();
         backwards.merge();
         return super.merge();
     }
@@ -90,11 +92,10 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
+            deferred.init(FALSE);
             backwards.init(FALSE);
             try {
-                // if (mutable().dAllObservers().toSet().contains(observer())) {
                 doRun(pre, universeTransaction);
-                // }
             } catch (Throwable t) {
                 do {
                     if (t instanceof ConsistencyError) {
@@ -121,6 +122,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 observer.exception().set(mutable(), throwable);
                 changed.clear();
+                deferred.clear();
                 backwards.clear();
                 gets.clear();
                 sets.clear();
@@ -146,9 +148,13 @@ public class ObserverTransaction extends ActionTransaction {
         checkTooManyObserved(observeds);
         if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
-        } else if (backwards.get().equals(TRUE)) {
+        }
+        if (backwards.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
+        } else if (deferred.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.deferred);
+        } else if (changed.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
@@ -328,7 +334,14 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = supplier.get();
+                result = (O) startState().get(mutable(), observer().constructed()).get(reason);
+                if (result == null) {
+                    //                    if (startState().get(mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                    //                        deferred.set(TRUE);
+                    //                        return null;
+                    //                    }
+                    result = supplier.get();
+                }
                 if (universeTransaction().getConfig().isTraceMatching()) {
                     O finalResult = result;
                     runNonObserving(() -> {
@@ -474,6 +487,10 @@ public class ObserverTransaction extends ActionTransaction {
 
     private State postDeltaState() {
         return universeTransaction().postDeltaState();
+    }
+
+    private State startState() {
+        return universeTransaction().startState();
     }
 
 }
