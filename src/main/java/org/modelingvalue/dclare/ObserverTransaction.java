@@ -358,8 +358,11 @@ public class ObserverTransaction extends ActionTransaction {
         TransactionId changedId = universeTransaction().subTransactionId();
         post = rippleOut(object, observed, pre, post, startState(), state(), changedId, deferred);
         if (!Objects.equals(pre, post)) {
-            changedId = postDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).superTransactionId();
-            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), changedId, backwards);
+            changedId = postDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID);
+            if (changedId != null) {
+                changedId = changedId.superTransactionId();
+                post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), changedId, backwards);
+            }
         }
         return post;
     }
