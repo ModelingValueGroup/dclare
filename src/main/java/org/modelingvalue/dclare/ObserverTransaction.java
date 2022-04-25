@@ -148,13 +148,11 @@ public class ObserverTransaction extends ActionTransaction {
         checkTooManyObserved(observeds);
         if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
-        }
-        if (backwards.get().equals(TRUE)) {
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
         } else if (deferred.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.deferred);
-        } else if (changed.get().equals(TRUE)) {
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
+        } else if (backwards.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
@@ -334,12 +332,8 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = (O) startState().get(mutable(), observer().constructed()).get(reason);
+                result = (O) postDeltaState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
-                    //                    if (startState().get(mutable(), Mutable.D_PARENT_CONTAINING) == null) {
-                    //                        deferred.set(TRUE);
-                    //                        return null;
-                    //                    }
                     result = supplier.get();
                 }
                 if (universeTransaction().getConfig().isTraceMatching()) {
@@ -361,49 +355,59 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
+        TransactionId changedId = universeTransaction().subTransactionId();
+        post = rippleOut(object, observed, pre, post, startState(), state(), changedId, deferred);
+        if (!Objects.equals(pre, post)) {
+            changedId = postDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).superTransactionId();
+            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), changedId, backwards);
+        }
+        return post;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, TransactionId changedId, Concurrent<Set<Boolean>> delay) {
         if (observed.containment() && !Setable.MOVING.get()) {
             if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o)));
+                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)));
                 if (!result.equals(post)) {
-                    backwards.set(TRUE);
+                    delay.set(TRUE);
                     post = result;
                 }
-            } else if (pre instanceof Mutable && isChildChanged((Mutable) pre)) {
-                backwards.set(TRUE);
-                return pre;
+            } else if (pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState, changedId)) {
+                delay.set(TRUE);
+                post = pre;
 
             }
         }
-        T preDelta = preDeltaState().get(object, observed);
-        T postDelta = postDeltaState().get(object, observed);
-        if (!Objects.equals(preDelta, postDelta)) {
-            if (preDelta instanceof Mergeable && postDelta instanceof Mergeable && post instanceof Mergeable) {
-                T result = ((Mergeable<T>) preDelta).merge(postDelta, post);
-                if (!result.equals(post)) {
-                    backwards.set(TRUE);
-                    post = result;
+        if (!Objects.equals(pre, post)) {
+            T preDelta = preState.get(object, observed);
+            T postDelta = postState.get(object, observed);
+            if (!Objects.equals(preDelta, postDelta)) {
+                if (preDelta instanceof Mergeable && postDelta instanceof Mergeable && post instanceof Mergeable) {
+                    T result = ((Mergeable<T>) preDelta).merge(postDelta, post);
+                    if (!result.equals(post)) {
+                        delay.set(TRUE);
+                        post = result;
+                    }
+                } else {
+                    delay.set(TRUE);
+                    post = pre;
                 }
-            } else {
-                backwards.set(TRUE);
-                return pre;
             }
         }
         return post;
     }
 
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private boolean isChildChanged(Mutable mutable) {
-        if (preDeltaState().get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
-            return changeNr(preDeltaState(), mutable) != changeNr(postDeltaState(), mutable);
+    private boolean isChildChanged(Mutable mutable, State preState, State postState, TransactionId changedId) {
+        if (preState.get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
+            TransactionId txid = postState.get(mutable, Mutable.D_CHANGE_ID);
+            return txid != null && (changedId.isSub() ? txid == changedId : txid.superTransactionId() == changedId);
         } else {
             return false;
         }
-    }
-
-    private static byte changeNr(State state, Mutable mutable) {
-        return state.get(mutable, Mutable.D_CHANGE_NR);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

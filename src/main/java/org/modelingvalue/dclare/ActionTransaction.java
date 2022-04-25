@@ -174,9 +174,8 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("rawtypes")
     protected void setChanged(Mutable changed) {
-        Universe universe = universeTransaction().universe();
-        byte cnr = get(universe, Mutable.D_CHANGE_NR);
-        while (changed != null && changed != universe && set(changed, Mutable.D_CHANGE_NR, cnr) != cnr) {
+        TransactionId txid = universeTransaction().subTransactionId();
+        while (changed != null && !(changed instanceof Universe) && set(changed, Mutable.D_CHANGE_ID, txid) != txid) {
             changed = dParent(changed);
         }
     }
@@ -184,7 +183,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings("rawtypes")
     @Override
     public void handleMergeConflict(Object object, Setable property, Object pre, Object... branches) {
-        if (property != Mutable.D_CHANGE_NR) {
+        if (property != Mutable.D_CHANGE_ID) {
             throw new NotMergeableException(object + "." + property + "= " + pre + " -> " + StringUtil.toString(branches));
         }
     }

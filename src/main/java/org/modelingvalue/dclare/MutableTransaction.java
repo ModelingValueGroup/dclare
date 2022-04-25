@@ -40,7 +40,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private final State[]                                 state    = new State[1];
 
     private boolean                                       urgent;
-    private Set<State>                                    states;
 
     @SuppressWarnings("unchecked")
 
@@ -74,7 +73,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         urgent = parent() != null && parent().urgent;
         TraceTimer.traceBegin("compound");
         state[0] = pre;
-        states = Set.of(pre);
         try {
             if (parent() == null && !hasQueued(state[0], mutable(), Priority.scheduled)) {
                 move(mutable(), Priority.deferred, Priority.scheduled);
@@ -85,11 +83,11 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             while (!universeTransaction().isKilled()) {
                 state[0] = state[0].set(mutable(), Priority.scheduled.actions, Set.of(), actions);
                 if (!actions[0].isEmpty()) {
-                    run(actions[0], Priority.scheduled.actions, states);
+                    run(actions[0], Priority.scheduled.actions);
                 } else {
                     state[0] = state[0].set(mutable(), Priority.scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
-                        run(children[0], Priority.scheduled.children, states);
+                        run(children[0], Priority.scheduled.children);
                     } else {
                         if (parent() != null) {
                             if (hasQueued(state[0], mutable(), Priority.deferred)) {
@@ -110,7 +108,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             universeTransaction().handleException(new TransactionException(mutable(), t));
             return state[0];
         } finally {
-            states = null;
             urgent = false;
             state[0] = null;
             actions[0] = null;
@@ -119,7 +116,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
-    private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued, Set<State> states) {
+    private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         if (universeTransaction().getConfig().isTraceMutable()) {
             System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
@@ -133,11 +130,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
         }
         if (!universeTransaction().isKilled()) {
-            this.states = states.add(state[0]);
             if (hasQueued(state[0], mutable(), Priority.urgent)) {
                 urgent = true;
                 move(mutable(), Priority.urgent, Priority.scheduled);
-            } else if (parent() == null || (!parent().urgent && this.states != states)) {
+            } else if (parent() == null || !parent().urgent) {
                 urgent = false;
                 move(mutable(), Priority.forward, Priority.scheduled);
             } else if (hasQueued(state[0], mutable(), Priority.forward)) {

@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -48,7 +47,7 @@ import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
-    private static final UnaryOperator<Byte>                                                        INCREMENT               = c -> ++c;
+
     private static final Setable<Universe, Boolean>                                                 STOPPED                 = Setable.of("stopped", false);
     //
     private final DclareConfig                                                                      config;
@@ -84,6 +83,8 @@ public class UniverseTransaction extends MutableTransaction {
     private List<ImperativeTransaction>                                                             imperativeTransactions  = List.of();
     private List<State>                                                                             history                 = List.of();
     private List<State>                                                                             future                  = List.of();
+    private TransactionId                                                                           superTransactionId;
+    private TransactionId                                                                           subTransactionId;
     private State                                                                                   preState;
     private State                                                                                   preDeltaState;
     private State                                                                                   postDeltaState;
@@ -97,6 +98,8 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 handling;                                                                                                   //TODO wire onto MoodManager
     private boolean                                                                                 stopped;                                                                                                    //TODO wire onto MoodManager
     private boolean                                                                                 orphansDetected;
+    private long                                                                                    superTransactionNumber  = 0l;
+    private long                                                                                    subTransactionNumber    = 0l;
 
     public class Status extends AbstractStatus {
 
@@ -356,10 +359,13 @@ public class UniverseTransaction extends MutableTransaction {
             do {
                 preDeltaState = postDeltaState;
                 postDeltaState = state;
-                state = state.set(universe(), Mutable.D_CHANGE_NR, INCREMENT);
+                superTransactionId = TransactionId.of(superTransactionNumber++);
+                subTransactionNumber = 0l;
                 try {
                     do {
                         startState = state;
+                        subTransactionId = TransactionId.of(superTransactionId, subTransactionNumber++);
+                        state = state.set(universe(), Mutable.D_CHANGE_ID, subTransactionId);
                         state = super.run(state);
                     } while (!killed && hasDeferredQueued(state));
                 } finally {
@@ -678,6 +684,14 @@ public class UniverseTransaction extends MutableTransaction {
 
     public void forward() {
         put(forward);
+    }
+
+    public TransactionId superTransactionId() {
+        return superTransactionId;
+    }
+
+    public TransactionId subTransactionId() {
+        return subTransactionId;
     }
 
     public State preState() {

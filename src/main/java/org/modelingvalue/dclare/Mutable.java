@@ -40,7 +40,7 @@ public interface Mutable extends TransactionClass {
                                                                                        }
                                                                                    };
 
-    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
+    Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
