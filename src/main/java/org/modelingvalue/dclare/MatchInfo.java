@@ -39,11 +39,9 @@ public class MatchInfo {
     }
 
     public boolean mustBeTheSame(MatchInfo other) {
-        return other.directions().noneMatch(directions()::contains) && Objects.equals(identity(), other.identity());
-    }
-
-    public boolean haveSameType(MatchInfo other) {
-        return newable().dNewableType().equals(other.newable().dNewableType());
+        return newable().dNewableType().equals(other.newable().dNewableType()) && //
+                other.directions().noneMatch(directions()::contains) && //
+                Objects.equals(identity(), other.identity());
     }
 
     @SuppressWarnings("rawtypes")
