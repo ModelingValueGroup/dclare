@@ -307,6 +307,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
             return new Constructed(observer);
         }
 
+        @SuppressWarnings("unchecked")
         private Constructed(Observer observer) {
             super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
@@ -315,6 +316,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                     if (!Objects.equals(before, after)) {
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
+                            if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
+                                System.err.println("MATCH:  " + tx.parent().indent("    ") + ((Observer<Mutable>) tx.leaf()).direction(o) + "::" + o + //
+                                        "." + tx.leaf() + " (" + reason.direction() + "::" + reason + "<=" + before + ")");
+                            }
                             Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
                         }
                         if (after != null) {

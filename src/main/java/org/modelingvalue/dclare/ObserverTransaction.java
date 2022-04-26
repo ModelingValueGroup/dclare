@@ -342,9 +342,8 @@ public class ObserverTransaction extends ActionTransaction {
                 if (universeTransaction().getConfig().isTraceMatching()) {
                     O finalResult = result;
                     runNonObserving(() -> {
-                        Set<Reason> reasons = mutable() instanceof Newable ? ((Newable) mutable()).dConstructions().map(Construction::reason).toSet() : Set.of();
                         System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + //
-                                reasons.toString().substring(3) + "." + observer() + " (" + reason.direction() + "::" + reason + "=>" + finalResult + ")");
+                                "." + observer() + " (" + reason.direction() + "::" + reason + "=>" + finalResult + ")");
                     });
                 }
             }
