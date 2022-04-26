@@ -458,29 +458,38 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private MatchInfo matchDirection(MatchInfo pre, MatchInfo post) {
-        if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
+        if (pre.newable().equals(post.newable().dReplacing())) {
+            return pre;
+        } else if (post.newable().equals(pre.newable().dReplacing())) {
+            return post;
+        } else if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
             if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
-                return makeTheSame(pre, post);
+                makeTheSame(pre, post);
+                return pre;
             } else {
-                return makeTheSame(post, pre);
+                makeTheSame(post, pre);
+                return post;
             }
         } else if (!post.isCarvedInStone()) {
-            return makeTheSame(pre, post);
+            makeTheSame(pre, post);
+            return pre;
         } else if (!pre.isCarvedInStone()) {
-            return makeTheSame(post, pre);
+            makeTheSame(post, pre);
+            return post;
         } else {
             return null;
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private MatchInfo makeTheSame(MatchInfo to, MatchInfo from) {
+    private void makeTheSame(MatchInfo to, MatchInfo from) {
         if (universeTransaction().getConfig().isTraceMatching()) {
             runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + "." + observer() + //
                     " (" + to.asString() + "==" + from.asString() + ")"));
         }
-        QualifiedSet<Direction, Construction> toCons = current().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        super.set(from.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), to.newable());
         QualifiedSet<Direction, Construction> fromCons = current().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+        QualifiedSet<Direction, Construction> toCons = current().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
         super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, toCons, toCons.putAll(fromCons));
         super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, fromCons, Newable.D_DERIVED_CONSTRUCTIONS.getDefault());
         constructions.set((map, n) -> {
@@ -488,7 +497,6 @@ public class ObserverTransaction extends ActionTransaction {
             return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
         }, from.newable());
         to.mergeIn(from);
-        return to;
     }
 
     private State preDeltaState() {

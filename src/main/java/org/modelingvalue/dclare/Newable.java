@@ -38,6 +38,8 @@ public interface Newable extends Mutable {
                                                                                          }
                                                                                      }, plumbing, doNotMerge);
 
+    Setable<Newable, Newable>                                D_REPLACING             = Constant.of("D_REPLACING", null, plumbing);
+
     @SuppressWarnings("rawtypes")
     Object dIdentity();
 
@@ -60,6 +62,10 @@ public interface Newable extends Mutable {
 
     default QualifiedSet<Direction, Construction> dDerivedConstructions() {
         return D_DERIVED_CONSTRUCTIONS.current(this);
+    }
+
+    default Newable dReplacing() {
+        return D_REPLACING.current(this);
     }
 
     default QualifiedSet<Direction, Construction> dConstructions() {
