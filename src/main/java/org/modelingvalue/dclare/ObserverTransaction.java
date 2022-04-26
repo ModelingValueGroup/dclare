@@ -20,7 +20,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Mergeable;
@@ -427,53 +433,41 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        List<MatchInfo> list = Collection.concat(before.filter(Newable.class), after.filter(Newable.class)).distinct().map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> preList = before.exclude(after::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> postList = after.exclude(before::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
         if (!(after instanceof List)) {
-            list = list.sortedBy(MatchInfo::sortKey).toList();
+            preList = preList.sortedBy(MatchInfo::sortKey).toList();
+            postList = postList.sortedBy(MatchInfo::sortKey).toList();
         }
-        for (int a = 0; a < list.size(); a++) {
-            MatchInfo an = list.get(a);
-            for (int b = a + 1; b < list.size(); b++) {
-                MatchInfo bn = list.get(b);
-                if (!an.equals(bn) && an.mustBeTheSame(bn)) {
-                    MatchInfo dir = matchDirection(an, bn);
-                    if (dir == bn) {
-                        bn = an;
-                        an = dir;
+        for (MatchInfo post : postList) {
+            for (MatchInfo pre : preList) {
+                if (pre.mustBeTheSame(post)) {
+                    MatchInfo dir = matchDirection(pre, post);
+                    if (dir == pre) {
+                        after = after.replace(post.newable(), pre.newable());
+                        break;
+                    } else if (dir == post) {
+                        before = before.replace(pre.newable(), post.newable());
+                        break;
                     }
-                    before = replace(before, an, bn);
-                    after = replace(after, an, bn);
-                    break;
                 }
             }
         }
         return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
     }
 
-    private ContainingCollection<Object> replace(ContainingCollection<Object> coll, MatchInfo to, MatchInfo from) {
-        if (coll.contains(to.newable())) {
-            coll = coll.remove(from.newable());
-        } else if (coll.contains(from.newable())) {
-            coll = coll.remove(to.newable());
-            coll = coll.replace(from.newable(), to.newable());
-        } else {
-            coll = coll.add(to.newable());
-        }
-        return coll;
-    }
-
     @SuppressWarnings("unchecked")
-    private MatchInfo matchDirection(MatchInfo an, MatchInfo bn) {
-        if (!bn.isCarvedInStone() && !an.isCarvedInStone()) {
-            if (an.newable().dSortKey().compareTo(bn.newable().dSortKey()) < 0) {
-                return makeTheSame(an, bn);
+    private MatchInfo matchDirection(MatchInfo pre, MatchInfo post) {
+        if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
+            if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
+                return makeTheSame(pre, post);
             } else {
-                return makeTheSame(bn, an);
+                return makeTheSame(post, pre);
             }
-        } else if (!bn.isCarvedInStone()) {
-            return makeTheSame(an, bn);
-        } else if (!an.isCarvedInStone()) {
-            return makeTheSame(bn, an);
+        } else if (!post.isCarvedInStone()) {
+            return makeTheSame(pre, post);
+        } else if (!pre.isCarvedInStone()) {
+            return makeTheSame(post, pre);
         } else {
             return null;
         }
