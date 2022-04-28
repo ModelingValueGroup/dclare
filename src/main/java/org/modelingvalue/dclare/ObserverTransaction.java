@@ -332,6 +332,10 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
+                if (startState().get(mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                    deferred.set(TRUE);
+                    return null;
+                }
                 result = (O) startState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
                     result = (O) postDeltaState().get(mutable(), observer().constructed()).get(reason);
@@ -432,8 +436,8 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private ContainingCollection<Object> manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        List<MatchInfo> preList = before.exclude(after::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
-        List<MatchInfo> postList = after.exclude(before::contains).filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> preList = before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> postList = after.filter(Newable.class).exclude(before::contains).map(n -> MatchInfo.of(n, this)).toList();
         if (!(after instanceof List)) {
             preList = preList.sortedBy(MatchInfo::sortKey).toList();
             postList = postList.sortedBy(MatchInfo::sortKey).toList();
