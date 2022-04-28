@@ -16,11 +16,15 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class Action<O extends Mutable> extends Leaf {
 
-    protected static final Function<Mutable, Direction> DEFAULT_DIRECTION_FUNCTION = Mutable::dDirection;
+    public static final Direction DEFAULT_DIRECTION = new Direction() {
+        @Override
+        public String toString() {
+            return "<DEF>";
+        }
+    };
 
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
@@ -35,23 +39,23 @@ public class Action<O extends Mutable> extends Leaf {
         return new Action<>(id, action, initPriority);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction direction) {
         return new Action<>(id, action, direction, Priority.forward);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction direction, Priority initPriority) {
         return new Action<>(id, action, direction, initPriority);
     }
 
-    private final Consumer<O>            action;
-    private final Function<O, Direction> direction;
+    private final Consumer<O> action;
+    private final Direction   direction;
 
     @SuppressWarnings("unchecked")
     protected Action(Object id, Consumer<O> action, Priority initPriority) {
-        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
+        this(id, action, DEFAULT_DIRECTION, initPriority);
     }
 
-    protected Action(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
+    protected Action(Object id, Consumer<O> action, Direction direction, Priority initPriority) {
         super(id, initPriority);
         this.action = action;
         this.direction = direction;
@@ -80,8 +84,13 @@ public class Action<O extends Mutable> extends Leaf {
         return new ActionTransaction(universeTransaction);
     }
 
-    protected Direction direction(O mutable) {
-        return direction.apply(mutable);
+    protected Direction direction() {
+        return direction;
+    }
+
+    @Override
+    public String toString() {
+        return (direction != DEFAULT_DIRECTION ? (direction + "::") : "") + super.toString();
     }
 
 }

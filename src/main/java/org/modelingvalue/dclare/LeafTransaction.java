@@ -91,7 +91,7 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
-        return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
+        return state().getProperties(object).map(Entry::getKey);
     }
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {

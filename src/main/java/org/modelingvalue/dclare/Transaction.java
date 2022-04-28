@@ -31,7 +31,7 @@ public abstract class Transaction {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "@" + (cls != null ? /* (parent != null ? StringUtil.toString(parent.mutable()) + "." : "") + */ StringUtil.toString(cls) : super.toString());
+        return getClass().getSimpleName() + "@" + (cls != null ? StringUtil.toString(cls) : super.toString());
     }
 
     public MutableTransaction parent() {

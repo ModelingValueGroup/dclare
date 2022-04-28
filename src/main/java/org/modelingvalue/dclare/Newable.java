@@ -84,12 +84,6 @@ public interface Newable extends Mutable {
         Mutable.super.dDeactivate();
     }
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    default boolean dToBeCleared(Setable setable) {
-        return Mutable.super.dToBeCleared(setable) && setable != D_DERIVED_CONSTRUCTIONS;
-    }
-
     default Collection<Direction> dDirections() {
         Construction direct = dDirectConstruction();
         Collection<Direction> derived = dDerivedConstructions().toKeys();

@@ -153,7 +153,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
-        }, u -> direction, Priority.urgent));
+        }, direction, Priority.urgent));
     }
 
     @SuppressWarnings("unchecked")

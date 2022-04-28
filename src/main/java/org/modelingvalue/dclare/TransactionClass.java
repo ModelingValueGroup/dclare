@@ -17,13 +17,6 @@ package org.modelingvalue.dclare;
 
 public interface TransactionClass {
 
-    public static final Direction DEFAULT_DIRECTION = new Direction() {
-        @Override
-        public String toString() {
-            return "DEFAULT";
-        }
-    };
-
     default State run(State state, MutableTransaction parent) {
         Transaction tx = openTransaction(parent);
         try {

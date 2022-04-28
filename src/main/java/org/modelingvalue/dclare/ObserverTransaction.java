@@ -139,7 +139,16 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected Priority triggerPriority(Priority priority) {
+    protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
+        if (action instanceof Observer && !(action instanceof NonCheckingObserver) && action.direction() != Action.DEFAULT_DIRECTION && priority.nr < Priority.backward.nr) {
+            if (!(observer() instanceof NonCheckingObserver) && observer().direction() != Action.DEFAULT_DIRECTION && !observer().direction().equals(action.direction())) {
+                // System.err.println("!!!!!!!!!!A!!!!!!!!! " + mutable() + "." + observer() + " -> " + target + "." + action);
+                return Priority.backward;
+            } else if (target instanceof Newable && postDeltaState().get(target, Mutable.D_PARENT_CONTAINING) == null && ((Newable) target).dDerivedConstructions().toKeys().noneMatch(action.direction()::equals)) {
+                // System.err.println("!!!!!!!!!!B!!!!!!!!! " + target + ((Newable) target).dDerivedConstructions().toKeys().toSet().toString().substring(3) + " -> " + target + "." + action);
+                return Priority.backward;
+            }
+        }
         return priority;
     }
 
@@ -332,21 +341,20 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                if (startState().get(mutable(), Mutable.D_PARENT_CONTAINING) == null) {
-                    deferred.set(TRUE);
-                    return null;
-                }
                 result = (O) startState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
                     result = (O) postDeltaState().get(mutable(), observer().constructed()).get(reason);
                     if (result == null) {
-                        result = supplier.get();
+                        result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
+                        if (result == null) {
+                            result = supplier.get();
+                        }
                     }
                 }
                 if (universeTransaction().getConfig().isTraceMatching()) {
                     O finalResult = result;
                     runNonObserving(() -> {
-                        System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + //
+                        System.err.println("MATCH:  " + parent().indent("    ") + mutable() + //
                                 "." + observer() + " (" + reason.direction() + "::" + reason + "=>" + finalResult + ")");
                     });
                 }
@@ -375,19 +383,21 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, TransactionId changedId, Concurrent<Set<Boolean>> delay) {
-        if (observed.containment() && !Setable.MOVING.get()) {
+        if (observed.containment()) {
             if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                T result = (T) posts.addAll(pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)));
-                if (!result.equals(post)) {
+                Set<Object> remChanged = pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)).toSet();
+                Set<Object> addChanged = posts.filter(o -> o instanceof Mutable && !pres.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)).toSet();
+                ContainingCollection<Object> result = posts.addAll(remChanged).removeAll(addChanged);
+                if (!result.toSet().equals(posts.toSet())) {
                     delay.set(TRUE);
-                    post = result;
+                    post = (T) result;
                 }
-            } else if (pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState, changedId)) {
+            } else if ((pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState, changedId)) || //
+                    (post instanceof Mutable && isChildChanged((Mutable) post, preState, postState, changedId))) {
                 delay.set(TRUE);
                 post = pre;
-
             }
         }
         if (!Objects.equals(pre, post)) {
@@ -487,7 +497,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private void makeTheSame(MatchInfo to, MatchInfo from) {
         if (universeTransaction().getConfig().isTraceMatching()) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + ((Observer<Mutable>) observer()).direction(mutable()) + "::" + mutable() + "." + observer() + //
+            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + //
                     " (" + to.asString() + "==" + from.asString() + ")"));
         }
         super.set(from.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), to.newable());

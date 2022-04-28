@@ -62,7 +62,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
                 if (!diff.isEmpty()) {
                     preState.run(() -> {
-                        System.err.println("DCLARE: " + parent().indent("    ") + ((Action<Mutable>) action()).direction(mutable()) + "::" + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
+                        System.err.println("DCLARE: " + parent().indent("    ") + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
                     });
                 }
             }
@@ -90,21 +90,20 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 //noinspection ConstantConditions
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, triggerPriority(observer.initPriority()));
+                    trigger(target, observer, observer.initPriority());
                     // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer + "  " + triggerPriority(observer.initPriority())));
                 }
             }
         }
     }
 
-    @SuppressWarnings("rawtypes")
-    protected Priority triggerPriority(Priority priority) {
+    protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
         return action().initPriority() == Priority.urgent && priority != Priority.urgent ? Priority.backward : priority;
     }
 
     @Override
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        super.trigger(target, action, triggerPriority(priority));
+        super.trigger(target, action, triggerPriority(target, action, priority));
     }
 
     protected String traceId() {
@@ -203,10 +202,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return ActionInstance.of(mutable(), action());
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Direction direction() {
-        return ((Action<Mutable>) cls()).direction(mutable());
+        return action().direction();
     }
 
 }

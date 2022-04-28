@@ -80,11 +80,6 @@ public class TestNewable extends TestMutable implements Newable {
         return id();
     }
 
-    @Override
-    public Direction dDirection() {
-        return dClass().direction();
-    }
-
     private Collection<AnonymousClass> anonymous() {
         return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
     }

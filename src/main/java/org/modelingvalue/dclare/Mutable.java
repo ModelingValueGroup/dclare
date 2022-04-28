@@ -184,15 +184,6 @@ public interface Mutable extends TransactionClass {
     }
 
     @SuppressWarnings("rawtypes")
-    default boolean dToBeCleared(Setable setable) {
-        return true;
-    }
-
-    default Direction dDirection() {
-        return Action.DEFAULT_DIRECTION;
-    }
-
-    @SuppressWarnings("rawtypes")
     default void dHandleRemoved(Mutable parent) {
         for (Observer o : D_OBSERVERS.get(this)) {
             o.constructed().setDefault(this);
