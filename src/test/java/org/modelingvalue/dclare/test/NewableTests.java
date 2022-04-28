@@ -947,4 +947,9 @@ public class NewableTests {
         return result;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "@" + Integer.toString(System.identityHashCode(this), Character.MAX_RADIX);
+    }
+
 }
