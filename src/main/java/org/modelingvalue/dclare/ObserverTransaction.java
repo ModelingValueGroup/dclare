@@ -351,13 +351,6 @@ public class ObserverTransaction extends ActionTransaction {
                         }
                     }
                 }
-                if (universeTransaction().getConfig().isTraceMatching()) {
-                    O finalResult = result;
-                    runNonObserving(() -> {
-                        System.err.println("MATCH:  " + parent().indent("    ") + mutable() + //
-                                "." + observer() + " (" + reason.direction() + "::" + reason + "=>" + finalResult + ")");
-                    });
-                }
             }
             observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             if (!(LeafTransaction.getCurrent() instanceof DerivationTransaction)) {
