@@ -140,15 +140,15 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
-        if (action instanceof Observer && !(action instanceof NonCheckingObserver) && action.direction() != Action.DEFAULT_DIRECTION && priority.nr < Priority.backward.nr) {
-            if (!(observer() instanceof NonCheckingObserver) && observer().direction() != Action.DEFAULT_DIRECTION && !observer().direction().equals(action.direction())) {
-                // System.err.println("!!!!!!!!!!A!!!!!!!!! " + mutable() + "." + observer() + " -> " + target + "." + action);
-                return Priority.backward;
-            } else if (target instanceof Newable && postDeltaState().get(target, Mutable.D_PARENT_CONTAINING) == null && ((Newable) target).dDerivedConstructions().toKeys().noneMatch(action.direction()::equals)) {
-                // System.err.println("!!!!!!!!!!B!!!!!!!!! " + target + ((Newable) target).dDerivedConstructions().toKeys().toSet().toString().substring(3) + " -> " + target + "." + action);
-                return Priority.backward;
-            }
-        }
+        //        if (action instanceof Observer && !(action instanceof NonCheckingObserver) && action.direction() != Action.DEFAULT_DIRECTION && priority.nr < Priority.backward.nr) {
+        //            if (!(observer() instanceof NonCheckingObserver) && observer().direction() != Action.DEFAULT_DIRECTION && !observer().direction().equals(action.direction())) {
+        //                // System.err.println("!!!!!!!!!!A!!!!!!!!! " + mutable() + "." + observer() + " -> " + target + "." + action);
+        //                return Priority.backward;
+        //            } else if (target instanceof Newable && postDeltaState().get(target, Mutable.D_PARENT_CONTAINING) == null && ((Newable) target).dDerivedConstructions().toKeys().noneMatch(action.direction()::equals)) {
+        //                // System.err.println("!!!!!!!!!!B!!!!!!!!! " + target + ((Newable) target).dDerivedConstructions().toKeys().toSet().toString().substring(3) + " -> " + target + "." + action);
+        //                return Priority.backward;
+        //            }
+        //        }
         return priority;
     }
 
@@ -362,33 +362,28 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        TransactionId changedId = universeTransaction().subTransactionId();
-        post = rippleOut(object, observed, pre, post, startState(), state(), changedId, deferred);
+        post = rippleOut(object, observed, pre, post, startState(), state(), deferred);
         if (!Objects.equals(pre, post)) {
-            changedId = postDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID);
-            if (changedId != null) {
-                changedId = changedId.superTransactionId();
-                post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), changedId, backwards);
-            }
+            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
         }
         return post;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, TransactionId changedId, Concurrent<Set<Boolean>> delay) {
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
         if (observed.containment()) {
             if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
                 ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
                 ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                Set<Object> remChanged = pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)).toSet();
-                Set<Object> addChanged = posts.filter(o -> o instanceof Mutable && !pres.contains(o) && isChildChanged((Mutable) o, preState, postState, changedId)).toSet();
+                Set<Object> remChanged = pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState)).toSet();
+                Set<Object> addChanged = posts.filter(o -> o instanceof Mutable && !pres.contains(o) && isChildChanged((Mutable) o, preState, postState)).toSet();
                 ContainingCollection<Object> result = posts.addAll(remChanged).removeAll(addChanged);
                 if (!result.toSet().equals(posts.toSet())) {
                     delay.set(TRUE);
                     post = (T) result;
                 }
-            } else if ((pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState, changedId)) || //
-                    (post instanceof Mutable && isChildChanged((Mutable) post, preState, postState, changedId))) {
+            } else if ((pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState)) || //
+                    (post instanceof Mutable && isChildChanged((Mutable) post, preState, postState))) {
                 delay.set(TRUE);
                 post = pre;
             }
@@ -413,13 +408,12 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private boolean isChildChanged(Mutable mutable, State preState, State postState, TransactionId changedId) {
+    private boolean isChildChanged(Mutable mutable, State preState, State postState) {
         if (preState.get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
             TransactionId txid = postState.get(mutable, Mutable.D_CHANGE_ID);
-            return txid != null && (changedId.isSub() ? txid == changedId : txid.superTransactionId() == changedId);
-        } else {
-            return false;
+            return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
         }
+        return false;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

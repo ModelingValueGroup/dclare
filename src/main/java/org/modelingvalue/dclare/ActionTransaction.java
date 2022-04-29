@@ -173,7 +173,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("rawtypes")
     protected void setChanged(Mutable changed) {
-        TransactionId txid = universeTransaction().subTransactionId();
+        TransactionId txid = state().get(universeTransaction().universe(), Mutable.D_CHANGE_ID);
         while (changed != null && !(changed instanceof Universe) && set(changed, Mutable.D_CHANGE_ID, txid) != txid) {
             changed = dParent(changed);
         }

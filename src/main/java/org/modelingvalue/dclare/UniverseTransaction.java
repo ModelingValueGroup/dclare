@@ -83,8 +83,6 @@ public class UniverseTransaction extends MutableTransaction {
     private List<ImperativeTransaction>                                                             imperativeTransactions  = List.of();
     private List<State>                                                                             history                 = List.of();
     private List<State>                                                                             future                  = List.of();
-    private TransactionId                                                                           superTransactionId;
-    private TransactionId                                                                           subTransactionId;
     private State                                                                                   preState;
     private State                                                                                   preDeltaState;
     private State                                                                                   postDeltaState;
@@ -98,8 +96,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                 handling;                                                                                                   //TODO wire onto MoodManager
     private boolean                                                                                 stopped;                                                                                                    //TODO wire onto MoodManager
     private boolean                                                                                 orphansDetected;
-    private long                                                                                    superTransactionNumber  = 0l;
-    private long                                                                                    subTransactionNumber    = 0l;
+    private long                                                                                    transactionNumber;
 
     public class Status extends AbstractStatus {
 
@@ -166,6 +163,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void mainLoop(State start) {
         state = start != null ? start.clone(this) : emptyState;
+        state = state.get(() -> state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++)));
         if (config.isTraceUniverse()) {
             System.err.println("DCLARE: START UNIVERSE " + this);
         }
@@ -359,13 +357,10 @@ public class UniverseTransaction extends MutableTransaction {
             do {
                 preDeltaState = postDeltaState;
                 postDeltaState = state;
-                superTransactionId = TransactionId.of(superTransactionNumber++);
-                subTransactionNumber = 0l;
                 try {
                     do {
                         startState = state;
-                        subTransactionId = TransactionId.of(superTransactionId, subTransactionNumber++);
-                        state = state.set(universe(), Mutable.D_CHANGE_ID, subTransactionId);
+                        state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
                         state = super.run(state);
                     } while (!killed && hasDeferredQueued(state));
                 } finally {
@@ -684,14 +679,6 @@ public class UniverseTransaction extends MutableTransaction {
 
     public void forward() {
         put(forward);
-    }
-
-    public TransactionId superTransactionId() {
-        return superTransactionId;
-    }
-
-    public TransactionId subTransactionId() {
-        return subTransactionId;
     }
 
     public State preState() {
