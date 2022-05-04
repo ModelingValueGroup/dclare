@@ -168,6 +168,11 @@ public class TestNewable extends TestMutable implements Newable {
         private boolean isActive(TestMutable object) {
             return object instanceof TestNewable && ((TestNewable) object).anonymous().anyMatch(this::equals);
         }
+
+        @Override
+        public String toString() {
+            return Integer.toString(System.identityHashCode(this), Character.MAX_RADIX);
+        }
     }
 
 }
