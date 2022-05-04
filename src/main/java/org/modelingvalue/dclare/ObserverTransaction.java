@@ -52,6 +52,8 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Set<Boolean>>                       deferred       = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
 
+    private Pair<Instant, Throwable>                             throwable;
+
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
     }
@@ -69,11 +71,14 @@ public class ObserverTransaction extends ActionTransaction {
     protected State merge() {
         gets.merge();
         sets.merge();
-        constructions.merge();
         emptyMandatory.merge();
         changed.merge();
         deferred.merge();
         backwards.merge();
+        Map<Reason, Newable> cons = constructions.merge();
+        if (throwable == null) {
+            observer().constructed().set(mutable(), cons);
+        }
         return super.merge();
     }
 
@@ -81,7 +86,6 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
-        Pair<Instant, Throwable> throwable = null;
         // System.err.println("!!!!!!!!RUN!!!!!!!! " + mutable() + "." + observer);
         // check if the universe is still in the same transaction, if not: reset my state
         observer.startTransaction(universeTransaction.stats());
@@ -113,10 +117,6 @@ public class ObserverTransaction extends ActionTransaction {
             } finally {
                 merge();
                 observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.get(), sets.get()));
-                Map<Reason, Newable> cons = constructions.get();
-                if (throwable == null) {
-                    observer.constructed().set(mutable(), cons);
-                }
                 if (emptyMandatory.get().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
                     throwable = null;
                 }
@@ -128,6 +128,7 @@ public class ObserverTransaction extends ActionTransaction {
                 sets.clear();
                 constructions.clear();
                 emptyMandatory.clear();
+                throwable = null;
             }
         }
     }
@@ -276,8 +277,8 @@ public class ObserverTransaction extends ActionTransaction {
                 merge();
                 if (pre instanceof Newable || post instanceof Newable) {
                     result = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
-                } else if (isNewableCollection(pre) || isNewableCollection(post)) {
-                    result = (T) manyMatch((Mutable) object, (Observed) setable, pre, post);
+                } else if (isNewableCollection(pre) && isNewableCollection(post)) {
+                    result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
                     result = rippleOut(object, (Observed<O, T>) setable, pre, post);
                 }
@@ -444,55 +445,43 @@ public class ObserverTransaction extends ActionTransaction {
                     return after;
                 }
             }
-        } else if (hasNoConstructions(before) && !hasNoConstructions(after)) {
+        } else if (hasNoConstructions(before)) {
             return after;
-        } else if (hasNoConstructions(after) && !hasNoConstructions(before)) {
-            return before;
         }
         return rippleOut(object, observed, before, after);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private Object manyMatch(Mutable object, Observed observed, Object before, Object after) {
-        if (before instanceof ContainingCollection && after instanceof ContainingCollection) {
-            ContainingCollection<Object> beforeColl = (ContainingCollection<Object>) before;
-            ContainingCollection<Object> afterColl = (ContainingCollection<Object>) after;
-            List<MatchInfo> preList = beforeColl.filter(Newable.class).exclude(afterColl::contains).map(n -> MatchInfo.of(n, this)).toList();
-            List<MatchInfo> postList = afterColl.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList(); //.exclude(beforeColl::contains)
-            if (!(after instanceof List)) {
-                preList = preList.sortedBy(MatchInfo::sortKey).toList();
-                postList = postList.sortedBy(MatchInfo::sortKey).toList();
-            }
-            for (MatchInfo post : postList) {
-                for (MatchInfo pre : preList) {
-                    if (pre.mustBeTheSame(post)) {
-                        MatchInfo dir = matchDirection(pre, post);
-                        if (dir == pre) {
-                            afterColl = afterColl.replace(post.newable(), pre.newable());
-                            break;
-                        } else if (dir == post) {
-                            beforeColl = beforeColl.replace(pre.newable(), post.newable());
-                            break;
-                        }
+    private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
+        List<MatchInfo> preList = before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
+        List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList(); //.exclude(beforeColl::contains)
+        if (!(after instanceof List)) {
+            preList = preList.sortedBy(MatchInfo::sortKey).toList();
+            postList = postList.sortedBy(MatchInfo::sortKey).toList();
+        }
+        for (MatchInfo post : postList) {
+            for (MatchInfo pre : preList) {
+                if (pre.mustBeTheSame(post)) {
+                    MatchInfo dir = matchDirection(pre, post);
+                    if (dir == pre) {
+                        after = after.replace(post.newable(), pre.newable());
+                        break;
+                    } else if (dir == post) {
+                        before = before.replace(pre.newable(), post.newable());
+                        break;
                     }
                 }
             }
-            before = beforeColl;
-            after = afterColl;
         }
-        if (before instanceof ContainingCollection) {
-            ContainingCollection<Object> beforeColl = (ContainingCollection<Object>) before;
-            before = beforeColl.clear().addAll(beforeColl.exclude(this::hasNoConstructions));
+        if (Objects.equals(before, after) || after.equals(before.clear().addAll(before.exclude(this::hasNoConstructions)))) {
+            return after;
+        } else {
+            return rippleOut(object, observed, before, after);
         }
-        if (after instanceof ContainingCollection) {
-            ContainingCollection<Object> afterColl = (ContainingCollection<Object>) after;
-            after = afterColl.clear().addAll(afterColl.exclude(this::hasNoConstructions));
-        }
-        return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
     }
 
     private boolean hasNoConstructions(Object object) {
-        return object instanceof Newable && ((Newable) object).dConstructions().isEmpty();
+        return object instanceof Newable && postDeltaState().get((Newable) object, Mutable.D_PARENT_CONTAINING) == null && ((Newable) object).dConstructions().isEmpty();
     }
 
     @SuppressWarnings("unchecked")
