@@ -35,6 +35,7 @@ public interface Newable extends Mutable {
                                                                                              for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
                                                                                                  obs.constructed().setDefault(o);
                                                                                              }
+                                                                                             o.dDelete();
                                                                                          }
                                                                                      }, plumbing, doNotMerge);
 

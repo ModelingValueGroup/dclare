@@ -98,7 +98,7 @@ public class TestNewable extends TestMutable implements Newable {
     @Override
     public String toString() {
         Object id = n.get(this);
-        return id != null ? super.toString() + ":" + id : super.toString();
+        return (id != null ? super.toString() + ":" + id : super.toString()) + dDirections().toSet().toString().substring(3);
     }
 
     private static class TestReason extends Construction.Reason {

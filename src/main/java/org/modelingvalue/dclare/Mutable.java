@@ -66,10 +66,13 @@ public interface Mutable extends TransactionClass {
         return pair != null ? pair.b() : null;
     }
 
-    default void dDelete() {
+    default boolean dDelete() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
         if (pair != null) {
             pair.b().remove(pair.a(), this);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -195,7 +198,7 @@ public interface Mutable extends TransactionClass {
     }
 
     default boolean dIsOrphan(State state) {
-        return state.get(this, Mutable.D_PARENT_CONTAINING) == null;
+        return state.get(this, D_PARENT_CONTAINING) == null;
     }
 
 }
