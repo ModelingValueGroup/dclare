@@ -27,16 +27,20 @@ import org.modelingvalue.collections.Set;
 public interface Newable extends Mutable {
 
     Observed<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Observed.of("D_DIRECT_CONSTRUCTION", null, plumbing);
+    @SuppressWarnings({"unchecked", "rawtypes"})
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
-                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                                                                  //
-                                                                                                 add -> add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o)),                                                                       //
-                                                                                                 rem -> rem.observer().constructed().set(rem.object(), (m, e) -> e.getValue().equals(m.get(e.getKey())) ? m.removeKey(e.getKey()) : m, Entry.of(rem.reason(), o)));
-                                                                                         if (a.isEmpty() && o.dDirectConstruction() == null) {
-                                                                                             for (Observer<?> obs : Mutable.D_OBSERVERS.get(o)) {
-                                                                                                 obs.constructed().setDefault(o);
-                                                                                             }
-                                                                                             o.dDelete();
-                                                                                         }
+                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                       //
+                                                                                                 add -> {
+                                                                                                     add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                                                 },                                                                                                                     //
+                                                                                                 rem -> {
+                                                                                                     if (o.equals(rem.observer().constructed().current(rem.object()).get(rem.reason()))) {
+                                                                                                         rem.observer().constructed().set(rem.object(), Map::removeKey, rem.reason());
+                                                                                                         for (Observer obs : Mutable.D_OBSERVERS.get(o).filter(ob -> ob.direction().equals(rem.reason().direction()))) {
+                                                                                                             obs.deObserve(o);
+                                                                                                         }
+                                                                                                     }
+                                                                                                 });
                                                                                      }, plumbing, doNotMerge);
 
     Setable<Newable, Newable>                                D_REPLACING             = Constant.of("D_REPLACING", null, plumbing);

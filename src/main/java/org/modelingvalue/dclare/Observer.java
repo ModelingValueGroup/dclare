@@ -184,6 +184,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public void deObserve(O mutable) {
         observeds.setDefault(mutable);
+        constructed.setDefault(mutable);
         for (Priority dir : Priority.values()) {
             dir.actions.setDefault(mutable);
             dir.children.setDefault(mutable);

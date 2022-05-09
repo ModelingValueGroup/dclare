@@ -98,8 +98,4 @@ public class MatchInfo {
         return newable.toString();
     }
 
-    public String asString() {
-        return newable() + ":" + directions().toString().substring(3);
-    }
-
 }

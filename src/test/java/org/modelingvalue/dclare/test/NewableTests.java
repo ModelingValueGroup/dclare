@@ -60,9 +60,9 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = 8;
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
-    private static final boolean        full               = true;
+    private static final boolean        FULL               = false;
 
     @Test
     public void sanityCheck() {
@@ -137,7 +137,7 @@ public class NewableTests {
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
-            if (full) {
+            if (FULL) {
                 TestNewable a0 = c.create(A);
                 TestNewable b0 = c.create(B);
                 TestNewable a1 = c.create(A);
@@ -224,7 +224,7 @@ public class NewableTests {
             Set<TestNewable> news = created.result();
             Set<TestNewable> lost = news.removeAll(objects);
             assertEquals(Set.of(), lost);
-            assertEquals(full ? 24 : 10, objects.size());
+            assertEquals(FULL ? 24 : 10, objects.size());
             assertTrue(objects.allMatch(o -> n.get(o) == null || n.get(o).equals(n.get(o).toUpperCase())));
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
         });
@@ -430,7 +430,7 @@ public class NewableTests {
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
             state[0] = checkState(state[0]);
 
-            if (full) {
+            if (FULL) {
                 if (ooIn) { // OO
                     TestNewable oom = c.create(OOM);
                     ooms.set(universe, Set.of(oom));
@@ -602,9 +602,9 @@ public class NewableTests {
                 assertEquals(Set.of(), derived);
             }
 
-            assertEquals(full ? 32 : 11, objects.size());
+            assertEquals(FULL ? 32 : 11, objects.size());
 
-            if (full) {
+            if (FULL) {
                 if (oo2fb) { // add OO
                     TestNewable oom = ooms.get(universe).get(0);
                     Set<TestNewable> classes = cls.get(oom);
@@ -724,7 +724,7 @@ public class NewableTests {
             }
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost, "Lost ");
-            assertEquals((oo2fb && fb2oo) ? (full ? 58 : 23) : oo2fb ? (full ? 45 : 19) : fb2oo ? (full ? 45 : 15) : (full ? 32 : 11), objects.size());
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 58 : 23) : oo2fb ? (FULL ? 45 : 19) : fb2oo ? (FULL ? 45 : 15) : (FULL ? 32 : 11), objects.size());
 
             if (oo2fb) { // change OO
                 TestNewable oom = ooms.get(universe).get(0);
@@ -823,7 +823,7 @@ public class NewableTests {
         run(utx, "changeBackA", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? (full ? 56 : 21) : fb2oo ? (full ? 46 : 16) : oo2fb ? (full ? 42 : 16) : (full ? 32 : 11), objects.size());
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 56 : 21) : fb2oo ? (FULL ? 46 : 16) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
 
@@ -852,7 +852,7 @@ public class NewableTests {
         run(utx, "setType", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).filter(n -> n instanceof Universe || n.dParent() != null).toSet();
-            assertEquals((oo2fb && fb2oo) ? (full ? 58 : 23) : oo2fb ? (full ? 45 : 19) : fb2oo ? (full ? 45 : 15) : (full ? 32 : 11), objects.size());
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 58 : 23) : oo2fb ? (FULL ? 45 : 19) : fb2oo ? (FULL ? 45 : 15) : (FULL ? 32 : 11), objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
 
@@ -887,7 +887,7 @@ public class NewableTests {
         run(utx, "setTypeBack", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? (full ? 62 : 27) : oo2fb ? (full ? 45 : 19) : fb2oo ? (full ? 49 : 19) : (full ? 32 : 11), objects.size());
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 62 : 27) : oo2fb ? (FULL ? 45 : 19) : fb2oo ? (FULL ? 49 : 19) : (FULL ? 32 : 11), objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
 
@@ -917,7 +917,7 @@ public class NewableTests {
         run(utx, "remove", c -> {
             state[0] = checkState(state[0]);
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-            assertEquals((oo2fb && fb2oo) ? (full ? 58 : 23) : oo2fb ? (full ? 45 : 19) : fb2oo ? (full ? 45 : 15) : (full ? 32 : 11), objects.size());
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 58 : 23) : oo2fb ? (FULL ? 45 : 19) : fb2oo ? (FULL ? 45 : 15) : (FULL ? 32 : 11), objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
             assertEquals(Set.of(), lost);
 
@@ -935,7 +935,7 @@ public class NewableTests {
 
         result.run(() -> {
             Set<TestNewable> objects = result.getObjects(TestNewable.class).toSet();
-            assertEquals(full ? 32 : 11, objects.size());
+            assertEquals(FULL ? 32 : 11, objects.size());
             Set<TestNewable> lost = created.result().removeAll(objects);
             assertEquals(Set.of(), lost);
             assertTrue(objects.allMatch(o -> o.dDerivedConstructions().size() >= 0 && o.dDerivedConstructions().size() <= 1));
