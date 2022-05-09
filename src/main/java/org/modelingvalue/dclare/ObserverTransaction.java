@@ -460,7 +460,8 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        before = before.clear().addAll(before.exclude(this::hasNoConstructions));
+        ContainingCollection<Object> result = after;
+        before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
         return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
     }
 
