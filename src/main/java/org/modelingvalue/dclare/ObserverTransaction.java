@@ -29,7 +29,6 @@ import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
@@ -338,16 +337,7 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = (O) startState().get(mutable(), observer().constructed()).get(reason);
-                if (result == null) {
-                    result = (O) postDeltaState().get(mutable(), observer().constructed()).get(reason);
-                    if (result == null) {
-                        result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
-                        if (result == null) {
-                            result = supplier.get();
-                        }
-                    }
-                }
+                result = supplier.get();
             }
             observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             if (!(LeafTransaction.getCurrent() instanceof DerivationTransaction)) {
@@ -357,57 +347,66 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
+    @SuppressWarnings("unchecked")
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        post = rippleOut(object, observed, pre, post, startState(), state(), deferred);
-        if (!Objects.equals(pre, post)) {
-            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
+        if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+            ContainingCollection<Object>[] result = new ContainingCollection[]{(ContainingCollection<Object>) post};
+            Setable.<T, Object> diff(pre, post, added -> {
+                if (!rippleOutAdded(object, (Observed<O, ContainingCollection<Object>>) observed, added, result, startState(), state(), deferred)) {
+                    rippleOutAdded(object, (Observed<O, ContainingCollection<Object>>) observed, added, result, preDeltaState(), postDeltaState(), backwards);
+                }
+            }, removed -> {
+                if (!rippleOutRemoved(object, (Observed<O, ContainingCollection<Object>>) observed, removed, result, startState(), state(), deferred)) {
+                    rippleOutRemoved(object, (Observed<O, ContainingCollection<Object>>) observed, removed, result, preDeltaState(), postDeltaState(), backwards);
+                }
+            });
+            return (T) result[0];
+        } else {
+            post = rippleOutSingle(object, observed, pre, post, startState(), state(), deferred);
+            if (!Objects.equals(pre, post)) {
+                post = rippleOutSingle(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
+            }
+            return post;
         }
-        return post;
+
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
-        if (observed.containment()) {
-            if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-                ContainingCollection<Object> pres = (ContainingCollection<Object>) pre;
-                ContainingCollection<Object> posts = (ContainingCollection<Object>) post;
-                Set<Object> remChanged = pres.filter(o -> o instanceof Mutable && !posts.contains(o) && isChildChanged((Mutable) o, preState, postState)).toSet();
-                Set<Object> addChanged = posts.filter(o -> o instanceof Mutable && !pres.contains(o) && isChildChanged((Mutable) o, preState, postState)).toSet();
-                ContainingCollection<Object> result = posts.addAll(remChanged).removeAll(addChanged);
-                if (!result.toSet().equals(posts.toSet())) {
-                    delay.set(TRUE);
-                    post = (T) result;
-                }
-            } else if ((pre instanceof Mutable && isChildChanged((Mutable) pre, preState, postState)) || //
-                    (post instanceof Mutable && isChildChanged((Mutable) post, preState, postState))) {
-                delay.set(TRUE);
-                post = pre;
-            }
+    private <T, O> T rippleOutSingle(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
+        if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
+                (!Objects.equals(preState.get(object, observed), postState.get(object, observed)))) {
+            delay.set(TRUE);
+            return pre;
+        } else {
+            return post;
         }
-        if (!Objects.equals(pre, post)) {
-            T preDelta = preState.get(object, observed);
-            T postDelta = postState.get(object, observed);
-            if (!Objects.equals(preDelta, postDelta)) {
-                if (preDelta instanceof Mergeable && postDelta instanceof Mergeable && post instanceof Mergeable) {
-                    T result = ((Mergeable<T>) preDelta).merge(postDelta, post);
-                    if (!result.equals(post)) {
-                        delay.set(TRUE);
-                        post = result;
-                    }
-                } else {
-                    delay.set(TRUE);
-                    post = pre;
-                }
-            }
-        }
-        return post;
     }
 
-    @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private boolean isChildChanged(Mutable mutable, State preState, State postState) {
-        if (preState.get(mutable, Mutable.D_PARENT_CONTAINING) != null) {
-            TransactionId txid = postState.get(mutable, Mutable.D_CHANGE_ID);
+    private <O> boolean rippleOutAdded(O object, Observed<O, ContainingCollection<Object>> observed, Object added, ContainingCollection<Object>[] post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
+        if ((observed.containment() && isChildChanged(added, preState, postState)) || //
+                (preState.get(object, observed).contains(added) && !postState.get(object, observed).contains(added))) {
+            delay.set(TRUE);
+            post[0] = post[0].remove(added);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private <O> boolean rippleOutRemoved(O object, Observed<O, ContainingCollection<Object>> observed, Object removed, ContainingCollection<Object>[] post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
+        if ((observed.containment() && isChildChanged(removed, preState, postState)) || //
+                (!preState.get(object, observed).contains(removed) && postState.get(object, observed).contains(removed))) {
+            delay.set(TRUE);
+            post[0] = post[0].add(removed);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private boolean isChildChanged(Object object, State preState, State postState) {
+        if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
+            TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
             return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
         }
         return false;
@@ -461,11 +460,8 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        if (Objects.equals(before, after) || after.equals(before.clear().addAll(before.exclude(this::hasNoConstructions)))) {
-            return after;
-        } else {
-            return rippleOut(object, observed, before, after);
-        }
+        before = before.clear().addAll(before.exclude(this::hasNoConstructions));
+        return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
     }
 
     private boolean hasNoConstructions(Object object) {
