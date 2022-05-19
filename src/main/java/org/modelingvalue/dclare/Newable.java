@@ -96,7 +96,7 @@ public interface Newable extends Mutable {
     }
 
     default Set<Newable> dDerivers() {
-        return Construction.addDeriver(this, Set.of(this));
+        return Construction.addDeriver(this, Set.of());
     }
 
 }

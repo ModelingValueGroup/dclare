@@ -787,7 +787,7 @@ public class NewableTests {
         //        run(utx, "changeC", c -> {
         //            state[0] = checkState(state[0]);
         //            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-        //            assertEquals((oo2fb && fb2oo) ? (full ? 56 : 21) : fb2oo ? (full ? 46 : 16) : oo2fb ? (full ? 42 : 16) : (full ? 32 : 11), objects.size());
+        //            assertEquals((oo2fb && fb2oo) ? (FULL ? 56 : 21) : fb2oo ? (FULL ? 46 : 16) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
         //            Set<TestNewable> lost = added.merge().removeAll(objects);
         //            assertEquals(Set.of(), lost);
         //
@@ -805,7 +805,7 @@ public class NewableTests {
         //        run(utx, "changeBackC", c -> {
         //            state[0] = checkState(state[0]);
         //            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-        //            assertEquals((oo2fb && fb2oo) ? (full ? 56 : 21) : fb2oo ? (full ? 46 : 16) : oo2fb ? (full ? 42 : 16) : (full ? 32 : 11), objects.size());
+        //            assertEquals((oo2fb && fb2oo) ? (FULL ? 55 : 20) : fb2oo ? (FULL ? 45 : 15) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
         //            Set<TestNewable> lost = added.merge().removeAll(objects);
         //            assertEquals(Set.of(), lost);
         //
