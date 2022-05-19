@@ -76,7 +76,9 @@ public class ObserverTransaction extends ActionTransaction {
         backwards.merge();
         Map<Reason, Newable> cons = constructions.merge();
         if (throwable == null) {
+            Set<Boolean> ch = changed.get();
             observer().constructed().set(mutable(), cons);
+            changed.set(ch);
         }
         return super.merge();
     }
@@ -263,14 +265,14 @@ public class ObserverTransaction extends ActionTransaction {
                 throw new NullPointerException(setable.toString());
             }
             observe(object, (Observed<O, T>) setable, sets);
-            if (!Objects.equals(pre, post) && !setable.isPlumbing()) {
+            if (!setable.isPlumbing()) {
                 merge();
                 if (pre instanceof Newable || post instanceof Newable) {
                     result = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
                 } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                     result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
-                    result = rippleOut(object, (Observed<O, T>) setable, pre, post);
+                    result = rippleOut(object, (Observed<O, T>) setable, pre, pre, post);
                 }
             }
         }
@@ -337,9 +339,17 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = supplier.get();
+                result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
+                if (result == null) {
+                    if (mutable() instanceof Newable && ((Newable) mutable()).dDerivers().anyMatch(d -> //
+                    startState().get(d, Mutable.D_PARENT_CONTAINING) == null && d.dNewableType().equals(((Newable) mutable()).dNewableType()))) {
+                        deferred.set(TRUE);
+                        return null;
+                    }
+                    result = supplier.get();
+                }
+                observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             }
-            observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             if (!(LeafTransaction.getCurrent() instanceof DerivationTransaction)) {
                 constructions.set((map, e) -> map.put(reason, e), result);
             }
@@ -348,58 +358,41 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T deferredPre, T backwardsPre, T post) {
+        if (!Objects.equals(deferredPre, post)) {
+            post = rippleOut(object, observed, deferredPre, post, startState(), state(), deferred);
+        }
+        if (!Objects.equals(backwardsPre, post)) {
+            post = rippleOut(object, observed, backwardsPre, post, preDeltaState(), postDeltaState(), backwards);
+        }
+        return post;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ContainingCollection<Object>[] result = new ContainingCollection[]{(ContainingCollection<Object>) post};
+            Observed<O, ContainingCollection<Object>> many = (Observed<O, ContainingCollection<Object>>) observed;
             Setable.<T, Object> diff(pre, post, added -> {
-                if (!rippleOutAdded(object, (Observed<O, ContainingCollection<Object>>) observed, added, result, startState(), state(), deferred)) {
-                    rippleOutAdded(object, (Observed<O, ContainingCollection<Object>>) observed, added, result, preDeltaState(), postDeltaState(), backwards);
+                if ((observed.containment() && isChildChanged(added, preState, postState)) || //
+                        (preState.get(object, many).contains(added) && !postState.get(object, many).contains(added))) {
+                    delay.set(TRUE);
+                    result[0] = result[0].remove(added);
                 }
             }, removed -> {
-                if (!rippleOutRemoved(object, (Observed<O, ContainingCollection<Object>>) observed, removed, result, startState(), state(), deferred)) {
-                    rippleOutRemoved(object, (Observed<O, ContainingCollection<Object>>) observed, removed, result, preDeltaState(), postDeltaState(), backwards);
+                if ((observed.containment() && isChildChanged(removed, preState, postState)) || //
+                        (!preState.get(object, many).contains(removed) && postState.get(object, many).contains(removed))) {
+                    delay.set(TRUE);
+                    result[0] = result[0].add(removed);
                 }
             });
             return (T) result[0];
-        } else {
-            post = rippleOutSingle(object, observed, pre, post, startState(), state(), deferred);
-            if (!Objects.equals(pre, post)) {
-                post = rippleOutSingle(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
-            }
-            return post;
-        }
-
-    }
-
-    private <T, O> T rippleOutSingle(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
-        if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
+        } else if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
                 (!Objects.equals(preState.get(object, observed), postState.get(object, observed)))) {
             delay.set(TRUE);
             return pre;
         } else {
             return post;
-        }
-    }
-
-    private <O> boolean rippleOutAdded(O object, Observed<O, ContainingCollection<Object>> observed, Object added, ContainingCollection<Object>[] post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
-        if ((observed.containment() && isChildChanged(added, preState, postState)) || //
-                (preState.get(object, observed).contains(added) && !postState.get(object, observed).contains(added))) {
-            delay.set(TRUE);
-            post[0] = post[0].remove(added);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private <O> boolean rippleOutRemoved(O object, Observed<O, ContainingCollection<Object>> observed, Object removed, ContainingCollection<Object>[] post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
-        if ((observed.containment() && isChildChanged(removed, preState, postState)) || //
-                (!preState.get(object, observed).contains(removed) && postState.get(object, observed).contains(removed))) {
-            delay.set(TRUE);
-            post[0] = post[0].add(removed);
-            return true;
-        } else {
-            return false;
         }
     }
 
@@ -414,55 +407,63 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
-        if (before instanceof Newable && after instanceof Newable) {
-            MatchInfo pre = MatchInfo.of((Newable) before, this);
-            MatchInfo post = MatchInfo.of((Newable) after, this);
-            if (pre.mustBeTheSame(post) || (((Newable) after).dNewableType().equals(((Newable) before).dNewableType()) && (hasNoConstructions(before) || hasNoConstructions(after)))) {
-                MatchInfo dir = matchDirection(pre, post);
-                if (dir == pre) {
-                    return before;
-                } else if (dir == post) {
-                    return after;
+        if (!Objects.equals(after, before)) {
+            Object backwardsBefore = before;
+            if (before instanceof Newable && after instanceof Newable) {
+                MatchInfo pre = MatchInfo.of((Newable) before, this);
+                MatchInfo post = MatchInfo.of((Newable) after, this);
+                if (pre.mustBeTheSame(post)) {
+                    MatchInfo dir = matchDirection(pre, post);
+                    if (dir == pre) {
+                        after = before;
+                    } else if (dir == post) {
+                        before = after;
+                    }
                 }
             }
+            if (after != before && hasNoConstructions(before)) {
+                before = after;
+            }
+            after = rippleOut(object, observed, before, backwardsBefore, after);
         }
-        if (hasNoConstructions(before)) {
-            return after;
-        }
-        return rippleOut(object, observed, before, after);
+        return after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
         before = before != null ? before : after.clear();
         after = after != null ? after : before.clear();
-        List<MatchInfo> preList = before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
-        if (!preList.isEmpty()) {
-            List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList(); //.exclude(beforeColl::contains)
-            if (!postList.isEmpty()) {
-                if (!(after instanceof List)) {
-                    preList = preList.sortedBy(MatchInfo::sortKey).toList();
-                    postList = postList.sortedBy(MatchInfo::sortKey).toList();
-                }
-                for (MatchInfo post : postList) {
-                    for (MatchInfo pre : preList) {
-                        if (pre.mustBeTheSame(post)) {
-                            MatchInfo dir = matchDirection(pre, post);
-                            if (dir == pre) {
-                                after = after.replace(post.newable(), pre.newable());
-                                break;
-                            } else if (dir == post) {
-                                before = before.replace(pre.newable(), post.newable());
-                                break;
+        ContainingCollection<Object> backwardsBefore = before;
+        if (!Objects.equals(after.toSet(), before.toSet())) {
+            List<MatchInfo> preList = before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
+            if (!preList.isEmpty()) {
+                List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList(); //.exclude(beforeColl::contains)
+                if (!postList.isEmpty()) {
+                    if (!(after instanceof List)) {
+                        preList = preList.sortedBy(MatchInfo::sortKey).toList();
+                        postList = postList.sortedBy(MatchInfo::sortKey).toList();
+                    }
+                    for (MatchInfo post : postList) {
+                        for (MatchInfo pre : preList) {
+                            if (pre.mustBeTheSame(post)) {
+                                MatchInfo dir = matchDirection(pre, post);
+                                if (dir == pre) {
+                                    after = after.replace(post.newable(), pre.newable());
+                                    break;
+                                } else if (dir == post) {
+                                    before = before.replace(pre.newable(), post.newable());
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
+            ContainingCollection<Object> result = after;
+            before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
+            after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, backwardsBefore, after);
         }
-        ContainingCollection<Object> result = after;
-        before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
-        return Objects.equals(before, after) ? after : rippleOut(object, observed, before, after);
+        return after;
     }
 
     private boolean hasNoConstructions(Object object) {
@@ -473,7 +474,7 @@ public class ObserverTransaction extends ActionTransaction {
     private MatchInfo matchDirection(MatchInfo pre, MatchInfo post) {
         if (pre.newable().equals(post.newable().dReplacing())) {
             return pre;
-        } else if (post.newable().equals(pre.newable().dReplacing())) {
+        } else if (post.newable().equals(pre.replacing())) {
             return post;
         } else if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
             if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {

@@ -39,11 +39,17 @@ public class MatchInfo {
     }
 
     public boolean mustBeTheSame(MatchInfo other) {
-        return newable().equals(other.newable().dReplacing()) || other.newable().equals(newable().dReplacing()) || //
-                (newable().dNewableType().equals(other.newable().dNewableType()) && other.directions().noneMatch(directions()::contains) && //
-                        (newable().dConstructions().flatMap(c -> c.derivers(Set.of())).anyMatch(other.newable()::equals) || //
-                                other.newable().dConstructions().flatMap(c -> c.derivers(Set.of())).anyMatch(newable()::equals) || //
-                                Objects.equals(identity(), other.identity())));
+        if (newable().equals(other.replacing()) || other.newable().equals(replacing())) {
+            return true;
+        } else if (haveEqualType(other) && other.directions().noneMatch(directions()::contains) && Objects.equals(identity(), other.identity())) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean haveEqualType(MatchInfo other) {
+        return newable().dNewableType().equals(other.newable().dNewableType());
     }
 
     @SuppressWarnings("rawtypes")
@@ -96,6 +102,10 @@ public class MatchInfo {
     @Override
     public String toString() {
         return newable.toString();
+    }
+
+    public Newable replacing() {
+        return Newable.D_REPLACING.current(newable());
     }
 
 }

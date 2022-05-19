@@ -95,4 +95,8 @@ public interface Newable extends Mutable {
         return Collection.concat(derived, direct != null ? Set.of(direct.reason().direction()) : Set.of());
     }
 
+    default Set<Newable> dDerivers() {
+        return Construction.addDeriver(this, Set.of(this));
+    }
+
 }

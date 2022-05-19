@@ -73,21 +73,19 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
         return super.size() != 3;
     }
 
-    protected Set<Newable> derivers(Set<Newable> derivers) {
-        if (isDerived()) {
-            if (object() instanceof Newable && !derivers.contains(object())) {
-                derivers = derivers.add((Newable) object());
-                Set<Newable> der = derivers;
-                derivers = derivers.addAll(((Newable) object()).dDerivedConstructions().flatMap(dd -> dd.derivers(der)));
-            }
-            for (int i = 0; i < super.size(); i++) {
-                Object object = super.get(i);
-                if (object != Mutable.THIS && object instanceof Newable && !derivers.contains(object)) {
-                    derivers = derivers.add((Newable) object);
-                    Set<Newable> der = derivers;
-                    derivers = derivers.addAll(((Newable) object).dDerivedConstructions().flatMap(dd -> dd.derivers(der)));
-                }
-            }
+    protected static Set<Newable> addDeriver(Object object, Set<Newable> derivers) {
+        if (object != Mutable.THIS && object instanceof Newable && !derivers.contains(object)) {
+            derivers = derivers.add((Newable) object);
+            Set<Newable> der = derivers;
+            derivers = derivers.addAll(((Newable) object).dDerivedConstructions().flatMap(dd -> dd.derivers(der)));
+        }
+        return derivers;
+    }
+
+    private Set<Newable> derivers(Set<Newable> derivers) {
+        derivers = addDeriver(object(), derivers);
+        for (int i = 0; i < super.size(); i++) {
+            derivers = addDeriver(super.get(i), derivers);
         }
         return derivers;
     }
