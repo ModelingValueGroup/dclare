@@ -53,6 +53,8 @@ public class NewableTests {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
 
+    private static final boolean        FULL               = true;
+
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
             withTraceUniverse(true).withTraceMutable(false).withTraceMatching(true).withTraceActions(true);
@@ -60,9 +62,8 @@ public class NewableTests {
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
 
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = FULL ? 16 : 2;
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
-    private static final boolean        FULL               = true;
 
     @Test
     public void sanityCheck() {
@@ -351,13 +352,15 @@ public class NewableTests {
             return rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft);
         });
 
-        FAT.observe(left, ft -> {
-            TestNewable l = left.get(ft);
-            return l != null ? l : create(ROL, "L", ft);
-        }).observe(right, ft -> {
-            TestNewable r = right.get(ft);
-            return r != null ? r : create(ROL, "R", ft);
-        });
+        if (FULL) {
+            FAT.observe(left, ft -> {
+                TestNewable l = left.get(ft);
+                return l != null ? l : create(ROL, "L", ft);
+            }).observe(right, ft -> {
+                TestNewable r = right.get(ft);
+                return r != null ? r : create(ROL, "R", ft);
+            });
+        }
 
         FAT.observe(n, ft -> {
             String ln = n.get(left.get(ft));

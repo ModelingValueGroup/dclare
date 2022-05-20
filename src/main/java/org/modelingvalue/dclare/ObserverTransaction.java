@@ -341,8 +341,7 @@ public class ObserverTransaction extends ActionTransaction {
             if (result == null) {
                 result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
-                    if (mutable() instanceof Newable && ((Newable) mutable()).dDerivers().anyMatch(d -> //
-                    startState().get(d, Mutable.D_PARENT_CONTAINING) == null && d.dNewableType().equals(((Newable) mutable()).dNewableType()))) {
+                    if (mutable() instanceof Newable && startState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
                         deferred.set(TRUE);
                         return null;
                     }

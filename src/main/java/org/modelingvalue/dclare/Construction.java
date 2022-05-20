@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.durable;
 
-import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 import org.modelingvalue.collections.util.Mergeable;
 
@@ -71,23 +70,6 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
 
     public boolean isNotDerived() {
         return super.size() != 3;
-    }
-
-    protected static Set<Newable> addDeriver(Object object, Set<Newable> derivers) {
-        if (object != Mutable.THIS && object instanceof Newable && !derivers.contains(object)) {
-            derivers = derivers.add((Newable) object);
-            Set<Newable> der = derivers;
-            derivers = derivers.addAll(((Newable) object).dDerivedConstructions().flatMap(dd -> dd.derivers(der)));
-        }
-        return derivers;
-    }
-
-    private Set<Newable> derivers(Set<Newable> derivers) {
-        derivers = addDeriver(object(), derivers);
-        for (int i = 0; i < super.size(); i++) {
-            derivers = addDeriver(super.get(i), derivers);
-        }
-        return derivers;
     }
 
     public static abstract class Reason extends IdentifiedByArray {
