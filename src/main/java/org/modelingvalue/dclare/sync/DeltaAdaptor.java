@@ -15,12 +15,6 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
@@ -34,6 +28,12 @@ import org.modelingvalue.dclare.State;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                         name;
@@ -299,11 +299,11 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
 
         @Override
-        protected List<Object> makeArrayEntry(List<Object> l, Object o) {
+        protected List<Object> makeArrayEntry(List<Object> l, int index, Object o) {
             if (l != null) {
-                return super.makeArrayEntry(l, o);
+                return super.makeArrayEntry(l,index, o);
             }
-            switch (getIndex()) {
+            switch (index) {
             case 0:
                 //currentOldValue = helper.deserializeValue(currentSetable, o);
                 break;

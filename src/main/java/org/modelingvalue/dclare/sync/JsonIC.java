@@ -92,7 +92,7 @@ public class JsonIC extends Json {
         }
 
         @Override
-        protected List<Object> makeArrayEntry(List<Object> l, Object o) {
+        protected List<Object> makeArrayEntry(List<Object> l, int index, Object o) {
             return l == null ? null : l.add(o);
         }
     }
