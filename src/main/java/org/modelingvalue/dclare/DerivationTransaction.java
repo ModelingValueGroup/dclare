@@ -90,7 +90,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                 return observed.getDefault();
             } else {
                 DERIVED.run(newDerived, () -> {
-                    for (Observer deriver : ((Mutable) object).dDerivers(observed)) {
+                    for (Observer deriver : ((Mutable) object).dAllDerivers(observed)) {
                         deriver.run((Mutable) object);
                     }
                 });

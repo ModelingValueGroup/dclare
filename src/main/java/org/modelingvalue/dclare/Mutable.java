@@ -139,7 +139,7 @@ public interface Mutable extends TransactionClass {
     MutableClass dClass();
 
     @SuppressWarnings("rawtypes")
-    default Collection<Observer> dDerivers(Setable setable) {
+    default Collection<Observer> dAllDerivers(Setable setable) {
         return dClass().dDerivers(setable);
     }
 

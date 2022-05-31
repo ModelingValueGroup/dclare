@@ -91,8 +91,8 @@ public class TestNewable extends TestMutable implements Newable {
 
     @Override
     @SuppressWarnings("rawtypes")
-    public Collection<Observer> dDerivers(Setable setable) {
-        return Collection.concat(Newable.super.dDerivers(setable), anonymous().flatMap(a -> a.dDerivers(setable)));
+    public Collection<Observer> dAllDerivers(Setable setable) {
+        return Collection.concat(Newable.super.dAllDerivers(setable), anonymous().flatMap(a -> a.dDerivers(setable)));
     }
 
     @Override

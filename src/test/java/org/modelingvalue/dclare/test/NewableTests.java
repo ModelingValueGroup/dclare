@@ -345,7 +345,7 @@ public class NewableTests {
 
         Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
         Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
-        Observed<TestMutable, Set<String>> id = Observed.of("id", null);
+        Observed<TestMutable, Set<String>> id = Observed.of("id", Set.of());
         TestNewableClass FAT = TestNewableClass.of("FAT", id::get, n, id, left, right);
 
         ROL.observe(rlopp, rl -> {

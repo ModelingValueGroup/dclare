@@ -20,13 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -142,6 +136,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
+        // return priority == Priority.forward && !direction().equals(action.direction()) ? Priority.deferred : priority;
         return priority;
     }
 
@@ -406,25 +401,42 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
-        if (!Objects.equals(after, before)) {
-            Object backwardsBefore = before;
-            if (before instanceof Newable && after instanceof Newable) {
-                MatchInfo pre = MatchInfo.of((Newable) before, this);
-                MatchInfo post = MatchInfo.of((Newable) after, this);
+        //if (!Objects.equals(after, before)) {
+        Object backwardsBefore = before;
+        //            if (before instanceof Newable && after instanceof Newable) {
+        //                MatchInfo pre = MatchInfo.of((Newable) before, this);
+        //                MatchInfo post = MatchInfo.of((Newable) after, this);
+        //                if (pre.mustBeTheSame(post)) {
+        //                    MatchInfo dir = matchDirection(pre, post);
+        //                    if (dir == pre) {
+        //                        after = before;
+        //                    } else if (dir == post) {
+        //                        before = after;
+        //                    }
+        //                }
+        //            }
+        if (after instanceof Newable) {
+            MatchInfo post = MatchInfo.of((Newable) after, this);
+            List<MatchInfo> preList = newableChildren(object).exclude(after::equals).map(n -> MatchInfo.of(n, this)).toList();
+            preList = preList.sortedBy(MatchInfo::sortKey).toList();
+            for (MatchInfo pre : preList) {
                 if (pre.mustBeTheSame(post)) {
                     MatchInfo dir = matchDirection(pre, post);
                     if (dir == pre) {
-                        after = before;
+                        after = pre.newable();
+                        break;
                     } else if (dir == post) {
-                        before = after;
+                        before = post.newable();
+                        break;
                     }
                 }
             }
-            if (after != before && hasNoConstructions(before)) {
-                before = after;
-            }
-            after = rippleOut(object, observed, before, backwardsBefore, after);
         }
+        if (after != before && hasNoConstructions(before)) {
+            before = after;
+        }
+        after = rippleOut(object, observed, before, backwardsBefore, after);
+        //}
         return after;
     }
 
@@ -433,36 +445,41 @@ public class ObserverTransaction extends ActionTransaction {
         before = before != null ? before : after.clear();
         after = after != null ? after : before.clear();
         ContainingCollection<Object> backwardsBefore = before;
-        if (!Objects.equals(after.toSet(), before.toSet())) {
-            List<MatchInfo> preList = before.filter(Newable.class).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
-            if (!preList.isEmpty()) {
-                List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList(); //.exclude(beforeColl::contains)
-                if (!postList.isEmpty()) {
-                    if (!(after instanceof List)) {
-                        preList = preList.sortedBy(MatchInfo::sortKey).toList();
-                        postList = postList.sortedBy(MatchInfo::sortKey).toList();
-                    }
-                    for (MatchInfo post : postList) {
-                        for (MatchInfo pre : preList) {
-                            if (pre.mustBeTheSame(post)) {
-                                MatchInfo dir = matchDirection(pre, post);
-                                if (dir == pre) {
-                                    after = after.replace(post.newable(), pre.newable());
-                                    break;
-                                } else if (dir == post) {
-                                    before = before.replace(pre.newable(), post.newable());
-                                    break;
-                                }
+        //if (!Objects.equals(after.toSet(), before.toSet())) {
+        List<MatchInfo> preList = newableChildren(object).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
+        if (!preList.isEmpty()) {
+            List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+            if (!postList.isEmpty()) {
+                if (!(after instanceof List)) {
+                    preList = preList.sortedBy(MatchInfo::sortKey).toList();
+                    postList = postList.sortedBy(MatchInfo::sortKey).toList();
+                }
+                for (MatchInfo post : postList) {
+                    for (MatchInfo pre : preList) {
+                        if (pre.mustBeTheSame(post)) {
+                            MatchInfo dir = matchDirection(pre, post);
+                            if (dir == pre) {
+                                after = after.replace(post.newable(), pre.newable());
+                                break;
+                            } else if (dir == post) {
+                                before = before.replace(pre.newable(), post.newable());
+                                break;
                             }
                         }
                     }
                 }
             }
-            ContainingCollection<Object> result = after;
-            before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
-            after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, backwardsBefore, after);
         }
+        ContainingCollection<Object> result = after;
+        before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
+        after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, backwardsBefore, after);
+        //}
         return after;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Collection<Newable> newableChildren(Mutable parent) {
+        return ((Collection<Mutable>) parent.dChildren()).filter(Newable.class);
     }
 
     private boolean hasNoConstructions(Object object) {

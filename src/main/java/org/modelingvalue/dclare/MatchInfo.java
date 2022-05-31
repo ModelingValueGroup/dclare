@@ -43,9 +43,8 @@ public class MatchInfo {
             return true;
         } else if (haveEqualType(other) && other.directions().noneMatch(directions()::contains) && Objects.equals(identity(), other.identity())) {
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     public boolean haveEqualType(MatchInfo other) {
