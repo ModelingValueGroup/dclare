@@ -53,7 +53,7 @@ public class NewableTests {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
 
-    private static final boolean        FULL               = true;
+    private static final boolean        FULL               = false;
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
@@ -374,7 +374,7 @@ public class NewableTests {
             ln = "~".equals(ln) ? null : ln;
             String rn = n.get(right.get(ft));
             rn = "~".equals(rn) ? null : rn;
-            return ln != null && rn != null ? Set.of(ln, rn) : ln != null ? Set.of(ln) : rn != null ? Set.of(rn) : null;
+            return ln != null && rn != null ? Set.of(ln, rn) : ln != null ? Set.of(ln) : rn != null ? Set.of(rn) : Set.of();
         });
 
         // Universe
@@ -425,7 +425,7 @@ public class NewableTests {
             ));
             ROL.observe(fb2ooDir, mref, rl -> otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? //
                     create(REF, x -> x.//
-                            observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). //
+                            observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). // Why ? !"~".equals(n.get(rl)) ?
                             observe(typ, rf -> otr.get(rl) != null ? mcls.get(otr.get(rl)) : null). //
                             observe(opp, rf -> mref.get(rlopp.get(rl)))//
                     ) : null);
@@ -730,10 +730,10 @@ public class NewableTests {
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
             if (oo2fb && fb2oo) {
                 Set<TestNewable> noReasons = objects.filter(o -> o.dDerivedConstructions().isEmpty()).toSet();
-                assertEquals(Set.of(), noReasons, "No Reasons ");
+                assertEquals(Set.of(), noReasons, "No Reasons");
             }
             Set<TestNewable> lost = added.merge().removeAll(objects);
-            assertEquals(Set.of(), lost, "Lost ");
+            assertEquals(Set.of(), lost, "Lost");
             assertEquals((oo2fb && fb2oo) ? (FULL ? 58 : 23) : oo2fb ? (FULL ? 45 : 19) : fb2oo ? (FULL ? 45 : 15) : (FULL ? 32 : 11), objects.size());
 
             if (oo2fb) { // change OO
@@ -763,7 +763,7 @@ public class NewableTests {
             Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
             assertEquals((oo2fb && fb2oo) ? (FULL ? 56 : 21) : fb2oo ? (FULL ? 46 : 16) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
             Set<TestNewable> lost = added.merge().removeAll(objects);
-            assertEquals(Set.of(), lost);
+            assertEquals(Set.of(), lost, "Lost");
 
             if (fb2oo) { // change FB
                 TestNewable fbm = fbms.get(universe).get(0);

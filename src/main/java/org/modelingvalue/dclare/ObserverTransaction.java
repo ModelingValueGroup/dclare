@@ -344,9 +344,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             }
-            if (!(LeafTransaction.getCurrent() instanceof DerivationTransaction)) {
-                constructions.set((map, e) -> map.put(reason, e), result);
-            }
+            constructions.set((map, e) -> map.put(reason, e), result);
             return result;
         }
     }
@@ -403,21 +401,9 @@ public class ObserverTransaction extends ActionTransaction {
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (!Objects.equals(after, before)) {
             Object backwardsBefore = before;
-            //            if (before instanceof Newable && after instanceof Newable) {
-            //                MatchInfo pre = MatchInfo.of((Newable) before, this);
-            //                MatchInfo post = MatchInfo.of((Newable) after, this);
-            //                if (pre.mustBeTheSame(post)) {
-            //                    MatchInfo dir = matchDirection(pre, post);
-            //                    if (dir == pre) {
-            //                        after = before;
-            //                    } else if (dir == post) {
-            //                        before = after;
-            //                    }
-            //                }
-            //            }
-            if (after instanceof Newable) {
+            if (after instanceof Newable && !hasNoConstructions(after)) {
                 MatchInfo post = MatchInfo.of((Newable) after, this);
-                List<MatchInfo> preList = newableChildren(object).exclude(after::equals).map(n -> MatchInfo.of(n, this)).toList();
+                List<MatchInfo> preList = newableChildren(object).exclude(after::equals).exclude(this::hasNoConstructions).map(n -> MatchInfo.of(n, this)).toList();
                 preList = preList.sortedBy(MatchInfo::sortKey).toList();
                 for (MatchInfo pre : preList) {
                     if (pre.mustBeTheSame(post)) {
@@ -446,9 +432,9 @@ public class ObserverTransaction extends ActionTransaction {
         after = after != null ? after : before.clear();
         ContainingCollection<Object> backwardsBefore = before;
         if (!Objects.equals(after.toSet(), before.toSet())) {
-            List<MatchInfo> preList = newableChildren(object).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
+            List<MatchInfo> preList = newableChildren(object).exclude(this::hasNoConstructions).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
             if (!preList.isEmpty()) {
-                List<MatchInfo> postList = after.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+                List<MatchInfo> postList = after.filter(Newable.class).exclude(this::hasNoConstructions).map(n -> MatchInfo.of(n, this)).toList();
                 if (!postList.isEmpty()) {
                     if (!(after instanceof List)) {
                         preList = preList.sortedBy(MatchInfo::sortKey).toList();
@@ -483,7 +469,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private boolean hasNoConstructions(Object object) {
-        return object instanceof Newable && postDeltaState().get((Newable) object, Mutable.D_PARENT_CONTAINING) == null && ((Newable) object).dConstructions().isEmpty();
+        return object instanceof Newable && ((Newable) object).dConstructions().isEmpty();
     }
 
     @SuppressWarnings("unchecked")
@@ -528,15 +514,15 @@ public class ObserverTransaction extends ActionTransaction {
         to.mergeIn(from);
     }
 
-    private State preDeltaState() {
+    protected State preDeltaState() {
         return universeTransaction().preDeltaState();
     }
 
-    private State postDeltaState() {
+    protected State postDeltaState() {
         return universeTransaction().postDeltaState();
     }
 
-    private State startState() {
+    protected State startState() {
         return universeTransaction().startState();
     }
 

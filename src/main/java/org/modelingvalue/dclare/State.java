@@ -259,7 +259,7 @@ public class State implements Serializable {
         }
     }
 
-    public <R> R derive(Supplier<R> supplier, LeafTransaction original, ConstantState constantState) {
+    public <R> R derive(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
             return tx.derive(supplier, this, original, constantState);

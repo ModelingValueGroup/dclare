@@ -38,10 +38,10 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         super(universeTransaction);
     }
 
-    private ConstantState   constantState;
-    private LeafTransaction original;
+    private ConstantState       constantState;
+    private ObserverTransaction original;
 
-    public <R> R derive(Supplier<R> action, State state, LeafTransaction original, ConstantState constantState) {
+    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, ConstantState constantState) {
         this.original = original;
         this.constantState = constantState;
         try {
@@ -56,10 +56,40 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     }
 
     @Override
+    public State current() {
+        return original != null ? original.current() : super.current();
+    }
+
+    private <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
+        if (object instanceof Mutable && getable instanceof Observed) {
+            if (original != null) {
+                T pre = original.preDeltaState().get(object, getable);
+                T post = original.postDeltaState().get(object, getable);
+                if (!Objects.equals(pre, post)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private <O, T> T getNonDerived(O object, Getable<O, T> getable) {
+        if (original != null) {
+            if (object instanceof Mutable && original.postDeltaState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
+                return original.postDeltaState().get(object, getable);
+            } else {
+                return original.state().get(object, getable);
+            }
+        }
+        return super.get(object, getable);
+    }
+
+    @Override
     public <O, T> T get(O object, Getable<O, T> getable) {
-        T value = super.get(object, getable);
-        if (doDeriver(object, getable) && Objects.equals(getable.getDefault(), value)) {
-            return derive(object, (Observed<O, T>) getable);
+        T value = getNonDerived(object, getable);
+        if (doDeriver(object, getable)) {
+            return derive(object, (Observed<O, T>) getable, value);
         } else {
             return value;
         }
@@ -67,33 +97,34 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @Override
     protected <O, T> T current(O object, Getable<O, T> getable) {
-        T value = original != null ? original.current().get(object, getable) : super.current(object, getable);
-        if (doDeriver(object, getable) && Objects.equals(getable.getDefault(), value)) {
-            return derive(object, (Observed<O, T>) getable);
+        T value = super.current(object, getable);
+        if (doDeriver(object, getable)) {
+            return derive(object, (Observed<O, T>) getable, value);
         } else {
             return value;
         }
     }
 
-    private <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed;
-    }
-
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private <O, T> T derive(O object, Observed<O, T> observed) {
+    private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
-            Pair<Object, Observed> slot = Pair.of(object, observed);
-            Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
-            Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
-            if (oldDerived == newDerived) {
-                return observed.getDefault();
-            } else {
-                DERIVED.run(newDerived, () -> {
-                    for (Observer deriver : ((Mutable) object).dAllDerivers(observed)) {
-                        deriver.run((Mutable) object);
-                    }
-                });
+            if (!Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
+                Pair<Object, Observed> slot = Pair.of(object, observed);
+                Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
+                Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
+                if (oldDerived == newDerived) {
+                    return value;
+                } else {
+                    DERIVED.run(newDerived, () -> {
+                        for (Observer deriver : ((Mutable) object).dAllDerivers(observed)) {
+                            deriver.run((Mutable) object);
+                        }
+                    });
+                }
+            }
+            if (!constantState.isSet(this, object, constant)) {
+                set(object, observed, value);
             }
         }
         return constantState.get(this, object, constant);
@@ -101,20 +132,20 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> setable, BiFunction<T, E, T> function, E element) {
-        return set(object, setable, function.apply(setable.getDefault(), element));
+        return set(object, setable, function.apply(getNonDerived(object, setable), element));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, UnaryOperator<T> oper) {
-        return set(object, setable, oper.apply(setable.getDefault()));
+        return set(object, setable, oper.apply(getNonDerived(object, setable)));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T value) {
         if (doDeriver(object, setable)) {
             constantState.set(this, object, setable.constant(), value, true);
-            return setable.getDefault();
-        } else if (!Objects.equals(state().get(object, setable), value)) {
+            return getNonDerived(object, setable);
+        } else if (!Objects.equals(getNonDerived(object, setable), value)) {
             return super.set(object, setable, value);
         } else {
             return value;
@@ -123,6 +154,9 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @Override
     public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
-        return original != null ? original.construct(reason, supplier) : super.construct(reason, supplier);
+        O result = supplier.get();
+        Construction cons = Construction.of(Mutable.THIS, Observer.DUMMY, reason);
+        set(result, Newable.D_DERIVED_CONSTRUCTIONS, Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons));
+        return result;
     }
 }

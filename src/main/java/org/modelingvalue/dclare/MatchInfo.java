@@ -23,11 +23,12 @@ import org.modelingvalue.dclare.Construction.Reason;
 public class MatchInfo {
 
     private final Newable             newable;
-    private final ObserverTransaction tx;
+    private final ObserverTransaction otx;
 
     private Object                    identity;
     private Boolean                   isCarvedInStone;
-    private Set<Direction>            directions;
+    private Newable                   replacing;
+    private Set<Direction>            derivedDirections;
 
     public static MatchInfo of(Newable newable, ObserverTransaction tx) {
         return new MatchInfo(newable, tx);
@@ -35,20 +36,33 @@ public class MatchInfo {
 
     private MatchInfo(Newable newable, ObserverTransaction tx) {
         this.newable = newable;
-        this.tx = tx;
+        this.otx = tx;
     }
 
     public boolean mustBeTheSame(MatchInfo other) {
-        if (newable().equals(other.replacing()) || other.newable().equals(replacing())) {
-            return true;
-        } else if (haveEqualType(other) && other.directions().noneMatch(directions()::contains) && Objects.equals(identity(), other.identity())) {
-            return true;
+        if (haveEqualType(other)) {
+            if (newable.equals(other.replacing()) || other.newable.equals(replacing())) {
+                return true;
+            } else if (replacing() != null || other.replacing() != null) {
+                return false;
+            } else if (isCarvedInStone() && other.isCarvedInStone()) {
+                return false;
+            } else if (Objects.equals(identity(), other.identity()) && other.derivedDirections().noneMatch(derivedDirections()::contains)) {
+                return true;
+            }
         }
         return false;
     }
 
+    private Set<Direction> derivedDirections() {
+        if (derivedDirections == null) {
+            derivedDirections = newable.dDerivedConstructions().map(Construction::reason).map(Reason::direction).toSet();
+        }
+        return derivedDirections;
+    }
+
     public boolean haveEqualType(MatchInfo other) {
-        return newable().dNewableType().equals(other.newable().dNewableType());
+        return newable.dNewableType().equals(other.newable.dNewableType());
     }
 
     @SuppressWarnings("rawtypes")
@@ -57,14 +71,7 @@ public class MatchInfo {
     }
 
     public void mergeIn(MatchInfo from) {
-        directions = directions().addAll(from.directions());
-    }
-
-    public Set<Direction> directions() {
-        if (directions == null) {
-            directions = newable.dConstructions().map(Construction::reason).map(Reason::direction).toSet();
-        }
-        return directions;
+        from.replacing = newable;
     }
 
     public Newable newable() {
@@ -73,7 +80,7 @@ public class MatchInfo {
 
     public Object identity() {
         if (identity == null) {
-            identity = tx.state().derive(() -> newable.dMatchingIdentity(), tx, tx.universeTransaction().tmpConstants());
+            identity = otx.state().derive(() -> newable.dMatchingIdentity(), otx, otx.universeTransaction().tmpConstants());
             if (identity == null) {
                 identity = ConstantState.NULL;
             }
@@ -104,7 +111,11 @@ public class MatchInfo {
     }
 
     public Newable replacing() {
-        return Newable.D_REPLACING.current(newable());
+        if (replacing == null) {
+            replacing = Newable.D_REPLACING.current(newable);
+            replacing = replacing == null ? newable : replacing;
+        }
+        return replacing == newable ? null : replacing;
     }
 
 }
