@@ -43,7 +43,8 @@ public interface Newable extends Mutable {
                                                                                                  });
                                                                                      }, plumbing, doNotMerge);
 
-    Setable<Newable, Newable>                                D_REPLACING             = Constant.of("D_REPLACING", null, plumbing);
+    Setable<Newable, Newable>                                D_REPLACING             = Setable.of("D_REPLACING", null, () -> Newable.D_REPLACED, plumbing);
+    Setable<Newable, Newable>                                D_REPLACED              = Setable.of("D_REPLACED", null, () -> Newable.D_REPLACING, plumbing);
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();
@@ -52,6 +53,7 @@ public interface Newable extends Mutable {
         try {
             return dIdentity();
         } catch (Throwable e) {
+            e.printStackTrace();
             return null;
         }
     }

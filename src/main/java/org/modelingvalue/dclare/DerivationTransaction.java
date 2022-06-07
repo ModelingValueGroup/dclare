@@ -140,15 +140,23 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         return set(object, setable, oper.apply(getNonDerived(object, setable)));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public <O, T> T set(O object, Setable<O, T> setable, T value) {
+    public <O, T> T set(O object, Setable<O, T> setable, T post) {
         if (doDeriver(object, setable)) {
-            constantState.set(this, object, setable.constant(), value, true);
-            return getNonDerived(object, setable);
-        } else if (!Objects.equals(getNonDerived(object, setable), value)) {
-            return super.set(object, setable, value);
+            constantState.set(this, object, setable.constant(), post, true);
+            T pre = getNonDerived(object, setable);
+            if (setable.containment()) {
+                Setable.<T, Mutable> diff(pre, post, added -> {
+                    set(added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) setable));
+                }, removed -> {
+                });
+            }
+            return pre;
+        } else if (!Objects.equals(getNonDerived(object, setable), post)) {
+            return super.set(object, setable, post);
         } else {
-            return value;
+            return post;
         }
     }
 

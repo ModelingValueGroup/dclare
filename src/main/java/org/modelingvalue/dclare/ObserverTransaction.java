@@ -262,9 +262,9 @@ public class ObserverTransaction extends ActionTransaction {
             observe(object, (Observed<O, T>) setable, sets);
             if (!setable.isPlumbing()) {
                 merge();
-                if (pre instanceof Newable || post instanceof Newable) {
+                if (setable.containment() && (pre instanceof Newable || post instanceof Newable)) {
                     result = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
-                } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
+                } else if (setable.containment() && isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                     result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
                     result = rippleOut(object, (Observed<O, T>) setable, pre, pre, post);
@@ -400,28 +400,36 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (!Objects.equals(after, before)) {
-            Object backwardsBefore = before;
-            if (after instanceof Newable && !hasNoConstructions(after)) {
+            if (after instanceof Newable) {
                 MatchInfo post = MatchInfo.of((Newable) after, this);
-                List<MatchInfo> preList = newableChildren(object).exclude(after::equals).exclude(this::hasNoConstructions).map(n -> MatchInfo.of(n, this)).toList();
-                preList = preList.sortedBy(MatchInfo::sortKey).toList();
-                for (MatchInfo pre : preList) {
-                    if (pre.mustBeTheSame(post)) {
-                        MatchInfo dir = matchDirection(pre, post);
-                        if (dir == pre) {
+                if (post.isOnlyDerived()) {
+                    List<MatchInfo> preList = oldChildren(object);
+                    for (MatchInfo pre : preList) {
+                        if (pre.mustBeTheSame(post)) {
+                            makeTheSame(pre, post);
                             after = pre.newable();
                             break;
-                        } else if (dir == post) {
+                        }
+                    }
+                }
+            }
+            if (before instanceof Newable && !before.equals(after)) {
+                MatchInfo pre = MatchInfo.of((Newable) before, this);
+                if (pre.isCarvedInStone()) {
+                    List<MatchInfo> postList = newChildren(object);
+                    for (MatchInfo post : postList) {
+                        if (pre.mustBeTheSame(post)) {
+                            makeTheSame(pre, post);
                             before = post.newable();
                             break;
                         }
                     }
                 }
             }
-            if (after != before && hasNoConstructions(before)) {
+            if (!Objects.equals(after, before) && hasNoConstructions(before)) {
                 before = after;
             }
-            after = rippleOut(object, observed, before, backwardsBefore, after);
+            after = rippleOut(object, observed, before, before, after);
         }
         return after;
     }
@@ -430,88 +438,89 @@ public class ObserverTransaction extends ActionTransaction {
     private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
         before = before != null ? before : after.clear();
         after = after != null ? after : before.clear();
-        ContainingCollection<Object> backwardsBefore = before;
-        if (!Objects.equals(after.toSet(), before.toSet())) {
-            List<MatchInfo> preList = newableChildren(object).exclude(this::hasNoConstructions).exclude(after::contains).map(n -> MatchInfo.of(n, this)).toList();
-            if (!preList.isEmpty()) {
-                List<MatchInfo> postList = after.filter(Newable.class).exclude(this::hasNoConstructions).map(n -> MatchInfo.of(n, this)).toList();
-                if (!postList.isEmpty()) {
-                    if (!(after instanceof List)) {
-                        preList = preList.sortedBy(MatchInfo::sortKey).toList();
-                        postList = postList.sortedBy(MatchInfo::sortKey).toList();
-                    }
-                    for (MatchInfo post : postList) {
-                        for (MatchInfo pre : preList) {
+        if (!Objects.equals(after, before)) {
+            ContainingCollection<Object>[] pres = new ContainingCollection[]{before};
+            ContainingCollection<Object>[] posts = new ContainingCollection[]{after};
+            List<MatchInfo>[] preList = new List[1];
+            List<MatchInfo>[] postList = new List[1];
+            Setable.<ContainingCollection<Object>, Object> diff(pres[0], posts[0], added -> {
+                if (added instanceof Newable) {
+                    MatchInfo post = MatchInfo.of((Newable) added, this);
+                    if (post.isOnlyDerived()) {
+                        if (preList[0] == null) {
+                            preList[0] = oldChildren(object);
+                        }
+                        for (MatchInfo pre : preList[0]) {
                             if (pre.mustBeTheSame(post)) {
-                                MatchInfo dir = matchDirection(pre, post);
-                                if (dir == pre) {
-                                    after = after.replace(post.newable(), pre.newable());
-                                    break;
-                                } else if (dir == post) {
-                                    before = before.replace(pre.newable(), post.newable());
-                                    break;
-                                }
+                                makeTheSame(pre, post);
+                                pres[0] = pres[0].replace(post.newable(), pre.newable());
+                                posts[0] = posts[0].replace(post.newable(), pre.newable());
+                                break;
                             }
                         }
                     }
                 }
+            }, removed -> {
+                if (removed instanceof Newable) {
+                    MatchInfo pre = MatchInfo.of((Newable) removed, this);
+                    if (pre.isCarvedInStone()) {
+                        if (postList[0] == null) {
+                            postList[0] = newChildren(object);
+                        }
+                        for (MatchInfo post : postList[0]) {
+                            if (pre.mustBeTheSame(post)) {
+                                makeTheSame(pre, post);
+                                pres[0] = pres[0].replace(post.newable(), pre.newable());
+                                posts[0] = posts[0].replace(post.newable(), pre.newable());
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            before = pres[0];
+            after = posts[0];
+            if (!Objects.equals(after, before)) {
+                before = before.clear().addAll(before.exclude(e -> !posts[0].contains(e) && hasNoConstructions(e)));
             }
-            ContainingCollection<Object> result = after;
-            before = before.clear().addAll(before.exclude(e -> !result.contains(e) && hasNoConstructions(e)));
-            after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, backwardsBefore, after);
+            after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, before, after);
         }
         return after;
     }
 
     @SuppressWarnings("unchecked")
-    private Collection<Newable> newableChildren(Mutable parent) {
-        return ((Collection<Mutable>) parent.dChildren()).filter(Newable.class);
+    private List<MatchInfo> oldChildren(Mutable object) {
+        List<MatchInfo> preList = ((Collection<Mutable>) object.dChildren(postDeltaState())).filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isCarvedInStone).toList();
+        return preList.sortedBy(MatchInfo::sortKey).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<MatchInfo> newChildren(Mutable object) {
+        List<MatchInfo> preList = ((Collection<Mutable>) object.dChildren(state())).filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isOnlyDerived).toList();
+        return preList.sortedBy(MatchInfo::sortKey).toList();
     }
 
     private boolean hasNoConstructions(Object object) {
         return object instanceof Newable && ((Newable) object).dConstructions().isEmpty();
     }
 
-    @SuppressWarnings("unchecked")
-    private MatchInfo matchDirection(MatchInfo pre, MatchInfo post) {
-        if (pre.newable().equals(post.newable().dReplacing())) {
-            return pre;
-        } else if (post.newable().equals(pre.replacing())) {
-            return post;
-        } else if (!post.isCarvedInStone() && !pre.isCarvedInStone()) {
-            if (pre.newable().dSortKey().compareTo(post.newable().dSortKey()) < 0) {
-                makeTheSame(pre, post);
-                return pre;
-            } else {
-                makeTheSame(post, pre);
-                return post;
-            }
-        } else if (!post.isCarvedInStone()) {
-            makeTheSame(pre, post);
-            return pre;
-        } else if (!pre.isCarvedInStone()) {
-            makeTheSame(post, pre);
-            return post;
-        } else {
-            return null;
-        }
-    }
-
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private void makeTheSame(MatchInfo to, MatchInfo from) {
-        if (universeTransaction().getConfig().isTraceMatching()) {
-            runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to + "==" + from + ")"));
+        if (!to.newable().equals(from.replacing())) {
+            to.mergeIn(from);
+            if (universeTransaction().getConfig().isTraceMatching()) {
+                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + to + "==" + from + ")"));
+            }
+            super.set(from.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), to.newable());
+            QualifiedSet<Direction, Construction> fromCons = current().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+            QualifiedSet<Direction, Construction> toCons = current().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
+            super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, toCons, toCons.putAll(fromCons));
+            super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, fromCons, Newable.D_DERIVED_CONSTRUCTIONS.getDefault());
+            constructions.set((map, n) -> {
+                Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
+                return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
+            }, from.newable());
         }
-        super.set(from.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), to.newable());
-        QualifiedSet<Direction, Construction> fromCons = current().get(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-        QualifiedSet<Direction, Construction> toCons = current().get(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
-        super.set(to.newable(), Newable.D_DERIVED_CONSTRUCTIONS, toCons, toCons.putAll(fromCons));
-        super.set(from.newable(), Newable.D_DERIVED_CONSTRUCTIONS, fromCons, Newable.D_DERIVED_CONSTRUCTIONS.getDefault());
-        constructions.set((map, n) -> {
-            Optional<Entry<Reason, Newable>> found = map.filter(e -> e.getValue().equals(n)).findAny();
-            return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
-        }, from.newable());
-        to.mergeIn(from);
     }
 
     protected State preDeltaState() {

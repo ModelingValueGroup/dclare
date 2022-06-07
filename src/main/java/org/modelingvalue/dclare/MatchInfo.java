@@ -28,6 +28,7 @@ public class MatchInfo {
     private Object                    identity;
     private Boolean                   isCarvedInStone;
     private Newable                   replacing;
+    private Newable                   replaced;
     private Set<Direction>            derivedDirections;
 
     public static MatchInfo of(Newable newable, ObserverTransaction tx) {
@@ -39,22 +40,29 @@ public class MatchInfo {
         this.otx = tx;
     }
 
-    public boolean mustBeTheSame(MatchInfo other) {
-        if (haveEqualType(other)) {
-            if (newable.equals(other.replacing()) || other.newable.equals(replacing())) {
+    public boolean mustBeTheSame(MatchInfo from) {
+        if (!newable.equals(from.newable) && haveEqualType(from)) {
+            if (newable.equals(from.replacing())) {
                 return true;
-            } else if (replacing() != null || other.replacing() != null) {
+            } else if (from.replacing() != null || replaced() != null) {
                 return false;
-            } else if (isCarvedInStone() && other.isCarvedInStone()) {
+            } else if (isCarvedInStone() && from.isCarvedInStone()) {
                 return false;
-            } else if (Objects.equals(identity(), other.identity()) && other.derivedDirections().noneMatch(derivedDirections()::contains)) {
+            } else if (Objects.equals(identity(), from.identity())) {
                 return true;
+            } else {
+                System.err.println("!!!!!!!!!3!!!!!!!!!!! (" + this + " ? " + from + ")  " + identity() + "<>" + from.identity());
             }
         }
         return false;
     }
 
-    private Set<Direction> derivedDirections() {
+    public void mergeIn(MatchInfo from) {
+        from.replacing = newable;
+        replaced = from.newable;
+    }
+
+    public Set<Direction> derivedDirections() {
         if (derivedDirections == null) {
             derivedDirections = newable.dDerivedConstructions().map(Construction::reason).map(Reason::direction).toSet();
         }
@@ -68,10 +76,6 @@ public class MatchInfo {
     @SuppressWarnings("rawtypes")
     public Comparable sortKey() {
         return newable.dSortKey();
-    }
-
-    public void mergeIn(MatchInfo from) {
-        from.replacing = newable;
     }
 
     public Newable newable() {
@@ -95,6 +99,10 @@ public class MatchInfo {
         return isCarvedInStone;
     }
 
+    public boolean isOnlyDerived() {
+        return !isCarvedInStone() && !derivedDirections().isEmpty();
+    }
+
     @Override
     public int hashCode() {
         return newable.hashCode();
@@ -116,6 +124,14 @@ public class MatchInfo {
             replacing = replacing == null ? newable : replacing;
         }
         return replacing == newable ? null : replacing;
+    }
+
+    public Newable replaced() {
+        if (replaced == null) {
+            replaced = Newable.D_REPLACED.current(newable);
+            replaced = replaced == null ? newable : replaced;
+        }
+        return replaced == newable ? null : replaced;
     }
 
 }

@@ -54,6 +54,7 @@ public class NewableTests {
     //    }
 
     private static final boolean        FULL               = false;
+    private static final boolean        DEFAULT_ROLES      = false;
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
@@ -353,7 +354,7 @@ public class NewableTests {
             return rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft);
         });
 
-        if (FULL) {
+        if (DEFAULT_ROLES) {
             FAT.observe(left, ft -> {
                 TestNewable l = left.get(ft);
                 return l != null ? l : create(ROL, "L", ft);
@@ -794,41 +795,41 @@ public class NewableTests {
 
         });
 
-        //        run(utx, "changeC", c -> {
-        //            state[0] = checkState(state[0]);
-        //            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-        //            assertEquals((oo2fb && fb2oo) ? (FULL ? 56 : 21) : fb2oo ? (FULL ? 46 : 16) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
-        //            Set<TestNewable> lost = added.merge().removeAll(objects);
-        //            assertEquals(Set.of(), lost);
-        //
-        //            if (fb2oo) { // change FB
-        //                TestNewable fbm = fbms.get(universe).get(0);
-        //                Set<TestNewable> factTypes = fts.get(fbm);
-        //                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u_v")).findAny().get();
-        //                TestNewable rl5 = right.get(ft3);
-        //
-        //                n.set(rl5, "~");
-        //            }
-        //
-        //        });
-        //
-        //        run(utx, "changeBackC", c -> {
-        //            state[0] = checkState(state[0]);
-        //            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
-        //            assertEquals((oo2fb && fb2oo) ? (FULL ? 55 : 20) : fb2oo ? (FULL ? 45 : 15) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
-        //            Set<TestNewable> lost = added.merge().removeAll(objects);
-        //            assertEquals(Set.of(), lost);
-        //
-        //            if (fb2oo) { // change FB
-        //                TestNewable fbm = fbms.get(universe).get(0);
-        //                Set<TestNewable> factTypes = fts.get(fbm);
-        //                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u")).findAny().get();
-        //                TestNewable rl5 = (oo2fb ? left : right).get(ft3);
-        //
-        //                n.set(rl5, "v");
-        //            }
-        //
-        //        });
+        run(utx, "changeC", c -> {
+            state[0] = checkState(state[0]);
+            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 56 : 21) : fb2oo ? (FULL ? 46 : 16) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
+            Set<TestNewable> lost = added.merge().removeAll(objects);
+            assertEquals(Set.of(), lost);
+
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> factTypes = fts.get(fbm);
+                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u_v")).findAny().get();
+                TestNewable rl5 = right.get(ft3);
+
+                n.set(rl5, "~");
+            }
+
+        });
+
+        run(utx, "changeBackC", c -> {
+            state[0] = checkState(state[0]);
+            Set<TestNewable> objects = state[0].getObjects(TestNewable.class).toSet();
+            assertEquals((oo2fb && fb2oo) ? (FULL ? 55 : 20) : fb2oo ? (FULL ? 45 : 15) : oo2fb ? (FULL ? 42 : 16) : (FULL ? 32 : 11), objects.size());
+            Set<TestNewable> lost = added.merge().removeAll(objects);
+            assertEquals(Set.of(), lost);
+
+            if (fb2oo) { // change FB
+                TestNewable fbm = fbms.get(universe).get(0);
+                Set<TestNewable> factTypes = fts.get(fbm);
+                TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u")).findAny().get();
+                TestNewable rl5 = (oo2fb ? left : right).get(ft3);
+
+                n.set(rl5, "v");
+            }
+
+        });
 
         run(utx, "changeBackA", c -> {
             state[0] = checkState(state[0]);
