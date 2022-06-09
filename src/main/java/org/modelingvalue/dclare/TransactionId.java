@@ -38,4 +38,21 @@ public class TransactionId implements Internable {
         return "TX" + Long.toString(number);
     }
 
+    @Override
+    public int hashCode() {
+        return Long.hashCode(number);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (!(obj instanceof TransactionId)) {
+            return false;
+        } else {
+            TransactionId other = (TransactionId) obj;
+            return number == other.number;
+        }
+    }
+
 }
