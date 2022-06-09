@@ -379,7 +379,12 @@ public class ObserverTransaction extends ActionTransaction {
                 if ((observed.containment() && isChildChanged(removed, preState, postState)) || //
                         (!preState.get(object, many).contains(removed) && postState.get(object, many).contains(removed))) {
                     delay.set(TRUE);
-                    result[0] = result[0].add(removed);
+                    if (pre instanceof List && post instanceof List) {
+                        int i = Math.min(((List<Object>) pre).firstIndexOf(removed), result[0].size());
+                        result[0] = ((List<Object>) result[0]).insert(i, removed);
+                    } else {
+                        result[0] = result[0].add(removed);
+                    }
                 }
             });
             return (T) result[0];
