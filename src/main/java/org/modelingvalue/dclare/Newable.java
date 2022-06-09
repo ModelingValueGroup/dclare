@@ -30,18 +30,15 @@ public interface Newable extends Mutable {
     Observed<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Observed.of("D_DIRECT_CONSTRUCTION", null, plumbing);
     @SuppressWarnings({"unchecked", "rawtypes"})
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
-                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                       //
+                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                            //
                                                                                                  add -> {
                                                                                                      Constructed cons = add.observer().constructed();
                                                                                                      cons.set(add.object(), Map::put, Entry.of(add.reason(), o));
-                                                                                                 },                                                                                                                     //
+                                                                                                 },                                                                                          //
                                                                                                  rem -> {
                                                                                                      Constructed cons = rem.observer().constructed();
                                                                                                      if (o.equals(cons.current(rem.object()).get(rem.reason()))) {
                                                                                                          cons.set(rem.object(), Map::removeKey, rem.reason());
-                                                                                                         for (Observer obs : Mutable.D_OBSERVERS.get(o).filter(ob -> ob.direction().equals(rem.reason().direction()))) {
-                                                                                                             obs.deObserve(o);
-                                                                                                         }
                                                                                                      }
                                                                                                  });
                                                                                      }, plumbing, doNotMerge);

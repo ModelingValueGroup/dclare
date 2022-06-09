@@ -254,24 +254,23 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected <T, O> void set(O object, Setable<O, T> setable, T pre, T post) {
-        T result = post;
         if (observing(object, setable)) {
             if (((Observed) setable).mandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
                 throw new NullPointerException(setable.toString());
             }
             observe(object, (Observed<O, T>) setable, sets);
-            if (!setable.isPlumbing()) {
+            if (!setable.isPlumbing() && !Objects.equals(pre, post)) {
                 merge();
                 if (setable.containment() && (pre instanceof Newable || post instanceof Newable)) {
-                    result = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
+                    post = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
                 } else if (setable.containment() && isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
-                    result = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
+                    post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
-                    result = rippleOut(object, (Observed<O, T>) setable, pre, pre, post);
+                    post = rippleOut(object, (Observed<O, T>) setable, pre, post);
                 }
             }
         }
-        super.set(object, setable, pre, result);
+        super.set(object, setable, pre, post);
     }
 
     @SuppressWarnings("rawtypes")
@@ -357,12 +356,10 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T deferredPre, T backwardsPre, T post) {
-        if (!Objects.equals(deferredPre, post)) {
-            post = rippleOut(object, observed, deferredPre, post, startState(), state(), deferred);
-        }
-        if (!Objects.equals(backwardsPre, post)) {
-            post = rippleOut(object, observed, backwardsPre, post, preDeltaState(), postDeltaState(), backwards);
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
+        post = rippleOut(object, observed, pre, post, startState(), state(), deferred);
+        if (!Objects.equals(pre, post)) {
+            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
         }
         return post;
     }
@@ -406,104 +403,57 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
-        if (!Objects.equals(after, before)) {
-            if (after instanceof Newable) {
-                MatchInfo post = MatchInfo.of((Newable) after, this);
-                if (post.isOnlyDerived()) {
-                    List<MatchInfo> preList = oldChildren(object);
-                    for (MatchInfo pre : preList) {
-                        if (pre.mustBeTheSame(post)) {
-                            makeTheSame(pre, post);
-                            after = pre.newable();
-                            break;
-                        }
+        if (after instanceof Newable) {
+            MatchInfo post = MatchInfo.of((Newable) after, this);
+            if (post.isOnlyDerived()) {
+                List<MatchInfo> preList = oldChildren(object);
+                for (MatchInfo pre : preList) {
+                    if (pre.mustBeTheSame(post)) {
+                        makeTheSame(pre, post);
+                        after = pre.newable();
+                        break;
                     }
                 }
             }
-            if (before instanceof Newable && !before.equals(after)) {
-                MatchInfo pre = MatchInfo.of((Newable) before, this);
-                if (pre.isCarvedInStone()) {
-                    List<MatchInfo> postList = newChildren(object);
-                    for (MatchInfo post : postList) {
-                        if (pre.mustBeTheSame(post)) {
-                            makeTheSame(pre, post);
-                            before = post.newable();
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!Objects.equals(after, before) && hasNoConstructions(before)) {
-                before = after;
-            }
-            after = rippleOut(object, observed, before, before, after);
         }
-        return after;
+        if (!Objects.equals(after, before) && hasNoConstructions(before)) {
+            before = after;
+        }
+        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        before = before != null ? before : after.clear();
-        after = after != null ? after : before.clear();
-        if (!Objects.equals(after, before)) {
-            ContainingCollection<Object>[] pres = new ContainingCollection[]{before};
-            ContainingCollection<Object>[] posts = new ContainingCollection[]{after};
-            List<MatchInfo>[] preList = new List[1];
-            List<MatchInfo>[] postList = new List[1];
-            Setable.<ContainingCollection<Object>, Object> diff(pres[0], posts[0], added -> {
-                if (added instanceof Newable) {
-                    MatchInfo post = MatchInfo.of((Newable) added, this);
-                    if (post.isOnlyDerived()) {
-                        if (preList[0] == null) {
-                            preList[0] = oldChildren(object);
-                        }
-                        for (MatchInfo pre : preList[0]) {
-                            if (pre.mustBeTheSame(post)) {
-                                makeTheSame(pre, post);
-                                pres[0] = pres[0].replace(post.newable(), pre.newable());
-                                posts[0] = posts[0].replace(post.newable(), pre.newable());
-                                break;
-                            }
+        ContainingCollection<Object>[] pres = new ContainingCollection[]{before != null ? before : after.clear()};
+        ContainingCollection<Object>[] posts = new ContainingCollection[]{after != null ? after : before.clear()};
+        List<MatchInfo>[] preList = new List[1];
+        Setable.<ContainingCollection<Object>, Object> diff(pres[0], posts[0], added -> {
+            if (added instanceof Newable) {
+                MatchInfo post = MatchInfo.of((Newable) added, this);
+                if (post.isOnlyDerived()) {
+                    if (preList[0] == null) {
+                        preList[0] = oldChildren(object);
+                    }
+                    for (MatchInfo pre : preList[0]) {
+                        if (pre.mustBeTheSame(post)) {
+                            makeTheSame(pre, post);
+                            posts[0] = posts[0].replace(post.newable(), pre.newable());
+                            break;
                         }
                     }
                 }
-            }, removed -> {
-                if (removed instanceof Newable) {
-                    MatchInfo pre = MatchInfo.of((Newable) removed, this);
-                    if (pre.isCarvedInStone()) {
-                        if (postList[0] == null) {
-                            postList[0] = newChildren(object);
-                        }
-                        for (MatchInfo post : postList[0]) {
-                            if (pre.mustBeTheSame(post)) {
-                                makeTheSame(pre, post);
-                                pres[0] = pres[0].replace(post.newable(), pre.newable());
-                                posts[0] = posts[0].replace(post.newable(), pre.newable());
-                                break;
-                            }
-                        }
-                    }
-                }
-            });
-            before = pres[0];
-            after = posts[0];
-            if (!Objects.equals(after, before)) {
-                before = before.clear().addAll(before.exclude(e -> !posts[0].contains(e) && hasNoConstructions(e)));
             }
-            after = rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, before, after);
-        }
-        return after;
+        }, removed -> {
+            if (hasNoConstructions(removed)) {
+                pres[0] = pres[0].remove(removed);
+            }
+        });
+        return !Objects.equals(pres[0], posts[0]) ? rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, pres[0], posts[0]) : posts[0];
     }
 
     @SuppressWarnings("unchecked")
     private List<MatchInfo> oldChildren(Mutable object) {
         List<MatchInfo> preList = ((Collection<Mutable>) object.dChildren(postDeltaState())).filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isCarvedInStone).toList();
-        return preList.sortedBy(MatchInfo::sortKey).toList();
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<MatchInfo> newChildren(Mutable object) {
-        List<MatchInfo> preList = ((Collection<Mutable>) object.dChildren(state())).filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isOnlyDerived).toList();
         return preList.sortedBy(MatchInfo::sortKey).toList();
     }
 

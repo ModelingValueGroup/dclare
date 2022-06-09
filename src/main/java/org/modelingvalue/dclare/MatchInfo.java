@@ -17,9 +17,6 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Construction.Reason;
-
 public class MatchInfo {
 
     private final Newable             newable;
@@ -29,7 +26,7 @@ public class MatchInfo {
     private Boolean                   isCarvedInStone;
     private Newable                   replacing;
     private Newable                   replaced;
-    private Set<Direction>            derivedDirections;
+    private Boolean                   isDerived;
 
     public static MatchInfo of(Newable newable, ObserverTransaction tx) {
         return new MatchInfo(newable, tx);
@@ -60,11 +57,11 @@ public class MatchInfo {
         replaced = from.newable;
     }
 
-    public Set<Direction> derivedDirections() {
-        if (derivedDirections == null) {
-            derivedDirections = newable.dDerivedConstructions().map(Construction::reason).map(Reason::direction).toSet();
+    public boolean isDerived() {
+        if (isDerived == null) {
+            isDerived = !newable.dDerivedConstructions().isEmpty();
         }
-        return derivedDirections;
+        return isDerived;
     }
 
     public boolean haveEqualType(MatchInfo other) {
@@ -98,7 +95,7 @@ public class MatchInfo {
     }
 
     public boolean isOnlyDerived() {
-        return !isCarvedInStone() && (!derivedDirections().isEmpty() || replacing() != null);
+        return !isCarvedInStone() && (isDerived() || replacing() != null);
     }
 
     @Override

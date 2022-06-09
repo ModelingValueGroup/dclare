@@ -56,13 +56,13 @@ public class NewableTests {
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
-            withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
+            withTraceUniverse(true).withTraceActions(true).withTraceMatching(true);
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
 
     private static final boolean        FULL               = true;
     private static final boolean        DEFAULT_ROLES      = true;
-    private static final int            MANY_NR            = 128;
+    private static final int            MANY_NR            = 16;
 
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
@@ -426,7 +426,7 @@ public class NewableTests {
             ));
             ROL.observe(fb2ooDir, mref, rl -> otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? //
                     create(REF, x -> x.//
-                            observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). // Why ? !"~".equals(n.get(rl)) ?
+                            observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). //
                             observe(typ, rf -> otr.get(rl) != null ? mcls.get(otr.get(rl)) : null). //
                             observe(opp, rf -> mref.get(rlopp.get(rl)))//
                     ) : null);

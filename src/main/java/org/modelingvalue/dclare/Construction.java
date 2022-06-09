@@ -18,10 +18,9 @@ package org.modelingvalue.dclare;
 import static org.modelingvalue.dclare.CoreSetableModifier.durable;
 
 import org.modelingvalue.collections.util.IdentifiedByArray;
-import org.modelingvalue.collections.util.Mergeable;
 
 @SuppressWarnings("rawtypes")
-public class Construction extends IdentifiedByArray implements Mergeable<Construction> {
+public class Construction extends IdentifiedByArray {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null, durable);
@@ -101,28 +100,6 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
 
         public abstract Direction direction();
 
-    }
-
-    private final static Construction MERGER = Construction.of(null);;
-
-    @Override
-    public Construction merge(Construction[] branches, int length) {
-        for (int i = length - 1; i >= 0; i--) {
-            if (branches[i] != null) {
-                return branches[i];
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Construction getMerger() {
-        return MERGER;
-    }
-
-    @Override
-    public Class<?> getMeetClass() {
-        return Construction.class;
     }
 
 }
