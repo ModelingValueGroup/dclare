@@ -327,6 +327,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
+    protected void setChanged(Mutable changed) {
+        if (OBSERVE.get()) {
+            super.setChanged(changed);
+        }
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         if (Constant.DERIVED.get() != null) {

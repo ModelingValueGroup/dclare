@@ -50,8 +50,6 @@ public class MatchInfo {
                 return false;
             } else if (Objects.equals(identity(), from.identity())) {
                 return true;
-            } else {
-                System.err.println("!!!!!!!!!3!!!!!!!!!!! (" + this + " ? " + from + ")  " + identity() + "<>" + from.identity());
             }
         }
         return false;
@@ -100,7 +98,7 @@ public class MatchInfo {
     }
 
     public boolean isOnlyDerived() {
-        return !isCarvedInStone() && !derivedDirections().isEmpty();
+        return !isCarvedInStone() && (!derivedDirections().isEmpty() || replacing() != null);
     }
 
     @Override

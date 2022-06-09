@@ -49,21 +49,21 @@ import org.modelingvalue.dclare.test.support.TestUniverse;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
+
     //    static {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
 
-    private static final boolean        FULL               = false;
-    private static final boolean        DEFAULT_ROLES      = false;
-
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
-            withTraceUniverse(true).withTraceMutable(false).withTraceMatching(true).withTraceActions(true);
-
+            withTraceUniverse(false).withTraceMutable(false).withTraceMatching(false).withTraceActions(false);
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
-
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
-    private static final int            MANY_NR            = FULL ? 16 : 2;
+
+    private static final boolean        FULL               = true;
+    private static final boolean        DEFAULT_ROLES      = true;
+    private static final int            MANY_NR            = 128;
+
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
@@ -824,8 +824,10 @@ public class NewableTests {
                 TestNewable fbm = fbms.get(universe).get(0);
                 Set<TestNewable> factTypes = fts.get(fbm);
                 TestNewable ft3 = factTypes.filter(ft -> Objects.equals(n.get(ft), "u")).findAny().get();
-                TestNewable rl5 = (oo2fb ? left : right).get(ft3);
-
+                TestNewable rl5 = left.get(ft3);
+                if ("u".equals(n.get(rl5))) {
+                    rl5 = right.get(ft3);
+                }
                 n.set(rl5, "v");
             }
 

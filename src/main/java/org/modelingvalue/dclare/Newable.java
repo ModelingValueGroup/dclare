@@ -23,6 +23,7 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Observer.Constructed;
 
 public interface Newable extends Mutable {
 
@@ -31,11 +32,13 @@ public interface Newable extends Mutable {
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
                                                                                          Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                                                       //
                                                                                                  add -> {
-                                                                                                     add.observer().constructed().set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                                                     Constructed cons = add.observer().constructed();
+                                                                                                     cons.set(add.object(), Map::put, Entry.of(add.reason(), o));
                                                                                                  },                                                                                                                     //
                                                                                                  rem -> {
-                                                                                                     if (o.equals(rem.observer().constructed().current(rem.object()).get(rem.reason()))) {
-                                                                                                         rem.observer().constructed().set(rem.object(), Map::removeKey, rem.reason());
+                                                                                                     Constructed cons = rem.observer().constructed();
+                                                                                                     if (o.equals(cons.current(rem.object()).get(rem.reason()))) {
+                                                                                                         cons.set(rem.object(), Map::removeKey, rem.reason());
                                                                                                          for (Observer obs : Mutable.D_OBSERVERS.get(o).filter(ob -> ob.direction().equals(rem.reason().direction()))) {
                                                                                                              obs.deObserve(o);
                                                                                                          }

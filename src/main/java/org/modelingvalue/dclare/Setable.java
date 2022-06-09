@@ -265,12 +265,12 @@ public class Setable<O, T> extends Getable<O, T> {
     public static <T, E> void diff(T pre, T post, Consumer<E> added, Consumer<E> removed) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ((ContainingCollection<E>) pre).compare((ContainingCollection<E>) post).forEachOrdered(d -> {
-                if (d[0] == null) {
+                if (d[1] != null) {
                     for (E a : d[1]) {
                         added.accept(a);
                     }
                 }
-                if (d[1] == null) {
+                if (d[0] != null) {
                     for (E e : d[0]) {
                         removed.accept(e);
                     }

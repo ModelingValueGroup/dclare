@@ -76,13 +76,17 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     private <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (original != null) {
-            if (object instanceof Mutable && original.postDeltaState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
+            if (object instanceof Mutable && isOld((Mutable) object)) {
                 return original.postDeltaState().get(object, getable);
             } else {
                 return original.state().get(object, getable);
             }
         }
         return super.get(object, getable);
+    }
+
+    private boolean isOld(Mutable object) {
+        return original.postDeltaState().get(object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @Override
@@ -109,7 +113,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
-            if (!Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
+            if (object instanceof Mutable && !Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
                 Pair<Object, Observed> slot = Pair.of(object, observed);
                 Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
                 Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
@@ -117,7 +121,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                     return value;
                 } else {
                     DERIVED.run(newDerived, () -> {
-                        for (Observer deriver : ((Mutable) object).dAllDerivers(observed)) {
+                        for (Observer deriver : isChanged((Mutable) object) ? ((Mutable) object).dClass().dDerivers(observed) : ((Mutable) object).dAllDerivers(observed)) {
                             deriver.run((Mutable) object);
                         }
                     });
@@ -128,6 +132,16 @@ public class DerivationTransaction extends ReadOnlyTransaction {
             }
         }
         return constantState.get(this, object, constant);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private boolean isChanged(Mutable object) {
+        if (original != null && isOld(object)) {
+            TransactionId txid = original.postDeltaState().get(object, Mutable.D_CHANGE_ID);
+            return txid != null && txid.number() > original.preDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
+        } else {
+            return false;
+        }
     }
 
     @Override
