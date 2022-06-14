@@ -122,7 +122,7 @@ public class TestMutableClass implements MutableClass {
     @SuppressWarnings("unchecked")
     @Override
     public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
-        return (Set<? extends Setable<? extends Mutable, ?>>) setables;
+        return (Set) setables;
     }
 
     public String serializeClass() {
