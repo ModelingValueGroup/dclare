@@ -402,8 +402,8 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, State preState, State postState) {
         T before = preState.get(object, observed);
-        return ((pre == null && before instanceof Newable && post instanceof Newable) || Objects.equals(before, post)) && //
-                !Objects.equals(before, postState.get(object, observed));
+        T after = postState.get(object, observed);
+        return !Objects.equals(before, after) && ((before instanceof Newable && after == null && post instanceof Newable) || Objects.equals(before, post));
     }
 
     @SuppressWarnings("rawtypes")
@@ -433,8 +433,6 @@ public class ObserverTransaction extends ActionTransaction {
         if (observed.containment() && !Objects.equals(after, before) && hasNoConstructions(before)) {
             before = after;
         }
-        before = replacing(before);
-        after = replacing(after);
         return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
@@ -466,20 +464,7 @@ public class ObserverTransaction extends ActionTransaction {
         });
         before = pres[0];
         after = posts[0];
-        before = before.clear().addAll(before.map(this::replacing));
-        after = after.clear().addAll(after.map(this::replacing));
         return !Objects.equals(before, after) ? rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, after) : after;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T replacing(T replaced) {
-        if (replaced instanceof Newable) {
-            Newable replacing = ((Newable) replaced).dReplacing();
-            if (replacing != null) {
-                return (T) replacing;
-            }
-        }
-        return replaced;
     }
 
     @SuppressWarnings("unchecked")
