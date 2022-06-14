@@ -420,7 +420,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this);
             if (post.isOnlyDerived()) {
-                List<MatchInfo> preList = observed.containment() ? oldChildren(object) : observed.list(before);
+                List<MatchInfo> preList = oldChildren(object, observed, before);
                 for (MatchInfo pre : preList) {
                     if (pre.mustBeTheSame(post)) {
                         makeTheSame(pre, post);
@@ -430,7 +430,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        if (observed.containment() && !Objects.equals(after, before) && hasNoConstructions(before)) {
+        if (!Objects.equals(after, before) && observed.containment() && hasNoConstructions(before)) {
             before = after;
         }
         return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
@@ -446,7 +446,7 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = MatchInfo.of((Newable) added, this);
                 if (post.isOnlyDerived()) {
                     if (preList[0] == null) {
-                        preList[0] = observed.containment() ? oldChildren(object) : observed.list(pres[0]);
+                        preList[0] = oldChildren(object, observed, pres[0]);
                     }
                     for (MatchInfo pre : preList[0]) {
                         if (pre.mustBeTheSame(post)) {
@@ -467,9 +467,10 @@ public class ObserverTransaction extends ActionTransaction {
         return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<MatchInfo> oldChildren(Mutable object) {
-        List<MatchInfo> preList = ((Collection<Mutable>) object.dChildren(postDeltaState())).filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isCarvedInStone).toList();
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private List<MatchInfo> oldChildren(Mutable object, Observed observed, Object before) {
+        Collection<Mutable> collection = observed.containment() ? (Collection<Mutable>) object.dChildren(postDeltaState()) : observed.collection(before);
+        List<MatchInfo> preList = collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isCarvedInStone).toList();
         return preList.sortedBy(MatchInfo::sortKey).toList();
     }
 
