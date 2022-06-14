@@ -464,7 +464,7 @@ public class ObserverTransaction extends ActionTransaction {
         });
         before = pres[0];
         after = posts[0];
-        return !Objects.equals(before, after) ? rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, after) : after;
+        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
     @SuppressWarnings("unchecked")
