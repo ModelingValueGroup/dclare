@@ -261,9 +261,9 @@ public class ObserverTransaction extends ActionTransaction {
             observe(object, (Observed<O, T>) setable, sets);
             if (!setable.isPlumbing() && !Objects.equals(pre, post)) {
                 merge();
-                if (setable.containment() && (pre instanceof Newable || post instanceof Newable)) {
+                if (pre instanceof Newable || post instanceof Newable) {
                     post = (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
-                } else if (setable.containment() && isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
+                } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                     post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
                     post = rippleOut(object, (Observed<O, T>) setable, pre, post);
@@ -342,11 +342,14 @@ public class ObserverTransaction extends ActionTransaction {
             if (result == null) {
                 result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
-                    if (mutable() instanceof Newable && startState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
-                        deferred.set(TRUE);
-                        return null;
+                    result = (O) startState().get(mutable(), observer().constructed()).get(reason);
+                    if (result == null) {
+                        if (mutable() instanceof Newable && startState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                            deferred.set(TRUE);
+                            return null;
+                        }
+                        result = supplier.get();
                     }
-                    result = supplier.get();
                 }
                 observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
             }
@@ -389,12 +392,18 @@ public class ObserverTransaction extends ActionTransaction {
             });
             return (T) result[0];
         } else if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
-                (!Objects.equals(preState.get(object, observed), postState.get(object, observed)))) {
+                isChangedBack(object, observed, pre, post, preState, postState)) {
             delay.set(TRUE);
             return pre;
         } else {
             return post;
         }
+    }
+
+    private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, State preState, State postState) {
+        T before = preState.get(object, observed);
+        return ((pre == null && before instanceof Newable && post instanceof Newable) || Objects.equals(before, post)) && //
+                !Objects.equals(before, postState.get(object, observed));
     }
 
     @SuppressWarnings("rawtypes")
@@ -411,7 +420,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this);
             if (post.isOnlyDerived()) {
-                List<MatchInfo> preList = oldChildren(object);
+                List<MatchInfo> preList = observed.containment() ? oldChildren(object) : observed.list(before);
                 for (MatchInfo pre : preList) {
                     if (pre.mustBeTheSame(post)) {
                         makeTheSame(pre, post);
@@ -421,9 +430,11 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        if (!Objects.equals(after, before) && hasNoConstructions(before)) {
+        if (observed.containment() && !Objects.equals(after, before) && hasNoConstructions(before)) {
             before = after;
         }
+        before = replacing(before);
+        after = replacing(after);
         return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
@@ -437,7 +448,7 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = MatchInfo.of((Newable) added, this);
                 if (post.isOnlyDerived()) {
                     if (preList[0] == null) {
-                        preList[0] = oldChildren(object);
+                        preList[0] = observed.containment() ? oldChildren(object) : observed.list(pres[0]);
                     }
                     for (MatchInfo pre : preList[0]) {
                         if (pre.mustBeTheSame(post)) {
@@ -449,11 +460,26 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }, removed -> {
-            if (hasNoConstructions(removed)) {
+            if (observed.containment() && hasNoConstructions(removed)) {
                 pres[0] = pres[0].remove(removed);
             }
         });
-        return !Objects.equals(pres[0], posts[0]) ? rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, pres[0], posts[0]) : posts[0];
+        before = pres[0];
+        after = posts[0];
+        before = before.clear().addAll(before.map(this::replacing));
+        after = after.clear().addAll(after.map(this::replacing));
+        return !Objects.equals(before, after) ? rippleOut(object, (Observed<Mutable, ContainingCollection<Object>>) observed, before, after) : after;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T replacing(T replaced) {
+        if (replaced instanceof Newable) {
+            Newable replacing = ((Newable) replaced).dReplacing();
+            if (replacing != null) {
+                return (T) replacing;
+            }
+        }
+        return replaced;
     }
 
     @SuppressWarnings("unchecked")

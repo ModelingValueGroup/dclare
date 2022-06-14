@@ -62,7 +62,7 @@ public class NewableTests {
 
     private static final boolean        FULL               = true;
     private static final boolean        DEFAULT_ROLES      = true;
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = 32;
 
     private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
