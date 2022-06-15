@@ -402,8 +402,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, State preState, State postState) {
         T before = preState.get(object, observed);
-        T after = postState.get(object, observed);
-        return !Objects.equals(before, after) && ((before instanceof Newable && after == null && post instanceof Newable) || Objects.equals(before, post));
+        return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
     }
 
     @SuppressWarnings("rawtypes")
@@ -430,9 +429,6 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        if (!Objects.equals(after, before) && observed.containment() && hasNoConstructions(before)) {
-            before = after;
-        }
         return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
@@ -458,9 +454,6 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }, removed -> {
-            if (observed.containment() && hasNoConstructions(removed)) {
-                pres[0] = pres[0].remove(removed);
-            }
         });
         before = pres[0];
         after = posts[0];
@@ -469,13 +462,9 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private List<MatchInfo> oldChildren(Mutable object, Observed observed, Object before) {
-        Collection<Mutable> collection = observed.containment() ? (Collection<Mutable>) object.dChildren(postDeltaState()) : observed.collection(before);
+        Collection<Mutable> collection = observed.containment() ? (Collection<Mutable>) object.dChildren() : observed.collection(before);
         List<MatchInfo> preList = collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).filter(MatchInfo::isCarvedInStone).toList();
         return preList.sortedBy(MatchInfo::sortKey).toList();
-    }
-
-    private boolean hasNoConstructions(Object object) {
-        return object instanceof Newable && ((Newable) object).dConstructions().isEmpty();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
