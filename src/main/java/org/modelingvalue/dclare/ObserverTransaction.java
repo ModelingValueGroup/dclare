@@ -358,6 +358,11 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
+    @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
+    }
+
     @SuppressWarnings("unchecked")
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         post = rippleOut(object, observed, pre, post, startState(), state(), deferred);
