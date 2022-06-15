@@ -43,8 +43,7 @@ public interface Newable extends Mutable {
                                                                                                  });
                                                                                      }, plumbing, doNotMerge);
 
-    Setable<Newable, Newable>                                D_REPLACING             = Setable.of("D_REPLACING", null, () -> Newable.D_REPLACED, plumbing);
-    Setable<Newable, Newable>                                D_REPLACED              = Setable.of("D_REPLACED", null, () -> Newable.D_REPLACING, plumbing);
+    Setable<Newable, Newable>                                D_REPLACING             = Setable.of("D_REPLACING", null, plumbing);
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();

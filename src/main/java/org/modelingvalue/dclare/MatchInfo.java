@@ -17,16 +17,21 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Construction.Reason;
+
 public class MatchInfo {
 
-    private final Newable             newable;
-    private final ObserverTransaction otx;
+    private final Newable                         newable;
+    private final ObserverTransaction             otx;
 
-    private Object                    identity;
-    private Boolean                   isCarvedInStone;
-    private Newable                   replacing;
-    private Newable                   replaced;
-    private Boolean                   isDerived;
+    private Object                                identity;
+    private Set<Construction>                     directConstructions;
+    private Newable                               replacing;
+    private Set<Direction>                        directions;
+    private QualifiedSet<Direction, Construction> derivedConstructions;
 
     public static MatchInfo of(Newable newable, ObserverTransaction tx) {
         return new MatchInfo(newable, tx);
@@ -41,7 +46,7 @@ public class MatchInfo {
         if (!newable.equals(from.newable) && haveEqualType(from)) {
             if (newable.equals(from.replacing())) {
                 return true;
-            } else if (from.replacing() != null || replaced() != null) {
+            } else if (from.replacing() != null || directions().anyMatch(from.directions()::contains)) {
                 return false;
             } else if (isCarvedInStone() && from.isCarvedInStone()) {
                 return false;
@@ -54,14 +59,21 @@ public class MatchInfo {
 
     public void mergeIn(MatchInfo from) {
         from.replacing = newable;
-        replaced = from.newable;
+        directions = directions().addAll(from.directions());
+        from.directions = directions.clear();
+        derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
+        from.derivedConstructions = derivedConstructions.clear();
     }
 
     public boolean isDerived() {
-        if (isDerived == null) {
-            isDerived = !newable.dDerivedConstructions().isEmpty();
+        return !derivedConstructions().isEmpty();
+    }
+
+    public QualifiedSet<Direction, Construction> derivedConstructions() {
+        if (derivedConstructions == null) {
+            derivedConstructions = newable.dDerivedConstructions();
         }
-        return isDerived;
+        return derivedConstructions;
     }
 
     public boolean haveEqualType(MatchInfo other) {
@@ -88,10 +100,15 @@ public class MatchInfo {
     }
 
     public boolean isCarvedInStone() {
-        if (isCarvedInStone == null) {
-            isCarvedInStone = newable.dDirectConstruction() != null;
+        return !directConstructions().isEmpty();
+    }
+
+    public Set<Construction> directConstructions() {
+        if (directConstructions == null) {
+            Construction cons = newable.dDirectConstruction();
+            directConstructions = cons != null ? Set.of(cons) : Set.of();
         }
-        return isCarvedInStone;
+        return directConstructions;
     }
 
     public boolean isOnlyDerived() {
@@ -121,12 +138,11 @@ public class MatchInfo {
         return replacing == newable ? null : replacing;
     }
 
-    public Newable replaced() {
-        if (replaced == null) {
-            replaced = Newable.D_REPLACED.current(newable);
-            replaced = replaced == null ? newable : replaced;
+    public Set<Direction> directions() {
+        if (directions == null) {
+            return Collection.concat(directConstructions(), derivedConstructions()).map(Construction::reason).map(Reason::direction).toSet();
         }
-        return replaced == newable ? null : replaced;
+        return directions;
     }
 
 }
