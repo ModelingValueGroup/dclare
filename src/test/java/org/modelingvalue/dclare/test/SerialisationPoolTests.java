@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -24,8 +24,13 @@ import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.sync.Converters;
 import org.modelingvalue.dclare.sync.SerializationHelperWithPool;
 
@@ -41,8 +46,6 @@ public class SerialisationPoolTests {
 
     @Test
     public void absentTests() {
-        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, null)).getMessage());
-        assertEquals("[DESERIALIZE] no deserialisation possible for null or empty string", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "")).getMessage());
         assertEquals("[DESERIALIZE] missing converter for 'just some string' in \"just some string\" (no deserialisation possible)", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "just some string")).getMessage());
         assertEquals("[DESERIALIZE] missing converter for 'unknown' in \"unknown:#$%^&\" (no deserialisation possible)", assertThrows(IllegalArgumentException.class, () -> h.deserializeValue(null, "unknown:#$%^&")).getMessage());
         assertEquals("[  SERIALIZE] null                     : no converter available for class int[]\n", assertThrows(IllegalArgumentException.class, () -> h.serializeValue(null, new int[3])).getMessage());

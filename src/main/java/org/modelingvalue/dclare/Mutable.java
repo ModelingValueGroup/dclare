@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -19,7 +19,10 @@ import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
@@ -37,7 +40,7 @@ public interface Mutable extends TransactionClass {
                                                                                        }
                                                                                    };
 
-    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
+    Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
@@ -63,10 +66,13 @@ public interface Mutable extends TransactionClass {
         return pair != null ? pair.b() : null;
     }
 
-    default void dDelete() {
+    default boolean dDelete() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
         if (pair != null) {
             pair.b().remove(pair.a(), this);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -132,6 +138,11 @@ public interface Mutable extends TransactionClass {
 
     MutableClass dClass();
 
+    @SuppressWarnings("rawtypes")
+    default Collection<Observer> dAllDerivers(Setable setable) {
+        return dClass().dDerivers(setable);
+    }
+
     default Collection<? extends Observer<?>> dAllObservers() {
         return dClass().dObservers();
     }
@@ -176,15 +187,6 @@ public interface Mutable extends TransactionClass {
     }
 
     @SuppressWarnings("rawtypes")
-    default boolean dToBeCleared(Setable setable) {
-        return true;
-    }
-
-    default Direction dDirection() {
-        return Action.DEFAULT_DIRECTION;
-    }
-
-    @SuppressWarnings("rawtypes")
     default void dHandleRemoved(Mutable parent) {
         for (Observer o : D_OBSERVERS.get(this)) {
             o.constructed().setDefault(this);
@@ -196,7 +198,7 @@ public interface Mutable extends TransactionClass {
     }
 
     default boolean dIsOrphan(State state) {
-        return state.get(this, Mutable.D_PARENT_CONTAINING) == null;
+        return state.get(this, D_PARENT_CONTAINING) == null;
     }
 
 }

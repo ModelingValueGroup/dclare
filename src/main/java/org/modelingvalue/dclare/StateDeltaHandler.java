@@ -13,44 +13,15 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
-
-import java.util.stream.Collectors;
+package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.*;
 
-@SuppressWarnings({"rawtypes", "unused"})
-public final class TooManyObserversException extends ConsistencyError {
+@SuppressWarnings("rawtypes")
+@FunctionalInterface
+public interface StateDeltaHandler {
 
-    private static final long                        serialVersionUID = -1059588522731393631L;
-
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
-
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
-    }
-
-    @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
-        return getSimpleMessage() + ":\n" + observersMap;
-    }
-
-    public String getSimpleMessage() {
-        return super.getMessage();
-    }
-
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
-    }
-
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
-    }
+    void handleDelta(State pre, State post, boolean inSync, DefaultMap<Object, Set<Setable>> setted);
 
 }

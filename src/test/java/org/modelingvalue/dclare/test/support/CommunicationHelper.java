@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,50 +15,57 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static java.lang.management.ManagementFactory.getRuntimeMXBean;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.MutationWrapper;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.sync.DeltaAdaptor;
+import org.modelingvalue.dclare.sync.WorkDaemon;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.sync.DeltaAdaptor;
-import org.modelingvalue.dclare.sync.WorkDaemon;
+import static java.lang.management.ManagementFactory.getRuntimeMXBean;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
 public class CommunicationHelper {
-    private static final boolean                            WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
-    private static final int                                IDLE_DETECT_TIMEOUT                         = WE_ARE_DEBUGGED ? 24 * 60 * 60 * 1_000 : 5 * 1_000;
-    private static final int                                IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION = 10;
-    private static final int                                SIMULATED_NETWORK_DELAY                     = 100;
+    private static final boolean                                 WE_ARE_DEBUGGED                             = getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0;
+    private static final int                                     IDLE_DETECT_TIMEOUT                         = WE_ARE_DEBUGGED ? 24 * 60 * 60 * 1_000 : 5 * 1_000;
+    private static final int                                     IDLE_SAMPLES_FOR_DEFINITIVE_IDLE_CONCLUSION = 10;
+    private static final int                                     SIMULATED_NETWORK_DELAY                     = 100;
     //
-    private static final Concurrent<List<ModelMaker>>       ALL_MODEL_MAKERS                            = Concurrent.of(List.of());
-    private static final Concurrent<List<TestDeltaAdaptor>> ALL_DELTA_ADAPTORS                          = Concurrent.of(List.of());
-    private static final Concurrent<List<WorkDaemon<?>>>    ALL_DAEMONS                                 = Concurrent.of(List.of());
-    private static final Concurrent<List<ContextPool>>      ALL_POOLS                                   = Concurrent.of(List.of());
+    private static final MutationWrapper<List<ModelMaker>>       ALL_MODEL_MAKERS                            = new MutationWrapper<>(List.of());
+    private static final MutationWrapper<List<TestDeltaAdaptor>> ALL_DELTA_ADAPTORS                          = new MutationWrapper<>(List.of());
+    private static final MutationWrapper<List<WorkDaemon<?>>>    ALL_DAEMONS                                 = new MutationWrapper<>(List.of());
+    private static final MutationWrapper<List<ContextPool>>      ALL_POOLS                                   = new MutationWrapper<>(List.of());
 
     public static void add(ModelMaker r) {
-        ALL_MODEL_MAKERS.set(List::add, r);
+        ALL_MODEL_MAKERS.updateAndGet(List::add, r);
     }
 
     public static void add(TestDeltaAdaptor a) {
-        ALL_DELTA_ADAPTORS.set(List::add, a);
+        ALL_DELTA_ADAPTORS.update(List::add, a);
         add(a.getAdaptorDaemon());
     }
 
     public static void add(WorkDaemon<?> daemon) {
-        ALL_DAEMONS.set(List::add, daemon);
+        ALL_DAEMONS.update(List::add, daemon);
     }
 
     public static void add(ContextPool pool) {
-        ALL_POOLS.set(List::add, pool);
+        ALL_POOLS.update(List::add, pool);
     }
 
     public static TestDeltaAdaptor hookupDeltaAdaptor(ModelMaker mm) {
@@ -106,11 +113,11 @@ public class CommunicationHelper {
             assertEquals(0, pool.getNumInOverflow(), "the contextFactory had to create overflow Threads as a fall back");
         });
 
-        ALL_MODEL_MAKERS.clear();
-        ALL_DELTA_ADAPTORS.clear();
-        ALL_DAEMONS.clear();
+        ALL_MODEL_MAKERS.update(__ -> List.of());
+        ALL_DELTA_ADAPTORS.update(__ -> List.of());
+        ALL_DAEMONS.update(__ -> List.of());
         if (!ModelMaker.BUGGERS_THERE_IS_A_BUG_IN_STATE_COMPARER) {
-            ALL_POOLS.clear();
+            ALL_POOLS.update(__ -> List.of());
         }
 
         rethrowAllDaemonProblems();
@@ -124,7 +131,7 @@ public class CommunicationHelper {
 
     public static void busyWaitAllForIdle() {
         final long t0 = System.currentTimeMillis();
-        boolean busy;
+        boolean    busy;
         do {
             // probe isBusy() 10 times and 1 ms apart until we find a busy sample or conclude that we are idle
             busy = false;
@@ -139,8 +146,8 @@ public class CommunicationHelper {
             // darn,
             System.err.println("this test did not get idle in time (" + ALL_MODEL_MAKERS.get().size() + " model-makers, " + ALL_DELTA_ADAPTORS.get().size() + " delta-adaptors, " + ALL_DAEMONS.get().size() + " daemons, " + ALL_POOLS.get().size() + " pools):");
             for (TestDeltaAdaptor ad : ALL_DELTA_ADAPTORS.get()) {
-                StringBuilder adWhy = new StringBuilder();
-                boolean adBusy = ad.isBusy(adWhy);
+                StringBuilder adWhy  = new StringBuilder();
+                boolean       adBusy = ad.isBusy(adWhy);
                 System.err.printf(" - modelmaker %-16s: %s (%s)\n", ad.getName(), adBusy ? "BUSY" : "idle", adWhy);
             }
             for (WorkDaemon<?> wd : ALL_DAEMONS.get()) {
@@ -162,9 +169,9 @@ public class CommunicationHelper {
     }
 
     public static void interpreter(InputStream in, AtomicBoolean stop, Map<Character, BiConsumer<Character, String>> actions) throws IOException {
-        BiConsumer<Character, String> defaultAction = actions.get((Character) '*');
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
-        String line;
+        BiConsumer<Character, String> defaultAction  = actions.get((Character) '*');
+        BufferedReader                bufferedReader = new BufferedReader(new InputStreamReader(in));
+        String                        line;
         while (!stop.get() && (line = bufferedReader.readLine()) != null) {
             busyWaitAllForIdle();
             traceLog("got line: " + line);

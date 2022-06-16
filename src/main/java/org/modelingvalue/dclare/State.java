@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,10 +18,22 @@ package org.modelingvalue.dclare;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State implements Serializable {
@@ -45,7 +57,6 @@ public class State implements Serializable {
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
-    private ConstantState                                               derivationState;
 
     State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
@@ -198,8 +209,8 @@ public class State implements Serializable {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <K, V> boolean deduplicate(Entry<K, V> e) {
-        return e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
+    public static <K, V> void deduplicate(Entry<K, V> e) {
+        e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
     }
 
     @Override
@@ -253,19 +264,21 @@ public class State implements Serializable {
     }
 
     public <R> R derive(Supplier<R> supplier) {
-        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+        ConstantState constantState = new ConstantState(universeTransaction::handleException);
         try {
-            return tx.derive(supplier, this, derivationState());
+            return derive(supplier, null, constantState);
         } finally {
-            universeTransaction.derivation.closeTransaction(tx);
+            constantState.stop();
         }
     }
 
-    private ConstantState derivationState() {
-        if (derivationState == null) {
-            derivationState = new ConstantState(universeTransaction::handleException);
+    public <R> R derive(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
+        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(supplier, this, original, constantState);
+        } finally {
+            universeTransaction.derivation.closeTransaction(tx);
         }
-        return derivationState;
     }
 
     public <T> Collection<T> getObjects(Class<T> filter) {

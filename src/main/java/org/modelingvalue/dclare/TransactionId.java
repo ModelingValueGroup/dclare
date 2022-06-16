@@ -13,44 +13,46 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.ex;
+package org.modelingvalue.dclare;
 
-import java.util.stream.Collectors;
+import org.modelingvalue.collections.util.Internable;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.*;
+public class TransactionId implements Internable {
 
-@SuppressWarnings({"rawtypes", "unused"})
-public final class TooManyObserversException extends ConsistencyError {
+    public static final TransactionId of(long number) {
+        return new TransactionId(number);
+    }
 
-    private static final long                        serialVersionUID = -1059588522731393631L;
+    private final long number;
 
-    private final DefaultMap<Observer, Set<Mutable>> observers;
-    private final UniverseTransaction                universeTransaction;
+    private TransactionId(long number) {
+        this.number = number;
+    }
 
-    public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
-        this.observers = observers;
-        this.universeTransaction = universeTransaction;
+    public long number() {
+        return number;
     }
 
     @Override
-    public String getMessage() {
-        String observersMap = universeTransaction.preState().get(() -> observers.map(String::valueOf).collect(Collectors.joining("\n  ")));
-        return getSimpleMessage() + ":\n" + observersMap;
+    public String toString() {
+        return "TX" + Long.toString(number);
     }
 
-    public String getSimpleMessage() {
-        return super.getMessage();
+    @Override
+    public int hashCode() {
+        return Long.hashCode(number);
     }
 
-    public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
-    }
-
-    public DefaultMap<Observer, Set<Mutable>> getObservers() {
-        return observers;
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (!(obj instanceof TransactionId)) {
+            return false;
+        } else {
+            TransactionId other = (TransactionId) obj;
+            return number == other.number;
+        }
     }
 
 }

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,16 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Optional;
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
 
-import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
-            Constant.of("D_CONSTRUCTED", (Newable) null);
+            Constant.of("D_CONSTRUCTED", (Newable) null, durable);
 
     public static Construction of(Reason reason) {
         return new Construction(reason);
@@ -72,22 +71,6 @@ public class Construction extends IdentifiedByArray {
         return super.size() != 3;
     }
 
-    protected Set<Newable> derivers() {
-        Set<Newable> result = Set.of();
-        if (isDerived()) {
-            if (object() instanceof Newable) {
-                result = result.add((Newable) object());
-            }
-            for (int i = 0; i < super.size(); i++) {
-                Object object = super.get(i);
-                if (object instanceof Newable && object != Mutable.THIS) {
-                    result = result.add((Newable) object);
-                }
-            }
-        }
-        return result;
-    }
-
     public static abstract class Reason extends IdentifiedByArray {
 
         protected Reason(Mutable thiz, Object[] identity) {
@@ -116,111 +99,6 @@ public class Construction extends IdentifiedByArray {
         }
 
         public abstract Direction direction();
-
-    }
-
-    public static final class MatchInfo {
-
-        private final Newable              newable;
-        private final Map<Reason, Newable> constructions;
-
-        private Object                     identity;
-        private Boolean                    isCarvedInStone;
-        private Set<Newable>               notDerivedSources;
-        private Comparable                 sortKey;
-        private Set<Direction>             directions;
-
-        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions) {
-            return new MatchInfo(newable, constructions);
-        }
-
-        private MatchInfo(Newable newable, Map<Reason, Newable> constructions) {
-            this.newable = newable;
-            this.constructions = constructions;
-        }
-
-        public boolean mustBeTheSame(MatchInfo from) {
-            return newable().dNewableType().equals(from.newable().dNewableType()) && //
-                    from.directions().noneMatch(directions()::contains) && //
-                    (from.sources().contains(newable()) || //
-                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
-        }
-
-        public void mergeIn(MatchInfo from) {
-            directions = directions().addAll(from.directions());
-        }
-
-        public Set<Direction> directions() {
-            if (directions == null) {
-                Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
-                Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
-                if (local.isPresent()) {
-                    reasons = reasons.add(local.get());
-                }
-                directions = reasons.map(Reason::direction).toSet();
-            }
-            return directions;
-        }
-
-        public boolean hasUnidentifiedSource() {
-            Set<Newable> sources = sources();
-            return sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).anyMatch(n -> n.dMatchingIdentity() == null);
-        }
-
-        public Newable newable() {
-            return newable;
-        }
-
-        public Object identity() {
-            if (identity == null) {
-                identity = newable.dMatchingIdentity();
-                if (identity == null) {
-                    identity = ConstantState.NULL;
-                }
-            }
-            return identity == ConstantState.NULL ? null : identity;
-        }
-
-        public Comparable sortKey() {
-            if (sortKey == null) {
-                Set<Newable> sources = sources();
-                sortKey = sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
-            }
-            return sortKey;
-        }
-
-        private Set<Newable> sources() {
-            if (notDerivedSources == null) {
-                notDerivedSources = newable.dSources();
-            }
-            return notDerivedSources;
-        }
-
-        public boolean isCarvedInStone() {
-            if (isCarvedInStone == null) {
-                isCarvedInStone = newable.dDirectConstruction() != null;
-            }
-            return isCarvedInStone;
-        }
-
-        @Override
-        public int hashCode() {
-            return newable.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof MatchInfo && newable.equals(((MatchInfo) other).newable);
-        }
-
-        @Override
-        public String toString() {
-            return newable.toString();
-        }
-
-        public String asString() {
-            return newable() + ":" + directions().toString().substring(3) + newable().dSources().toString().substring(3);
-        }
 
     }
 

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -31,7 +31,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         return new NonCheckingObserver<>(id, action, initPriority);
     }
 
-    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<M, V> setable, Function<M, V> value, Priority initPriority) {
+    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
         return new NonCheckingObserver<>(setable, value, initPriority);
     }
 
@@ -73,6 +73,12 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
         @SuppressWarnings("rawtypes")
         @Override
         protected void checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+        }
+
+        @Override
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
+            return priority;
         }
 
     }

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,12 +17,16 @@ package org.modelingvalue.dclare.test.support;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 
 @SuppressWarnings("unused")
 public class TestUniverse extends TestMutable implements Universe {
-
-    public static final Direction INIT = Direction.of("INIT");
 
     public static TestUniverse of(Object id, TestMutableClass clazz) {
         return new TestUniverse(id, clazz);
@@ -45,12 +49,12 @@ public class TestUniverse extends TestMutable implements Universe {
         scheduler.start();
         Universe.super.init();
         universeTransaction = LeafTransaction.getCurrent().universeTransaction();
-        imperativeTransaction = universeTransaction.addImperative("$TEST_CONNECTOR", (pre, post, last) -> {
-            pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEachOrdered(e -> {
+        imperativeTransaction = universeTransaction.addImperative("TEST", (pre, post, last, setted) -> {
+            pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
                     if (n.dDirectConstruction() == null) {
-                        TestNewable.construct(n, TestUniverse.INIT, "init" + uniqueInt());
+                        TestNewable.construct(n, "init" + uniqueInt());
                     }
                 }
             });

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -54,10 +54,12 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     private final Function<O, T> deriver;
+    private final boolean        durable;
 
     protected Constant(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.deriver = deriver;
+        this.durable = CoreSetableModifier.durable.in(modifiers);
     }
 
     public Function<O, T> deriver() {
@@ -67,6 +69,10 @@ public class Constant<O, T> extends Setable<O, T> {
     @Override
     protected Constant<O, T> constant() {
         return this;
+    }
+
+    public boolean isDurable() {
+        return durable;
     }
 
     @Override

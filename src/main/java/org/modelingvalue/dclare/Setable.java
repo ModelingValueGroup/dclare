@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,15 +17,26 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.OutOfScopeException;
+import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
-    private static final Context<Boolean> MOVING = Context.of(false);
+    public static final Context<Boolean> MOVING = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
@@ -57,6 +68,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Entry<Setable, Object>                 nullEntry;
     private final boolean                                plumbing;
     private final boolean                                synthetic;
+    private final boolean                                doNotMerge;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -82,6 +94,7 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.doNotMerge = CoreSetableModifier.doNotMerge.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -101,6 +114,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected boolean deduplicate(T value) {
         return value instanceof ContainingCollection;
+    }
+
+    public boolean doNotMerge() {
+        return doNotMerge;
     }
 
     public boolean isReference() {
@@ -139,7 +156,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected void changed(LeafTransaction tx, O object, T preValue, T postValue) {
+    protected final void changed(LeafTransaction tx, O object, T preValue, T postValue) {
         init(postValue);
         if (changed != null) {
             changed.accept(tx, object, preValue, postValue);
@@ -229,12 +246,12 @@ public class Setable<O, T> extends Getable<O, T> {
     public static <T, E> void diff(T pre, T post, Consumer<E> added, Consumer<E> removed) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ((ContainingCollection<E>) pre).compare((ContainingCollection<E>) post).forEachOrdered(d -> {
-                if (d[0] == null) {
+                if (d[1] != null) {
                     for (E a : d[1]) {
                         added.accept(a);
                     }
                 }
-                if (d[1] == null) {
+                if (d[0] != null) {
                     for (E e : d[0]) {
                         removed.accept(e);
                     }

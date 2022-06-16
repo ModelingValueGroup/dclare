@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,16 +15,25 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.concurrent.*;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
+import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.ImperativeTransaction;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends Setable<M, Object>> implements SupplierAndConsumer<String> {
     private final String                         name;
@@ -106,7 +115,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
      *            indication if this is the last delta in a sequence
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected void queueDelta(State pre, State post, Boolean last) {
+    protected void queueDelta(State pre, State post, Boolean last, DefaultMap<Object, Set<Setable>> setted) {
         Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
@@ -197,7 +206,6 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         private Object currentOldValue;
         private Object currentNewValue;
 
-        @SuppressWarnings("rawtypes")
         private ToJsonDeltas(Map<Object, Map<Setable, Pair<Object, Object>>> root) {
             super(root);
         }
@@ -271,7 +279,6 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             return getLevel() < 2 ? null : super.makeMap();
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         protected String makeMapKey(String key) {
             switch (getLevel()) {
@@ -279,11 +286,11 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 currentMutable = helper.deserializeMutable(key);
                 break;
             case 2:
-                //noinspection unchecked
+                //noinspection
                 currentSetable = helper.deserializeSetable(helper.getMutableClass(currentMutable), key);
                 break;
             }
-            return super.makeMapKey(key);
+            return super.makeMapKey(key).toString();
         }
 
         @Override
@@ -292,11 +299,11 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
 
         @Override
-        protected List<Object> makeArrayEntry(List<Object> l, Object o) {
+        protected List<Object> makeArrayEntry(List<Object> l, int index, Object o) {
             if (l != null) {
-                return super.makeArrayEntry(l, o);
+                return super.makeArrayEntry(l,index, o);
             }
-            switch (getIndex()) {
+            switch (index) {
             case 0:
                 //currentOldValue = helper.deserializeValue(currentSetable, o);
                 break;

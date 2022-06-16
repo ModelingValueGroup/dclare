@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2021 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,9 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
@@ -86,20 +91,22 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
-        return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
+        return state().getProperties(object).map(Entry::getKey);
     }
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
-        if (priority == Priority.forward || priority == Priority.urgent) {
-            set(object, Priority.backward.actions, Set::remove, action);
+        for (int i = priority.nr + 1; i < Priority.values().length; i++) {
+            set(object, Priority.values()[i].actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
-                set(container, Priority.backward.children, Set::remove, object);
+            for (int i = priority.nr + 1; i < Priority.values().length; i++) {
+                if (current(object, Priority.values()[i].actions).isEmpty() && current(object, Priority.values()[i].children).isEmpty()) {
+                    set(container, Priority.values()[i].children, Set::remove, object);
+                }
             }
             object = container;
             container = dParent(object);
@@ -153,6 +160,6 @@ public abstract class LeafTransaction extends Transaction {
     protected <O> void trigger(Observed<O, ?> observed, O o) {
     }
 
-    public abstract boolean isChanged();
+    public abstract Direction direction();
 
 }
