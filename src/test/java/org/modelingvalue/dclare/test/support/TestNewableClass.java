@@ -21,9 +21,11 @@ import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.util.SerializableConsumer;
 import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.Triple;
 import org.modelingvalue.dclare.Action;
 import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.LeafModifier;
 import org.modelingvalue.dclare.Setable;
 
 @SuppressWarnings({"unused", "rawtypes"})
@@ -59,26 +61,26 @@ public class TestNewableClass extends TestMutableClass {
 
     @Override
     @SuppressWarnings("unchecked")
-    public TestNewableClass observe(SerializableConsumer<TestMutable> action) {
-        return (TestNewableClass) super.observe(direction, action);
+    public TestNewableClass observe(SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
+        return (TestNewableClass) super.observe(action, modifiers);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
-        return (TestNewableClass) super.observe(direction, action);
+    public <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
+        return (TestNewableClass) super.observe(setable, value, modifiers);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-        return (TestNewableClass) super.observe(direction, setable, value);
+    public TestNewableClass observe(SerializablePredicate<TestMutable> predicate, SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
+        return (TestNewableClass) super.observe(predicate, action, modifiers);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-        return (TestNewableClass) super.observe(direction, setable, value);
+    public <V> TestNewableClass observe(SerializablePredicate<TestMutable> predicate, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
+        return (TestNewableClass) super.observe(predicate, setable, value, modifiers);
     }
 
     @Override

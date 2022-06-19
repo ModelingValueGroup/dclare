@@ -41,60 +41,22 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action) {
-        return new Observer<M>(id, action, Priority.forward);
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+        return new Observer<M>(id, action, modifiers);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction direction) {
-        return new Observer<M>(id, action, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Predicate<M> predicate, Consumer<M> action, Direction direction) {
-        return new Observer<M>(id, predicate, action, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new Observer<M>(id, action, initPriority);
-    }
-
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Direction direction, Priority initPriority) {
-        return new Observer<M>(id, action, direction, initPriority);
+    public static <M extends Mutable> Observer<M> of(Object id, Predicate<M> predicate, Consumer<M> action, LeafModifier... modifiers) {
+        return new Observer<M>(id, predicate, action, modifiers);
     }
 
     @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value) {
-        return new Observer<M>(id, setable, value, DEFAULT_DIRECTION, Priority.forward);
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value, LeafModifier... modifiers) {
+        return new Observer<M>(id, setable, value, modifiers);
     }
 
     @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
-        return new Observer<M>(id, setable, value, DEFAULT_DIRECTION, initPriority);
-    }
-
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value, Direction direction) {
-        return new Observer<M>(id, setable, value, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Function<M, V> value, Direction direction, Priority initPriority) {
-        return new Observer<M>(id, setable, value, direction, initPriority);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value) {
-        return new Observer<M>(id, setable, predicate, value, DEFAULT_DIRECTION, Priority.forward);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value, Priority initPriority) {
-        return new Observer<M>(id, setable, predicate, value, DEFAULT_DIRECTION, initPriority);
-    }
-
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value, Direction direction) {
-        return new Observer<M>(id, setable, predicate, value, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<? super M, V> setable, Predicate<M> predicate, Function<M, V> value, Direction direction, Priority initPriority) {
-        return new Observer<M>(id, setable, predicate, value, direction, initPriority);
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Predicate<M> predicate, Function<M, V> value, LeafModifier... modifiers) {
+        return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
     public final Traces                         traces;
@@ -103,6 +65,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private final Constructed                   constructed;
     @SuppressWarnings("rawtypes")
     private final Set<Setable<O, ?>>            targets;
+    private final boolean                       anonymous;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -112,50 +75,41 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    @SuppressWarnings("unchecked")
-    protected Observer(Object id, Consumer<O> action, Priority initPriority) {
-        this(id, action, DEFAULT_DIRECTION, initPriority);
+    protected Observer(Object id, Consumer<O> action, LeafModifier... modifiers) {
+        this(id, action, Set.of(), modifiers);
     }
 
-    protected Observer(Object id, Consumer<O> action, Direction direction, Priority initPriority) {
-        this(id, action, direction, initPriority, Set.of());
-    }
-
-    @SuppressWarnings("unchecked")
-    protected Observer(Object id, Consumer<O> action, Priority initPriority, @SuppressWarnings("rawtypes") Set<Setable<O, ?>> targets) {
-        this(id, action, DEFAULT_DIRECTION, initPriority, targets);
-    }
-
-    protected Observer(Object id, Predicate<O> predicate, Consumer<O> action, Direction direction, Priority initPriority) {
+    protected Observer(Object id, Predicate<O> predicate, Consumer<O> action, LeafModifier... modifiers) {
         this(id, o -> {
             if (predicate.test(o)) {
                 action.accept(o);
             }
-        }, direction, initPriority, Set.of());
+        }, Set.of(), modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable setable, Function<O, T> value, Direction direction, Priority initPriority) {
-        this(id, o -> setable.set(o, value.apply(o)), direction, initPriority, Set.of(setable));
+    protected <T> Observer(Object id, Setable<O, T> setable, Function<O, T> value, LeafModifier... modifiers) {
+        this(id, o -> setable.set(o, value.apply(o)), Set.of(setable), modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable setable, Predicate<O> predicate, Function<O, T> value, Direction direction, Priority initPriority) {
+    protected <T> Observer(Object id, Setable<O, T> setable, Predicate<O> predicate, Function<O, T> value, LeafModifier... modifiers) {
         this(id, o -> {
             if (predicate.test(o)) {
                 setable.set(o, value.apply(o));
             }
-        }, direction, initPriority, Set.of(setable));
+        }, Set.of(setable), modifiers);
     }
 
     @SuppressWarnings("rawtypes")
-    protected Observer(Object id, Consumer<O> action, Direction direction, Priority initPriority, Set<Setable<O, ?>> targets) {
-        super(id, action, direction, initPriority);
+    protected Observer(Object id, Consumer<O> action, Set<Setable<O, ?>> targets, LeafModifier... modifiers) {
+        super(id, action, modifiers);
         traces = new Traces(Pair.of(this, "TRACES"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
         this.targets = targets;
+        this.anonymous = LeafModifier.anonymous.in(modifiers);
     }
 
     public Observerds observeds() {
@@ -262,7 +216,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, CoreSetableModifier.plumbing);
+            }, SetableModifier.plumbing);
         }
 
         public Observer observer() {
@@ -286,7 +240,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, null, null, null, CoreSetableModifier.plumbing);
+            super(Pair.of(observer, "exception"), null, null, null, null, SetableModifier.plumbing);
             this.observer = observer;
         }
 
@@ -346,7 +300,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         }
                     }
                 }
-            }, CoreSetableModifier.plumbing, CoreSetableModifier.doNotMerge);
+            }, SetableModifier.plumbing, SetableModifier.doNotMerge);
         }
 
         @Override
@@ -363,6 +317,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     public Set<Setable<O, ?>> targets() {
         return targets;
+    }
+
+    public boolean anonymous() {
+        return anonymous;
     }
 
 }

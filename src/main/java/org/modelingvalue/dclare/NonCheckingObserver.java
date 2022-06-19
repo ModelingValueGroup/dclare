@@ -23,25 +23,21 @@ import org.modelingvalue.collections.Set;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action) {
-        return new NonCheckingObserver<>(id, action, Priority.forward);
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+        return new NonCheckingObserver<>(id, action, modifiers);
     }
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new NonCheckingObserver<>(id, action, initPriority);
+    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<M, V> setable, Function<M, V> value, LeafModifier... modifiers) {
+        return new NonCheckingObserver<>(setable, value, modifiers);
     }
 
-    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<? super M, V> setable, Function<M, V> value, Priority initPriority) {
-        return new NonCheckingObserver<>(setable, value, initPriority);
-    }
-
-    protected NonCheckingObserver(Object id, Consumer<O> action, Priority initPriority) {
-        super(id, action, initPriority, Set.of());
+    protected NonCheckingObserver(Object id, Consumer<O> action, LeafModifier... modifiers) {
+        super(id, action, Set.of(), modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected NonCheckingObserver(Setable setable, Function value, Priority initPriority) {
-        super(setable, m -> setable.set(m, value.apply(m)), initPriority, Set.of(setable));
+    protected <T> NonCheckingObserver(Setable<O, T> setable, Function<O, T> value, LeafModifier... modifiers) {
+        super(setable, setable, value, modifiers);
     }
 
     @Override

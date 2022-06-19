@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -75,9 +75,9 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.plumbing = CoreSetableModifier.plumbing.in(modifiers);
-        this.containment = CoreSetableModifier.containment.in(modifiers);
-        this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
+        this.plumbing = SetableModifier.plumbing.in(modifiers);
+        this.containment = SetableModifier.containment.in(modifiers);
+        this.synthetic = SetableModifier.synthetic.in(modifiers);
         this.changed = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
@@ -94,7 +94,7 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
-        this.doNotMerge = CoreSetableModifier.doNotMerge.in(modifiers);
+        this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")

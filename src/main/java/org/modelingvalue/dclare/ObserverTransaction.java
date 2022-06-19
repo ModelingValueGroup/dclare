@@ -373,7 +373,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, State preState, State postState, Concurrent<Set<Boolean>> delay) {
+    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState, Concurrent<Set<Boolean>> delay) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ContainingCollection<Object>[] result = new ContainingCollection[]{(ContainingCollection<Object>) post};
             Observed<O, ContainingCollection<Object>> many = (Observed<O, ContainingCollection<Object>>) observed;
@@ -405,13 +405,13 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, State preState, State postState) {
+    private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
         T before = preState.get(object, observed);
         return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
     }
 
     @SuppressWarnings("rawtypes")
-    private boolean isChildChanged(Object object, State preState, State postState) {
+    private boolean isChildChanged(Object object, IState preState, IState postState) {
         if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
             TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
             return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
@@ -495,7 +495,7 @@ public class ObserverTransaction extends ActionTransaction {
         return universeTransaction().preDeltaState();
     }
 
-    protected State postDeltaState() {
+    protected IState postDeltaState() {
         return universeTransaction().postDeltaState();
     }
 

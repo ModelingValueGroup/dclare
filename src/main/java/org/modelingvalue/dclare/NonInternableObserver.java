@@ -20,16 +20,12 @@ import java.util.function.Consumer;
 @SuppressWarnings("unused")
 public class NonInternableObserver<O extends Mutable> extends Observer<O> {
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action) {
-        return new NonInternableObserver<>(id, action, Priority.forward);
+    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+        return new NonInternableObserver<>(id, action, modifiers);
     }
 
-    public static <M extends Mutable> NonInternableObserver<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new NonInternableObserver<>(id, action, initPriority);
-    }
-
-    protected NonInternableObserver(Object id, Consumer<O> action, Priority initPriority) {
-        super(id, action, initPriority);
+    protected NonInternableObserver(Object id, Consumer<O> action, LeafModifier... modifiers) {
+        super(id, action, modifiers);
     }
 
     @Override

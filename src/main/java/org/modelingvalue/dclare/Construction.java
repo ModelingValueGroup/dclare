@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+import static org.modelingvalue.dclare.SetableModifier.durable;
 
 import org.modelingvalue.collections.util.IdentifiedByArray;
 

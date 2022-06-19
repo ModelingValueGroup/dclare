@@ -17,8 +17,8 @@ package org.modelingvalue.dclare;
 
 public class ReadOnly extends Leaf {
 
-    protected ReadOnly(Object id, Priority initPriority) {
-        super(id, initPriority);
+    protected ReadOnly(Object id, LeafModifier... modifiers) {
+        super(id, modifiers);
     }
 
     @Override

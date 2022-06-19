@@ -25,7 +25,7 @@ import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.LeafModifier;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Observer;
@@ -60,55 +60,35 @@ public class TestMutableClass implements MutableClass {
     }
 
     @SuppressWarnings("unchecked")
-    public TestMutableClass observe(SerializableConsumer<TestMutable> action) {
-        return observe(Observer.DEFAULT_DIRECTION, action);
-    }
-
-    @SuppressWarnings("unchecked")
-    public TestMutableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
+    public TestMutableClass observe(SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
         action = action.of();
-        Observer<?> of = Observer.of(action, action, direction);
+        Observer<?> of = Observer.of(action, action, modifiers);
         observers.update(Set::add, of);
         return this;
     }
 
     @SuppressWarnings("unchecked")
-    public <V> TestMutableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-        return observe(Observer.DEFAULT_DIRECTION, setable, value);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <V> TestMutableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+    public <V> TestMutableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
         value = value.of();
-        Observer<?> of = Observer.of(Pair.of(setable, value), setable, value, direction);
+        Observer<?> of = Observer.of(Pair.of(setable, value), setable, value, modifiers);
         observers.update(Set::add, of);
         return this;
     }
 
     @SuppressWarnings("unchecked")
-    public TestMutableClass observe(SerializablePredicate<TestMutable> predicate, SerializableConsumer<TestMutable> action) {
-        return observe(Observer.DEFAULT_DIRECTION, predicate, action);
-    }
-
-    @SuppressWarnings("unchecked")
-    public TestMutableClass observe(Direction direction, SerializablePredicate<TestMutable> predicate, SerializableConsumer<TestMutable> action) {
+    public TestMutableClass observe(SerializablePredicate<TestMutable> predicate, SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
         predicate = predicate.of();
         action = action.of();
-        Observer<?> of = Observer.of(Pair.of(predicate, action), predicate, action, direction);
+        Observer<?> of = Observer.of(Pair.of(predicate, action), predicate, action, modifiers);
         observers.update(Set::add, of);
         return this;
     }
 
     @SuppressWarnings("unchecked")
-    public <V> TestMutableClass observe(SerializablePredicate<TestMutable> predicate, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-        return observe(Observer.DEFAULT_DIRECTION, predicate, setable, value);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <V> TestMutableClass observe(Direction direction, SerializablePredicate<TestMutable> predicate, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
+    public <V> TestMutableClass observe(SerializablePredicate<TestMutable> predicate, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
         predicate = predicate.of();
         value = value.of();
-        Observer<?> of = Observer.of(Triple.of(predicate, setable, value), setable, predicate, value, direction);
+        Observer<?> of = Observer.of(Triple.of(predicate, setable, value), setable, predicate, value, modifiers);
         observers.update(Set::add, of);
         return this;
     }

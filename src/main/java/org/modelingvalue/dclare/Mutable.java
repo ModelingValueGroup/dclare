@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+import static org.modelingvalue.dclare.SetableModifier.plumbing;
 
 import java.util.function.Predicate;
 

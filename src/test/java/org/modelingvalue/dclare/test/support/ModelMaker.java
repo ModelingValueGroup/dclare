@@ -18,7 +18,7 @@ package org.modelingvalue.dclare.test.support;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
+import static org.modelingvalue.dclare.SetableModifier.containment;
 
 import java.util.function.Predicate;
 

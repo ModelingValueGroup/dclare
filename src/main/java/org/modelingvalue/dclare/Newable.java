@@ -15,8 +15,8 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotMerge;
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+import static org.modelingvalue.dclare.SetableModifier.doNotMerge;
+import static org.modelingvalue.dclare.SetableModifier.plumbing;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;

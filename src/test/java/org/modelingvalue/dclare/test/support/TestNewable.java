@@ -18,6 +18,7 @@ package org.modelingvalue.dclare.test.support;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.util.SerializableConsumer;
 import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.SerializableUnaryOperator;
 import org.modelingvalue.dclare.*;
 
@@ -143,26 +144,28 @@ public class TestNewable extends TestMutable implements Newable {
 
         @Override
         @SuppressWarnings("unchecked")
-        public final TestNewableClass observe(SerializableConsumer<TestMutable> action) {
-            return (TestNewableClass) super.observe(direction(), this::isActive, action);
+        public final TestNewableClass observe(SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
+            return super.observe(this::isActive, action, FeatureModifier.add(modifiers, direction(), LeafModifier.anonymous));
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public final TestNewableClass observe(Direction direction, SerializableConsumer<TestMutable> action) {
-            return (TestNewableClass) super.observe(direction, this::isActive, action);
+        public final <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
+            return super.observe(this::isActive, setable, value, FeatureModifier.add(modifiers, direction(), LeafModifier.anonymous));
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public final <V> TestNewableClass observe(Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-            return (TestNewableClass) super.observe(direction(), this::isActive, setable, value);
+        public TestNewableClass observe(SerializablePredicate<TestMutable> predicate, SerializableConsumer<TestMutable> action, LeafModifier... modifiers) {
+            SerializablePredicate<TestMutable> a = this::isActive;
+            return (TestNewableClass) super.observe((t) -> a.test(t) && predicate.test(t), action, FeatureModifier.add(modifiers, direction(), LeafModifier.anonymous));
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public final <V> TestNewableClass observe(Direction direction, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value) {
-            return (TestNewableClass) super.observe(direction, this::isActive, setable, value);
+        public <V> TestNewableClass observe(SerializablePredicate<TestMutable> predicate, Setable<TestMutable, V> setable, SerializableFunction<TestMutable, V> value, LeafModifier... modifiers) {
+            SerializablePredicate<TestMutable> a = this::isActive;
+            return (TestNewableClass) super.observe((t) -> a.test(t) && predicate.test(t), setable, value, FeatureModifier.add(modifiers, direction(), LeafModifier.anonymous));
         }
 
         private boolean isActive(TestMutable object) {

@@ -19,7 +19,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 
-public enum Priority implements Internable {
+public enum Priority implements LeafModifier, Internable {
 
     urgent(0),
 
@@ -46,7 +46,7 @@ public enum Priority implements Internable {
         private final boolean actions;
 
         private Queued(boolean actions, int nr) {
-            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, CoreSetableModifier.plumbing);
+            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, SetableModifier.plumbing);
             this.actions = actions;
         }
 

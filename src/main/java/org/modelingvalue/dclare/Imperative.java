@@ -17,16 +17,12 @@ package org.modelingvalue.dclare;
 
 public class Imperative extends Leaf {
 
-    public static Imperative of(Object id) {
-        return new Imperative(id, Priority.forward);
+    public static Imperative of(Object id, LeafModifier... modifiers) {
+        return new Imperative(id, modifiers);
     }
 
-    public static Imperative of(Object id, Priority initPriority) {
-        return new Imperative(id, initPriority);
-    }
-
-    protected Imperative(Object id, Priority initPriority) {
-        super(id, initPriority);
+    protected Imperative(Object id, LeafModifier... modifiers) {
+        super(id, modifiers);
     }
 
     @Override

@@ -36,7 +36,7 @@ import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public class State implements Serializable {
+public class State implements IState, Serializable {
     private static final long                                           serialVersionUID   = -3468784705870374732L;
 
     public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
@@ -67,6 +67,12 @@ public class State implements Serializable {
         return new State(universeTransaction, map);
     }
 
+    @Override
+    public State state() {
+        return this;
+    }
+
+    @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         return get(getProperties(object), (Setable<O, T>) property);
     }
@@ -265,15 +271,17 @@ public class State implements Serializable {
 
     public <R> R derive(Supplier<R> supplier) {
         ConstantState constantState = new ConstantState(universeTransaction::handleException);
+        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return derive(supplier, null, constantState);
+            return tx.derive(supplier, this, constantState);
         } finally {
+            universeTransaction.derivation.closeTransaction(tx);
             constantState.stop();
         }
     }
 
-    public <R> R derive(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
-        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
+        IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
             return tx.derive(supplier, this, original, constantState);
         } finally {

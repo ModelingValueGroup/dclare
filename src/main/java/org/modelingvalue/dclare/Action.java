@@ -31,34 +31,18 @@ public class Action<O extends Mutable> extends Leaf {
         }, Priority.forward);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action, Priority.forward);
-    }
-
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new Action<>(id, action, initPriority);
-    }
-
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction direction) {
-        return new Action<>(id, action, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Direction direction, Priority initPriority) {
-        return new Action<>(id, action, direction, initPriority);
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+        return new Action<>(id, action, modifiers);
     }
 
     private final Consumer<O> action;
     private final Direction   direction;
 
-    @SuppressWarnings("unchecked")
-    protected Action(Object id, Consumer<O> action, Priority initPriority) {
-        this(id, action, DEFAULT_DIRECTION, initPriority);
-    }
-
-    protected Action(Object id, Consumer<O> action, Direction direction, Priority initPriority) {
-        super(id, initPriority);
+    protected Action(Object id, Consumer<O> action, LeafModifier... modifiers) {
+        super(id, modifiers);
         this.action = action;
-        this.direction = direction;
+        Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
+        this.direction = dir == null ? DEFAULT_DIRECTION : dir;
     }
 
     @Override

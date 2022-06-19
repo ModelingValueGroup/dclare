@@ -16,7 +16,7 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.CoreSetableModifier.*;
+import static org.modelingvalue.dclare.SetableModifier.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.TestNewable.create;
 import static org.modelingvalue.dclare.test.support.TestNewable.n;
@@ -109,30 +109,30 @@ public class NewableTests {
         Direction a2b = Direction.of("A2B");
         Direction b2a = Direction.of("B2A");
 
-        U.observe(b2a, cs, u -> {
+        U.observe(cs, u -> {
             Set<TestNewable> bs = cs.get(u).filter(B::isInstance).toSet();
             return bs.addAll(bs.map(ar::get));
-        }).observe(a2b, cs, u -> {
+        }, b2a).observe(cs, u -> {
             Set<TestNewable> as = cs.get(u).filter(A::isInstance).toSet();
             return as.addAll(as.map(br::get));
-        });
+        }, a2b);
 
-        A.observe(a2b, br, a -> create(B, x -> x.//
-                observe(a2b, n, b -> n.get(a)).//
-                observe(a2b, bcs, b -> acs.get(a).map(br::get).toSet()).//
-                observe(a2b, bcr, b -> acr.get(a) != null ? br.get(acr.get(a)) : null))//
-        );
-        B.observe(b2a, ar, b -> create(A, x -> x.//
-                observe(b2a, n, a -> n.get(b)). //
-                observe(b2a, acs, a -> bcs.get(b).map(ar::get).toSet()). //
-                observe(b2a, acr, a -> bcr.get(b) != null ? ar.get(bcr.get(b)) : null))//
-        );
-        AC.observe(a2b, br, ac -> create(BC, x -> x.//
-                observe(a2b, n, bc -> n.get(ac)))//
-        );
-        BC.observe(b2a, ar, bc -> create(AC, x -> x.//
-                observe(b2a, n, ac -> n.get(bc)))//
-        );
+        A.observe(br, a -> create(B, x -> x.//
+                observe(n, b -> n.get(a)).//
+                observe(bcs, b -> acs.get(a).map(br::get).toSet()).//
+                observe(bcr, b -> acr.get(a) != null ? br.get(acr.get(a)) : null))//
+                , a2b);
+        B.observe(ar, b -> create(A, x -> x.//
+                observe(n, a -> n.get(b)). //
+                observe(acs, a -> bcs.get(b).map(ar::get).toSet()). //
+                observe(acr, a -> bcr.get(b) != null ? ar.get(bcr.get(b)) : null))//
+                , b2a);
+        AC.observe(br, ac -> create(BC, x -> x.//
+                observe(n, bc -> n.get(ac)))//
+                , a2b);
+        BC.observe(ar, bc -> create(AC, x -> x.//
+                observe(n, ac -> n.get(bc)))//
+                , b2a);
 
         TestUniverse universe = TestUniverse.of("universe", U);
         UniverseTransaction utx = new UniverseTransaction(universe, THE_POOL, config);
@@ -390,20 +390,20 @@ public class NewableTests {
         Direction fb2ooDir = Direction.of("FB2OO");
 
         if (oo2fb) {
-            U.observe(oo2fbDir, fbms, u -> ooms.get(u).map(mfbm::get).toSet());
-            OOM.observe(oo2fbDir, mfbm, oo -> create(FBM, x -> x.//
+            U.observe(fbms, u -> ooms.get(u).map(mfbm::get).toSet(), oo2fbDir);
+            OOM.observe(mfbm, oo -> create(FBM, x -> x.//
                     observe(n, fb -> n.get(oo)). //
                     observe(ots, fb -> cls.get(oo).map(mobt::get).toSet()). //
                     observe(fts, fb -> cls.get(oo).flatMap(refs::get).map(mfat::get).notNull().toSet())) //
-            );
-            CLS.observe(oo2fbDir, mobt, cl -> create(OBT, x -> x.//
+                    , oo2fbDir);
+            CLS.observe(mobt, cl -> create(OBT, x -> x.//
                     observe(n, ot -> n.get(cl))) //
-            );
-            REF.observe(oo2fbDir, mrol, rf -> create(ROL, x -> x.//
+                    , oo2fbDir);
+            REF.observe(mrol, rf -> create(ROL, x -> x.//
                     observe(n, rl -> n.get(rf)). //
                     observe(otr, rl -> typ.get(rf) != null ? mobt.get(typ.get(rf)) : null)) //
-            );
-            REF.observe(oo2fbDir, mfat, rf -> opp.get(rf) == null || compare(n.get(rf), n.get(opp.get(rf))) > 0 ? //
+                    , oo2fbDir);
+            REF.observe(mfat, rf -> opp.get(rf) == null || compare(n.get(rf), n.get(opp.get(rf))) > 0 ? //
                     create(FAT, x -> x.//
                             observe(right, ft -> mrol.get(rf)). //
                             observe(left, ft -> opp.get(rf) == null ? //
@@ -411,25 +411,25 @@ public class NewableTests {
                                             observe(n, rl -> "~"). //
                                             observe(otr, rl -> mobt.get((TestNewable) rf.dParent()))//
                                     ) : mrol.get(opp.get(rf))) //
-                    ) : null);
+                    ) : null, oo2fbDir);
         }
 
         if (fb2oo) {
-            U.observe(fb2ooDir, ooms, u -> fbms.get(u).map(moom::get).toSet());
-            FBM.observe(fb2ooDir, moom, fb -> create(OOM, x -> x.//
+            U.observe(ooms, u -> fbms.get(u).map(moom::get).toSet(), fb2ooDir);
+            FBM.observe(moom, fb -> create(OOM, x -> x.//
                     observe(n, oo -> n.get(fb)). //
                     observe(cls, oo -> ots.get(fb).map(mcls::get).toSet()) //
-            ));
-            OBT.observe(fb2ooDir, mcls, ot -> create(CLS, x -> x.//
+            ), fb2ooDir);
+            OBT.observe(mcls, ot -> create(CLS, x -> x.//
                     observe(n, cl -> n.get(ot)). //
                     observe(refs, cl -> _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet())//
-            ));
-            ROL.observe(fb2ooDir, mref, rl -> otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? //
+            ), fb2ooDir);
+            ROL.observe(mref, rl -> otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? //
                     create(REF, x -> x.//
                             observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). //
                             observe(typ, rf -> otr.get(rl) != null ? mcls.get(otr.get(rl)) : null). //
                             observe(opp, rf -> mref.get(rlopp.get(rl)))//
-                    ) : null);
+                    ) : null, fb2ooDir);
         }
 
         // Instances

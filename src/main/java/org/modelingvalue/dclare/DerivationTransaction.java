@@ -20,6 +20,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -38,11 +39,9 @@ public class DerivationTransaction extends ReadOnlyTransaction {
         super(universeTransaction);
     }
 
-    private ConstantState       constantState;
-    private ObserverTransaction original;
+    private ConstantState constantState;
 
-    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, ConstantState constantState) {
-        this.original = original;
+    public <R> R derive(Supplier<R> action, State state, ConstantState constantState) {
         this.constantState = constantState;
         try {
             return get(action, state);
@@ -51,42 +50,15 @@ public class DerivationTransaction extends ReadOnlyTransaction {
             return null;
         } finally {
             this.constantState = null;
-            this.original = null;
         }
     }
 
-    @Override
-    public State current() {
-        return original != null ? original.current() : super.current();
+    protected <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
+        return object instanceof Mutable && getable instanceof Observed;
     }
 
-    private <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        if (object instanceof Mutable && getable instanceof Observed) {
-            if (original != null) {
-                T pre = original.preDeltaState().get(object, getable);
-                T post = original.postDeltaState().get(object, getable);
-                if (!Objects.equals(pre, post)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private <O, T> T getNonDerived(O object, Getable<O, T> getable) {
-        if (original != null) {
-            if (object instanceof Mutable && isOld((Mutable) object)) {
-                return original.postDeltaState().get(object, getable);
-            } else {
-                return original.state().get(object, getable);
-            }
-        }
+    protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         return super.get(object, getable);
-    }
-
-    private boolean isOld(Mutable object) {
-        return original.postDeltaState().get(object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @Override
@@ -121,7 +93,7 @@ public class DerivationTransaction extends ReadOnlyTransaction {
                     return value;
                 } else {
                     DERIVED.run(newDerived, () -> {
-                        for (Observer deriver : isChanged((Mutable) object) ? ((Mutable) object).dClass().dDerivers(observed) : ((Mutable) object).dAllDerivers(observed)) {
+                        for (Observer deriver : derivers((Mutable) object, observed)) {
                             deriver.run((Mutable) object);
                         }
                     });
@@ -135,13 +107,8 @@ public class DerivationTransaction extends ReadOnlyTransaction {
     }
 
     @SuppressWarnings("rawtypes")
-    private boolean isChanged(Mutable object) {
-        if (original != null && isOld(object)) {
-            TransactionId txid = original.postDeltaState().get(object, Mutable.D_CHANGE_ID);
-            return txid != null && txid.number() > original.preDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
-        } else {
-            return false;
-        }
+    protected Collection<Observer> derivers(Mutable object, Observed observed) {
+        return object.dAllDerivers(observed);
     }
 
     @Override
@@ -176,9 +143,6 @@ public class DerivationTransaction extends ReadOnlyTransaction {
 
     @Override
     public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
-        O result = supplier.get();
-        Construction cons = Construction.of(Mutable.THIS, Observer.DUMMY, reason);
-        set(result, Newable.D_DERIVED_CONSTRUCTIONS, Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons));
-        return result;
+        return null;
     }
 }

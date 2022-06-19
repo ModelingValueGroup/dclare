@@ -17,7 +17,7 @@ package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.util.Internable;
 
-public interface Direction extends Internable {
+public interface Direction extends LeafModifier, Internable {
 
     static Direction of(Object id) {
         return new DirectionImpl(id);
