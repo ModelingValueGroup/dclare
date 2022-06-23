@@ -33,7 +33,7 @@ public interface Mutable extends TransactionClass {
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, plumbing) {
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null) {
                                                                                        @SuppressWarnings("rawtypes")
                                                                                        @Override
                                                                                        protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
