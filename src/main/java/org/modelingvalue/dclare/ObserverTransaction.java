@@ -133,13 +133,6 @@ public class ObserverTransaction extends ActionTransaction {
         super.run(pre, universeTransaction);
     }
 
-    @Override
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
-        // return priority == Priority.forward && !direction().equals(action.direction()) ? Priority.deferred : priority;
-        return priority;
-    }
-
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observeds) {
         checkTooManyObserved(observeds);
@@ -340,11 +333,11 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             O result = (O) current(mutable(), observer().constructed()).get(reason);
             if (result == null) {
-                result = (O) preDeltaState().get(mutable(), observer().constructed()).get(reason);
+                result = (O) prevOuterStartState().get(mutable(), observer().constructed()).get(reason);
                 if (result == null) {
-                    result = (O) startState().get(mutable(), observer().constructed()).get(reason);
+                    result = (O) innerStartState().get(mutable(), observer().constructed()).get(reason);
                     if (result == null) {
-                        if (mutable() instanceof Newable && startState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                        if (mutable() instanceof Newable && innerStartState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
                             deferred.set(TRUE);
                             return null;
                         }
@@ -365,9 +358,9 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        post = rippleOut(object, observed, pre, post, startState(), state(), deferred);
+        post = rippleOut(object, observed, pre, post, innerStartState(), state(), deferred);
         if (!Objects.equals(pre, post)) {
-            post = rippleOut(object, observed, pre, post, preDeltaState(), postDeltaState(), backwards);
+            post = rippleOut(object, observed, pre, post, prevOuterStartState(), outerStartState(), backwards);
         }
         return post;
     }
@@ -395,10 +388,16 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             });
+            //            if (post != result[0]) {
+            //                System.err.println("!!!!!!!!!!!!!!! DELAY " + object + "." + observed + "=" + result[0] + "<-" + post);
+            //            }
             return (T) result[0];
         } else if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
                 isChangedBack(object, observed, pre, post, preState, postState)) {
             delay.set(TRUE);
+            //            if (postState == outerStartState()) {
+            //                System.err.println("!!!!!!!!!!!!!!! DELAY " + object + "." + observed + "=" + pre + "<-" + post);
+            //            }
             return pre;
         } else {
             return post;
@@ -412,11 +411,16 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("rawtypes")
     private boolean isChildChanged(Object object, IState preState, IState postState) {
-        if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
-            TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
-            return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
+        try {
+            if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
+                TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
+                return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
+            }
+            return false;
+        } catch (NullPointerException npe) {
+            System.err.println("!!!!!!!!!!!!!!!!!!!!!");
+            return false;
         }
-        return false;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -489,18 +493,6 @@ public class ObserverTransaction extends ActionTransaction {
                 return found.isPresent() ? map.put(found.get().getKey(), to.newable()) : map;
             }, from.newable());
         }
-    }
-
-    protected State preDeltaState() {
-        return universeTransaction().preDeltaState();
-    }
-
-    protected IState postDeltaState() {
-        return universeTransaction().postDeltaState();
-    }
-
-    protected State startState() {
-        return universeTransaction().startState();
     }
 
 }

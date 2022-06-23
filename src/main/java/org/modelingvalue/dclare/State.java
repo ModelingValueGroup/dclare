@@ -68,11 +68,6 @@ public class State implements IState, Serializable {
     }
 
     @Override
-    public State state() {
-        return this;
-    }
-
-    @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         return get(getProperties(object), (Setable<O, T>) property);
     }

@@ -52,6 +52,7 @@ public interface FeatureModifier<M extends FeatureModifier> {
         return null;
     }
 
+    @SafeVarargs
     static <M> M[] add(M[] modifiers, M... added) {
         modifiers = Arrays.copyOf(modifiers, modifiers.length + added.length);
         System.arraycopy(added, 0, modifiers, modifiers.length - added.length, added.length);

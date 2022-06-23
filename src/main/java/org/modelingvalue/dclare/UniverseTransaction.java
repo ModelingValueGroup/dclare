@@ -64,7 +64,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
     private final Action<Universe>                                                                     commit                  = Action.of("$commit");
-    private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans, Priority.urgent);
+    private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
@@ -75,6 +75,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.forward);
     private final UniverseStatistics                                                                   universeStatistics;
     private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
+    private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
     private final ConstantState                                                                        constantState           = new ConstantState(this::handleException);
     private final StatusProvider<Status>                                                               statusProvider          = new StatusProvider<>(new Status(Mood.starting, null, emptyState, null, Set.of()));
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
@@ -86,10 +87,10 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                history                 = List.of();
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
-    private State                                                                                      preDeltaState;
-    private IState                                                                                     postDeltaState;
-    private State                                                                                      orphansPreState;
-    private State                                                                                      startState;
+    private State                                                                                      preOrphansState;
+    private MutableState                                                                               outerStartState;
+    private State                                                                                      prevOuterStartState;
+    private State                                                                                      innerStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
     private boolean                                                                                    initialized;
@@ -97,7 +98,6 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                    timeTraveling;
     private boolean                                                                                    handling;                                                                                                   //TODO wire onto MoodManager
     private boolean                                                                                    stopped;                                                                                                    //TODO wire onto MoodManager
-    private boolean                                                                                    orphansDetected;
     private long                                                                                       transactionNumber;
 
     public class Status extends AbstractStatus {
@@ -353,48 +353,46 @@ public class UniverseTransaction extends MutableTransaction {
 
     @Override
     protected State run(State state) {
-        preDeltaState = state;
+        prevOuterStartState = state;
         tmpConstants = new ConstantState(this::handleException);
         try {
             do {
-                setPostDeltaState(state);
-                try {
-                    do {
-                        startState = state;
-                        state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
-                        state = super.run(state);
-                    } while (!killed && hasDeferredQueued(state));
-                } finally {
-                    startState = null;
-                }
-                preDeltaState = postDeltaState.state();
-                state = clearOrphans(state);
+                preOrphansState = state;
+                orphansDetected.set(null);
+                setOuterStartState(state);
+                boolean again;
+                do {
+                    again = false;
+                    innerStartState = state;
+                    state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
+                    state = super.run(state);
+                    if (!killed) {
+                        again = hasDeferredQueued(state);
+                        if (!again && orphansDetected.get() != Boolean.FALSE) {
+                            if (orphansDetected.get() == Boolean.TRUE) {
+                                preOrphansState = innerStartState;
+                            }
+                            state = trigger(state, universe(), clearOrphans, Priority.deferred);
+                            again = true;
+                        }
+                    }
+                } while (again);
+                prevOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
             } while (!killed && hasBackwardQueued(state));
             return state;
         } finally {
-            postDeltaState = null;
-            preDeltaState = null;
+            preOrphansState = null;
+            innerStartState = null;
+            outerStartState = null;
+            prevOuterStartState = null;
             tmpConstants.stop();
         }
     }
 
-    private State clearOrphans(State state) {
-        orphansPreState = preDeltaState;
-        try {
-            do {
-                State previous = state;
-                state = super.run(triggerAction(state, clearOrphans));
-                orphansPreState = previous;
-            } while (!killed && orphansDetected);
-            return state;
-        } finally {
-            orphansPreState = null;
-        }
-    }
-
-    protected void setPostDeltaState(IState state) {
-        postDeltaState = state;
+    protected void setOuterStartState(State state) {
+        state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
+        outerStartState = new MutableState(state);
     }
 
     private boolean hasBackwardQueued(State state) {
@@ -558,7 +556,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State postState = tx.state();
-        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = orphansPreState//
+        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preOrphansState//
                 .diff(postState, o -> {
                     if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
                         return !tx.toBeCleared((Mutable) o).isEmpty();
@@ -567,7 +565,7 @@ public class UniverseTransaction extends MutableTransaction {
                     }
                 }, ALL_SETTABLES)//
                 .toMap(Function.identity());
-        orphansDetected = !orphans.isEmpty();
+        orphansDetected.set(!orphans.isEmpty());
         orphans.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
 
@@ -695,16 +693,16 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    public State preDeltaState() {
-        return preDeltaState;
+    public MutableState outerStartState() {
+        return outerStartState;
     }
 
-    public IState postDeltaState() {
-        return postDeltaState;
+    public State prevOuterStartState() {
+        return prevOuterStartState;
     }
 
-    public State startState() {
-        return startState;
+    public State innerStartState() {
+        return innerStartState;
     }
 
     public ConstantState tmpConstants() {

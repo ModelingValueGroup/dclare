@@ -37,12 +37,14 @@ public class Action<O extends Mutable> extends Leaf {
 
     private final Consumer<O> action;
     private final Direction   direction;
+    private final boolean     preserved;
 
     protected Action(Object id, Consumer<O> action, LeafModifier... modifiers) {
         super(id, modifiers);
         this.action = action;
         Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
         this.direction = dir == null ? DEFAULT_DIRECTION : dir;
+        this.preserved = LeafModifier.preserved.in(modifiers);
     }
 
     @Override
@@ -75,6 +77,10 @@ public class Action<O extends Mutable> extends Leaf {
     @Override
     public String toString() {
         return (direction != DEFAULT_DIRECTION ? (direction + "::") : "") + super.toString();
+    }
+
+    public boolean preserved() {
+        return preserved;
     }
 
 }

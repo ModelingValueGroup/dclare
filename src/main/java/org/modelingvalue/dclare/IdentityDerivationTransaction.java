@@ -46,8 +46,8 @@ public class IdentityDerivationTransaction extends DerivationTransaction {
     @Override
     protected <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
         if (super.doDeriver(object, getable)) {
-            T pre = original.preDeltaState().get(object, getable);
-            T post = original.postDeltaState().get(object, getable);
+            T pre = original.prevOuterStartState().get(object, getable);
+            T post = original.outerStartState().get(object, getable);
             if (!Objects.equals(pre, post)) {
                 return false;
             } else {
@@ -61,14 +61,14 @@ public class IdentityDerivationTransaction extends DerivationTransaction {
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (object instanceof Mutable && isOld((Mutable) object)) {
-            return original.postDeltaState().get(object, getable);
+            return original.outerStartState().get(object, getable);
         } else {
             return original.state().get(object, getable);
         }
     }
 
     private boolean isOld(Mutable object) {
-        return original.postDeltaState().get(object, Mutable.D_PARENT_CONTAINING) != null;
+        return original.outerStartState().get(object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @SuppressWarnings("rawtypes")
@@ -80,8 +80,8 @@ public class IdentityDerivationTransaction extends DerivationTransaction {
     @SuppressWarnings("rawtypes")
     private boolean isChanged(Mutable object) {
         if (isOld(object)) {
-            TransactionId txid = original.postDeltaState().get(object, Mutable.D_CHANGE_ID);
-            return txid != null && txid.number() > original.preDeltaState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
+            TransactionId txid = original.outerStartState().get(object, Mutable.D_CHANGE_ID);
+            return txid != null && txid.number() > original.prevOuterStartState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
         } else {
             return false;
         }

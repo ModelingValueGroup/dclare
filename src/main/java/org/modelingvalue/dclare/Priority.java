@@ -21,15 +21,13 @@ import org.modelingvalue.collections.util.Pair;
 
 public enum Priority implements LeafModifier, Internable {
 
-    urgent(0),
+    forward(0),
 
-    forward(1),
+    deferred(1),
 
-    deferred(2),
+    backward(2),
 
-    backward(3),
-
-    scheduled(4);
+    scheduled(3);
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;

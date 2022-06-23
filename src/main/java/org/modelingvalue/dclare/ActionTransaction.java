@@ -97,15 +97,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    protected <O extends Mutable> Priority triggerPriority(O target, Action<O> action, Priority priority) {
-        return action().initPriority() == Priority.urgent && priority != Priority.urgent ? Priority.backward : priority;
-    }
-
-    @Override
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        super.trigger(target, action, triggerPriority(target, action, priority));
-    }
-
     protected String traceId() {
         return "leaf";
     }
@@ -147,6 +138,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
+        if (action().preserved() && object instanceof Mutable && !property.isPlumbing()) {
+            outerStartState().set(object, property, post);
+        }
         T[] oldNew = (T[]) new Object[2];
         if (currentSate.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
@@ -205,6 +199,18 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public Direction direction() {
         return action().direction();
+    }
+
+    protected MutableState outerStartState() {
+        return universeTransaction().outerStartState();
+    }
+
+    protected State prevOuterStartState() {
+        return universeTransaction().prevOuterStartState();
+    }
+
+    protected State innerStartState() {
+        return universeTransaction().innerStartState();
     }
 
 }
