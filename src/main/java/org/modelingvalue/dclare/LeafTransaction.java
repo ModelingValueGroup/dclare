@@ -143,9 +143,7 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         Newable result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction) || LeafTransaction.getCurrent() instanceof DerivationTransaction) {
-            Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
-        }
+        Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
         return (O) result;
     }
 
