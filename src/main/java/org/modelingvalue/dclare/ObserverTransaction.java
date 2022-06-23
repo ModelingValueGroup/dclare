@@ -411,16 +411,11 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("rawtypes")
     private boolean isChildChanged(Object object, IState preState, IState postState) {
-        try {
-            if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
-                TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
-                return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
-            }
-            return false;
-        } catch (NullPointerException npe) {
-            System.err.println("!!!!!!!!!!!!!!!!!!!!!");
-            return false;
+        if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
+            TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
+            return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
         }
+        return false;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
