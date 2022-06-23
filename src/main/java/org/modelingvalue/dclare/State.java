@@ -280,7 +280,7 @@ public class State implements IState, Serializable {
         try {
             return tx.derive(supplier, this, original, constantState);
         } finally {
-            universeTransaction.derivation.closeTransaction(tx);
+            universeTransaction.identityDerivation.closeTransaction(tx);
         }
     }
 

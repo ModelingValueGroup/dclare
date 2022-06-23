@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Construction.Reason;
 
-public class IdentityDerivationTransaction extends DerivationTransaction {
+public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
     protected IdentityDerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
