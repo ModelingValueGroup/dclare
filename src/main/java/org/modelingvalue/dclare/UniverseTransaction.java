@@ -359,6 +359,7 @@ public class UniverseTransaction extends MutableTransaction {
             do {
                 preOrphansState = state;
                 orphansDetected.set(null);
+                state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
                 setOuterStartState(state);
                 boolean again;
                 do {
@@ -391,7 +392,6 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void setOuterStartState(State state) {
-        state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
         outerStartState = new MutableState(state);
     }
 
@@ -738,6 +738,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public ConstantState constantState() {
         return constantState;
+    }
+
+    public <T, O> void setPreserved(O object, Setable<O, T> property, T post) {
+        outerStartState.set(object, property, post);
     }
 
 }

@@ -16,6 +16,8 @@
 package org.modelingvalue.dclare;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 
 public class MutableState implements IState {
 
@@ -34,9 +36,63 @@ public class MutableState implements IState {
         return atomic.get();
     }
 
+    public State setState(State state) {
+        return atomic.getAndUpdate(s -> state);
+    }
+
     public <O, T> State set(O object, Setable<O, T> property, T value) {
         return atomic.updateAndGet(s -> {
             State r = s.set(object, property, value);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object);
+            }
+            return r;
+        });
+    }
+
+    public <O, E, T> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, function, element);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object);
+            }
+            return r;
+        });
+    }
+
+    public <O, T> State set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, oper);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object);
+            }
+            return r;
+        });
+    }
+
+    public <O, T> State set(O object, Setable<O, T> property, T value, T[] oldNew) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, value, oldNew);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object);
+            }
+            return r;
+        });
+    }
+
+    public <O, E, T> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, function, element, oldNew);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object);
+            }
+            return r;
+        });
+    }
+
+    public <O, T> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, oper, oldNew);
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }

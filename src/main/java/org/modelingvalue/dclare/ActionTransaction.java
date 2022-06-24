@@ -139,7 +139,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
         if (action().preserved() && object instanceof Mutable && !property.isPlumbing()) {
-            outerStartState().set(object, property, post);
+            universeTransaction().setPreserved(object, property, post);
         }
         T[] oldNew = (T[]) new Object[2];
         if (currentSate.change(s -> s.set(object, property, (br, po) -> {
