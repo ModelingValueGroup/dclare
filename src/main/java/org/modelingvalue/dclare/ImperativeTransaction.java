@@ -121,8 +121,8 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void dclare2imper(State dclare, boolean timeTraveling, boolean insync) {
-        State imper = state();
         DefaultMap<Object, Set<Setable>> finalAllSetted = allSetted;
+        State imper = state();
         if (insync) {
             allSetted = SETTED_MAP;
         } else {
@@ -136,7 +136,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 dclare = dclare.set(object, dclareProps);
             }
         }
-        state.setState(dclare);
+        imper = state.setState(dclare);
         diffHandler.handleDelta(imper, dclare, insync, finalAllSetted);
     }
 
