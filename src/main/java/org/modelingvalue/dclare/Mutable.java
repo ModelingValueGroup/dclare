@@ -20,7 +20,6 @@ import static org.modelingvalue.dclare.SetableModifier.plumbing;
 import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
@@ -33,12 +32,7 @@ public interface Mutable extends TransactionClass {
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null) {
-                                                                                       @SuppressWarnings("rawtypes")
-                                                                                       @Override
-                                                                                       protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-                                                                                       }
-                                                                                   };
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = Observed.of("D_PARENT_CONTAINING", null, plumbing);
 
     Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 

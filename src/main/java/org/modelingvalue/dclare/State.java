@@ -349,7 +349,7 @@ public class State implements IState, Serializable {
     }
 
     @SuppressWarnings("unchecked")
-    private static String shortValueDiffString(Object a, Object b) {
+    public static String shortValueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
             Set removed = ((Set) a).removeAll((Set) b);
             Set added = ((Set) b).removeAll((Set) a);
