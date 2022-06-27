@@ -24,7 +24,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction.Reason;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
 
@@ -141,8 +140,4 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
-    @Override
-    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
-        return null;
-    }
 }
