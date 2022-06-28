@@ -264,14 +264,12 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R derive(Supplier<R> supplier) {
-        ConstantState constantState = new ConstantState(universeTransaction::handleException);
+    public <R> R derive(Supplier<R> supplier, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
             return tx.derive(supplier, this, constantState);
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
-            constantState.stop();
         }
     }
 
