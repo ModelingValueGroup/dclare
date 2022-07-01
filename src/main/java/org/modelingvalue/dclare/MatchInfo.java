@@ -42,27 +42,25 @@ public class MatchInfo {
         this.otx = tx;
     }
 
-    public boolean mustBeTheSame(MatchInfo from) {
-        if (!newable.equals(from.newable) && haveEqualType(from)) {
-            if (newable.equals(from.replacing())) {
+    public boolean mustReplace(MatchInfo replaced) {
+        if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
+            if (newable.equals(replaced.replacing())) {
                 return true;
-            } else if (from.replacing() != null || directions().anyMatch(from.directions()::contains)) {
+            } else if (replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
                 return false;
-            } else if (isCarvedInStone() && from.isCarvedInStone()) {
-                return false;
-            } else if (Objects.equals(identity(), from.identity())) {
+            } else if (Objects.equals(identity(), replaced.identity())) {
                 return true;
             }
         }
         return false;
     }
 
-    public void mergeIn(MatchInfo from) {
-        from.replacing = newable;
-        directions = directions().addAll(from.directions());
-        from.directions = directions.clear();
-        derivedConstructions = derivedConstructions().addAll(from.derivedConstructions());
-        from.derivedConstructions = derivedConstructions.clear();
+    public void replace(MatchInfo replaced) {
+        replaced.replacing = newable;
+        directions = directions().addAll(replaced.directions());
+        replaced.directions = directions.clear();
+        derivedConstructions = derivedConstructions().addAll(replaced.derivedConstructions());
+        replaced.derivedConstructions = derivedConstructions.clear();
     }
 
     public boolean isDerived() {
@@ -99,7 +97,7 @@ public class MatchInfo {
         return identity == ConstantState.NULL ? null : identity;
     }
 
-    public boolean isCarvedInStone() {
+    public boolean isDirect() {
         return !directConstructions().isEmpty();
     }
 
@@ -112,7 +110,7 @@ public class MatchInfo {
     }
 
     public boolean isOnlyDerived() {
-        return !isCarvedInStone() && (isDerived() || replacing() != null);
+        return !isDirect() && (isDerived() || replacing() != null);
     }
 
     @Override
