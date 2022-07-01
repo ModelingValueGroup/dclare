@@ -422,8 +422,9 @@ public class ObserverTransaction extends ActionTransaction {
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this);
-            List<MatchInfo> pres = preInfos(object, observed, before);
+            List<MatchInfo> pres;
             if (post.isOnlyDerived()) {
+                pres = preInfos(object, observed, before);
                 for (MatchInfo pre : pres) {
                     if (pre.isDirect() && pre.mustReplace(post)) {
                         replace(post, pre);
@@ -432,6 +433,7 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             } else if (post.isDirect()) {
+                pres = preInfos(object, observed, before);
                 for (MatchInfo pre : pres) {
                     if (pre.isOnlyDerived() && post.mustReplace(pre)) {
                         replace(pre, post);
@@ -445,45 +447,45 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> before, ContainingCollection<Object> after) {
-        ContainingCollection<Object>[] pres = new ContainingCollection[]{before != null ? before : after.clear()};
-        ContainingCollection<Object>[] posts = new ContainingCollection[]{after != null ? after : before.clear()};
-        List<MatchInfo>[] preInfos = new List[1];
-        Setable.<ContainingCollection<Object>, Object> diff(pres[0], posts[0], added -> {
-            if (added instanceof Newable) {
-                MatchInfo post = MatchInfo.of((Newable) added, this);
-                if (preInfos[0] == null) {
-                    preInfos[0] = preInfos(object, observed, pres[0]);
-                }
+    private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> befores, ContainingCollection<Object> afters) {
+        befores = befores != null ? befores : afters.clear();
+        afters = afters != null ? afters : befores.clear();
+        List<MatchInfo> pres = null;
+        for (Object after : afters) {
+            if (after instanceof Newable) {
+                MatchInfo post = MatchInfo.of((Newable) after, this);
                 if (post.isOnlyDerived()) {
-                    for (MatchInfo pre : preInfos[0]) {
+                    if (pres == null) {
+                        pres = preInfos(object, observed, befores);
+                    }
+                    for (MatchInfo pre : pres) {
                         if (pre.isDirect() && pre.mustReplace(post)) {
                             replace(post, pre);
-                            posts[0] = posts[0].replace(post.newable(), pre.newable());
+                            afters = afters.replace(post.newable(), pre.newable());
                             break;
                         }
                     }
                 } else if (post.isDirect()) {
-                    for (MatchInfo pre : preInfos[0]) {
+                    if (pres == null) {
+                        pres = preInfos(object, observed, befores);
+                    }
+                    for (MatchInfo pre : pres) {
                         if (pre.isOnlyDerived() && post.mustReplace(pre)) {
                             replace(pre, post);
-                            pres[0] = pres[0].replace(pre.newable(), post.newable());
+                            befores = befores.replace(pre.newable(), post.newable());
                             break;
                         }
                     }
                 }
             }
-        }, removed -> {
-        });
-        before = pres[0];
-        after = posts[0];
-        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
+        }
+        return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters) : afters;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private List<MatchInfo> preInfos(Mutable object, Observed observed, Object before) {
         Collection<Mutable> collection = observed.containment() ? (Collection<Mutable>) object.dChildren() : observed.collection(before);
-        return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).sortedBy(MatchInfo::sortKey).toList();
+        return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
