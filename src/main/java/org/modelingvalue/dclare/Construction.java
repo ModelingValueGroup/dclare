@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.SetableModifier.durable;
 
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
 
 @SuppressWarnings("rawtypes")
@@ -42,15 +43,19 @@ public class Construction extends IdentifiedByArray {
     }
 
     public Mutable object() {
-        return (Mutable) (super.size() == 3 ? super.get(0) : null);
+        return (Mutable) (isDerived() ? super.get(0) : null);
     }
 
     public Observer observer() {
-        return (Observer) (super.size() == 3 ? super.get(1) : null);
+        return (Observer) (isDerived() ? super.get(1) : null);
     }
 
     public Reason reason() {
-        return (Reason) (super.size() == 3 ? super.get(2) : super.get(0));
+        return (Reason) (isDerived() ? super.get(2) : super.get(0));
+    }
+
+    public Set<Mutable> sources() {
+        return isDerived() ? reason().sources(object()) : Set.of();
     }
 
     @Override
@@ -99,6 +104,17 @@ public class Construction extends IdentifiedByArray {
         }
 
         public abstract Direction direction();
+
+        private Set<Mutable> sources(Mutable thiz) {
+            Set<Mutable> result = Set.of(thiz);
+            for (int i = 0; i < size(); i++) {
+                Object v = get(thiz, i);
+                if (v instanceof Mutable) {
+                    result = result.add((Mutable) v);
+                }
+            }
+            return result;
+        }
 
     }
 

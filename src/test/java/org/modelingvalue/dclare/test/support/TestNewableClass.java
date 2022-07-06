@@ -23,7 +23,6 @@ import org.modelingvalue.collections.util.SerializableConsumer;
 import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.Action;
 import org.modelingvalue.dclare.Direction;
 import org.modelingvalue.dclare.LeafModifier;
 import org.modelingvalue.dclare.Setable;
@@ -33,7 +32,7 @@ public class TestNewableClass extends TestMutableClass {
 
     @SafeVarargs
     public static TestNewableClass of(Object id, Function<TestNewable, Object> identity, Setable<? extends TestMutable, ?>... setables) {
-        return new TestNewableClass(id, Action.DEFAULT_DIRECTION, identity, setables);
+        return new TestNewableClass(id, Direction.DEFAULT, identity, setables);
     }
 
     private final Direction                     direction;

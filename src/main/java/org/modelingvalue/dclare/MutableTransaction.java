@@ -98,12 +98,10 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     }
                 }
             }
-            return state[0];
-        } catch (
-
-        Throwable t) {
+            return state[0].clone(pre);
+        } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), t));
-            return state[0];
+            return state[0].clone(pre);
         } finally {
             state[0] = null;
             actions[0] = null;
@@ -157,21 +155,21 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         } else {
             TraceTimer.traceBegin("merge");
             triggeredActions.init(Map.of());
-            triggeredChildren[0].init(Set.of());
-            triggeredChildren[1].init(Set.of());
-            triggeredChildren[2].init(Set.of());
+            for (int i = 0; i < Priority.scheduled.nr; i++) {
+                triggeredChildren[i].init(Set.of());
+            }
             try {
                 State state = base.merge(this, branches, branches.length);
                 state = trigger(state, triggeredActions.result(), Priority.forward);
-                state = triggerMutables(state, triggeredChildren[0].result(), Priority.forward);
-                state = triggerMutables(state, triggeredChildren[1].result(), Priority.deferred);
-                state = triggerMutables(state, triggeredChildren[2].result(), Priority.backward);
+                for (int i = 0; i < Priority.scheduled.nr; i++) {
+                    state = triggerMutables(state, triggeredChildren[i].result(), Priority.values()[i]);
+                }
                 return state;
             } finally {
                 triggeredActions.clear();
-                triggeredChildren[0].clear();
-                triggeredChildren[1].clear();
-                triggeredChildren[2].clear();
+                for (int i = 0; i < Priority.scheduled.nr; i++) {
+                    triggeredChildren[i].clear();
+                }
                 TraceTimer.traceEnd("merge");
             }
         }

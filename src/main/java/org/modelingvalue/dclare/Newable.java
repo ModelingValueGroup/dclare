@@ -48,15 +48,6 @@ public interface Newable extends Mutable {
     @SuppressWarnings("rawtypes")
     Object dIdentity();
 
-    default Object dMatchingIdentity() {
-        try {
-            return dIdentity();
-        } catch (Throwable e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     Object dNewableType();
 
     @SuppressWarnings("rawtypes")

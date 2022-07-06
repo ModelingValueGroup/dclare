@@ -104,7 +104,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
 
     @Override
     public Direction direction() {
-        return Action.DEFAULT_DIRECTION;
+        return Direction.DEFAULT;
     }
 
 }

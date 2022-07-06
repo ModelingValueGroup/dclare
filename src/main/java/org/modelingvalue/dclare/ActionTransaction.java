@@ -51,12 +51,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
-    protected final State run(State state) {
+    protected final State run(State pre) {
         TraceTimer.traceBegin(traceId());
-        preState = state;
-        currentSate.init(state);
+        preState = pre;
+        currentSate.init(pre);
         try {
-            LeafTransaction.getContext().run(this, () -> run(state, universeTransaction()));
+            LeafTransaction.getContext().run(this, () -> run(pre, universeTransaction()));
             State result = currentSate.result();
             if (universeTransaction().getConfig().isTraceActions()) {
                 Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
@@ -66,10 +66,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                     });
                 }
             }
-            return result;
+            return result.clone(preState);
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
-            return state;
+            return pre;
         } finally {
             currentSate.clear();
             preState = null;
@@ -211,6 +211,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     protected State innerStartState() {
         return universeTransaction().innerStartState();
+    }
+
+    protected State prevInnerStartState() {
+        return universeTransaction().prevInnerStartState();
     }
 
 }

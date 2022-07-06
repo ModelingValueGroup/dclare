@@ -19,13 +19,6 @@ import java.util.function.Consumer;
 
 public class Action<O extends Mutable> extends Leaf {
 
-    public static final Direction DEFAULT_DIRECTION = new Direction() {
-        @Override
-        public String toString() {
-            return "<DEF>";
-        }
-    };
-
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
         }, Priority.forward);
@@ -43,7 +36,7 @@ public class Action<O extends Mutable> extends Leaf {
         super(id, modifiers);
         this.action = action;
         Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
-        this.direction = dir == null ? DEFAULT_DIRECTION : dir;
+        this.direction = dir == null ? Direction.DEFAULT : dir;
         this.preserved = LeafModifier.preserved.in(modifiers);
     }
 
@@ -76,7 +69,7 @@ public class Action<O extends Mutable> extends Leaf {
 
     @Override
     public String toString() {
-        return (direction != DEFAULT_DIRECTION ? (direction + "::") : "") + super.toString();
+        return (direction != Direction.DEFAULT ? (direction + "::") : "") + super.toString();
     }
 
     public boolean preserved() {

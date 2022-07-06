@@ -89,7 +89,7 @@ public class MatchInfo {
 
     public Object identity() {
         if (identity == null) {
-            identity = otx.state().deriveIdentity(() -> newable.dMatchingIdentity(), otx, otx.universeTransaction().tmpConstants());
+            identity = otx.state().deriveIdentity(() -> newable.dIdentity(), otx, otx.universeTransaction().tmpConstants());
             if (identity == null) {
                 identity = ConstantState.NULL;
             }

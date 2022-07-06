@@ -57,14 +57,24 @@ public class State implements IState, Serializable {
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
+    private final State                                                 previous;
 
-    State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, State previous) {
         this.universeTransaction = universeTransaction;
         this.map = map;
+        this.previous = previous;
     }
 
     protected State clone(UniverseTransaction universeTransaction) {
-        return new State(universeTransaction, map);
+        return universeTransaction == this.universeTransaction ? this : new State(universeTransaction, map, previous != null ? previous.clone(universeTransaction) : null);
+    }
+
+    protected State clone(State previous) {
+        return previous == this.previous ? this : new State(universeTransaction, map, previous);
+    }
+
+    public State previous() {
+        return previous;
     }
 
     @Override
@@ -161,9 +171,9 @@ public class State implements IState, Serializable {
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
         if (post.isEmpty()) {
             DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
-            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw, this);
         } else {
-            return new State(universeTransaction, map.put(object, post));
+            return new State(universeTransaction, map.put(object, post), this);
         }
     }
 
@@ -205,8 +215,7 @@ public class State implements IState, Serializable {
             }
             return props;
         }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
-
+        return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw, this);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

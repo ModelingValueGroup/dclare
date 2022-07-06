@@ -107,7 +107,7 @@ public class NewableTests {
         TestNewableClass BC = TestNewableClass.of("BC", n::get, n, ar);
 
         Direction a2b = Direction.of("A2B");
-        Direction b2a = Direction.of("B2A");
+        Direction b2a = Direction.of("B2A", a2b);
 
         U.observe(cs, u -> {
             Set<TestNewable> bs = cs.get(u).filter(B::isInstance).toSet();
@@ -387,7 +387,7 @@ public class NewableTests {
         // Transformation
 
         Direction oo2fbDir = Direction.of("OO2FB");
-        Direction fb2ooDir = Direction.of("FB2OO");
+        Direction fb2ooDir = Direction.of("FB2OO", oo2fbDir);
 
         if (oo2fb) {
             U.observe(fbms, u -> ooms.get(u).map(mfbm::get).toSet(), oo2fbDir);
@@ -1045,7 +1045,7 @@ public class NewableTests {
             } else {
                 if (equals(as, as.get(an::dClass), bs, bs.get(bn::dClass), done) && //
                         equals(as, as.get(an::dNewableType), bs, bs.get(bn::dNewableType), done) && //
-                        equals(as, as.get(an::dMatchingIdentity), bs, bs.get(bn::dMatchingIdentity), done) && //
+                        equals(as, as.get(an::dIdentity), bs, bs.get(bn::dIdentity), done) && //
                         equals(as, as.get(an::dParent), bs, bs.get(bn::dParent), done)) {
                     result = true;
                 }

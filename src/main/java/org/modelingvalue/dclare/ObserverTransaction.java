@@ -25,6 +25,7 @@ import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
+import org.modelingvalue.dclare.Observer.Constructed;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
@@ -42,8 +43,8 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       deferred       = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       backwards      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       defer       = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       setBack      = Concurrent.of();
 
     private Pair<Instant, Throwable>                             throwable;
 
@@ -66,8 +67,8 @@ public class ObserverTransaction extends ActionTransaction {
         sets.merge();
         emptyMandatory.merge();
         changed.merge();
-        deferred.merge();
-        backwards.merge();
+        defer.merge();
+        setBack.merge();
         Map<Reason, Newable> cons = constructions.merge();
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
@@ -81,7 +82,6 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
-        // System.err.println("!!!!!!!!RUN!!!!!!!! " + mutable() + "." + observer);
         // check if the universe is still in the same transaction, if not: reset my state
         observer.startTransaction(universeTransaction.stats());
         // check if we should do the work...
@@ -91,8 +91,8 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
-            deferred.init(FALSE);
-            backwards.init(FALSE);
+            defer.init(FALSE);
+            setBack.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
             } catch (Throwable t) {
@@ -117,8 +117,8 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 observer.exception().set(mutable(), throwable);
                 changed.clear();
-                deferred.clear();
-                backwards.clear();
+                defer.clear();
+                setBack.clear();
                 gets.clear();
                 sets.clear();
                 constructions.clear();
@@ -139,9 +139,9 @@ public class ObserverTransaction extends ActionTransaction {
         if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
             trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
-        } else if (deferred.get().equals(TRUE)) {
+        } else if (defer.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.deferred);
-        } else if (backwards.get().equals(TRUE)) {
+        } else if (setBack.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
@@ -309,7 +309,6 @@ public class ObserverTransaction extends ActionTransaction {
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
         if (observing(object, setable)) {
             changed.set(TRUE);
-            // runNonObserving(() -> System.err.println("!!!!!!!!!!! " + this + "   " + object + "." + setable + "=" + postValue));
         }
         runNonObserving(() -> super.changed(object, setable, preValue, postValue));
     }
@@ -331,20 +330,17 @@ public class ObserverTransaction extends ActionTransaction {
         if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
         } else {
-            O result = (O) current(mutable(), observer().constructed()).get(reason);
+            Constructed constructed = observer().constructed();
+            O result = (O) current(mutable(), constructed).get(reason);
             if (result == null) {
-                result = (O) prevOuterStartState().get(mutable(), observer().constructed()).get(reason);
+                result = (O) prevOuterStartState().get(mutable(), constructed).get(reason);
                 if (result == null) {
-                    result = (O) innerStartState().get(mutable(), observer().constructed()).get(reason);
+                    result = (O) innerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
-                        if (mutable() instanceof Newable && innerStartState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
-                            deferred.set(TRUE);
-                            return null;
-                        }
                         result = supplier.get();
                     }
                 }
-                observer().constructed().set(mutable(), (map, e) -> map.put(reason, e), result);
+                constructed.set(mutable(), (map, e) -> map.put(reason, e), result);
             }
             constructions.set((map, e) -> map.put(reason, e), result);
             return result;
@@ -358,9 +354,9 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        post = rippleOut(object, observed, pre, post, innerStartState(), state(), deferred);
+        post = rippleOut(object, observed, pre, post, innerStartState(), state(), defer);
         if (!Objects.equals(pre, post)) {
-            post = rippleOut(object, observed, pre, post, prevOuterStartState(), outerStartState(), backwards);
+            post = rippleOut(object, observed, pre, post, prevOuterStartState(), outerStartState(), setBack);
         }
         return post;
     }
@@ -371,14 +367,12 @@ public class ObserverTransaction extends ActionTransaction {
             ContainingCollection<Object>[] result = new ContainingCollection[]{(ContainingCollection<Object>) post};
             Observed<O, ContainingCollection<Object>> many = (Observed<O, ContainingCollection<Object>>) observed;
             Setable.<T, Object> diff(pre, post, added -> {
-                if ((observed.containment() && isChildChanged(added, preState, postState)) || //
-                        (preState.get(object, many).contains(added) && !postState.get(object, many).contains(added))) {
+                if (isChildChanged(observed, added, preState, postState) || isChangedBack(object, many, added, preState, postState) || isNewlyCreated(added, preState)) {
                     delay.set(TRUE);
                     result[0] = result[0].remove(added);
                 }
             }, removed -> {
-                if ((observed.containment() && isChildChanged(removed, preState, postState)) || //
-                        (!preState.get(object, many).contains(removed) && postState.get(object, many).contains(removed))) {
+                if (isChildChanged(observed, removed, preState, postState) || isChangedBack(object, many, removed, postState, preState)) {
                     delay.set(TRUE);
                     if (pre instanceof List && post instanceof List) {
                         int i = Math.min(((List<Object>) pre).firstIndexOf(removed), result[0].size());
@@ -388,34 +382,37 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             });
-            //            if (post != result[0]) {
-            //                System.err.println("!!!!!!!!!!!!!!! DELAY " + object + "." + observed + "=" + result[0] + "<-" + post);
-            //            }
             return (T) result[0];
-        } else if ((observed.containment() && (isChildChanged(pre, preState, postState) || isChildChanged(post, preState, postState))) || //
-                isChangedBack(object, observed, pre, post, preState, postState)) {
+        } else if (isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || //
+                isChangedBack(object, observed, pre, post, preState, postState) || isNewlyCreated(post, preState)) {
             delay.set(TRUE);
-            //            if (postState == outerStartState()) {
-            //                System.err.println("!!!!!!!!!!!!!!! DELAY " + object + "." + observed + "=" + pre + "<-" + post);
-            //            }
             return pre;
         } else {
             return post;
         }
     }
 
-    private <T, O> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
-        T before = preState.get(object, observed);
-        return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
-    }
-
-    @SuppressWarnings("rawtypes")
-    private boolean isChildChanged(Object object, IState preState, IState postState) {
-        if (object instanceof Mutable && preState.get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null) {
-            TransactionId txid = postState.get((Mutable) object, Mutable.D_CHANGE_ID);
+    private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
+        if (observed.containment() && element instanceof Mutable && preState.get((Mutable) element, Mutable.D_PARENT_CONTAINING) != null) {
+            TransactionId txid = postState.get((Mutable) element, Mutable.D_CHANGE_ID);
             return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
         }
         return false;
+    }
+
+    private <O, E> boolean isChangedBack(O object, Observed<O, ContainingCollection<E>> many, E element, IState state1, IState state2) {
+        return state1.get(object, many).contains(element) && !state2.get(object, many).contains(element);
+    }
+
+    private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
+        T before = preState.get(object, observed);
+        T after = postState.get(object, observed);
+        return !Objects.equals(before, after) && Objects.equals(before, post);
+    }
+
+    private <E> boolean isNewlyCreated(E element, IState preState) {
+        return element instanceof Newable && preState == innerStartState() && //
+                ((Newable) element).dDerivedConstructions().anyMatch(c -> preState.get(c.object(), Mutable.D_PARENT_CONTAINING) == null);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

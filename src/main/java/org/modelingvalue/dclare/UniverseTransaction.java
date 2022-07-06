@@ -69,7 +69,7 @@ public class UniverseTransaction extends MutableTransaction {
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                                                     //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP, null);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.forward);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.forward);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.forward);
@@ -91,6 +91,7 @@ public class UniverseTransaction extends MutableTransaction {
     private MutableState                                                                               outerStartState;
     private State                                                                                      prevOuterStartState;
     private State                                                                                      innerStartState;
+    private State                                                                                      prevInnerStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
     private boolean                                                                                    initialized;
@@ -361,6 +362,7 @@ public class UniverseTransaction extends MutableTransaction {
                 orphansDetected.set(null);
                 state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
                 setOuterStartState(state);
+                prevInnerStartState = state;
                 boolean again;
                 do {
                     again = false;
@@ -377,6 +379,7 @@ public class UniverseTransaction extends MutableTransaction {
                             again = true;
                         }
                     }
+                    prevInnerStartState = innerStartState;
                 } while (again);
                 prevOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
@@ -386,6 +389,7 @@ public class UniverseTransaction extends MutableTransaction {
             preOrphansState = null;
             innerStartState = null;
             outerStartState = null;
+            prevInnerStartState = null;
             prevOuterStartState = null;
             tmpConstants.stop();
         }
@@ -703,6 +707,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State innerStartState() {
         return innerStartState;
+    }
+
+    public State prevInnerStartState() {
+        return prevInnerStartState;
     }
 
     public ConstantState tmpConstants() {
