@@ -24,6 +24,7 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.TransactionException;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
 
@@ -80,7 +81,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings("rawtypes")
     private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
@@ -93,7 +94,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 } else {
                     DERIVED.run(newDerived, () -> {
                         for (Observer deriver : derivers((Mutable) object, observed)) {
-                            deriver.run((Mutable) object);
+                            runDeriver((Mutable) object, deriver);
                         }
                     });
                 }
@@ -103,6 +104,15 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             }
         }
         return constantState.get(this, object, constant);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    protected void runDeriver(Mutable mutable, Observer deriver) {
+        try {
+            deriver.run(mutable);
+        } catch (Throwable t) {
+            universeTransaction().handleException(new TransactionException(mutable, new TransactionException(deriver, t)));
+        }
     }
 
     @SuppressWarnings("rawtypes")
