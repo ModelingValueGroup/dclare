@@ -69,7 +69,7 @@ public class UniverseTransaction extends MutableTransaction {
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                                                     //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP, null);
+    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.forward);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.forward);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.forward);
@@ -90,8 +90,8 @@ public class UniverseTransaction extends MutableTransaction {
     private State                                                                                      preOrphansState;
     private MutableState                                                                               outerStartState;
     private State                                                                                      prevOuterStartState;
+    private State                                                                                      constructionStartState;
     private State                                                                                      innerStartState;
-    private State                                                                                      prevInnerStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
     private boolean                                                                                    initialized;
@@ -360,26 +360,34 @@ public class UniverseTransaction extends MutableTransaction {
             do {
                 preOrphansState = state;
                 orphansDetected.set(null);
-                state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
-                setOuterStartState(state);
-                prevInnerStartState = state;
                 boolean again;
                 do {
-                    again = false;
-                    innerStartState = state;
-                    state = state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
-                    state = super.run(state);
-                    if (!killed) {
-                        again = hasDeferredQueued(state);
-                        if (!again && orphansDetected.get() != Boolean.FALSE) {
-                            if (orphansDetected.get() == Boolean.TRUE) {
+                    state = incrementChangeId(state);
+                    setOuterStartState(state);
+                    constructionStartState = state;
+                    do {
+                        again = false;
+                        innerStartState = state;
+                        state = incrementChangeId(state);
+                        state = super.run(state);
+                        if (!killed) {
+                            again = hasDeferredQueued(state);
+                            if (!again && orphansDetected.get() == Boolean.TRUE) {
                                 preOrphansState = innerStartState;
+                                state = trigger(state, universe(), clearOrphans, Priority.deferred);
+                                again = true;
                             }
-                            state = trigger(state, universe(), clearOrphans, Priority.deferred);
+                        }
+                    } while (again);
+                    if (!killed) {
+                        again = hasConstructionQueued(state);
+                        if (again) {
+                            orphansDetected.set(null);
+                        } else if (!again && orphansDetected.get() == null) {
+                            state = trigger(state, universe(), clearOrphans, Priority.construction);
                             again = true;
                         }
                     }
-                    prevInnerStartState = innerStartState;
                 } while (again);
                 prevOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
@@ -389,10 +397,13 @@ public class UniverseTransaction extends MutableTransaction {
             preOrphansState = null;
             innerStartState = null;
             outerStartState = null;
-            prevInnerStartState = null;
             prevOuterStartState = null;
             tmpConstants.stop();
         }
+    }
+
+    protected final State incrementChangeId(State state) {
+        return state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
     }
 
     protected void setOuterStartState(State state) {
@@ -411,6 +422,14 @@ public class UniverseTransaction extends MutableTransaction {
         boolean result = hasQueued(state, universe(), Priority.deferred);
         if (config.isTraceUniverse() && result) {
             System.err.println("DCLARE: DEFERRED UNIVERSE " + this);
+        }
+        return result;
+    }
+
+    private boolean hasConstructionQueued(State state) {
+        boolean result = hasQueued(state, universe(), Priority.construction);
+        if (config.isTraceUniverse() && result) {
+            System.err.println("DCLARE: CONSTRUCTION UNIVERSE " + this);
         }
         return result;
     }
@@ -709,8 +728,8 @@ public class UniverseTransaction extends MutableTransaction {
         return innerStartState;
     }
 
-    public State prevInnerStartState() {
-        return prevInnerStartState;
+    public State constructionStartState() {
+        return constructionStartState;
     }
 
     public ConstantState tmpConstants() {

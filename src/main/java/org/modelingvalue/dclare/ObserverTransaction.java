@@ -43,8 +43,9 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       defer       = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       setBack      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       defer          = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       setBack        = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       construct      = Concurrent.of();
 
     private Pair<Instant, Throwable>                             throwable;
 
@@ -69,6 +70,7 @@ public class ObserverTransaction extends ActionTransaction {
         changed.merge();
         defer.merge();
         setBack.merge();
+        construct.merge();
         Map<Reason, Newable> cons = constructions.merge();
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
@@ -92,6 +94,7 @@ public class ObserverTransaction extends ActionTransaction {
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
             defer.init(FALSE);
+            construct.init(FALSE);
             setBack.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
@@ -118,6 +121,7 @@ public class ObserverTransaction extends ActionTransaction {
                 observer.exception().set(mutable(), throwable);
                 changed.clear();
                 defer.clear();
+                construct.clear();
                 setBack.clear();
                 gets.clear();
                 sets.clear();
@@ -141,6 +145,8 @@ public class ObserverTransaction extends ActionTransaction {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
         } else if (defer.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.deferred);
+        } else if (construct.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.construction);
         } else if (setBack.get().equals(TRUE)) {
             trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
         }
@@ -259,7 +265,7 @@ public class ObserverTransaction extends ActionTransaction {
                 } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                     post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
-                    post = rippleOut(object, (Observed<O, T>) setable, pre, post);
+                    post = rippleOut(object, (Observed<O, T>) setable, pre, post, false);
                 }
             }
         }
@@ -337,6 +343,10 @@ public class ObserverTransaction extends ActionTransaction {
                 if (result == null) {
                     result = (O) innerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
+                        if (mutable() instanceof Newable && constructionStartState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                            construct.set(TRUE);
+                            return null;
+                        }
                         result = supplier.get();
                     }
                 }
@@ -353,43 +363,79 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        post = rippleOut(object, observed, pre, post, innerStartState(), state(), defer);
-        if (!Objects.equals(pre, post)) {
-            post = rippleOut(object, observed, pre, post, prevOuterStartState(), outerStartState(), setBack);
-        }
-        return post;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T, O> T rippleOut(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState, Concurrent<Set<Boolean>> delay) {
+    private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post, boolean newables) {
+        boolean doDefer = !innerStartState().get(mutable(), Priority.deferred.actions).contains(observer());
+        boolean doCons = newables && !innerStartState().get(mutable(), Priority.construction.actions).contains(observer());
+        boolean doBack = !innerStartState().get(mutable(), Priority.backward.actions).contains(observer());
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-            ContainingCollection<Object>[] result = new ContainingCollection[]{(ContainingCollection<Object>) post};
-            Observed<O, ContainingCollection<Object>> many = (Observed<O, ContainingCollection<Object>>) observed;
-            Setable.<T, Object> diff(pre, post, added -> {
-                if (isChildChanged(observed, added, preState, postState) || isChangedBack(object, many, added, preState, postState) || isNewlyCreated(added, preState)) {
+            ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
+            Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
+            Setable.<T, E> diff(pre, post, added -> {
+                Concurrent<Set<Boolean>> delay = added(object, many, doDefer, doCons, doBack, added);
+                if (delay != null) {
                     delay.set(TRUE);
                     result[0] = result[0].remove(added);
                 }
             }, removed -> {
-                if (isChildChanged(observed, removed, preState, postState) || isChangedBack(object, many, removed, postState, preState)) {
+                Concurrent<Set<Boolean>> delay = removed(object, many, doDefer, doCons, doBack, removed);
+                if (delay != null) {
                     delay.set(TRUE);
                     if (pre instanceof List && post instanceof List) {
-                        int i = Math.min(((List<Object>) pre).firstIndexOf(removed), result[0].size());
-                        result[0] = ((List<Object>) result[0]).insert(i, removed);
+                        int i = Math.min(((List<E>) pre).firstIndexOf(removed), result[0].size());
+                        result[0] = ((List<E>) result[0]).insert(i, removed);
                     } else {
                         result[0] = result[0].add(removed);
                     }
                 }
             });
             return (T) result[0];
-        } else if (isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || //
-                isChangedBack(object, observed, pre, post, preState, postState) || isNewlyCreated(post, preState)) {
-            delay.set(TRUE);
-            return pre;
         } else {
-            return post;
+            Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post, doDefer, doCons, doBack);
+            if (delay != null) {
+                delay.set(TRUE);
+                return pre;
+            } else {
+                return post;
+            }
         }
+    }
+
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E added) {
+        return doDefer && added(object, observed, innerStartState(), state(), added) ? defer : //
+                doCons && isNotContained(added, constructionStartState()) ? construct : //
+                        doBack && added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
+    }
+
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E removed) {
+        return doDefer && removed(object, observed, innerStartState(), state(), removed) ? defer : //
+                doCons && isContained(removed, innerStartState()) ? construct : //
+                        doBack && removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
+    }
+
+    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post, boolean doDefer, boolean doCons, boolean doBack) {
+        return doDefer && changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
+                doCons && (isContained(pre, innerStartState()) || isNotContained(post, constructionStartState())) ? construct : //
+                        doBack && changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
+    }
+
+    private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added) {
+        return isChildChanged(observed, added, preState, postState) || isChangedBack(object, observed, added, preState, postState);
+    }
+
+    private <O, T extends ContainingCollection<E>, E> boolean removed(O object, Observed<O, T> observed, IState preState, IState postState, E removed) {
+        return isChildChanged(observed, removed, preState, postState) || isChangedBack(object, observed, removed, postState, preState);
+    }
+
+    private <O, T> boolean changed(O object, Observed<O, T> observed, IState preState, IState postState, T pre, T post) {
+        return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || isChangedBack(object, observed, pre, post, preState, postState);
+    }
+
+    private <O, T, E> boolean isContained(E element, IState preState) {
+        return element instanceof Newable && preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) != null;
+    }
+
+    private <O, T, E> boolean isNotContained(E element, IState preState) {
+        return element instanceof Newable && preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) == null;
     }
 
     private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -400,19 +446,13 @@ public class ObserverTransaction extends ActionTransaction {
         return false;
     }
 
-    private <O, E> boolean isChangedBack(O object, Observed<O, ContainingCollection<E>> many, E element, IState state1, IState state2) {
-        return state1.get(object, many).contains(element) && !state2.get(object, many).contains(element);
+    private <O, T extends ContainingCollection<E>, E> boolean isChangedBack(O object, Observed<O, T> observed, E element, IState state1, IState state2) {
+        return state1.get(object, observed).contains(element) && !state2.get(object, observed).contains(element);
     }
 
     private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
         T before = preState.get(object, observed);
-        T after = postState.get(object, observed);
-        return !Objects.equals(before, after) && Objects.equals(before, post);
-    }
-
-    private <E> boolean isNewlyCreated(E element, IState preState) {
-        return element instanceof Newable && preState == innerStartState() && //
-                ((Newable) element).dDerivedConstructions().anyMatch(c -> preState.get(c.object(), Mutable.D_PARENT_CONTAINING) == null);
+        return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -440,7 +480,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
+        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after, true) : after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -476,7 +516,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters) : afters;
+        return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters, true) : afters;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

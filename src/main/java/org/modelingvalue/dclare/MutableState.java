@@ -21,17 +21,10 @@ import java.util.function.UnaryOperator;
 
 public class MutableState implements IState {
 
-    private final State                  previous;
     private final AtomicReference<State> atomic;
 
     public MutableState(State state) {
         this.atomic = new AtomicReference<>(state);
-        this.previous = state;
-    }
-
-    @Override
-    public State previous() {
-        return previous;
     }
 
     @Override

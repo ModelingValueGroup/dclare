@@ -66,7 +66,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                     });
                 }
             }
-            return result.clone(preState);
+            return result;
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return pre;
@@ -91,7 +91,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 Mutable target = m.dResolve((Mutable) o);
                 if (!cls().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, observer.initPriority());
-                    // runNonObserving(() -> System.err.println("!!! TRIGGER !!!! " + target + "." + observer + "  " + triggerPriority(observer.initPriority())));
                 }
             }
         }
@@ -213,8 +212,8 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return universeTransaction().innerStartState();
     }
 
-    protected State prevInnerStartState() {
-        return universeTransaction().prevInnerStartState();
+    protected State constructionStartState() {
+        return universeTransaction().constructionStartState();
     }
 
 }
