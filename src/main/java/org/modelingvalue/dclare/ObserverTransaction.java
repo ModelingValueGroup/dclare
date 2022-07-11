@@ -331,6 +331,11 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         if (Constant.DERIVED.get() != null) {
@@ -343,7 +348,9 @@ public class ObserverTransaction extends ActionTransaction {
                 if (result == null) {
                     result = (O) innerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
-                        if (mutable() instanceof Newable && constructionStartState().get((Newable) mutable(), Mutable.D_PARENT_CONTAINING) == null) {
+                        if (mutable() instanceof Newable && //
+                                !constructionStartState().get(mutable(), Priority.construction.actions).contains(observer()) && //
+                                containsOppositeDirection((Newable) mutable(), reason.direction().opposites())) {
                             construct.set(TRUE);
                             return null;
                         }
@@ -357,16 +364,29 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    @Override
-    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        return super.construct(reason, supplier);
+    private boolean containsOppositeDirection(Newable newable, Set<Direction> opposites) {
+        if (opposites.isEmpty() || constructionStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null) {
+            return false;
+        }
+        for (Construction cons : newable.dDerivedConstructions()) {
+            if (opposites.contains(cons.reason().direction())) {
+                return true;
+            }
+            for (Mutable source : cons.sources()) {
+                if (source instanceof Newable && containsOppositeDirection((Newable) source, opposites)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+
     }
 
     @SuppressWarnings("unchecked")
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post, boolean newables) {
         boolean doDefer = !innerStartState().get(mutable(), Priority.deferred.actions).contains(observer());
-        boolean doCons = newables && !innerStartState().get(mutable(), Priority.construction.actions).contains(observer());
-        boolean doBack = !innerStartState().get(mutable(), Priority.backward.actions).contains(observer());
+        boolean doCons = newables && !constructionStartState().get(mutable(), Priority.construction.actions).contains(observer());
+        boolean doBack = !prevOuterStartState().get(mutable(), Priority.backward.actions).contains(observer());
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
             Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
@@ -402,19 +422,18 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E added) {
         return doDefer && added(object, observed, innerStartState(), state(), added) ? defer : //
-                doCons && isNotContained(added, constructionStartState()) ? construct : //
-                        doBack && added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
+                doBack && added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E removed) {
         return doDefer && removed(object, observed, innerStartState(), state(), removed) ? defer : //
-                doCons && isContained(removed, innerStartState()) ? construct : //
+                doCons && isContained(observed, removed, prevOuterStartState(), constructionStartState()) ? construct : //
                         doBack && removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
     }
 
     private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post, boolean doDefer, boolean doCons, boolean doBack) {
         return doDefer && changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
-                doCons && (isContained(pre, innerStartState()) || isNotContained(post, constructionStartState())) ? construct : //
+                doCons && isContained(observed, pre, prevOuterStartState(), constructionStartState()) ? construct : //
                         doBack && changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
     }
 
@@ -430,12 +449,10 @@ public class ObserverTransaction extends ActionTransaction {
         return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || isChangedBack(object, observed, pre, post, preState, postState);
     }
 
-    private <O, T, E> boolean isContained(E element, IState preState) {
-        return element instanceof Newable && preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) != null;
-    }
-
-    private <O, T, E> boolean isNotContained(E element, IState preState) {
-        return element instanceof Newable && preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) == null;
+    private <O, T, E> boolean isContained(Observed<O, T> observed, E element, IState preState, IState postState) {
+        return element instanceof Newable && //
+                preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) == null && //
+                postState.get((Newable) element, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -460,19 +477,14 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this);
             List<MatchInfo> pres;
-            if (post.isOnlyDerived()) {
+            if (post.canBeReplaced() || post.canBeReplacing()) {
                 pres = preInfos(object, observed, before);
                 for (MatchInfo pre : pres) {
-                    if (pre.isDirect() && pre.mustReplace(post)) {
+                    if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                         replace(post, pre);
                         after = pre.newable();
                         break;
-                    }
-                }
-            } else if (post.isDirect()) {
-                pres = preInfos(object, observed, before);
-                for (MatchInfo pre : pres) {
-                    if (pre.isOnlyDerived() && post.mustReplace(pre)) {
+                    } else if (post.canBeReplacing() && pre.canBeReplaced() && post.mustReplace(pre)) {
                         replace(pre, post);
                         before = post.newable();
                         break;
@@ -491,23 +503,16 @@ public class ObserverTransaction extends ActionTransaction {
         for (Object after : afters) {
             if (after instanceof Newable) {
                 MatchInfo post = MatchInfo.of((Newable) after, this);
-                if (post.isOnlyDerived()) {
+                if (post.canBeReplaced() || post.canBeReplacing()) {
                     if (pres == null) {
                         pres = preInfos(object, observed, befores);
                     }
                     for (MatchInfo pre : pres) {
-                        if (pre.isDirect() && pre.mustReplace(post)) {
+                        if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                             replace(post, pre);
                             afters = afters.replace(post.newable(), pre.newable());
                             break;
-                        }
-                    }
-                } else if (post.isDirect()) {
-                    if (pres == null) {
-                        pres = preInfos(object, observed, befores);
-                    }
-                    for (MatchInfo pre : pres) {
-                        if (pre.isOnlyDerived() && post.mustReplace(pre)) {
+                        } else if (post.canBeReplacing() && pre.canBeReplaced() && post.mustReplace(pre)) {
                             replace(pre, post);
                             befores = befores.replace(pre.newable(), post.newable());
                             break;

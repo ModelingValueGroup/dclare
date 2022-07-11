@@ -43,12 +43,12 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
+        if (!newable.equals(replaced.newable) && haveEqualType(replaced) && sortKey().compareTo(replaced.sortKey()) < 0) {
             if (newable.equals(replaced.replacing())) {
                 return true;
-            } else if (replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
+            } else if (replaced.identityCannotBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
                 return false;
-            } else if (Objects.equals(identity(), replaced.identity())) {
+            } else if (identityCannotBeDerived() || Objects.equals(identity(), replaced.identity())) {
                 return true;
             }
         }
@@ -63,8 +63,24 @@ public class MatchInfo {
         replaced.derivedConstructions = derivedConstructions.clear();
     }
 
+    public boolean canBeReplacing() {
+        return replacing() == null;
+    }
+
+    public boolean canBeReplaced() {
+        return !isDirect();
+    }
+
+    public boolean identityCannotBeDerived() {
+        return !isDirect() && !isDerived();
+    }
+
     public boolean isDerived() {
         return !derivedConstructions().isEmpty();
+    }
+
+    public boolean isDirect() {
+        return !directConstructions().isEmpty();
     }
 
     public QualifiedSet<Direction, Construction> derivedConstructions() {
@@ -78,8 +94,8 @@ public class MatchInfo {
         return newable.dNewableType().equals(other.newable.dNewableType());
     }
 
-    @SuppressWarnings("rawtypes")
-    public Comparable sortKey() {
+    @SuppressWarnings("unchecked")
+    public <S> Comparable<S> sortKey() {
         return newable.dSortKey();
     }
 
@@ -97,20 +113,12 @@ public class MatchInfo {
         return identity == ConstantState.NULL ? null : identity;
     }
 
-    public boolean isDirect() {
-        return !directConstructions().isEmpty();
-    }
-
     public Set<Construction> directConstructions() {
         if (directConstructions == null) {
             Construction cons = newable.dDirectConstruction();
             directConstructions = cons != null ? Set.of(cons) : Set.of();
         }
         return directConstructions;
-    }
-
-    public boolean isOnlyDerived() {
-        return !isDirect() && (isDerived() || replacing() != null);
     }
 
     @Override

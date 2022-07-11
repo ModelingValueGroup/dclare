@@ -362,9 +362,9 @@ public class UniverseTransaction extends MutableTransaction {
                 orphansDetected.set(null);
                 boolean again;
                 do {
+                    constructionStartState = state;
                     state = incrementChangeId(state);
                     setOuterStartState(state);
-                    constructionStartState = state;
                     do {
                         again = false;
                         innerStartState = state;
