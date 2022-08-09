@@ -46,9 +46,9 @@ public class MatchInfo {
         if (!newable.equals(replaced.newable) && haveEqualType(replaced) && sortKey().compareTo(replaced.sortKey()) < 0) {
             if (newable.equals(replaced.replacing())) {
                 return true;
-            } else if (replaced.identityCannotBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
+            } else if (!replaced.identityCanBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
                 return false;
-            } else if (identityCannotBeDerived() || Objects.equals(identity(), replaced.identity())) {
+            } else if (!identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
                 return true;
             }
         }
@@ -71,8 +71,8 @@ public class MatchInfo {
         return !isDirect();
     }
 
-    public boolean identityCannotBeDerived() {
-        return !isDirect() && !isDerived();
+    public boolean identityCanBeDerived() {
+        return isDirect() || isDerived();
     }
 
     public boolean isDerived() {

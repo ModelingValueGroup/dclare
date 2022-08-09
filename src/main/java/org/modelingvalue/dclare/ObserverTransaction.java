@@ -265,7 +265,7 @@ public class ObserverTransaction extends ActionTransaction {
                 } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                     post = (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                 } else {
-                    post = rippleOut(object, (Observed<O, T>) setable, pre, post, false);
+                    post = rippleOut(object, (Observed<O, T>) setable, pre, post);
                 }
             }
         }
@@ -346,15 +346,15 @@ public class ObserverTransaction extends ActionTransaction {
             if (result == null) {
                 result = (O) prevOuterStartState().get(mutable(), constructed).get(reason);
                 if (result == null) {
-                    result = (O) innerStartState().get(mutable(), constructed).get(reason);
+                    result = (O) outerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
-                        if (mutable() instanceof Newable && //
-                                !constructionStartState().get(mutable(), Priority.construction.actions).contains(observer()) && //
-                                containsOppositeDirection((Newable) mutable(), reason.direction().opposites())) {
-                            construct.set(TRUE);
-                            return null;
+                        result = (O) constructionStartState().get(mutable(), constructed).get(reason);
+                        if (result == null) {
+                            result = (O) innerStartState().get(mutable(), constructed).get(reason);
+                            if (result == null) {
+                                result = supplier.get();
+                            }
                         }
-                        result = supplier.get();
                     }
                 }
                 constructed.set(mutable(), (map, e) -> map.put(reason, e), result);
@@ -364,40 +364,20 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private boolean containsOppositeDirection(Newable newable, Set<Direction> opposites) {
-        if (opposites.isEmpty() || constructionStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null) {
-            return false;
-        }
-        for (Construction cons : newable.dDerivedConstructions()) {
-            if (opposites.contains(cons.reason().direction())) {
-                return true;
-            }
-            for (Mutable source : cons.sources()) {
-                if (source instanceof Newable && containsOppositeDirection((Newable) source, opposites)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-
-    }
-
     @SuppressWarnings("unchecked")
-    private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post, boolean newables) {
-        boolean doDefer = !innerStartState().get(mutable(), Priority.deferred.actions).contains(observer());
-        boolean doCons = newables && !constructionStartState().get(mutable(), Priority.construction.actions).contains(observer());
-        boolean doBack = !prevOuterStartState().get(mutable(), Priority.backward.actions).contains(observer());
+    private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
             Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
             Setable.<T, E> diff(pre, post, added -> {
-                Concurrent<Set<Boolean>> delay = added(object, many, doDefer, doCons, doBack, added);
+                Concurrent<Set<Boolean>> delay = added(object, many, added);
                 if (delay != null) {
                     delay.set(TRUE);
                     result[0] = result[0].remove(added);
+                    traceRippleOut(delay, object, observed, post, result[0]);
                 }
             }, removed -> {
-                Concurrent<Set<Boolean>> delay = removed(object, many, doDefer, doCons, doBack, removed);
+                Concurrent<Set<Boolean>> delay = removed(object, many, removed);
                 if (delay != null) {
                     delay.set(TRUE);
                     if (pre instanceof List && post instanceof List) {
@@ -406,13 +386,15 @@ public class ObserverTransaction extends ActionTransaction {
                     } else {
                         result[0] = result[0].add(removed);
                     }
+                    traceRippleOut(delay, object, observed, post, result[0]);
                 }
             });
             return (T) result[0];
         } else {
-            Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post, doDefer, doCons, doBack);
+            Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post);
             if (delay != null) {
                 delay.set(TRUE);
+                traceRippleOut(delay, object, observed, post, pre);
                 return pre;
             } else {
                 return post;
@@ -420,21 +402,23 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E added) {
-        return doDefer && added(object, observed, innerStartState(), state(), added) ? defer : //
-                doBack && added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added) {
+        return added(object, observed, innerStartState(), state(), added) ? defer : //
+                isConstructed(observed, added, constructionStartState(), current()) ? construct : //
+                        added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, boolean doDefer, boolean doCons, boolean doBack, E removed) {
-        return doDefer && removed(object, observed, innerStartState(), state(), removed) ? defer : //
-                doCons && isContained(observed, removed, prevOuterStartState(), constructionStartState()) ? construct : //
-                        doBack && removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed) {
+        return removed(object, observed, innerStartState(), state(), removed) ? defer : //
+                isConstructed(observed, removed, outerStartState(), constructionStartState()) ? setBack : //
+                        removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
     }
 
-    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post, boolean doDefer, boolean doCons, boolean doBack) {
-        return doDefer && changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
-                doCons && isContained(observed, pre, prevOuterStartState(), constructionStartState()) ? construct : //
-                        doBack && changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
+    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post) {
+        return changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
+                isConstructed(observed, post, constructionStartState(), current()) ? construct : //
+                        isConstructed(observed, pre, outerStartState(), constructionStartState()) ? setBack : //
+                                changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added) {
@@ -449,10 +433,10 @@ public class ObserverTransaction extends ActionTransaction {
         return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || isChangedBack(object, observed, pre, post, preState, postState);
     }
 
-    private <O, T, E> boolean isContained(Observed<O, T> observed, E element, IState preState, IState postState) {
+    private <O, T, E> boolean isConstructed(Observed<O, T> observed, E element, IState preState, IState postState) {
         return element instanceof Newable && //
-                preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) == null && //
-                postState.get((Newable) element, Mutable.D_PARENT_CONTAINING) != null;
+                (preState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) == null && preState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty()) && //
+                (postState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) != null || !postState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty());
     }
 
     private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -472,13 +456,20 @@ public class ObserverTransaction extends ActionTransaction {
         return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
     }
 
+    private <T, O> void traceRippleOut(Concurrent<Set<Boolean>> delay, O object, Observed<O, T> observed, Object post, Object result) {
+        if (universeTransaction().getConfig().isTraceRippleOut()) {
+            String delayString = delay == setBack ? "BACK:   " : delay == construct ? "CONST:  " : "DEFER:  ";
+            runNonObserving(() -> System.err.println(delayString + parent().indent("    ") + mutable() + "." + observer() + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
+        }
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this);
             List<MatchInfo> pres;
             if (post.canBeReplaced() || post.canBeReplacing()) {
-                pres = preInfos(object, observed, before);
+                pres = observed.containment() ? preInfos(object, observed, before) : preInfos(observed, before);
                 for (MatchInfo pre : pres) {
                     if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                         replace(post, pre);
@@ -492,7 +483,7 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after, true) : after;
+        return !Objects.equals(before, after) ? rippleOut(object, observed, before, after) : after;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -505,7 +496,7 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = MatchInfo.of((Newable) after, this);
                 if (post.canBeReplaced() || post.canBeReplacing()) {
                     if (pres == null) {
-                        pres = preInfos(object, observed, befores);
+                        pres = observed.containment() ? preInfos(object, observed, befores) : preInfos(observed, befores);
                     }
                     for (MatchInfo pre : pres) {
                         if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
@@ -521,13 +512,25 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
-        return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters, true) : afters;
+        return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters) : afters;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private List<MatchInfo> preInfos(Observed observed, Object before) {
+        Collection<Mutable> collection = observed.collection(before);
+        return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private List<MatchInfo> preInfos(Mutable object, Observed observed, Object before) {
-        Collection<Mutable> collection = observed.containment() ? (Collection<Mutable>) object.dChildren() : observed.collection(before);
-        return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
+        Collection<Newable> befores = observed.collection(before).filter(Newable.class);
+        Collection<Newable> children = children(object, observed).filter(Newable.class);
+        return Collection.concat(befores.map(n -> MatchInfo.of(n, this)), children.map(n -> MatchInfo.of(n, this)).filter(m -> m.identity() != null)).toList();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Collection<Mutable> children(Mutable object, Observed excluded) {
+        return MutableClass.D_CONTAINMENTS.get(object.dClass()).exclude(excluded::equals).flatMap(c -> c.getCollection(object));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})

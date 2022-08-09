@@ -56,7 +56,7 @@ public class NewableTests {
 
     private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
             withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
-            withTraceUniverse(false).withTraceActions(false).withTraceMatching(false);
+            withTraceUniverse(false).withTraceActions(false).withTraceMatching(false).withTraceRippleOut(false);
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
     private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
 
