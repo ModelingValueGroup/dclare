@@ -414,7 +414,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasInnerQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.inner);
         if (config.isTraceUniverse() && result) {
-            System.err.println("DCLARE: DEFERRED UNIVERSE " + this);
+            System.err.println("DCLARE: INNER UNIVERSE " + this);
         }
         return result;
     }
@@ -422,7 +422,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasMidQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.mid);
         if (config.isTraceUniverse() && result) {
-            System.err.println("DCLARE: CONSTRUCTION UNIVERSE " + this);
+            System.err.println("DCLARE: MID UNIVERSE " + this);
         }
         return result;
     }
@@ -430,7 +430,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasOuterQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.outer);
         if (config.isTraceUniverse() && result) {
-            System.err.println("DCLARE: BACKWARD UNIVERSE " + this);
+            System.err.println("DCLARE: OUTER UNIVERSE " + this);
         }
         return result;
     }
