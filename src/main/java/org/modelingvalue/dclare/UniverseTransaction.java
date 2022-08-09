@@ -70,9 +70,9 @@ public class UniverseTransaction extends MutableTransaction {
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                                                     //TODO wire onto MoodManager
     private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
-    protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.forward);
-    protected final Derivation                                                                         derivation              = new Derivation(this, Priority.forward);
-    protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.forward);
+    protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
+    protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
+    protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
     private final UniverseStatistics                                                                   universeStatistics;
     private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
@@ -88,10 +88,10 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
     private State                                                                                      preOrphansState;
+    private State                                                                                      innerStartState;
+    private State                                                                                      midStartState;
     private MutableState                                                                               outerStartState;
     private State                                                                                      prevOuterStartState;
-    private State                                                                                      constructionStartState;
-    private State                                                                                      innerStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
     private boolean                                                                                    initialized;
@@ -362,7 +362,7 @@ public class UniverseTransaction extends MutableTransaction {
                 orphansDetected.set(null);
                 boolean again;
                 do {
-                    constructionStartState = state;
+                    midStartState = state;
                     state = incrementChangeId(state);
                     setOuterStartState(state);
                     do {
@@ -371,33 +371,34 @@ public class UniverseTransaction extends MutableTransaction {
                         state = incrementChangeId(state);
                         state = super.run(state);
                         if (!killed) {
-                            again = hasDeferredQueued(state);
+                            again = hasInnerQueued(state);
                             if (!again && orphansDetected.get() == Boolean.TRUE) {
                                 preOrphansState = innerStartState;
-                                state = trigger(state, universe(), clearOrphans, Priority.deferred);
+                                state = trigger(state, universe(), clearOrphans, Priority.inner);
                                 again = true;
                             }
                         }
                     } while (again);
                     if (!killed) {
-                        again = hasConstructionQueued(state);
+                        again = hasMidQueued(state);
                         if (again) {
                             orphansDetected.set(null);
                         } else if (!again && orphansDetected.get() == null) {
-                            state = trigger(state, universe(), clearOrphans, Priority.construction);
+                            state = trigger(state, universe(), clearOrphans, Priority.mid);
                             again = true;
                         }
                     }
                 } while (again);
                 prevOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
-            } while (!killed && hasBackwardQueued(state));
+            } while (!killed && hasOuterQueued(state));
             return state;
         } finally {
-            preOrphansState = null;
             innerStartState = null;
+            midStartState = null;
             outerStartState = null;
             prevOuterStartState = null;
+            preOrphansState = null;
             tmpConstants.stop();
         }
     }
@@ -410,26 +411,26 @@ public class UniverseTransaction extends MutableTransaction {
         outerStartState = new MutableState(state);
     }
 
-    private boolean hasBackwardQueued(State state) {
-        boolean result = hasQueued(state, universe(), Priority.backward);
-        if (config.isTraceUniverse() && result) {
-            System.err.println("DCLARE: BACKWARD UNIVERSE " + this);
-        }
-        return result;
-    }
-
-    private boolean hasDeferredQueued(State state) {
-        boolean result = hasQueued(state, universe(), Priority.deferred);
+    private boolean hasInnerQueued(State state) {
+        boolean result = hasQueued(state, universe(), Priority.inner);
         if (config.isTraceUniverse() && result) {
             System.err.println("DCLARE: DEFERRED UNIVERSE " + this);
         }
         return result;
     }
 
-    private boolean hasConstructionQueued(State state) {
-        boolean result = hasQueued(state, universe(), Priority.construction);
+    private boolean hasMidQueued(State state) {
+        boolean result = hasQueued(state, universe(), Priority.mid);
         if (config.isTraceUniverse() && result) {
             System.err.println("DCLARE: CONSTRUCTION UNIVERSE " + this);
+        }
+        return result;
+    }
+
+    private boolean hasOuterQueued(State state) {
+        boolean result = hasQueued(state, universe(), Priority.outer);
+        if (config.isTraceUniverse() && result) {
+            System.err.println("DCLARE: BACKWARD UNIVERSE " + this);
         }
         return result;
     }
@@ -716,20 +717,20 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
+    public State innerStartState() {
+        return innerStartState;
+    }
+
+    public State midStartState() {
+        return midStartState;
+    }
+
     public MutableState outerStartState() {
         return outerStartState;
     }
 
     public State prevOuterStartState() {
         return prevOuterStartState;
-    }
-
-    public State innerStartState() {
-        return innerStartState;
-    }
-
-    public State constructionStartState() {
-        return constructionStartState;
     }
 
     public ConstantState tmpConstants() {

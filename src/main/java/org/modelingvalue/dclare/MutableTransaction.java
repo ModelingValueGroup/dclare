@@ -44,7 +44,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     protected MutableTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
         triggeredActions = Concurrent.of();
-        triggeredChildren = new Concurrent[Priority.scheduled.nr];
+        triggeredChildren = new Concurrent[Priority.scheduled.ordinal()];
         for (int i = 0; i < triggeredChildren.length; i++) {
             triggeredChildren[i] = Concurrent.of();
         }
@@ -125,7 +125,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
         }
         if (!universeTransaction().isKilled()) {
-            move(mutable(), Priority.forward, Priority.scheduled);
+            move(mutable(), Priority.immediate, Priority.scheduled);
         }
     }
 
@@ -161,7 +161,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
             try {
                 State state = base.merge(this, branches, branches.length);
-                state = trigger(state, triggeredActions.result(), Priority.forward);
+                state = trigger(state, triggeredActions.result(), Priority.immediate);
                 for (int i = 0; i < triggeredChildren.length; i++) {
                     state = triggerMutables(state, triggeredChildren[i].result(), Priority.values()[i]);
                 }
@@ -214,7 +214,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                         if (!Objects.equals(branchParent, baseParent)) {
                             Set<Mutable> addedDepth = depth.removeAll(State.get(psb, ds));
                             if (!addedDepth.isEmpty()) {
-                                triggeredChildren[ds.priority().nr].change(ts -> ts.addAll(addedDepth));
+                                triggeredChildren[ds.priority().ordinal()].change(ts -> ts.addAll(addedDepth));
                             }
                         }
                     }

@@ -43,9 +43,9 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       defer          = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       setBack        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       construct      = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       deferInner     = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       deferMid       = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       deferOuter     = Concurrent.of();
 
     private Pair<Instant, Throwable>                             throwable;
 
@@ -68,9 +68,9 @@ public class ObserverTransaction extends ActionTransaction {
         sets.merge();
         emptyMandatory.merge();
         changed.merge();
-        defer.merge();
-        setBack.merge();
-        construct.merge();
+        deferInner.merge();
+        deferOuter.merge();
+        deferMid.merge();
         Map<Reason, Newable> cons = constructions.merge();
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
@@ -93,9 +93,9 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
-            defer.init(FALSE);
-            construct.init(FALSE);
-            setBack.init(FALSE);
+            deferInner.init(FALSE);
+            deferMid.init(FALSE);
+            deferOuter.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
             } catch (Throwable t) {
@@ -120,9 +120,9 @@ public class ObserverTransaction extends ActionTransaction {
                 }
                 observer.exception().set(mutable(), throwable);
                 changed.clear();
-                defer.clear();
-                construct.clear();
-                setBack.clear();
+                deferInner.clear();
+                deferMid.clear();
+                deferOuter.clear();
                 gets.clear();
                 sets.clear();
                 constructions.clear();
@@ -142,13 +142,13 @@ public class ObserverTransaction extends ActionTransaction {
         checkTooManyObserved(observeds);
         if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.forward);
-        } else if (defer.get().equals(TRUE)) {
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.deferred);
-        } else if (construct.get().equals(TRUE)) {
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.construction);
-        } else if (setBack.get().equals(TRUE)) {
-            trigger(mutable(), (Observer<Mutable>) observer, Priority.backward);
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.immediate);
+        } else if (deferInner.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.inner);
+        } else if (deferMid.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.mid);
+        } else if (deferOuter.get().equals(TRUE)) {
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.outer);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
@@ -348,7 +348,7 @@ public class ObserverTransaction extends ActionTransaction {
                 if (result == null) {
                     result = (O) outerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
-                        result = (O) constructionStartState().get(mutable(), constructed).get(reason);
+                        result = (O) midStartState().get(mutable(), constructed).get(reason);
                         if (result == null) {
                             result = (O) innerStartState().get(mutable(), constructed).get(reason);
                             if (result == null) {
@@ -403,22 +403,22 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added) {
-        return added(object, observed, innerStartState(), state(), added) ? defer : //
-                isConstructed(observed, added, constructionStartState(), current()) ? construct : //
-                        added(object, observed, prevOuterStartState(), outerStartState(), added) ? setBack : null;
+        return added(object, observed, innerStartState(), state(), added) ? deferInner : //
+                isDerived(observed, added, midStartState(), current()) ? deferMid : //
+                        added(object, observed, prevOuterStartState(), outerStartState(), added) ? deferOuter : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed) {
-        return removed(object, observed, innerStartState(), state(), removed) ? defer : //
-                isContained(observed, removed, outerStartState(), innerStartState()) ? setBack : //
-                        removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
+        return removed(object, observed, innerStartState(), state(), removed) ? deferInner : //
+                isContained(observed, removed, outerStartState(), innerStartState()) ? deferOuter : //
+                        removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? deferOuter : null;
     }
 
     private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post) {
-        return changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
-                isConstructed(observed, post, constructionStartState(), current()) ? construct : //
-                        isContained(observed, pre, outerStartState(), innerStartState()) ? setBack : //
-                                changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
+        return changed(object, observed, innerStartState(), state(), pre, post) ? deferInner : //
+                isDerived(observed, post, midStartState(), current()) ? deferMid : //
+                        isContained(observed, pre, outerStartState(), innerStartState()) ? deferOuter : //
+                                changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? deferOuter : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added) {
@@ -433,10 +433,10 @@ public class ObserverTransaction extends ActionTransaction {
         return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || isChangedBack(object, observed, pre, post, preState, postState);
     }
 
-    private <O, T, E> boolean isConstructed(Observed<O, T> observed, E element, IState preState, IState postState) {
+    private <O, T, E> boolean isDerived(Observed<O, T> observed, E element, IState preState, IState postState) {
         return element instanceof Newable && //
-                (preState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) == null && preState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty()) && //
-                (postState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) != null || !postState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty());
+                preState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty() && //
+                !postState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty();
     }
 
     private <O, T, E> boolean isContained(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -464,7 +464,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <T, O> void traceRippleOut(Concurrent<Set<Boolean>> delay, O object, Observed<O, T> observed, Object post, Object result) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
-            String delayString = delay == setBack ? "BACK:   " : delay == construct ? "CONST:  " : "DEFER:  ";
+            String delayString = delay == deferOuter ? "BACK:   " : delay == deferMid ? "CONST:  " : "DEFER:  ";
             runNonObserving(() -> System.err.println(delayString + parent().indent("    ") + mutable() + "." + observer() + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
         }
     }

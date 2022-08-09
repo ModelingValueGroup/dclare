@@ -200,20 +200,20 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return action().direction();
     }
 
+    protected State innerStartState() {
+        return universeTransaction().innerStartState();
+    }
+
+    protected State midStartState() {
+        return universeTransaction().midStartState();
+    }
+
     protected MutableState outerStartState() {
         return universeTransaction().outerStartState();
     }
 
     protected State prevOuterStartState() {
         return universeTransaction().prevOuterStartState();
-    }
-
-    protected State innerStartState() {
-        return universeTransaction().innerStartState();
-    }
-
-    protected State constructionStartState() {
-        return universeTransaction().constructionStartState();
     }
 
 }

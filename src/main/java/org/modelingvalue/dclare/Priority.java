@@ -21,31 +21,29 @@ import org.modelingvalue.collections.util.Pair;
 
 public enum Priority implements LeafModifier, Internable {
 
-    forward(0),
+    immediate,
 
-    deferred(1),
+    inner,
 
-    construction(2),
+    mid,
 
-    backward(3),
+    outer,
 
-    scheduled(4);
+    scheduled;
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;
-    public final int               nr;
 
-    Priority(int nr) {
-        actions = new Queued<>(true, nr);
-        children = new Queued<>(false, nr);
-        this.nr = nr;
+    Priority() {
+        actions = new Queued<>(true);
+        children = new Queued<>(false);
     }
 
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
 
         private final boolean actions;
 
-        private Queued(boolean actions, int nr) {
+        private Queued(boolean actions) {
             super(Pair.of(Priority.this, actions), Set.of(), null, null, null, SetableModifier.plumbing);
             this.actions = actions;
         }

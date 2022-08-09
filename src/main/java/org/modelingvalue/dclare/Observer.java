@@ -36,7 +36,7 @@ import org.modelingvalue.dclare.ex.ThrowableError;
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
     public static final Observer<Mutable>                     DUMMY        = new Observer<>("<dummy>", o -> {
-                                                                           }, Priority.forward);
+                                                                           }, Priority.immediate);
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
