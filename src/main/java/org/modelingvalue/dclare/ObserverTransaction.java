@@ -410,14 +410,14 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed) {
         return removed(object, observed, innerStartState(), state(), removed) ? defer : //
-                isConstructed(observed, removed, outerStartState(), constructionStartState()) ? setBack : //
+                isContained(observed, removed, outerStartState(), innerStartState()) ? setBack : //
                         removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? setBack : null;
     }
 
     private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post) {
         return changed(object, observed, innerStartState(), state(), pre, post) ? defer : //
                 isConstructed(observed, post, constructionStartState(), current()) ? construct : //
-                        isConstructed(observed, pre, outerStartState(), constructionStartState()) ? setBack : //
+                        isContained(observed, pre, outerStartState(), innerStartState()) ? setBack : //
                                 changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? setBack : null;
     }
 
@@ -437,6 +437,12 @@ public class ObserverTransaction extends ActionTransaction {
         return element instanceof Newable && //
                 (preState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) == null && preState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty()) && //
                 (postState.get((Newable) element, Newable.D_DIRECT_CONSTRUCTION) != null || !postState.get((Newable) element, Newable.D_DERIVED_CONSTRUCTIONS).isEmpty());
+    }
+
+    private <O, T, E> boolean isContained(Observed<O, T> observed, E element, IState preState, IState postState) {
+        return element instanceof Newable && //
+                preState.get((Newable) element, Mutable.D_PARENT_CONTAINING) == null && //
+                postState.get((Newable) element, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
