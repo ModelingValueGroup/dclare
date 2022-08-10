@@ -374,7 +374,6 @@ public class ObserverTransaction extends ActionTransaction {
                 if (delay != null) {
                     delay.set(TRUE);
                     result[0] = result[0].remove(added);
-                    traceRippleOut(delay, object, observed, post, result[0]);
                 }
             }, removed -> {
                 Concurrent<Set<Boolean>> delay = removed(object, many, removed);
@@ -386,15 +385,17 @@ public class ObserverTransaction extends ActionTransaction {
                     } else {
                         result[0] = result[0].add(removed);
                     }
-                    traceRippleOut(delay, object, observed, post, result[0]);
                 }
             });
+            if (!Objects.equals(post, result[0])) {
+                traceRippleOut(object, observed, post, result[0]);
+            }
             return (T) result[0];
         } else {
             Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post);
             if (delay != null) {
                 delay.set(TRUE);
-                traceRippleOut(delay, object, observed, post, pre);
+                traceRippleOut(object, observed, post, pre);
                 return pre;
             } else {
                 return post;
@@ -462,10 +463,10 @@ public class ObserverTransaction extends ActionTransaction {
         return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
     }
 
-    private <T, O> void traceRippleOut(Concurrent<Set<Boolean>> delay, O object, Observed<O, T> observed, Object post, Object result) {
+    private <T, O> void traceRippleOut(O object, Observed<O, T> observed, Object post, Object result) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
-            String delayString = delay == deferOuter ? "BACK:   " : delay == deferMid ? "CONST:  " : "DEFER:  ";
-            runNonObserving(() -> System.err.println(delayString + parent().indent("    ") + mutable() + "." + observer() + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
+            String level = deferInner.get().equals(TRUE) ? "INNER" : deferMid.get().equals(TRUE) ? "MID" : "OUTER";
+            runNonObserving(() -> System.err.println("DEFER:  " + parent().indent("    ") + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
         }
     }
 
