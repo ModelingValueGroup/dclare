@@ -37,9 +37,9 @@ public class MatchInfo {
         return new MatchInfo(newable, tx);
     }
 
-    private MatchInfo(Newable newable, ObserverTransaction tx) {
+    private MatchInfo(Newable newable, ObserverTransaction otx) {
         this.newable = newable;
-        this.otx = tx;
+        this.otx = otx;
     }
 
     public boolean mustReplace(MatchInfo replaced) {
@@ -50,6 +50,8 @@ public class MatchInfo {
                 return false;
             } else if (!identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
                 return true;
+            } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
+                otx.runNonObserving(() -> System.err.println("MATCH:  " + otx.parent().indent("    ") + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
             }
         }
         return false;
