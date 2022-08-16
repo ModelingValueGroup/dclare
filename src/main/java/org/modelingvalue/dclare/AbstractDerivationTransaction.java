@@ -85,7 +85,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
-            if (object instanceof Mutable && !Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
+            if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
+                return value;
+            } else if (object instanceof Mutable) {
                 Pair<Object, Observed> slot = Pair.of(object, observed);
                 Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
                 Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
