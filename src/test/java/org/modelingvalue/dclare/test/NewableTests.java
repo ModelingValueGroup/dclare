@@ -54,17 +54,17 @@ public class NewableTests {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
 
-    private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).     //
-            withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                //
-            withTraceUniverse(false).withTraceActions(false).withTraceMatching(false).withTraceRippleOut(false);
+    private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).              //
+            withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                         //
+            withTraceUniverse(false).withTraceActions(false).withTraceMatching(false).withTraceRippleOut(false).withTraceDerivation(false);
     private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
-    private static final int            NUM_CONFIGS        = 2;                                                                   // = CONFIGS.length; // used in annotation which requires a hardconstant
+    private static final int            NUM_CONFIGS        = 2;                                                                            // = CONFIGS.length; // used in annotation which requires a hardconstant
 
     private static final boolean        FULL               = true;
     private static final boolean        DEFAULT_ROLES      = true;
     private static final int            MANY_NR            = 16;
 
-    private static final boolean        PRINT_RESULT_STATE = false;                                                               // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
+    private static final boolean        PRINT_RESULT_STATE = false;                                                                        // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
     @Test
     public void sanityCheck() {

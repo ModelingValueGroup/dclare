@@ -30,6 +30,10 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings("rawtypes")
     private static final Context<Set<Pair<Object, Observed>>> DERIVED = Context.of(Set.of());
+    @SuppressWarnings("rawtypes")
+    private static final Context<Observer>                    DERIVER = Context.of(null);
+
+    private static final Context<Boolean>                     DERIVE  = Context.of(true);
 
     public boolean isDeriving() {
         return !DERIVED.get().isEmpty();
@@ -54,7 +58,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     protected <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed;
+        return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
@@ -85,7 +89,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
-            if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed)) {
+            if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Newable.D_DIRECT_CONSTRUCTION.equals(observed)) {
                 return value;
             } else if (object instanceof Mutable) {
                 Pair<Object, Observed> slot = Pair.of(object, observed);
@@ -111,7 +115,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void runDeriver(Mutable mutable, Observer deriver) {
         try {
-            deriver.run(mutable);
+            DERIVER.run(deriver, () -> deriver.run(mutable));
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable, new TransactionException(deriver, t)));
         }
@@ -132,12 +136,19 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         return set(object, setable, oper.apply(getNonDerived(object, setable)));
     }
 
+    public void runNonDeriving(Runnable action) {
+        DERIVE.run(false, action);
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T post) {
         if (doDeriver(object, setable)) {
             constantState.set(this, object, setable.constant(), post, true);
             T pre = getNonDerived(object, setable);
+            if (universeTransaction().getConfig().isTraceDerivation()) {
+                runNonDeriving(() -> System.err.println("DERIVE: " + parent().indent("    ") + object + "." + DERIVER.get() + " (" + object + "." + setable + "=" + pre + "->" + post + ")"));
+            }
             if (setable.containment()) {
                 Setable.<T, Mutable> diff(pre, post, added -> {
                     set(added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) setable));
