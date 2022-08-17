@@ -88,6 +88,11 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
+    }
+
+    @Override
     public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
         O result = supplier.get();
         Construction cons = Construction.of(Mutable.THIS, Observer.DUMMY, reason);
