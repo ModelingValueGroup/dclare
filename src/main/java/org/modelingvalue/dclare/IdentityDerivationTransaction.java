@@ -44,8 +44,8 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     @Override
-    protected <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        if (super.doDeriver(object, getable)) {
+    public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
+        if (super.doDerive(object, getable)) {
             T pre = original.prevOuterStartState().get(object, getable);
             T post = original.outerStartState().get(object, getable);
             if (!Objects.equals(pre, post)) {

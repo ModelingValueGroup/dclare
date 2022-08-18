@@ -57,7 +57,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
-    protected <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
+    public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
         return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
     }
 
@@ -68,7 +68,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @Override
     public <O, T> T get(O object, Getable<O, T> getable) {
         T value = getNonDerived(object, getable);
-        if (doDeriver(object, getable)) {
+        if (doDerive(object, getable)) {
             return derive(object, (Observed<O, T>) getable, value);
         } else {
             return value;
@@ -78,7 +78,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @Override
     protected <O, T> T current(O object, Getable<O, T> getable) {
         T value = super.current(object, getable);
-        if (doDeriver(object, getable)) {
+        if (doDerive(object, getable)) {
             return derive(object, (Observed<O, T>) getable, value);
         } else {
             return value;
@@ -91,7 +91,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         if (!constantState.isSet(this, object, constant)) {
             if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Newable.D_DIRECT_CONSTRUCTION.equals(observed)) {
                 return value;
-            } else if (object instanceof Mutable) {
+            } else {
                 Pair<Object, Observed> slot = Pair.of(object, observed);
                 Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
                 Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
@@ -103,13 +103,14 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                             runDeriver((Mutable) object, deriver);
                         }
                     });
+                    if (!constantState.isSet(this, object, constant)) {
+                        return value;
+                    }
                 }
-            }
-            if (!constantState.isSet(this, object, constant)) {
-                set(object, observed, value);
             }
         }
         return constantState.get(this, object, constant);
+
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -143,7 +144,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T post) {
-        if (doDeriver(object, setable)) {
+        if (doDerive(object, setable)) {
             constantState.set(this, object, setable.constant(), post, true);
             T pre = getNonDerived(object, setable);
             if (universeTransaction().getConfig().isTraceDerivation()) {
