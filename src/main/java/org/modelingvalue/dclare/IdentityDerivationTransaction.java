@@ -18,7 +18,6 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
@@ -45,17 +44,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
 
     @Override
     public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
-        if (super.doDerive(object, getable)) {
-            T pre = original.prevOuterStartState().get(object, getable);
-            T post = original.outerStartState().get(object, getable);
-            if (!Objects.equals(pre, post)) {
-                return false;
-            } else {
-                return true;
-            }
-        } else {
-            return false;
-        }
+        return super.doDerive(object, getable) && !isChanged(object, getable);
     }
 
     @Override
@@ -71,20 +60,10 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return original.outerStartState().get(object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
-    @SuppressWarnings("rawtypes")
-    @Override
-    protected Collection<Observer> derivers(Mutable object, Observed observed) {
-        return isChanged(object) ? super.derivers(object, observed).exclude(Observer::anonymous) : super.derivers(object, observed);
-    }
-
-    @SuppressWarnings("rawtypes")
-    private boolean isChanged(Mutable object) {
-        if (isOld(object)) {
-            TransactionId txid = original.outerStartState().get(object, Mutable.D_CHANGE_ID);
-            return txid != null && txid.number() > original.prevOuterStartState().get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
-        } else {
-            return false;
-        }
+    private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
+        T pre = original.prevOuterStartState().get(object, getable);
+        T post = original.outerStartState().get(object, getable);
+        return !Objects.equals(pre, post);
     }
 
     @Override

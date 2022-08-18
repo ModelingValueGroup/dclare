@@ -43,7 +43,7 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        if (!newable.equals(replaced.newable) && haveEqualType(replaced) && sortKey().compareTo(replaced.sortKey()) < 0) {
+        if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
             if (newable.equals(replaced.replacing())) {
                 return true;
             } else if (!replaced.identityCanBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
