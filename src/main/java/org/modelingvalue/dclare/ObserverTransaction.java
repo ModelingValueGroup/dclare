@@ -344,7 +344,7 @@ public class ObserverTransaction extends ActionTransaction {
             Constructed constructed = observer().constructed();
             O result = (O) current(mutable(), constructed).get(reason);
             if (result == null) {
-                result = (O) prevOuterStartState().get(mutable(), constructed).get(reason);
+                result = (O) preOuterStartState().get(mutable(), constructed).get(reason);
                 if (result == null) {
                     result = (O) outerStartState().get(mutable(), constructed).get(reason);
                     if (result == null) {
@@ -406,20 +406,20 @@ public class ObserverTransaction extends ActionTransaction {
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added) {
         return added(object, observed, innerStartState(), state(), added) ? deferInner : //
                 isDerived(observed, added, midStartState(), current()) ? deferMid : //
-                        added(object, observed, prevOuterStartState(), outerStartState(), added) ? deferOuter : null;
+                        added(object, observed, preOuterStartState(), outerStartState(), added) ? deferOuter : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed) {
         return removed(object, observed, innerStartState(), state(), removed) ? deferInner : //
                 isContained(observed, removed, outerStartState(), innerStartState()) ? deferOuter : //
-                        removed(object, observed, prevOuterStartState(), outerStartState(), removed) ? deferOuter : null;
+                        removed(object, observed, preOuterStartState(), outerStartState(), removed) ? deferOuter : null;
     }
 
     private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post) {
         return changed(object, observed, innerStartState(), state(), pre, post) ? deferInner : //
                 isDerived(observed, post, midStartState(), current()) ? deferMid : //
                         isContained(observed, pre, outerStartState(), innerStartState()) ? deferOuter : //
-                                changed(object, observed, prevOuterStartState(), outerStartState(), pre, post) ? deferOuter : null;
+                                changed(object, observed, preOuterStartState(), outerStartState(), pre, post) ? deferOuter : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added) {

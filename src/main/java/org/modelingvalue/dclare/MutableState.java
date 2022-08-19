@@ -21,9 +21,11 @@ import java.util.function.UnaryOperator;
 
 public class MutableState implements IState {
 
+    private State                        preState;
     private final AtomicReference<State> atomic;
 
     public MutableState(State state) {
+        this.preState = state;
         this.atomic = new AtomicReference<>(state);
     }
 
@@ -32,11 +34,16 @@ public class MutableState implements IState {
         return state().get(object, property);
     }
 
+    public State preState() {
+        return preState;
+    }
+
     public State state() {
         return atomic.get();
     }
 
     public State setState(State state) {
+        preState = state;
         return atomic.getAndUpdate(s -> state);
     }
 

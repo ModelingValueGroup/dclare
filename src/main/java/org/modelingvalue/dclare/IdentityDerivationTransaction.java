@@ -61,7 +61,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
-        T pre = original.prevOuterStartState().get(object, getable);
+        T pre = original.preOuterStartState().get(object, getable);
         T post = original.outerStartState().get(object, getable);
         return !Objects.equals(pre, post);
     }
