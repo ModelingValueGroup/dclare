@@ -27,6 +27,7 @@ import java.util.function.UnaryOperator;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Mergeable;
@@ -339,7 +340,19 @@ public class State implements IState, Serializable {
     @SuppressWarnings("unchecked")
     private static String valueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
-            return "\n          <+ " + ((Set) a).removeAll((Set) b) + "\n          +> " + ((Set) b).removeAll((Set) a);
+            Set sa = (Set) a;
+            Set sb = (Set) b;
+            return "\n          <+ " + sa.removeAll(sb) + "\n          +> " + sb.removeAll(sa);
+        } else if (a instanceof List && b instanceof List) {
+            List la = (List) a;
+            List lb = (List) b;
+            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+                // same order
+                return "\n          <+ " + la.removeAll(lb) + "\n          +> " + lb.removeAll(la);
+            } else {
+                // reordered
+                return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
+            }
         } else {
             return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
         }
@@ -348,9 +361,23 @@ public class State implements IState, Serializable {
     @SuppressWarnings("unchecked")
     public static String shortValueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
-            Set removed = ((Set) a).removeAll((Set) b);
-            Set added = ((Set) b).removeAll((Set) a);
+            Set sa = (Set) a;
+            Set sb = (Set) b;
+            Set removed = sa.removeAll(sb);
+            Set added = sb.removeAll(sa);
             return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+        } else if (a instanceof List && b instanceof List) {
+            List la = (List) a;
+            List lb = (List) b;
+            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+                // same order
+                List removed = la.removeAll(lb);
+                List added = lb.removeAll(la);
+                return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+            } else {
+                // reordered
+                return StringUtil.toString(a) + "->" + StringUtil.toString(b);
+            }
         } else {
             return StringUtil.toString(a) + "->" + StringUtil.toString(b);
         }

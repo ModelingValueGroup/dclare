@@ -377,6 +377,10 @@ public class UniverseTransaction extends MutableTransaction {
                                 again = true;
                             } else if (hasInnerQueued(state)) {
                                 again = true;
+                                if (orphansDetected.get() == Boolean.FALSE) {
+                                    preOrphansState = state;
+                                    orphansDetected.set(null);
+                                }
                             }
                         }
                     } while (again);
