@@ -15,15 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
+
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -222,4 +222,8 @@ public class ImperativeTransaction extends LeafTransaction {
         return direction;
     }
 
+    @Override
+    public String getCurrentTypeForTrace() {
+        return "IMP";
+    }
 }

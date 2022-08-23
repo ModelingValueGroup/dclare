@@ -21,4 +21,9 @@ public class DerivationTransaction extends AbstractDerivationTransaction {
         super(universeTransaction);
     }
 
+
+    @Override
+    public String getCurrentTypeForTrace() {
+        return "DER";
+    }
 }

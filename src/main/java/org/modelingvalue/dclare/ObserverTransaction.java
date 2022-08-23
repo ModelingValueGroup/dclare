@@ -15,12 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Supplier;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -30,6 +32,11 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
@@ -559,4 +566,8 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
+    @Override
+    public String getCurrentTypeForTrace() {
+        return "OBS";
+    }
 }

@@ -107,4 +107,9 @@ public class ReadOnlyTransaction extends LeafTransaction {
         return Direction.DEFAULT;
     }
 
+
+    @Override
+    public String getCurrentTypeForTrace() {
+        return "RON";
+    }
 }

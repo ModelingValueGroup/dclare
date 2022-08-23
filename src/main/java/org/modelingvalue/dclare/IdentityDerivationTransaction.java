@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.dclare.Construction.Reason;
+
 import java.util.Objects;
 import java.util.function.Supplier;
-
-import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -77,5 +77,10 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         Construction cons = Construction.of(Mutable.THIS, Observer.DUMMY, reason);
         set(result, Newable.D_DERIVED_CONSTRUCTIONS, Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons));
         return result;
+    }
+
+    @Override
+    public String getCurrentTypeForTrace() {
+        return "IDR";
     }
 }
