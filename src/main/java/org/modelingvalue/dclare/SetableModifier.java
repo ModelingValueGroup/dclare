@@ -22,5 +22,6 @@ public enum SetableModifier implements FeatureModifier<SetableModifier> {
     synthetic,
     plumbing,
     durable,
-    doNotMerge;
+    doNotMerge,
+    doNotDerive;
 }

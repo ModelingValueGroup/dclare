@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.ex.TransactionException;
-
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
     private static final String                               INDENTATION = "    ";
@@ -58,8 +58,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
+    @SuppressWarnings("rawtypes")
     public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
+        return object instanceof Mutable && getable instanceof Observed && !((Observed) getable).doNotDerive() && DERIVE.get();
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
@@ -90,10 +91,10 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     private <O, T> T derive(O object, Observed<O, T> observed, T value) {
         Constant<O, T> constant = observed.constant();
         if (!constantState.isSet(this, object, constant)) {
-            if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Newable.D_DIRECT_CONSTRUCTION.equals(observed)) {
+            if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                 return value;
             } else {
-                Pair<Object, Observed>      slot       = Pair.of(object, observed);
+                Pair<Object, Observed> slot = Pair.of(object, observed);
                 Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
                 Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
                 if (oldDerived == newDerived) {
@@ -191,7 +192,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private String tracePre(int i) {
-        String indent    = INDENT.get();
+        String indent = INDENT.get();
         String seqIndent = indent.substring(0, indent.length() - INDENTATION.length()) + String.format(SEQ_FORMAT, i);
         return String.format("DERIVE: %010d%s", System.identityHashCode(Thread.currentThread()), seqIndent);
     }

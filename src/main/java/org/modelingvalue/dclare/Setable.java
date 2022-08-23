@@ -69,6 +69,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
+    private final boolean                                doNotDerive;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -95,6 +96,7 @@ public class Setable<O, T> extends Getable<O, T> {
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
+        this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -118,6 +120,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean doNotMerge() {
         return doNotMerge;
+    }
+
+    public boolean doNotDerive() {
+        return doNotDerive;
     }
 
     public boolean isReference() {
