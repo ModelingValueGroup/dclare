@@ -15,16 +15,17 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.TransactionException;
+
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.TransactionException;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
     private static final String                               INDENTATION = "    ";
@@ -188,12 +189,12 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private String tracePre() {
-        return String.format("DERIVE: %010d%s", System.identityHashCode(Thread.currentThread()), INDENT.get());
+        return String.format("DERIVE: %02d%s", ContextThread.getNr(), INDENT.get());
     }
 
     private String tracePre(int i) {
         String indent = INDENT.get();
         String seqIndent = indent.substring(0, indent.length() - INDENTATION.length()) + String.format(SEQ_FORMAT, i);
-        return String.format("DERIVE: %010d%s", System.identityHashCode(Thread.currentThread()), seqIndent);
+        return String.format("DERIVE: %02d%s", ContextThread.getNr(), seqIndent);
     }
 }
