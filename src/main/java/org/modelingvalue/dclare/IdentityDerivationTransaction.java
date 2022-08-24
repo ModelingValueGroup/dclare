@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.dclare.Construction.Reason;
-
 import java.util.Objects;
 import java.util.function.Supplier;
+
+import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 

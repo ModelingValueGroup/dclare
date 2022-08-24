@@ -15,17 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.ex.TransactionException;
-
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
     private static final String                               INDENTATION = "    ";
@@ -99,26 +98,26 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
                 Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
                 if (oldDerived == newDerived) {
-                    if (isTraceDerivation()) {
+                    if (isTraceDerivation(observed)) {
                         runNonDeriving(() -> System.err.println(tracePre() + " REC " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + value));
                     }
                     return value;
                 } else {
-                    if (isTraceDerivation()) {
+                    if (isTraceDerivation(observed)) {
                         runNonDeriving(() -> System.err.println(tracePre() + " >>> " + object + "." + observed));
                     }
                     INDENT.run(INDENT.get() + INDENTATION, () -> DERIVED.run(newDerived, () -> {
                         int i = 0;
-                        for (Observer deriver : derivers((Mutable) object, observed)) {
-                            if (isTraceDerivation()) {
-                                int ii = ++i;
-                                runNonDeriving(() -> System.err.println(tracePre(ii) + ">>> " + object + "." + deriver + "()"));
-                            }
-                            runDeriver((Mutable) object, deriver);
+                        Set<Observer> derivers = ((Mutable) object).dAllDerivers(observed).toSet();
+                        for (Observer deriver : derivers.filter(Observer::anonymous)) {
+                            runDeriver((Mutable) object, observed, deriver, ++i);
+                        }
+                        for (Observer deriver : derivers.exclude(Observer::anonymous)) {
+                            runDeriver((Mutable) object, observed, deriver, ++i);
                         }
                     }));
                     if (!constantState.isSet(this, object, constant)) {
-                        if (isTraceDerivation()) {
+                        if (isTraceDerivation(observed)) {
                             runNonDeriving(() -> System.err.println(tracePre() + " NOD " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + value));
                         }
                         return value;
@@ -131,20 +130,18 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void runDeriver(Mutable mutable, Observer deriver) {
+    private void runDeriver(Mutable mutable, Observed observed, Observer deriver, int i) {
+        if (isTraceDerivation(observed)) {
+            runNonDeriving(() -> System.err.println(tracePre(i) + ">>> " + mutable + "." + deriver + "()"));
+        }
         try {
             DERIVER.run(deriver, () -> deriver.run(mutable));
         } catch (Throwable t) {
-            if (isTraceDerivation()) {
+            if (isTraceDerivation(observed)) {
                 runNonDeriving(() -> System.err.println(tracePre() + " !!! " + mutable + "." + deriver + "() => THROWS " + t));
             }
             universeTransaction().handleException(new TransactionException(mutable, new TransactionException(deriver, t)));
         }
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected Collection<Observer> derivers(Mutable object, Observed observed) {
-        return object.dAllDerivers(observed);
     }
 
     @Override
@@ -167,7 +164,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         if (doDerive(object, setable)) {
             constantState.set(this, object, setable.constant(), post, true);
             T pre = getNonDerived(object, setable);
-            if (isTraceDerivation()) {
+            if (isTraceDerivation(setable)) {
                 runNonDeriving(() -> System.err.println(tracePre() + " SET " + object + "." + DERIVER.get() + "(" + object + "." + setable + "=" + pre + "->" + post + ")"));
             }
             if (setable.containment()) {
@@ -184,8 +181,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
-    private boolean isTraceDerivation() {
-        return universeTransaction().getConfig().isTraceDerivation();
+    @SuppressWarnings("rawtypes")
+    private boolean isTraceDerivation(Setable setable) {
+        return !setable.isPlumbing() && universeTransaction().getConfig().isTraceDerivation();
     }
 
     private String tracePre() {
