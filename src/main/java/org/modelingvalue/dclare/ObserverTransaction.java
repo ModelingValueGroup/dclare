@@ -18,8 +18,8 @@ package org.modelingvalue.dclare;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Concurrent;
@@ -36,9 +36,6 @@ public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
     private static final Set<Boolean>                            TRUE           = Set.of(true);
     public static final Context<Boolean>                         OBSERVE        = Context.of(true);
-    private static final UnaryOperator<Map<Reason, Newable>>     ACTUALIZER     = cons -> {
-                                                                                    return cons.putAll(cons.toMap(e -> Entry.of(e.getKey().actualize(), e.getValue())));
-                                                                                };
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
@@ -138,8 +135,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
-        set(mutable(), observer().constructed(), ACTUALIZER);
-        super.merge();
+        observe(mutable(), observer().constructed(), gets);
         super.run(pre, universeTransaction);
     }
 
@@ -348,7 +344,9 @@ public class ObserverTransaction extends ActionTransaction {
             return super.construct(reason, supplier);
         } else {
             Constructed constructed = observer().constructed();
-            O result = (O) current(mutable(), constructed).get(reason);
+            Map<Reason, Newable> cons = current(mutable(), constructed);
+            cons = cons.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
+            O result = (O) cons.get(reason);
             if (result == null) {
                 result = (O) preOuterStartState().get(mutable(), constructed).get(reason);
                 if (result == null) {

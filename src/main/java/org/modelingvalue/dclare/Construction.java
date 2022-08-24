@@ -118,31 +118,22 @@ public class Construction extends IdentifiedByArray {
 
         protected abstract Reason clone(Mutable thiz, Object[] identity);
 
-        public Reason actualize() {
-            boolean changed = false;
-            Object[] changedId = new Object[size()];
+        public Set<Reason> actualize() {
+            Set<Reason> all = Set.of(this);
             for (int i = 0; i < size(); i++) {
                 Object v = get(Mutable.THIS, i);
                 if (v instanceof Newable) {
                     Newable replacing = ((Newable) v).dReplacing();
                     if (replacing != null) {
-                        changed = true;
-                        v = replacing;
+                        for (Reason r : all) {
+                            Object[] id = r.identity();
+                            id[i] = replacing;
+                            all = all.add(r.clone(Mutable.THIS, id));
+                        }
                     }
                 }
-                changedId[i] = v;
             }
-            return changed ? clone(Mutable.THIS, changedId) : this;
-        }
-
-        public boolean isActualized() {
-            for (int i = 0; i < size(); i++) {
-                Object v = get(Mutable.THIS, i);
-                if (v instanceof Newable && ((Newable) v).dReplacing() != null) {
-                    return true;
-                }
-            }
-            return false;
+            return all;
         }
 
     }
