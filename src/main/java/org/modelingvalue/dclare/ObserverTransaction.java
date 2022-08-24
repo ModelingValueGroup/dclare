@@ -15,14 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.ContainingCollection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -33,15 +32,14 @@ import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Supplier;
-
 public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
     private static final Set<Boolean>                            TRUE           = Set.of(true);
     public static final Context<Boolean>                         OBSERVE        = Context.of(true);
+    private static final UnaryOperator<Map<Reason, Newable>>     ACTUALIZER     = cons -> {
+                                                                                    return cons.putAll(cons.toMap(e -> Entry.of(e.getKey().actualize(), e.getValue())));
+                                                                                };
+
     @SuppressWarnings("rawtypes")
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
     @SuppressWarnings("rawtypes")
@@ -140,7 +138,8 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
-        observe(mutable(), observer().constructed(), gets);
+        set(mutable(), observer().constructed(), ACTUALIZER);
+        super.merge();
         super.run(pre, universeTransaction);
     }
 

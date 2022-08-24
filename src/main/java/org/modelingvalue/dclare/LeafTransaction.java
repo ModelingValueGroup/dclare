@@ -15,15 +15,15 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
-
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -143,8 +143,8 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         Newable result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        if (result != null && !(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction)) {
-            Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
+        if (result != null) {
+            constantState().set(this, result, Newable.D_DIRECT_CONSTRUCTION, Construction.of(reason), true);
         }
         return (O) result;
     }

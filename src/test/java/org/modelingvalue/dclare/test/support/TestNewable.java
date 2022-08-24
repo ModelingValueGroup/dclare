@@ -21,6 +21,7 @@ import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.SerializableUnaryOperator;
 import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Construction.Reason;
 
 @SuppressWarnings("rawtypes")
 public class TestNewable extends TestMutable implements Newable {
@@ -129,6 +130,11 @@ public class TestNewable extends TestMutable implements Newable {
         @Override
         public String toString() {
             return super.toString().substring(getClass().getSimpleName().length());
+        }
+
+        @Override
+        protected Reason clone(Mutable thiz, Object[] identity) {
+            return new TestReason(thiz, identity);
         }
     }
 

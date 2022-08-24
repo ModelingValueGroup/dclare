@@ -26,7 +26,7 @@ import org.modelingvalue.dclare.Observer.Constructed;
 
 public interface Newable extends Mutable {
 
-    Observed<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Observed.of("D_DIRECT_CONSTRUCTION", null, plumbing, doNotDerive);
+    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, plumbing, durable);
     @SuppressWarnings({"unchecked", "rawtypes"})
     Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
                                                                                          Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                            //
@@ -53,7 +53,7 @@ public interface Newable extends Mutable {
     Comparable dSortKey();
 
     default Construction dDirectConstruction() {
-        return D_DIRECT_CONSTRUCTION.current(this);
+        return D_DIRECT_CONSTRUCTION.get(this);
     }
 
     default QualifiedSet<Direction, Construction> dDerivedConstructions() {

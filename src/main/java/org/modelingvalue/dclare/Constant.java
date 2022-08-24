@@ -15,10 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
 
 @SuppressWarnings("unused")
 public class Constant<O, T> extends Setable<O, T> {
@@ -125,6 +131,11 @@ public class Constant<O, T> extends Setable<O, T> {
 
     @Override
     public T pre(O object) {
+        return get(object);
+    }
+
+    @Override
+    public T current(O object) {
         return get(object);
     }
 

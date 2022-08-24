@@ -46,9 +46,9 @@ public class MatchInfo {
         if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
             if (newable.equals(replaced.replacing())) {
                 return true;
-            } else if (!replaced.identityCanBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
+            } else if (!identityCanBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
                 return false;
-            } else if (!identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
+            } else if (!replaced.identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
                 return true;
             } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
                 otx.runNonObserving(() -> System.err.println("MATCH:  " + otx.parent().indent("    ") + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
