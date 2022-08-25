@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
@@ -71,10 +72,12 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return super.construct(reason, supplier);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+        Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
-        Construction cons = Construction.of(Mutable.THIS, Observer.DUMMY, reason);
+        Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
         set(result, Newable.D_DERIVED_CONSTRUCTIONS, Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons));
         return result;
     }

@@ -41,6 +41,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Set<Setable<M, ?>> targets, LeafModifier... modifiers) {
+        return new Observer<M>(id, action, targets, modifiers);
+    }
+
     public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
         return new Observer<M>(id, action, modifiers);
     }
