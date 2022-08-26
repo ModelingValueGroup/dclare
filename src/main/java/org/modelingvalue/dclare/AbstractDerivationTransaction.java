@@ -173,7 +173,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             }
             if (setable.containment()) {
                 Setable.<T, Mutable> diff(pre, post, added -> {
-                    set(added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) setable));
+                    constantState.set(this, added, Mutable.D_PARENT_CONTAINING.constant(), Pair.of((Mutable) object, (Setable<Mutable, ?>) setable), true);
                 }, removed -> {
                 });
             }

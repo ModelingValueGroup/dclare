@@ -78,7 +78,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        set(result, Newable.D_DERIVED_CONSTRUCTIONS, Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons));
+        constantState().set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
         return result;
     }
 
