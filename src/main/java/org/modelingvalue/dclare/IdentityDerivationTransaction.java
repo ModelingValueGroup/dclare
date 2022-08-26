@@ -53,7 +53,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         if (object instanceof Mutable && isOld((Mutable) object)) {
             return original.outerStartState().get(object, getable);
         } else {
-            return original.state().get(object, getable);
+            return super.getNonDerived(object, getable);
         }
     }
 
@@ -78,7 +78,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        constantState().set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
+        memoization().set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
         return result;
     }
 
