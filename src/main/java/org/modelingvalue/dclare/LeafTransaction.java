@@ -15,15 +15,17 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.ContextThread;
+
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.IntStream;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -162,5 +164,23 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract Direction direction();
 
-    public abstract String getCurrentTypeForTrace();
+    ////////////////////////// only used for tracing: ///////////////////////////////////////////////
+    private static final String[] INDENT_ARRAY      = IntStream.range(0, 50).mapToObj(LeafTransaction::makeIndent).toArray(String[]::new);
+    private static final int      TAG_LENGTH        = 8;
+    private static final int      ONE_INDENT_LENGTH = 2;
+
+    protected abstract String getCurrentTypeForTrace();
+
+    //  produces a string like: "06|OBS DERIVE ...indent...."
+    public static String getTraceLineStart(String tag, int indent) {
+        return String.format("%02d|%3s %-" + TAG_LENGTH + "s %s", ContextThread.getNr(), getCurrent() == null ? "---" : getCurrent().getCurrentTypeForTrace(), tag, getIndent(indent));
+    }
+
+    private static String getIndent(int i) {
+        return i < 0 ? "...(indent=" + i + "???)..." : i < INDENT_ARRAY.length ? INDENT_ARRAY[i] : i < 2000 ? makeIndent(i) : "...(indent=" + i + "???)...";
+    }
+
+    private static String makeIndent(int i) {
+        return i == 0 ? "" : String.format("%" + (i * ONE_INDENT_LENGTH) + "s", "");
+    }
 }

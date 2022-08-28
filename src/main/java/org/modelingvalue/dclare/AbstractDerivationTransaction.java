@@ -15,26 +15,23 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.TransactionException;
+
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.TransactionException;
-
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
-    private static final String                                  INDENTATION = "    ";
-    private static final String                                  SEQ_FORMAT  = " %0" + INDENTATION.length() + "d";
     @SuppressWarnings("rawtypes")
-    protected static final Context<Set<Pair<Mutable, Observed>>> DERIVED     = Context.of(Set.of());
+    protected static final Context<Set<Pair<Mutable, Observed>>> DERIVED    = Context.of(Set.of());
     @SuppressWarnings("rawtypes")
-    protected static final Context<Pair<Mutable, Observer>>      DERIVER     = Context.of(null);
-    private static final Context<Boolean>                        DERIVE      = Context.of(true);
-    private static final Context<String>                         INDENT      = Context.of("");
+    protected static final Context<Pair<Mutable, Observer>>      DERIVER    = Context.of(null);
+    private static final   Context<Boolean>                      DERIVE     = Context.of(true);
+    private static final   Context<Integer>                      INDENT     = Context.of(0);
 
     public boolean isDeriving() {
         return !DERIVED.get().isEmpty();
@@ -87,20 +84,20 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                     return value;
                 } else {
-                    Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
+                    Pair<Mutable, Observed>      derived    = Pair.of((Mutable) object, observed);
                     Set<Pair<Mutable, Observed>> oldDerived = DERIVED.get();
                     Set<Pair<Mutable, Observed>> newDerived = oldDerived.add(derived);
                     if (oldDerived == newDerived) {
                         if (isTraceDerivation(observed)) {
-                            runNonDeriving(() -> System.err.println(tracePre() + " REC " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + value));
+                            runNonDeriving(() -> System.err.println(tracePre() + "RECU " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + value));
                         }
                         return value;
                     } else {
                         if (isTraceDerivation(observed)) {
-                            runNonDeriving(() -> System.err.println(tracePre() + " >>> " + object + "." + observed));
+                            runNonDeriving(() -> System.err.println(tracePre() + ">>>> " + object + "." + observed));
                         }
-                        INDENT.run(INDENT.get() + INDENTATION, () -> DERIVED.run(newDerived, () -> {
-                            int i = 0;
+                        INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
+                            int           i         = 0;
                             Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
                             for (Observer observer : observers.filter(Observer::anonymous)) {
                                 runDeriver((Mutable) object, observed, observer, ++i);
@@ -111,7 +108,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                         }));
                         if (!memoization.isSet(this, object, constant)) {
                             if (isTraceDerivation(observed)) {
-                                runNonDeriving(() -> System.err.println(tracePre() + " NOD " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + value));
+                                INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre() + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + value)));
                             }
                             return value;
                         }
@@ -127,13 +124,13 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void runDeriver(Mutable mutable, Observed observed, Observer observer, int i) {
         if (isTraceDerivation(observed)) {
-            runNonDeriving(() -> System.err.println(tracePre(i) + ">>> " + mutable + "." + observer + "()"));
+            runNonDeriving(() -> System.err.println(tracePre() + String.format(">>%d> ", i) + mutable + "." + observer + "()"));
         }
         try {
-            DERIVER.run(Pair.of(mutable, observer), () -> observer.run(mutable));
+            INDENT.run(INDENT.get() + 1, () -> DERIVER.run(Pair.of(mutable, observer), () -> observer.run(mutable)));
         } catch (Throwable t) {
             if (isTraceDerivation(observed)) {
-                runNonDeriving(() -> System.err.println(tracePre() + " !!! " + mutable + "." + observer + "() => THROWS " + t));
+                runNonDeriving(() -> System.err.println(tracePre() + "!!!! " + mutable + "." + observer + "() => THROWS " + t));
             }
             universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
         }
@@ -162,7 +159,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             if (isTraceDerivation(setable)) {
                 runNonDeriving(() -> {
                     Pair<Mutable, Observer> deriver = DERIVER.get();
-                    System.err.println(tracePre() + " SET " + deriver.a() + "." + deriver.b() + "(" + object + "." + setable + "=" + pre + "->" + post + ")");
+                    System.err.println(tracePre() + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + setable + "=" + pre + "->" + post + ")");
                 });
             }
             if (setable.containment()) {
@@ -185,13 +182,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private String tracePre() {
-        return String.format("DERIVE: %02d%s", ContextThread.getNr(), INDENT.get());
-    }
-
-    private String tracePre(int i) {
-        String indent = INDENT.get();
-        String seqIndent = indent.substring(0, indent.length() - INDENTATION.length()) + String.format(SEQ_FORMAT, i);
-        return String.format("DERIVE: %02d%s", ContextThread.getNr(), seqIndent);
+        return LeafTransaction.getTraceLineStart("DERIVE", INDENT.get());
     }
 
     protected ConstantState memoization() {

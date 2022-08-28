@@ -15,12 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -32,6 +26,12 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.ThrowableError;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
@@ -290,15 +290,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println("MATCH:  " + tx.parent().indent("    ") + tx.mutable() + //
-                                        "." + tx.leaf() + " (" + reason + "<=" + before + ")");
+                                System.err.println(LeafTransaction.getTraceLineStart("MATCH", tx.parent().depth()) + tx.mutable() + "." + tx.leaf() + " (" + reason + "<=" + before + ")");
                             }
                             Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
                         }
                         if (after != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println("MATCH:  " + tx.parent().indent("    ") + tx.mutable() + //
-                                        "." + tx.leaf() + " (" + reason + "=>" + after + ")");
+                                System.err.println(LeafTransaction.getTraceLineStart("MATCH", tx.parent().depth()) + tx.mutable() +"." + tx.leaf() + " (" + reason + "=>" + after + ")");
                             }
                             Newable.D_DERIVED_CONSTRUCTIONS.set(after, QualifiedSet::put, cons);
                         }

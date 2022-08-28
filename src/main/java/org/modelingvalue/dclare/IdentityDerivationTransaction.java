@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.Supplier;
-
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
+
+import java.util.Objects;
+import java.util.function.Supplier;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -83,7 +83,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     @Override
-    public String getCurrentTypeForTrace() {
+    protected String getCurrentTypeForTrace() {
         return "IDR";
     }
 }

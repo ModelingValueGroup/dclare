@@ -15,13 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -31,6 +32,12 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
@@ -470,7 +477,7 @@ public class ObserverTransaction extends ActionTransaction {
     private <T, O> void traceRippleOut(O object, Observed<O, T> observed, Object post, Object result) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
             String level = deferInner.get().equals(TRUE) ? "INNER" : deferMid.get().equals(TRUE) ? "MID" : "OUTER";
-            runNonObserving(() -> System.err.println("DEFER:  " + parent().indent("    ") + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
+            runNonObserving(() -> System.err.println(LeafTransaction.getTraceLineStart("DEFER", parent().depth()) + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
         }
     }
 
@@ -549,7 +556,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (!replacing.newable().equals(replaced.replacing())) {
             replacing.replace(replaced);
             if (universeTransaction().getConfig().isTraceMatching()) {
-                runNonObserving(() -> System.err.println("MATCH:  " + parent().indent("    ") + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
+                runNonObserving(() -> System.err.println(LeafTransaction.getTraceLineStart("MATCH", parent().depth()) + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
             }
             super.set(replaced.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), replacing.newable());
             QualifiedSet<Direction, Construction> fromCons = current().get(replaced.newable(), Newable.D_DERIVED_CONSTRUCTIONS);
@@ -564,7 +571,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
-    public String getCurrentTypeForTrace() {
+    protected String getCurrentTypeForTrace() {
         return "OBS";
     }
 }

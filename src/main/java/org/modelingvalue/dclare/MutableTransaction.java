@@ -15,8 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -28,6 +26,8 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Observed.Observers;
 import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
+
+import java.util.Objects;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
     @SuppressWarnings("rawtypes")
@@ -113,7 +113,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         if (universeTransaction().getConfig().isTraceMutable()) {
-            System.err.println("DCLARE: " + indent("    ") + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
+            System.err.println(LeafTransaction.getTraceLineStart("DCLARE", parent().depth()) + mutable() + " " + (queued.actions() ? "actions" : "children") + " " + todo.toString().substring(3));
         }
         if (universeTransaction().getConfig().isRunSequential()) {
             runSequential(todo);

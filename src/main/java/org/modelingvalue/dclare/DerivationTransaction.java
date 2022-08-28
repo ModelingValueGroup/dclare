@@ -23,7 +23,7 @@ public class DerivationTransaction extends AbstractDerivationTransaction {
 
 
     @Override
-    public String getCurrentTypeForTrace() {
+    protected String getCurrentTypeForTrace() {
         return "DER";
     }
 }

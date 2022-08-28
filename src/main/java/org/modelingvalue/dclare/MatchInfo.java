@@ -15,12 +15,12 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Construction.Reason;
+
+import java.util.Objects;
 
 public class MatchInfo {
 
@@ -51,7 +51,7 @@ public class MatchInfo {
             } else if (!replaced.identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
                 return true;
             } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
-                otx.runNonObserving(() -> System.err.println("MATCH:  " + otx.parent().indent("    ") + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
+                otx.runNonObserving(() -> System.err.println(LeafTransaction.getTraceLineStart("MATCH", otx.parent().depth()) + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
             }
         }
         return false;
