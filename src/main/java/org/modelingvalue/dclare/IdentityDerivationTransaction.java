@@ -84,6 +84,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
 
     @Override
     protected String getCurrentTypeForTrace() {
-        return "IDR";
+        return "ID";
     }
 }

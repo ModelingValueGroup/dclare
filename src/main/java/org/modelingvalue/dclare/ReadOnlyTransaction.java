@@ -110,6 +110,6 @@ public class ReadOnlyTransaction extends LeafTransaction {
 
     @Override
     protected String getCurrentTypeForTrace() {
-        return "RON";
+        return "RO";
     }
 }

@@ -224,6 +224,6 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     protected String getCurrentTypeForTrace() {
-        return "IMP";
+        return "IM";
     }
 }

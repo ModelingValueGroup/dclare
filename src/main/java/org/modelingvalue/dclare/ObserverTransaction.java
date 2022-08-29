@@ -572,6 +572,6 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     protected String getCurrentTypeForTrace() {
-        return "OBS";
+        return "OB";
     }
 }

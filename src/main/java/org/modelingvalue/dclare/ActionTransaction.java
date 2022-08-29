@@ -218,6 +218,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected String getCurrentTypeForTrace() {
-        return "ACT";
+        return "AC";
     }
 }
