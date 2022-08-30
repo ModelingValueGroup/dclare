@@ -15,23 +15,23 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.ex.TransactionException;
-
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.ex.TransactionException;
+
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
     @SuppressWarnings("rawtypes")
-    protected static final Context<Set<Pair<Mutable, Observed>>> DERIVED    = Context.of(Set.of());
+    protected static final Context<Set<Pair<Mutable, Observed>>> DERIVED = Context.of(Set.of());
     @SuppressWarnings("rawtypes")
-    protected static final Context<Pair<Mutable, Observer>>      DERIVER    = Context.of(null);
-    private static final   Context<Boolean>                      DERIVE     = Context.of(true);
-    private static final   Context<Integer>                      INDENT     = Context.of(0);
+    protected static final Context<Pair<Mutable, Observer>>      DERIVER = Context.of(null);
+    private static final Context<Boolean>                        DERIVE  = Context.of(true);
+    private static final Context<Integer>                        INDENT  = Context.of(0);
 
     public boolean isDeriving() {
         return !DERIVED.get().isEmpty();
@@ -84,7 +84,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                     return value;
                 } else {
-                    Pair<Mutable, Observed>      derived    = Pair.of((Mutable) object, observed);
+                    Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
                     Set<Pair<Mutable, Observed>> oldDerived = DERIVED.get();
                     Set<Pair<Mutable, Observed>> newDerived = oldDerived.add(derived);
                     if (oldDerived == newDerived) {
@@ -97,7 +97,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                             runNonDeriving(() -> System.err.println(tracePre() + ">>>> " + object + "." + observed));
                         }
                         INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
-                            int           i         = 0;
+                            int i = 0;
                             Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
                             for (Observer observer : observers.filter(Observer::anonymous)) {
                                 runDeriver((Mutable) object, observed, observer, ++i);
@@ -182,7 +182,12 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private String tracePre() {
-        return LeafTransaction.getTraceLineStart("DERIVE", INDENT.get());
+        return DclareTrace.getLineStart("DERIVE");
+    }
+
+    @Override
+    public int depth() {
+        return INDENT.get();
     }
 
     protected ConstantState memoization() {

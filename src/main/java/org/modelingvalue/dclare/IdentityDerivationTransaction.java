@@ -15,11 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction.Reason;
-
 import java.util.Objects;
 import java.util.function.Supplier;
+
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -80,6 +80,11 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
         memoization().set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
         return result;
+    }
+
+    @Override
+    public int depth() {
+        return original.depth() + super.depth();
     }
 
     @Override
