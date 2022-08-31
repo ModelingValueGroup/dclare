@@ -35,6 +35,7 @@ import org.modelingvalue.dclare.ex.TransactionException;
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
     private final CurrentState currentSate = new CurrentState();
     private State              preState;
+    private State              postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -56,23 +57,28 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         preState = pre;
         currentSate.init(pre);
         try {
-            LeafTransaction.getContext().run(this, () -> run(pre, universeTransaction()));
-            State result = currentSate.result();
-            if (universeTransaction().getConfig().isTraceActions()) {
-                Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
-                if (!diff.isEmpty()) {
-                    preState.run(() -> {
-                        System.err.println(DclareTrace.getLineStart("DCLARE") + mutable() + "." + action() + " (" + result.shortDiffString(diff, mutable()) + ")");
-                    });
+            LeafTransaction.getContext().run(this, () -> {
+                run(pre, universeTransaction());
+                if (universeTransaction().getConfig().isTraceActions()) {
+                    postState = currentSate.merge();
+                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
+                    if (!diff.isEmpty()) {
+                        runNonObserving(() -> {
+                            System.err.println(DclareTrace.getLineStart("DCLARE") + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")");
+                        });
+                    }
+                } else {
+                    postState = currentSate.result();
                 }
-            }
-            return result;
+            });
+            return postState;
         } catch (Throwable t) {
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return pre;
         } finally {
             currentSate.clear();
             preState = null;
+            postState = null;
             TraceTimer.traceEnd(traceId());
         }
     }
