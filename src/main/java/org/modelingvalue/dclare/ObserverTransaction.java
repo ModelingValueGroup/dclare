@@ -459,7 +459,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean isChangedBack(O object, Observed<O, T> observed, E element, IState state1, IState state2) {
-        return state1.get(object, observed).contains(element) && !state2.get(object, observed).contains(element);
+        return observed.collection(state1.get(object, observed)).anyMatch(element::equals) && observed.collection(state2.get(object, observed)).noneMatch(element::equals);
     }
 
     private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
