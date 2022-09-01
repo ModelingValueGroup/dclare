@@ -175,7 +175,7 @@ public class TestNewable extends TestMutable implements Newable {
         }
 
         private boolean isActive(TestMutable object) {
-            return object instanceof TestNewable && ((TestNewable) object).anonymous().anyMatch(this::equals);
+            return object instanceof TestNewable && ((TestNewable) object).anonymous().contains(this);
         }
 
         @Override

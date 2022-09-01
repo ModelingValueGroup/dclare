@@ -459,7 +459,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean isChangedBack(O object, Observed<O, T> observed, E element, IState state1, IState state2) {
-        return observed.collection(state1.get(object, observed)).anyMatch(element::equals) && observed.collection(state2.get(object, observed)).noneMatch(element::equals);
+        return observed.collection(state1.get(object, observed)).contains(element) && !observed.collection(state2.get(object, observed)).contains(element);
     }
 
     private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
@@ -480,7 +480,7 @@ public class ObserverTransaction extends ActionTransaction {
             MatchInfo post = MatchInfo.of((Newable) after, this);
             List<MatchInfo> pres;
             if (post.canBeReplaced() || post.canBeReplacing()) {
-                pres = observed.containment() ? preInfos(object, observed, before) : preInfos(observed, before);
+                pres = observed.equalSemantics() ? preInfos(object, observed, before) : preInfos(observed, before);
                 for (MatchInfo pre : pres) {
                     if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                         replace(post, pre);
@@ -507,7 +507,7 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo post = MatchInfo.of((Newable) after, this);
                 if (post.canBeReplaced() || post.canBeReplacing()) {
                     if (pres == null) {
-                        pres = observed.containment() ? preInfos(object, observed, befores) : preInfos(observed, befores);
+                        pres = observed.equalSemantics() ? preInfos(object, observed, befores) : preInfos(observed, befores);
                     }
                     for (MatchInfo pre : pres) {
                         if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
@@ -535,13 +535,13 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private List<MatchInfo> preInfos(Mutable object, Observed observed, Object before) {
         Collection<Newable> befores = observed.collection(before).filter(Newable.class);
-        Collection<Newable> children = children(object, observed).filter(Newable.class);
-        return Collection.concat(befores.map(n -> MatchInfo.of(n, this)), children.map(n -> MatchInfo.of(n, this)).filter(m -> m.identity() != null)).toList();
+        Collection<Newable> equalSemantics = equalSemantics(object, observed).filter(Newable.class);
+        return Collection.concat(befores.map(n -> MatchInfo.of(n, this)), equalSemantics.map(n -> MatchInfo.of(n, this)).filter(m -> m.identity() != null)).toList();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Collection<Mutable> children(Mutable object, Observed excluded) {
-        return MutableClass.D_CONTAINMENTS.get(object.dClass()).exclude(excluded::equals).flatMap(c -> c.getCollection(object));
+    private Collection<Object> equalSemantics(Mutable object, Observed excluded) {
+        return MutableClass.D_OBSERVEDS.get(object.dClass()).filter(Setable::equalSemantics).exclude(excluded::equals).flatMap(c -> c.getCollection(object));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})

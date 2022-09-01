@@ -28,6 +28,10 @@ public interface MutableClass extends Internable {
             c -> c.dSetables().filter(Setable::containment).map(s -> (Setable) s).toSet());
 
     @SuppressWarnings({"rawtypes"})
+    Constant<MutableClass, Set<Observed>>                      D_OBSERVEDS         = Constant.of("D_OBSERVEDS",                                                                            //
+            c -> c.dSetables().filter(s -> s instanceof Observed).map(s -> (Observed) s).toSet());
+
+    @SuppressWarnings({"rawtypes"})
     Constant<MutableClass, Set<Constant>>                      D_PUSHING_CONSTANTS = Constant.of("D_PUSHING_CONSTANTS",                                                                    //
             c -> c.dSetables().filter(s -> s instanceof Constant && s.isHandlingChange() && ((Constant) s).deriver() != null).map(s -> (Constant) s).toSet());
 

@@ -344,8 +344,8 @@ public class NewableTests {
         Observed<TestMutable, TestNewable> rlopp = Observed.of("rlopp", null, mandatory, symmetricOpposite);
         TestNewableClass ROL = TestNewableClass.of("ROL", n::get, n, otr, mref, rlopp);
 
-        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory);
-        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory);
+        Observed<TestMutable, TestNewable> left = Observed.of("left", null, containment, mandatory, equalSemantics);
+        Observed<TestMutable, TestNewable> right = Observed.of("right", null, containment, mandatory, equalSemantics);
         Observed<TestMutable, Set<String>> id = Observed.of("id", Set.of());
         TestNewableClass FAT = TestNewableClass.of("FAT", id::get, n, id, left, right);
 
