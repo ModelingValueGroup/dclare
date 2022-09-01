@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
+
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -97,15 +99,15 @@ public abstract class LeafTransaction extends Transaction {
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
-        for (int i = priority.ordinal() + 1; i < Priority.values().length; i++) {
-            set(object, Priority.values()[i].actions, Set::remove, action);
+        for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
+            set(object, NON_SCHEDULED[i].actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            for (int i = priority.ordinal() + 1; i < Priority.values().length; i++) {
-                if (current(object, Priority.values()[i].actions).isEmpty() && current(object, Priority.values()[i].children).isEmpty()) {
-                    set(container, Priority.values()[i].children, Set::remove, object);
+            for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
+                if (current(object, NON_SCHEDULED[i].actions).isEmpty() && current(object, NON_SCHEDULED[i].children).isEmpty()) {
+                    set(container, NON_SCHEDULED[i].children, Set::remove, object);
                 }
             }
             object = container;

@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Arrays;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
@@ -30,6 +32,10 @@ public enum Priority implements LeafModifier, Internable {
     outer,
 
     scheduled;
+
+    // To prevent Array allocations each time Priority.values() is called.
+    public static final Priority[] ALL           = Priority.values();
+    public static final Priority[] NON_SCHEDULED = Arrays.copyOf(Priority.ALL, Priority.ALL.length - 1);
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;

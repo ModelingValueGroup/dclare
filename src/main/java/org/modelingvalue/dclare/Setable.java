@@ -186,7 +186,7 @@ public class Setable<O, T> extends Getable<O, T> {
                     Priority.immediate.children.set((Mutable) object, Set::add, added);
                 }
             }, removed -> {
-                for (Priority dir : Priority.values()) {
+                for (Priority dir : Priority.ALL) {
                     dir.children.set((Mutable) object, Set::remove, removed);
                 }
                 if (!MOVING.get()) {
