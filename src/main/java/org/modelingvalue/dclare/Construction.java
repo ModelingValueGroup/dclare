@@ -131,6 +131,14 @@ public class Construction extends IdentifiedByArray {
                             all = all.add(r.clone(Mutable.THIS, id));
                         }
                     }
+                } else if (v instanceof Reason) {
+                    for (Reason r : all) {
+                        for (Reason a : ((Reason) v).actualize()) {
+                            Object[] id = r.identity();
+                            id[i] = a;
+                            all = all.add(r.clone(Mutable.THIS, id));
+                        }
+                    }
                 }
             }
             return all;
