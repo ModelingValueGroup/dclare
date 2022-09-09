@@ -38,9 +38,7 @@ public class ObserverTransaction extends ActionTransaction {
     public static final Context<Boolean>                         OBSERVE        = Context.of(true);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> gets           = Concurrent.of();
-    @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> sets           = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds      = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
     private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
@@ -66,8 +64,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     protected State merge() {
-        gets.merge();
-        sets.merge();
+        observeds.merge();
         emptyMandatory.merge();
         changed.merge();
         deferInner.merge();
@@ -90,8 +87,7 @@ public class ObserverTransaction extends ActionTransaction {
         observer.startTransaction(universeTransaction.stats());
         // check if we should do the work...
         if (!observer.isStopped() && !universeTransaction.isKilled()) {
-            gets.init(Observed.OBSERVED_MAP);
-            sets.init(Observed.OBSERVED_MAP);
+            observeds.init(Observed.OBSERVED_MAP);
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
@@ -116,17 +112,12 @@ public class ObserverTransaction extends ActionTransaction {
                 } while (true);
             } finally {
                 merge();
-                observe(pre, observer, Observed.OBSERVED_MAP.merge(gets.get(), sets.get()));
-                if (emptyMandatory.get().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
-                    throwable = null;
-                }
-                observer.exception().set(mutable(), throwable);
+                finish(pre, observer);
                 changed.clear();
                 deferInner.clear();
                 deferMid.clear();
                 deferOuter.clear();
-                gets.clear();
-                sets.clear();
+                observeds.clear();
                 constructions.clear();
                 emptyMandatory.clear();
                 throwable = null;
@@ -135,12 +126,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     protected void doRun(State pre, UniverseTransaction universeTransaction) {
-        observe(mutable(), observer().constructed(), gets);
+        observe(mutable(), observer().constructed());
         super.run(pre, universeTransaction);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void observe(State pre, Observer<?> observer, DefaultMap<Observed, Set<Mutable>> observeds) {
+    private void finish(State pre, Observer<?> observer) {
+        DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
         checkTooManyObserved(observeds);
         if (changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
@@ -158,6 +150,10 @@ public class ObserverTransaction extends ActionTransaction {
         } else if (!preSources.isEmpty() && observeds.isEmpty()) {
             observer.removeInstance();
         }
+        if (emptyMandatory.get().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
+            throwable = null;
+        }
+        observer.exception().set(mutable(), throwable);
     }
 
     @SuppressWarnings("rawtypes")
@@ -214,7 +210,7 @@ public class ObserverTransaction extends ActionTransaction {
         }
         if (observing(object, getable)) {
             //noinspection ConstantConditions
-            observe(object, (Observed<O, T>) getable, gets);
+            observe(object, (Observed<O, T>) getable);
         }
         T result = super.get(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
@@ -227,7 +223,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     public <O, T> T pre(O object, Getable<O, T> getable) {
         if (observing(object, getable)) {
-            observe(object, (Observed<O, T>) getable, gets);
+            observe(object, (Observed<O, T>) getable);
         }
         T result = super.pre(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
@@ -243,7 +239,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     public <O, T> T current(O object, Getable<O, T> getable) {
         if (observing(object, getable)) {
-            observe(object, (Observed<O, T>) getable, gets);
+            observe(object, (Observed<O, T>) getable);
         }
         T result = super.current(object, getable);
         if (result == null && getable instanceof Observed && ((Observed) getable).mandatory()) {
@@ -259,7 +255,7 @@ public class ObserverTransaction extends ActionTransaction {
             if (((Observed) setable).mandatory() && !setable.isPlumbing() && !Objects.equals(pre, post) && ((Observed) setable).isEmpty(post) && emptyMandatory.merge().equals(TRUE)) {
                 throw new NullPointerException(setable.toString());
             }
-            observe(object, (Observed<O, T>) setable, sets);
+            observe(object, (Observed<O, T>) setable);
             if (!setable.isPlumbing() && !Objects.equals(pre, post)) {
                 merge();
                 if (pre instanceof Newable || post instanceof Newable) {
@@ -285,7 +281,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private <O, T> void observe(O object, Observed<O, T> observed, Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds) {
+    private <O, T> void observe(O object, Observed<O, T> observed) {
         observeds.change(o -> o.add(observed.entry((Mutable) object, mutable()), Set::addAll));
     }
 
@@ -296,7 +292,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     public void runNonObserving(Runnable action) {
-        if (gets.isInitialized()) {
+        if (observeds.isInitialized()) {
             OBSERVE.run(false, action);
         } else {
             super.runNonObserving(action);
@@ -305,7 +301,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     public <T> T getNonObserving(Supplier<T> action) {
-        if (gets.isInitialized()) {
+        if (observeds.isInitialized()) {
             return OBSERVE.get(false, action);
         } else {
             return super.getNonObserving(action);
@@ -322,7 +318,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T> boolean observing(O object, Getable<O, T> setable) {
-        return object instanceof Mutable && setable instanceof Observed && gets.isInitialized() && OBSERVE.get();
+        return object instanceof Mutable && setable instanceof Observed && observeds.isInitialized() && OBSERVE.get();
     }
 
     @Override
