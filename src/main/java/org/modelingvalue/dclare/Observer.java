@@ -70,6 +70,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     private final Set<Setable<O, ?>>            targets;
     private final boolean                       anonymous;
+    private final boolean                       atomic;
 
     private long                                runCount     = -1;
     private int                                 instances;
@@ -114,6 +115,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         constructed = Constructed.of(this);
         this.targets = targets;
         this.anonymous = LeafModifier.anonymous.in(modifiers);
+        this.atomic = LeafModifier.atomic.in(modifiers);
     }
 
     public Observerds observeds() {
@@ -323,6 +325,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public boolean anonymous() {
         return anonymous;
+    }
+
+    public boolean atomic() {
+        return atomic;
     }
 
 }

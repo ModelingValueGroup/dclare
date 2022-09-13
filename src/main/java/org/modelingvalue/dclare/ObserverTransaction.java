@@ -79,6 +79,15 @@ public class ObserverTransaction extends ActionTransaction {
         return super.merge();
     }
 
+    private void rollback(boolean atomic) {
+        if (atomic) {
+            rollback();
+            if (throwable == null) {
+                observer().constructed().set(mutable(), constructions.get());
+            }
+        }
+    }
+
     @SuppressWarnings({"unchecked", "RedundantSuppression"})
     @Override
     protected final void run(State pre, UniverseTransaction universeTransaction) {
@@ -134,15 +143,21 @@ public class ObserverTransaction extends ActionTransaction {
     private void finish(State pre, Observer<?> observer) {
         DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
         checkTooManyObserved(observeds);
-        if (changed.get().equals(TRUE)) {
+        if (!observer.atomic() && changed.get().equals(TRUE)) {
             checkTooManyChanges(pre, observeds);
             trigger(mutable(), (Observer<Mutable>) observer, Priority.immediate);
         } else if (deferInner.get().equals(TRUE)) {
+            rollback(observer.atomic());
             trigger(mutable(), (Observer<Mutable>) observer, Priority.inner);
         } else if (deferMid.get().equals(TRUE)) {
+            rollback(observer.atomic());
             trigger(mutable(), (Observer<Mutable>) observer, Priority.mid);
         } else if (deferOuter.get().equals(TRUE)) {
+            rollback(observer.atomic());
             trigger(mutable(), (Observer<Mutable>) observer, Priority.outer);
+        } else if (observer.atomic() && changed.get().equals(TRUE)) {
+            checkTooManyChanges(pre, observeds);
+            trigger(mutable(), (Observer<Mutable>) observer, Priority.immediate);
         }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
