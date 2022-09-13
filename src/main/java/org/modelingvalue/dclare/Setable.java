@@ -91,9 +91,6 @@ public class Setable<O, T> extends Getable<O, T> {
             this.opposite = opposite;
         }
         this.scope = scope;
-        if (containment && opposite != null) {
-            throw new Error("The containment setable " + this + " has an opposite");
-        }
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
@@ -194,7 +191,8 @@ public class Setable<O, T> extends Getable<O, T> {
                     removed.dHandleRemoved((Mutable) object);
                 }
             });
-        } else if (opposite != null) {
+        }
+        if (opposite != null) {
             Setable<Object, ?> opp = (Setable<Object, ?>) opposite.get();
             Setable.diff(preValue, postValue, //
                     added -> opp.add(added, object), //
