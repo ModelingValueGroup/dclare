@@ -33,7 +33,7 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private final CurrentState currentSate = new CurrentState();
+    private final CurrentState currentState = new CurrentState();
     private State              preState;
     private State              postState;
 
@@ -55,12 +55,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     protected final State run(State pre) {
         TraceTimer.traceBegin(traceId());
         preState = pre;
-        currentSate.init(pre);
+        currentState.init(pre);
         try {
             LeafTransaction.getContext().run(this, () -> {
                 run(pre, universeTransaction());
                 if (universeTransaction().getConfig().isTraceActions()) {
-                    postState = currentSate.merge();
+                    postState = currentState.merge();
                     Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
                     if (!diff.isEmpty()) {
                         runNonObserving(() -> {
@@ -68,7 +68,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                         });
                     }
                 } else {
-                    postState = currentSate.result();
+                    postState = currentState.result();
                 }
             });
             return postState;
@@ -76,7 +76,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             universeTransaction().handleException(new TransactionException(mutable(), new TransactionException(action(), t)));
             return pre;
         } finally {
-            currentSate.clear();
+            currentState.clear();
             preState = null;
             postState = null;
             TraceTimer.traceEnd(traceId());
@@ -116,21 +116,26 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     public State current() {
-        return currentSate.get();
+        return currentState.get();
     }
 
     protected State merge() {
-        return currentSate.merge();
+        return currentState.merge();
+    }
+
+    protected void rollback() {
+        currentState.clear();
+        currentState.init(preState);
     }
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(currentSate.get().get(object, property), element));
+        return set(object, property, function.apply(currentState.get().get(object, property), element));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        return set(object, property, oper.apply(currentSate.get().get(object, property)));
+        return set(object, property, oper.apply(currentState.get().get(object, property)));
     }
 
     @Override
@@ -147,7 +152,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             universeTransaction().setPreserved(object, property, post);
         }
         T[] oldNew = (T[]) new Object[2];
-        if (currentSate.change(s -> s.set(object, property, (br, po) -> {
+        if (currentState.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
                 po = br;
             } else if (!property.doNotMerge() && !Objects.equals(br, pre)) {
@@ -193,7 +198,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected Mutable dParent(Mutable object) {
-        return currentSate.get().getA(object, Mutable.D_PARENT_CONTAINING);
+        return currentState.get().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
     @Override

@@ -31,4 +31,11 @@ public interface LeafModifier extends FeatureModifier<LeafModifier> {
                                       }
                                   };
 
+    static LeafModifier atomic    = new LeafModifier() {
+                                      @Override
+                                      public String toString() {
+                                          return "atomic";
+                                      }
+                                  };
+
 }

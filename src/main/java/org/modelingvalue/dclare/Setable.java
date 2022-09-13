@@ -36,7 +36,7 @@ import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
-    public static final Context<Boolean> MOVING = Context.of(false);
+    private static final Context<Boolean> MOVING = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
