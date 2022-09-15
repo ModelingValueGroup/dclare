@@ -195,4 +195,8 @@ public interface Mutable extends TransactionClass {
         return state.get(this, D_PARENT_CONTAINING) == null;
     }
 
+    default boolean dIsConstant() {
+        return false;
+    }
+
 }
