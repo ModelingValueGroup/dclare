@@ -46,9 +46,9 @@ public class MatchInfo {
         if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
             if (newable.equals(replaced.replacing())) {
                 return true;
-            } else if (!identityCanBeDerived() || replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
+            } else if (replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
                 return false;
-            } else if (!replaced.identityCanBeDerived() || Objects.equals(identity(), replaced.identity())) {
+            } else if (Objects.equals(identity(), replaced.identity())) {
                 return true;
             } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
                 otx.runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH") + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
@@ -71,10 +71,6 @@ public class MatchInfo {
 
     public boolean canBeReplaced() {
         return !isDirect();
-    }
-
-    public boolean identityCanBeDerived() {
-        return isDirect() || isDerived();
     }
 
     public boolean isDerived() {
