@@ -29,6 +29,8 @@ import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 import org.modelingvalue.dclare.sync.JsonIC.ToJsonIC;
 
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -258,7 +260,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
         }
 
         @Override
-        protected java.util.Map<String, Object> getIntrospectionMap(Object o) {
+        protected Iterator<Entry<Object, Object>> getIntrospectionIterator(Object o) {
             throw new IllegalArgumentException("No serialization found for " + o + " of class " + o.getClass().getSimpleName());
         }
     }

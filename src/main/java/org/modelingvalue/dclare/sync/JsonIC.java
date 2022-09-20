@@ -52,7 +52,7 @@ public class JsonIC extends Json {
 
         @Override
         protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
-            if (o instanceof Map) {
+            if (o instanceof Map) { // check if it is an Immutable Collections Map
                 @SuppressWarnings("unchecked")
                 Stream<Entry<Object, Object>> entryStream = ((Map<Object, Object>) o).map(e1 -> new SimpleEntry<>(e1.getKey(), e1.getValue()));
                 return entryStream.sorted(Comparator.comparing(e -> e.getKey().toString())).iterator();
