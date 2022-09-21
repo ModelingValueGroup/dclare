@@ -68,7 +68,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
-    private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                                                           //TODO wire onto MoodManager
+    private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
     private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
@@ -77,7 +77,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
     private final ConstantState                                                                        constantState           = new ConstantState(this::handleException);
-    private final StatusProvider<Status>                                                               statusProvider          = new StatusProvider<>(this, new Status(Mood.starting, null, emptyState, null, Set.of()));
+    private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
     private final MutableState                                                                         innerStartState         = new MutableState(emptyState);
     private final MutableState                                                                         midStartState           = new MutableState(emptyState);
@@ -97,8 +97,8 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean                                                                                    initialized;
     private boolean                                                                                    killed;
     private boolean                                                                                    timeTraveling;
-    private boolean                                                                                    handling;                                                                                                         //TODO wire onto MoodManager
-    private boolean                                                                                    stopped;                                                                                                          //TODO wire onto MoodManager
+    private boolean                                                                                    handling;                                                                        //TODO wire onto MoodManager
+    private boolean                                                                                    stopped;                                                                         //TODO wire onto MoodManager
     private long                                                                                       transactionNumber;
 
     public class Status extends AbstractStatus {
@@ -154,7 +154,13 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config) {
+        this(universe, pool, config, new Status[1]);
+    }
+
+    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Status[] startStatus) {
         super(null);
+        startStatus[0] = new Status(Mood.starting, null, emptyState, null, Set.of());
+        this.statusProvider = new StatusProvider<>(this, startStatus[0]);
         this.config = Objects.requireNonNull(config);
         this.inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
         this.universeStatistics = new UniverseStatistics(this);
