@@ -103,13 +103,13 @@ public class UniverseTransaction extends MutableTransaction {
 
     public class Status extends AbstractStatus {
 
-        public final Mood                       mood;
-        public final Action<Universe>           action;
-        public final State                      state;
-        public final UniverseStatistics         stats;
-        public final Set<ImperativeTransaction> active;
+        public final Mood               mood;
+        public final Action<Universe>   action;
+        public final State              state;
+        public final UniverseStatistics stats;
+        public final Set<Object>        active;
 
-        public Status(Mood mood, Action<Universe> action, State state, UniverseStatistics stats, Set<ImperativeTransaction> active) {
+        public Status(Mood mood, Action<Universe> action, State state, UniverseStatistics stats, Set<Object> active) {
             super();
             this.mood = mood;
             this.action = action;
@@ -276,17 +276,17 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    protected void addActive(ImperativeTransaction imptx) {
+    public void addActive(Object activity) {
         statusProvider.setNext(p -> {
-            Set<ImperativeTransaction> newSet = p.active.add(imptx);
+            Set<Object> newSet = p.active.add(activity);
             assert p.active != newSet;
             return new Status(p.mood, p.action, p.state, p.stats, newSet);
         });
     }
 
-    protected void removeActive(ImperativeTransaction imptx) {
+    public void removeActive(Object activity) {
         statusProvider.setNext(p -> {
-            Set<ImperativeTransaction> newSet = p.active.remove(imptx);
+            Set<Object> newSet = p.active.remove(activity);
             assert p.active != newSet;
             return new Status(p.mood, p.action, p.state, p.stats, newSet);
         });
