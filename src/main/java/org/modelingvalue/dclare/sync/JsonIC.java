@@ -17,6 +17,7 @@ package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.json.Config;
 import org.modelingvalue.json.FromJsonBase;
 import org.modelingvalue.json.Json;
 import org.modelingvalue.json.ToJson;
@@ -68,7 +69,7 @@ public class JsonIC extends Json {
         }
 
         protected FromJsonIC(String input) {
-            super(input);
+            super(input, new Config());
         }
 
         @Override
