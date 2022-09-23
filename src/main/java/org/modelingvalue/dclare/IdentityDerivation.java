@@ -15,25 +15,25 @@
 
 package org.modelingvalue.dclare;
 
-public class ReadOnly extends Leaf {
+public class IdentityDerivation extends ReadOnly {
 
-    protected ReadOnly(Object id, LeafModifier... modifiers) {
+    protected IdentityDerivation(Object id, LeafModifier... modifiers) {
         super(id, modifiers);
     }
 
     @Override
-    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(this, parent);
+    public IdentityDerivationTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().identityDerivations.get().open(this, parent);
     }
 
     @Override
     public void closeTransaction(Transaction tx) {
-        tx.universeTransaction().readOnlys.get().close((ReadOnlyTransaction) tx);
+        tx.universeTransaction().identityDerivations.get().close((IdentityDerivationTransaction) tx);
     }
 
     @Override
-    public ReadOnlyTransaction newTransaction(UniverseTransaction universeTransaction) {
-        return new ReadOnlyTransaction(universeTransaction);
+    public IdentityDerivationTransaction newTransaction(UniverseTransaction universeTransaction) {
+        return new IdentityDerivationTransaction(universeTransaction);
     }
 
 }

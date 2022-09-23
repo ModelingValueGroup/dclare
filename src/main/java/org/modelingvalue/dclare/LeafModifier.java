@@ -15,11 +15,27 @@
 
 package org.modelingvalue.dclare;
 
-public enum CoreSetableModifier implements SetableModifier {
-    symmetricOpposite,
-    containment,
-    mandatory,
-    synthetic,
-    plumbing,
-    durable;
+public interface LeafModifier extends FeatureModifier<LeafModifier> {
+
+    static LeafModifier anonymous = new LeafModifier() {
+                                      @Override
+                                      public String toString() {
+                                          return "anonymous";
+                                      }
+                                  };
+
+    static LeafModifier preserved = new LeafModifier() {
+                                      @Override
+                                      public String toString() {
+                                          return "preserved";
+                                      }
+                                  };
+
+    static LeafModifier atomic    = new LeafModifier() {
+                                      @Override
+                                      public String toString() {
+                                          return "atomic";
+                                      }
+                                  };
+
 }

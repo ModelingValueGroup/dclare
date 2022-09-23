@@ -18,14 +18,21 @@ package org.modelingvalue.dclare.test.support;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
+import static org.modelingvalue.dclare.SetableModifier.containment;
 
 import java.util.function.Predicate;
 
 import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Constant;
+import org.modelingvalue.dclare.DclareConfig;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
 
@@ -170,23 +177,23 @@ public class ModelMaker {
     }
 
     private static final TestMutableClass            extraClass      = TestMutableClass.of("ExtraClass");
-    private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                  //
-            o -> target.set(o, source.get(o)),                                                                                                     //
-            o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@"),                                                                        //
-            o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)));
-    private static final TestMutableClass            plughClassRobot = TestMutableClass.of("PlughClass").observe(                                  //
-            o -> target.set(o, source.get(o)),                                                                                                     //
-            o -> target2.set(o, source.get(o)),                                                                                                    //
-            o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@"),                                                                        //
-            o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)),                                                                     //
-            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet()),   //
-            o -> target.set(extra.get(o), target.get(o)),                                                                                          //
-            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList()),                                                      //
-            o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet()),                        //
-            o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!"))),                                   //
-            o -> aDefMap.set(o, aDefMap.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!")))),   //
-            o -> aQuaSet.set(o, aQuaSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i))),                               //
-            o -> aQuaDefSet.set(o, aQuaDefSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
+    private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                                                                                                   //
+            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                             //
+                    o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                        //
+                            o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)));
+    private static final TestMutableClass            plughClassRobot = TestMutableClass.of("PlughClass").observe(                                                                                                                   //
+            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                             //
+                    o -> target2.set(o, source.get(o))).observe(                                                                                                                                                                    //
+                            o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                //
+                                    o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass))).observe(                                                                                                                     //
+                                            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet())).observe(                                           //
+                                                    o -> target.set(extra.get(o), target.get(o))).observe(                                                                                                                          //
+                                                            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList())).observe(                                                                              //
+                                                                    o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet())).observe(                                        //
+                                                                            o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                           //
+                                                                                    o -> aDefMap.set(o, aDefMap.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
+                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
+                                                                                                    o -> aQuaDefSet.set(o, aQuaDefSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
     private final String                             name;
     private final TestMutable                        xyzzy;
     private final Constant<TestMutable, TestMutable> plugConst;

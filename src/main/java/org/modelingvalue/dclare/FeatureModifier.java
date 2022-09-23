@@ -15,25 +15,48 @@
 
 package org.modelingvalue.dclare;
 
-public class ReadOnly extends Leaf {
+import java.util.Arrays;
 
-    protected ReadOnly(Object id, LeafModifier... modifiers) {
-        super(id, modifiers);
+/**
+ * this is a marker interface
+ */
+@SuppressWarnings("rawtypes")
+public interface FeatureModifier<M extends FeatureModifier> {
+
+    @SuppressWarnings("unchecked")
+    default M iff(boolean b) {
+        return b ? (M) this : null;
     }
 
-    @Override
-    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(this, parent);
+    @SuppressWarnings("unchecked")
+    default M ifnot(boolean b) {
+        return b ? null : (M) this;
     }
 
-    @Override
-    public void closeTransaction(Transaction tx) {
-        tx.universeTransaction().readOnlys.get().close((ReadOnlyTransaction) tx);
+    default boolean in(M[] modifiers) {
+        for (M m : modifiers) {
+            if (this == m) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    @Override
-    public ReadOnlyTransaction newTransaction(UniverseTransaction universeTransaction) {
-        return new ReadOnlyTransaction(universeTransaction);
+    @SuppressWarnings("unchecked")
+    static <C extends M, M extends FeatureModifier> C ofClass(Class<C> cls, M[] modifiers) {
+        for (M m : modifiers) {
+            if (cls.isInstance(m)) {
+                return (C) m;
+            }
+        }
+        return null;
+    }
+
+    @SafeVarargs
+    static <M> M[] add(M[] modifiers, M... added) {
+        modifiers = Arrays.copyOf(modifiers, modifiers.length + added.length);
+        System.arraycopy(added, 0, modifiers, modifiers.length - added.length, added.length);
+        return modifiers;
     }
 
 }

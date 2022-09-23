@@ -16,8 +16,8 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
-import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
+import static org.modelingvalue.dclare.SetableModifier.containment;
+import static org.modelingvalue.dclare.SetableModifier.mandatory;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.Shared.printState;
 
@@ -25,11 +25,20 @@ import java.math.BigInteger;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.DclareConfig;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
-import org.modelingvalue.dclare.test.support.*;
+import org.modelingvalue.dclare.test.support.Fibonacci;
+import org.modelingvalue.dclare.test.support.TestMutable;
+import org.modelingvalue.dclare.test.support.TestMutableClass;
+import org.modelingvalue.dclare.test.support.TestUniverse;
 
 public class DclareTests {
     static {
@@ -63,7 +72,7 @@ public class DclareTests {
         Observed<TestMutable, Integer> source = Observed.of("source", 0);
         Setable<TestMutable, Integer> target = Setable.of("target", 0);
         TestUniverse universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
-        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> target.set(o, source.get(o)), o -> source.set(o, target.get(o)));
+        TestMutableClass clazz = TestMutableClass.of("Object").observe(o -> target.set(o, source.get(o))).observe(o -> source.set(o, target.get(o)));
         TestMutable object = TestMutable.of("object", clazz);
         UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withRunSequential(true));
         universeTransaction.put("step1", () -> child.set(universe, object));
@@ -141,9 +150,9 @@ public class DclareTests {
         Observed<TestMutable, Set<TestMutable>> children = Observed.of("children", Set.of(), containment);
         Observed<TestMutable, String> name = Observed.of("name", null);
         Observed<TestMutable, String> qualifiedName = Observed.of("qualifiedName", null);
-        TestMutableClass clazz = TestMutableClass.of("Object", children).observe(//
-                o -> qualifiedName.set(o, qualifiedName.get(o.dParent(TestMutable.class)) + "." + name.get(o)), //
-                o -> name.set(o, (String) o.id()));
+        TestMutableClass clazz = TestMutableClass.of("Object", children).//
+                observe(qualifiedName, o -> qualifiedName.get(o.dParent(TestMutable.class)) + "." + name.get(o)). //
+                observe(name, o -> (String) o.id());
         TestMutable c1 = TestMutable.of("c1", clazz);
         TestMutable c2 = TestMutable.of("c2", clazz);
         TestMutable gc1 = TestMutable.of("gc1", clazz);
@@ -276,7 +285,7 @@ public class DclareTests {
         printState(universeTransaction, null);
     }
 
-    @RepeatedTest(32)
+    @RepeatedTest(128)
     public void rippleOutTest() {
         Observed<TestMutable, List<TestMutable>> children = Observed.of("children", List.of(), containment);
         Observed<TestMutable, List<TestMutable>> begin = Observed.of("begin", List.of());
@@ -289,20 +298,20 @@ public class DclareTests {
             List<TestMutable> list = children.get(u);
             List<TestMutable> before = list.exclude(property::get).toList();
             begin.set(u, before);
-        }, u -> {
+        }).observe(u -> {
             List<TestMutable> list = children.get(u);
             List<TestMutable> after = list.filter(property::get).toList();
             end.set(u, after);
-        }, u -> {
+        }).observe(u -> {
             List<TestMutable> before = begin.get(u);
             List<TestMutable> after = end.get(u);
             children.set(u, Collection.concat(before, after).distinct().toList());
-        }, u -> {
+        }).observe(u -> {
             List<TestMutable> list = children.get(u);
             if (list.isEmpty()) {
                 children.set(u, List.of(one, two));
             }
-        }, u -> {
+        }).observe(u -> {
             List<TestMutable> list = children.get(u);
             if (list.filter(property::get).isEmpty()) {
                 property.set(list.last(), true);

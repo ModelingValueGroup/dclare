@@ -15,9 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
 
-import org.modelingvalue.collections.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
@@ -86,20 +93,22 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
-        return state().getProperties(object).filter(e -> object.dToBeCleared(e.getKey())).map(Entry::getKey);
+        return state().getProperties(object).map(Entry::getKey);
     }
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
-        if (priority == Priority.forward || priority == Priority.urgent) {
-            set(object, Priority.backward.actions, Set::remove, action);
+        for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
+            set(object, NON_SCHEDULED[i].actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            if ((priority == Priority.forward || priority == Priority.urgent) && current(object, Priority.backward.actions).isEmpty() && current(object, Priority.backward.children).isEmpty()) {
-                set(container, Priority.backward.children, Set::remove, object);
+            for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
+                if (current(object, NON_SCHEDULED[i].actions).isEmpty() && current(object, NON_SCHEDULED[i].children).isEmpty()) {
+                    set(container, NON_SCHEDULED[i].children, Set::remove, object);
+                }
             }
             object = container;
             container = dParent(object);
@@ -135,9 +144,14 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("unchecked")
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        Newable result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
-        if (!(LeafTransaction.getCurrent() instanceof ReadOnlyTransaction) || LeafTransaction.getCurrent() instanceof DerivationTransaction) {
-            Newable.D_DIRECT_CONSTRUCTION.set(result, Construction.of(reason));
+        Newable result = null;
+        if (supplier != null) {
+            result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
+        } else if (constantState().isSet(this, reason, Construction.CONSTRUCTED)) {
+            result = constantState().get(this, reason, Construction.CONSTRUCTED);
+        }
+        if (result != null) {
+            constantState().set(this, result, Newable.D_DIRECT_CONSTRUCTION, Construction.of(reason), true);
         }
         return (O) result;
     }
@@ -152,5 +166,9 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O> void trigger(Observed<O, ?> observed, O o) {
     }
+
+    public abstract Direction direction();
+
+    protected abstract String getCurrentTypeForTrace();
 
 }

@@ -15,10 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
 
 @SuppressWarnings("unused")
 public class Constant<O, T> extends Setable<O, T> {
@@ -59,7 +65,7 @@ public class Constant<O, T> extends Setable<O, T> {
     protected Constant(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.deriver = deriver;
-        this.durable = CoreSetableModifier.durable.in(modifiers);
+        this.durable = SetableModifier.durable.in(modifiers);
     }
 
     public Function<O, T> deriver() {
@@ -105,6 +111,12 @@ public class Constant<O, T> extends Setable<O, T> {
         return constants.get(leafTransaction, object, this);
     }
 
+    public O object(O object) {
+        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        ConstantState constants = leafTransaction.constantState();
+        return constants.object(leafTransaction, object);
+    }
+
     public T get(O object, Function<O, T> deriver) {
         LeafTransaction leafTransaction = LeafTransaction.getCurrent();
         ConstantState constants = leafTransaction.constantState();
@@ -119,6 +131,11 @@ public class Constant<O, T> extends Setable<O, T> {
 
     @Override
     public T pre(O object) {
+        return get(object);
+    }
+
+    @Override
+    public T current(O object) {
         return get(object);
     }
 

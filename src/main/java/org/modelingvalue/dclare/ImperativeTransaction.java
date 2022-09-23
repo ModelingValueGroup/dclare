@@ -15,30 +15,36 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.*;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
-import org.modelingvalue.collections.util.TriConsumer;
+
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings("rawtypes")
-    private static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
+    protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
-    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    @SuppressWarnings("rawtypes")
+    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
     private final Consumer<Runnable>                          scheduler;
-    private final TriConsumer<State, State, Boolean>          diffHandler;
-    private final NamedIdentity                               actionId  = NamedIdentity.of(this, "$toDClare");
+    @SuppressWarnings("rawtypes")
+    private final StateDeltaHandler                           diffHandler;
+    private final NamedIdentity                               actionId;
+    private final Direction                                   direction;
+    private final MutableState                                state;
 
     private State                                             pre;
-    private State                                             state;
     private boolean                                           active;
     private boolean                                           commiting;
     @SuppressWarnings("rawtypes")
@@ -46,13 +52,16 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     private DefaultMap<Object, Set<Setable>>                  allSetted;
 
-    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, TriConsumer<State, State, Boolean> diffHandler, boolean keepTransaction) {
+    @SuppressWarnings("rawtypes")
+    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
-        this.state = init;
+        this.state = new MutableState(init);
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
         this.diffHandler = diffHandler;
+        this.direction = Direction.of(cls.id());
+        this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
             LeafTransaction.getContext().setOnThread(this);
@@ -87,6 +96,10 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     public State state() {
+        return state.state();
+    }
+
+    public MutableState mutableState() {
         return state;
     }
 
@@ -102,17 +115,18 @@ public class ImperativeTransaction extends LeafTransaction {
             active = false;
             universeTransaction().removeActive(this);
         }
-        pre = state;
+        pre = state();
         commiting = false;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void dclare2imper(State dclare, boolean timeTraveling, boolean insync) {
-        State imper = state;
+        DefaultMap<Object, Set<Setable>> finalAllSetted = allSetted;
+        State imper = state();
         if (insync) {
             allSetted = SETTED_MAP;
         } else {
-            for (Entry<Object, Set<Setable>> e : allSetted) {
+            for (Entry<Object, Set<Setable>> e : finalAllSetted) {
                 Object object = e.getKey();
                 DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                 DefaultMap<Setable, Object> imperProps = imper.getProperties(object);
@@ -122,16 +136,16 @@ public class ImperativeTransaction extends LeafTransaction {
                 dclare = dclare.set(object, dclareProps);
             }
         }
-        state = dclare;
-        diffHandler.accept(imper, dclare, insync);
+        imper = state.setState(dclare);
+        diffHandler.handleDelta(imper, dclare, insync, finalAllSetted);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void imper2dclare() {
-        State imper = state;
+        State imper = state();
         DefaultMap<Object, Set<Setable>> finalSetted = setted;
         setted = SETTED_MAP;
-        universeTransaction().put(actionId, () -> {
+        universeTransaction().put(Action.of(actionId, u -> {
             try {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
@@ -143,23 +157,23 @@ public class ImperativeTransaction extends LeafTransaction {
                 CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
-        });
+        }, direction, LeafModifier.preserved));
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
-        T[] old = (T[]) new Object[1];
-        state = state.set(object, property, post, old);
-        change(object, property, old[0], post);
-        return old[0];
+        T[] oldNew = (T[]) new Object[1];
+        state.set(object, property, post, oldNew);
+        change(object, property, oldNew[0], post);
+        return oldNew[0];
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         T[] oldNew = (T[]) new Object[2];
-        state = state.set(object, property, function, element, oldNew);
+        state.set(object, property, function, element, oldNew);
         change(object, property, oldNew[0], oldNew[1]);
         return oldNew[0];
     }
@@ -168,7 +182,7 @@ public class ImperativeTransaction extends LeafTransaction {
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         T[] oldNew = (T[]) new Object[2];
-        state = state.set(object, property, oper, oldNew);
+        state.set(object, property, oper, oldNew);
         change(object, property, oldNew[0], oldNew[1]);
         return oldNew[0];
     }
@@ -203,4 +217,13 @@ public class ImperativeTransaction extends LeafTransaction {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public Direction direction() {
+        return direction;
+    }
+
+    @Override
+    protected String getCurrentTypeForTrace() {
+        return "IM";
+    }
 }

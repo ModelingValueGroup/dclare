@@ -15,14 +15,22 @@
 
 package org.modelingvalue.dclare;
 
-import java.lang.ref.*;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 
 @SuppressWarnings("rawtypes")
@@ -191,7 +199,8 @@ public class ConstantState {
 
         @Override
         public String toString() {
-            return "Constants:" + ref.get();
+            O o = ref.get();
+            return "Constants:" + (o != null ? o.getClass().getSimpleName() + "@" + hash : "@" + System.identityHashCode(this));
         }
 
         @SuppressWarnings("unchecked")
@@ -270,6 +279,10 @@ public class ConstantState {
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
         return getConstants(leafTransaction, object, constant.isDurable()).get(leafTransaction, object, constant, constant.deriver());
+    }
+
+    public <O, V> O object(LeafTransaction leafTransaction, O object) {
+        return getConstants(leafTransaction, object, false).object();
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {

@@ -15,25 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-public class ReadOnly extends Leaf {
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Set;
 
-    protected ReadOnly(Object id, LeafModifier... modifiers) {
-        super(id, modifiers);
-    }
+@FunctionalInterface
+@SuppressWarnings("rawtypes")
+public interface StateDeltaHandler {
 
-    @Override
-    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(this, parent);
-    }
-
-    @Override
-    public void closeTransaction(Transaction tx) {
-        tx.universeTransaction().readOnlys.get().close((ReadOnlyTransaction) tx);
-    }
-
-    @Override
-    public ReadOnlyTransaction newTransaction(UniverseTransaction universeTransaction) {
-        return new ReadOnlyTransaction(universeTransaction);
-    }
+    void handleDelta(State pre, State post, boolean inSync, DefaultMap<Object, Set<Setable>> setted);
 
 }

@@ -15,17 +15,28 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.util.Internable;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.OutOfScopeException;
+import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
 
-    public static final Context<Boolean> MOVING = Context.of(false);
+    private static final Context<Boolean> MOVING = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
@@ -53,17 +64,23 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Supplier<Setable<O, Set<?>>>           scope;
     @SuppressWarnings("rawtypes")
     private final Constant<T, Entry<Setable, Object>>    internal;
+    @SuppressWarnings("rawtypes")
+    private final Entry<Setable, Object>                 nullEntry;
     private final boolean                                plumbing;
     private final boolean                                synthetic;
+    private final boolean                                doNotMerge;
+    private final boolean                                doNotDerive;
+    private final boolean                                equalSemantics;
+    private final boolean                                orphansAllowed;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.plumbing = CoreSetableModifier.plumbing.in(modifiers);
-        this.containment = CoreSetableModifier.containment.in(modifiers);
-        this.synthetic = CoreSetableModifier.synthetic.in(modifiers);
+        this.plumbing = SetableModifier.plumbing.in(modifiers);
+        this.containment = SetableModifier.containment.in(modifiers);
+        this.synthetic = SetableModifier.synthetic.in(modifiers);
         this.changed = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
@@ -75,50 +92,47 @@ public class Setable<O, T> extends Getable<O, T> {
             this.opposite = opposite;
         }
         this.scope = scope;
-        if (containment && opposite != null) {
-            throw new Error("The containment setable " + this + " has an opposite");
-        }
+        this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
+        this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
+        this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
+        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
     protected Entry<Setable, Object> entry(T value, DefaultMap<Setable, Object> properties) {
-        if (value != null && Internable.isInternable(value)) {
+        if (value == null) {
+            return nullEntry;
+        } else if (Internable.isInternable(value)) {
             return internal.get(value);
         } else {
-            Entry<Setable, Object> entry = Entry.of(this, value);
-            if (properties != null) {
-                deduplicate(entry, properties);
+            Entry<Setable, Object> e = Entry.of(this, value);
+            if (deduplicate(value)) {
+                State.deduplicate(e);
             }
-            return entry;
+            return e;
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    protected void deduplicate(Entry e1, DefaultMap<?, ?> map2) {
-        TraceTimer.traceBegin("deduplicate");
-        try {
-            Object v1 = e1.getValue();
-            if (v1 instanceof DefaultMap) {
-                if (((DefaultMap<?, ?>) v1).size() < 100) {
-                    for (Entry e3 : (DefaultMap<?, ?>) v1) {
-                        deduplicate(e3, map2);
-                    }
-                }
-            } else if (map2.size() < 100) {
-                for (Entry e2 : map2) {
-                    Object v2 = e2.getValue();
-                    if (v2 instanceof DefaultMap) {
-                        deduplicate(e1, (DefaultMap) v2);
-                    } else {
-                        e1.setValueIfEqual(v2);
-                    }
-                }
-            }
-        } finally {
-            TraceTimer.traceEnd("deduplicate");
-        }
+    protected boolean deduplicate(T value) {
+        return value instanceof ContainingCollection;
+    }
 
+    public boolean doNotMerge() {
+        return doNotMerge;
+    }
+
+    public boolean doNotDerive() {
+        return doNotDerive;
+    }
+
+    public boolean equalSemantics() {
+        return equalSemantics;
+    }
+
+    public boolean orphansAllowed() {
+        return orphansAllowed;
     }
 
     public boolean isReference() {
@@ -172,10 +186,10 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    Priority.forward.children.set((Mutable) object, Set::add, added);
+                    Priority.immediate.children.set((Mutable) object, Set::add, added);
                 }
             }, removed -> {
-                for (Priority dir : Priority.values()) {
+                for (Priority dir : Priority.ALL) {
                     dir.children.set((Mutable) object, Set::remove, removed);
                 }
                 if (!MOVING.get()) {
@@ -183,7 +197,8 @@ public class Setable<O, T> extends Getable<O, T> {
                     removed.dHandleRemoved((Mutable) object);
                 }
             });
-        } else if (opposite != null) {
+        }
+        if (opposite != null) {
             Setable<Object, ?> opp = (Setable<Object, ?>) opposite.get();
             Setable.diff(preValue, postValue, //
                     added -> opp.add(added, object), //
@@ -247,12 +262,12 @@ public class Setable<O, T> extends Getable<O, T> {
     public static <T, E> void diff(T pre, T post, Consumer<E> added, Consumer<E> removed) {
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ((ContainingCollection<E>) pre).compare((ContainingCollection<E>) post).forEachOrdered(d -> {
-                if (d[0] == null) {
+                if (d[1] != null) {
                     for (E a : d[1]) {
                         added.accept(a);
                     }
                 }
-                if (d[1] == null) {
+                if (d[0] != null) {
                     for (E e : d[0]) {
                         removed.accept(e);
                     }
@@ -277,7 +292,11 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return !plumbing && (scope != null || isReference());
+        return !plumbing && (scope != null || checkForOrphans());
+    }
+
+    private boolean checkForOrphans() {
+        return !orphansAllowed() && isReference();
     }
 
     public boolean isTraced() {
@@ -291,7 +310,7 @@ public class Setable<O, T> extends Getable<O, T> {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
         Set<ConsistencyError> errors = Set.of();
-        if (isReference()) {
+        if (checkForOrphans()) {
             for (Mutable m : mutables(post)) {
                 if (m.dIsOrphan(state)) {
                     errors = errors.add(new ReferencedOrphanException(object, this, m));

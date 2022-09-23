@@ -18,13 +18,26 @@ package org.modelingvalue.dclare;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Mergeable;
+import org.modelingvalue.collections.util.NotMergeableException;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public class State implements Serializable {
+public class State implements IState, Serializable {
     private static final long                                           serialVersionUID   = -3468784705870374732L;
 
     public static final DefaultMap<Setable, Object>                     EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
@@ -34,6 +47,14 @@ public class State implements Serializable {
     public static final BinaryOperator<String>                          CONCAT             = (a, b) -> a + b;
     public static final BinaryOperator<String>                          CONCAT_COMMA       = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
     private static final Comparator<Entry>                              COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    private static final Constant<Object, Object>                       INTERNAL           = Constant.of("$INTERNAL", v -> {
+                                                                                               if (v instanceof DefaultMap) {
+                                                                                                   ((DefaultMap<?, ?>) v).forEach(State::deduplicate);
+                                                                                               } else if (v instanceof Map) {
+                                                                                                   ((Map<?, ?>) v).forEach(State::deduplicate);
+                                                                                               }
+                                                                                               return v;
+                                                                                           });
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
@@ -44,9 +65,10 @@ public class State implements Serializable {
     }
 
     protected State clone(UniverseTransaction universeTransaction) {
-        return new State(universeTransaction, map);
+        return universeTransaction == this.universeTransaction ? this : new State(universeTransaction, map);
     }
 
+    @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         return get(getProperties(object), (Setable<O, T>) property);
     }
@@ -177,7 +199,7 @@ public class State implements Serializable {
             if (changeHandler != null) {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
-                        p.getKey().deduplicate(p, props);
+                        deduplicate(p);
                         changeHandler.handleChange(o, ps, p, pss);
                     }
                 }
@@ -185,7 +207,11 @@ public class State implements Serializable {
             return props;
         }, maps, maps.length);
         return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+    }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <K, V> void deduplicate(Entry<K, V> e) {
+        e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
     }
 
     @Override
@@ -238,12 +264,21 @@ public class State implements Serializable {
         }
     }
 
-    public <R> R derive(Supplier<R> supplier) {
+    public <R> R derive(Supplier<R> supplier, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, new ConstantState(universeTransaction::handleException));
+            return tx.derive(supplier, this, constantState);
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
+        }
+    }
+
+    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
+        IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(supplier, this, original, constantState);
+        } finally {
+            universeTransaction.identityDerivation.closeTransaction(tx);
         }
     }
 
@@ -305,18 +340,44 @@ public class State implements Serializable {
     @SuppressWarnings("unchecked")
     private static String valueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
-            return "\n          <+ " + ((Set) a).removeAll((Set) b) + "\n          +> " + ((Set) b).removeAll((Set) a);
+            Set sa = (Set) a;
+            Set sb = (Set) b;
+            return "\n          <+ " + sa.removeAll(sb) + "\n          +> " + sb.removeAll(sa);
+        } else if (a instanceof List && b instanceof List) {
+            List la = (List) a;
+            List lb = (List) b;
+            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+                // same order
+                return "\n          <+ " + la.removeAll(lb) + "\n          +> " + lb.removeAll(la);
+            } else {
+                // reordered
+                return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
+            }
         } else {
             return "\n          <- " + StringUtil.toString(a) + "\n          -> " + StringUtil.toString(b);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static String shortValueDiffString(Object a, Object b) {
+    public static String shortValueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
-            Set removed = ((Set) a).removeAll((Set) b);
-            Set added = ((Set) b).removeAll((Set) a);
+            Set sa = (Set) a;
+            Set sb = (Set) b;
+            Set removed = sa.removeAll(sb);
+            Set added = sb.removeAll(sa);
             return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+        } else if (a instanceof List && b instanceof List) {
+            List la = (List) a;
+            List lb = (List) b;
+            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+                // same order
+                List removed = la.removeAll(lb);
+                List added = lb.removeAll(la);
+                return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
+            } else {
+                // reordered
+                return StringUtil.toString(a) + "->" + StringUtil.toString(b);
+            }
         } else {
             return StringUtil.toString(a) + "->" + StringUtil.toString(b);
         }

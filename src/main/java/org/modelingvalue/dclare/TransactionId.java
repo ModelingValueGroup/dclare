@@ -15,25 +15,44 @@
 
 package org.modelingvalue.dclare;
 
-public class ReadOnly extends Leaf {
+import org.modelingvalue.collections.util.Internable;
 
-    protected ReadOnly(Object id, LeafModifier... modifiers) {
-        super(id, modifiers);
+public class TransactionId implements Internable {
+
+    public static final TransactionId of(long number) {
+        return new TransactionId(number);
+    }
+
+    private final long number;
+
+    private TransactionId(long number) {
+        this.number = number;
+    }
+
+    public long number() {
+        return number;
     }
 
     @Override
-    public ReadOnlyTransaction openTransaction(MutableTransaction parent) {
-        return parent.universeTransaction().readOnlys.get().open(this, parent);
+    public String toString() {
+        return "TX" + Long.toString(number);
     }
 
     @Override
-    public void closeTransaction(Transaction tx) {
-        tx.universeTransaction().readOnlys.get().close((ReadOnlyTransaction) tx);
+    public int hashCode() {
+        return Long.hashCode(number);
     }
 
     @Override
-    public ReadOnlyTransaction newTransaction(UniverseTransaction universeTransaction) {
-        return new ReadOnlyTransaction(universeTransaction);
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (!(obj instanceof TransactionId)) {
+            return false;
+        } else {
+            TransactionId other = (TransactionId) obj;
+            return number == other.number;
+        }
     }
 
 }

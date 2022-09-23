@@ -22,9 +22,10 @@ public abstract class Leaf implements TransactionClass, Feature {
     private final Object   id;
     private final Priority initPriority;
 
-    protected Leaf(Object id, Priority initPriority) {
+    protected Leaf(Object id, LeafModifier... modifiers) {
         this.id = id;
-        this.initPriority = initPriority;
+        Priority prio = FeatureModifier.ofClass(Priority.class, modifiers);
+        this.initPriority = prio == null ? Priority.immediate : prio;
     }
 
     @Override

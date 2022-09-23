@@ -15,104 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.*;
-
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
-import org.modelingvalue.collections.util.Pair;
-
-public class DerivationTransaction extends ReadOnlyTransaction {
-
-    @SuppressWarnings("rawtypes")
-    private static final Context<Set<Pair<Object, Observed>>> DERIVED = Context.of(Set.of());
-
-    public boolean isDeriving() {
-        return !DERIVED.get().isEmpty();
-    }
+public class DerivationTransaction extends AbstractDerivationTransaction {
 
     protected DerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
     }
 
-    private ConstantState constantState;
-
-    public <R> R derive(Supplier<R> action, State state, ConstantState constantState) {
-        this.constantState = constantState;
-        try {
-            return get(action, state);
-        } catch (Throwable t) {
-            universeTransaction().handleException(t);
-            return null;
-        } finally {
-            constantState.stop();
-            this.constantState = null;
-        }
-    }
 
     @Override
-    public <O, T> T get(O object, Getable<O, T> getable) {
-        if (doDeriver(object, getable)) {
-            return derive(object, (Observed<O, T>) getable);
-        } else {
-            return super.get(object, getable);
-        }
+    protected String getCurrentTypeForTrace() {
+        return "DR";
     }
-
-    @Override
-    protected <O, T> T current(O object, Getable<O, T> getable) {
-        if (doDeriver(object, getable)) {
-            return derive(object, (Observed<O, T>) getable);
-        } else {
-            return super.current(object, getable);
-        }
-    }
-
-    private <O, T> boolean doDeriver(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && state().get((Mutable) object, Mutable.D_PARENT_CONTAINING) == null;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private <O, T> T derive(O object, Observed<O, T> observed) {
-        Constant<O, T> constant = observed.constant();
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
-        if (!constantState.isSet(leafTransaction, object, constant)) {
-            Pair<Object, Observed> slot = Pair.of(object, observed);
-            Set<Pair<Object, Observed>> oldDerived = DERIVED.get();
-            Set<Pair<Object, Observed>> newDerived = oldDerived.add(slot);
-            if (oldDerived == newDerived) {
-                return observed.getDefault();
-            } else {
-                DERIVED.run(newDerived, () -> {
-                    for (Observer deriver : MutableClass.D_DERIVERS.get(((Mutable) object).dClass()).get(observed)) {
-                        deriver.run((Mutable) object);
-                    }
-                });
-            }
-        }
-        return constantState.get(leafTransaction, object, constant);
-    }
-
-    @Override
-    public <O, T, E> T set(O object, Setable<O, T> setable, BiFunction<T, E, T> function, E element) {
-        return set(object, setable, function.apply(setable.getDefault(), element));
-    }
-
-    @Override
-    public <O, T> T set(O object, Setable<O, T> setable, UnaryOperator<T> oper) {
-        return set(object, setable, oper.apply(setable.getDefault()));
-    }
-
-    @Override
-    public <O, T> T set(O object, Setable<O, T> setable, T value) {
-        if (doDeriver(object, setable)) {
-            constantState.set(LeafTransaction.getCurrent(), object, setable.constant(), value, true);
-            return setable.getDefault();
-        } else if (!Objects.equals(state().get(object, setable), value)) {
-            return super.set(object, setable, value);
-        } else {
-            return value;
-        }
-    }
-
 }

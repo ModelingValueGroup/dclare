@@ -15,7 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
 public interface MutableClass extends Internable {
@@ -23,6 +26,10 @@ public interface MutableClass extends Internable {
     @SuppressWarnings({"rawtypes"})
     Constant<MutableClass, Set<Setable>>                       D_CONTAINMENTS      = Constant.of("D_CONTAINMENTS",                                                                         //
             c -> c.dSetables().filter(Setable::containment).map(s -> (Setable) s).toSet());
+
+    @SuppressWarnings({"rawtypes"})
+    Constant<MutableClass, Set<Observed>>                      D_OBSERVEDS         = Constant.of("D_OBSERVEDS",                                                                            //
+            c -> c.dSetables().filter(s -> s instanceof Observed).map(s -> (Observed) s).toSet());
 
     @SuppressWarnings({"rawtypes"})
     Constant<MutableClass, Set<Constant>>                      D_PUSHING_CONSTANTS = Constant.of("D_PUSHING_CONSTANTS",                                                                    //
@@ -38,5 +45,10 @@ public interface MutableClass extends Internable {
     Collection<? extends Observer<?>> dObservers();
 
     Collection<? extends Setable<? extends Mutable, ?>> dSetables();
+
+    @SuppressWarnings("rawtypes")
+    default Collection<Observer> dDerivers(Setable setable) {
+        return D_DERIVERS.get(this).get(setable);
+    }
 
 }

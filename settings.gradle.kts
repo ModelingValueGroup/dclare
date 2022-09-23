@@ -20,3 +20,19 @@ include()
 plugins {
     id("com.gradle.enterprise") version ("3.5")
 }
+
+val inEclipse=System.getenv("GRADLE_ECLIPSE")
+println("Gradle: inEclipse="+inEclipse)
+if(inEclipse!=null && inEclipse.equals("true")) {
+	includeBuild("../immutable-collections") {
+	    dependencySubstitution {
+	       substitute(module("org.modelingvalue:immutable-collections")).using(project(":"))
+	    }
+	}
+	
+	includeBuild("../mvg-json") {
+	    dependencySubstitution {
+	       substitute(module("org.modelingvalue:mvg-json")).using(project(":"))
+	    }
+	}
+}

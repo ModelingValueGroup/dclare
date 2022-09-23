@@ -16,45 +16,28 @@
 package org.modelingvalue.dclare;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class Action<O extends Mutable> extends Leaf {
 
-    protected static final Function<Mutable, Direction> DEFAULT_DIRECTION_FUNCTION = Mutable::dDirection;
-
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
-        }, Priority.forward);
+        }, Priority.immediate);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action) {
-        return new Action<>(id, action, Priority.forward);
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+        return new Action<>(id, action, modifiers);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Priority initPriority) {
-        return new Action<>(id, action, initPriority);
-    }
+    private final Consumer<O> action;
+    private final Direction   direction;
+    private final boolean     preserved;
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction) {
-        return new Action<>(id, action, direction, Priority.forward);
-    }
-
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, Function<M, Direction> direction, Priority initPriority) {
-        return new Action<>(id, action, direction, initPriority);
-    }
-
-    private final Consumer<O>            action;
-    private final Function<O, Direction> direction;
-
-    @SuppressWarnings("unchecked")
-    protected Action(Object id, Consumer<O> action, Priority initPriority) {
-        this(id, action, (Function<O, Direction>) DEFAULT_DIRECTION_FUNCTION, initPriority);
-    }
-
-    protected Action(Object id, Consumer<O> action, Function<O, Direction> direction, Priority initPriority) {
-        super(id, initPriority);
+    protected Action(Object id, Consumer<O> action, LeafModifier... modifiers) {
+        super(id, modifiers);
         this.action = action;
-        this.direction = direction;
+        Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
+        this.direction = dir == null ? Direction.DEFAULT : dir;
+        this.preserved = LeafModifier.preserved.in(modifiers);
     }
 
     @Override
@@ -80,8 +63,17 @@ public class Action<O extends Mutable> extends Leaf {
         return new ActionTransaction(universeTransaction);
     }
 
-    protected Direction direction(O mutable) {
-        return direction.apply(mutable);
+    protected Direction direction() {
+        return direction;
+    }
+
+    @Override
+    public String toString() {
+        return (direction != Direction.DEFAULT ? (direction + "::") : "") + super.toString();
+    }
+
+    public boolean preserved() {
+        return preserved;
     }
 
 }

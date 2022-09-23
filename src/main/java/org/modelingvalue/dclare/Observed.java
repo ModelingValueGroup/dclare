@@ -17,10 +17,14 @@ package org.modelingvalue.dclare;
 
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.ex.*;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.EmptyMandatoryException;
+import org.modelingvalue.dclare.ex.TooManyObserversException;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -57,7 +61,7 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory = CoreSetableModifier.mandatory.in(modifiers);
+        this.mandatory = SetableModifier.mandatory.in(modifiers);
         this.observers = new Observers<>(this);
     }
 
@@ -91,7 +95,7 @@ public class Observed<O, T> extends Setable<O, T> {
     }
 
     public int getNrOfObservers(O object) {
-        LeafTransaction tx = LeafTransaction.getCurrent();
+        LeafTransaction tx = currentLeaf(object);
         return tx.get(object, observers).size();
     }
 
@@ -102,7 +106,7 @@ public class Observed<O, T> extends Setable<O, T> {
         private Observers(Observed observed) {
             super(observed, Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
                 observed.checkTooManyObservers(tx.universeTransaction(), o, a);
-            }, CoreSetableModifier.plumbing);
+            }, SetableModifier.plumbing);
         }
 
         @SuppressWarnings("unchecked")

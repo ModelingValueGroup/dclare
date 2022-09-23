@@ -15,16 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+import static org.modelingvalue.dclare.SetableModifier.durable;
 
-import java.util.Optional;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
-import org.modelingvalue.collections.util.Mergeable;
 
 @SuppressWarnings("rawtypes")
-public class Construction extends IdentifiedByArray implements Mergeable<Construction> {
+public class Construction extends IdentifiedByArray {
 
     protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null, durable);
@@ -46,15 +43,19 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
     }
 
     public Mutable object() {
-        return (Mutable) (super.size() == 3 ? super.get(0) : null);
+        return (Mutable) (isDerived() ? super.get(0) : null);
     }
 
     public Observer observer() {
-        return (Observer) (super.size() == 3 ? super.get(1) : null);
+        return (Observer) (isDerived() ? super.get(1) : null);
     }
 
     public Reason reason() {
-        return (Reason) (super.size() == 3 ? super.get(2) : super.get(0));
+        return (Reason) (isDerived() ? super.get(2) : super.get(0));
+    }
+
+    public Set<Mutable> sources() {
+        return isDerived() ? reason().sources(object()) : Set.of();
     }
 
     @Override
@@ -73,22 +74,6 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
 
     public boolean isNotDerived() {
         return super.size() != 3;
-    }
-
-    protected Set<Newable> derivers() {
-        Set<Newable> result = Set.of();
-        if (isDerived()) {
-            if (object() instanceof Newable) {
-                result = result.add((Newable) object());
-            }
-            for (int i = 0; i < super.size(); i++) {
-                Object object = super.get(i);
-                if (object instanceof Newable && object != Mutable.THIS) {
-                    result = result.add((Newable) object);
-                }
-            }
-        }
-        return result;
     }
 
     public static abstract class Reason extends IdentifiedByArray {
@@ -120,133 +105,45 @@ public class Construction extends IdentifiedByArray implements Mergeable<Constru
 
         public abstract Direction direction();
 
-    }
-
-    public static final class MatchInfo {
-
-        private final Newable              newable;
-        private final Map<Reason, Newable> constructions;
-
-        private Object                     identity;
-        private Boolean                    isCarvedInStone;
-        private Set<Newable>               notDerivedSources;
-        private Comparable                 sortKey;
-        private Set<Direction>             directions;
-
-        public static MatchInfo of(Newable newable, Map<Reason, Newable> constructions) {
-            return new MatchInfo(newable, constructions);
-        }
-
-        private MatchInfo(Newable newable, Map<Reason, Newable> constructions) {
-            this.newable = newable;
-            this.constructions = constructions;
-        }
-
-        public boolean mustBeTheSame(MatchInfo from) {
-            return newable().dNewableType().equals(from.newable().dNewableType()) && //
-                    from.directions().noneMatch(directions()::contains) && //
-                    (from.sources().contains(newable()) || //
-                            (identity() != null ? identity().equals(from.identity()) : from.hasUnidentifiedSource()));
-        }
-
-        public void mergeIn(MatchInfo from) {
-            directions = directions().addAll(from.directions());
-        }
-
-        public Set<Direction> directions() {
-            if (directions == null) {
-                Set<Reason> reasons = newable.dConstructions().map(Construction::reason).toSet();
-                Optional<Reason> local = constructions.filter(c -> c.getValue().equals(newable)).map(Entry::getKey).findAny();
-                if (local.isPresent()) {
-                    reasons = reasons.add(local.get());
-                }
-                directions = reasons.map(Reason::direction).toSet();
-            }
-            return directions;
-        }
-
-        public boolean hasUnidentifiedSource() {
-            Set<Newable> sources = sources();
-            return sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).anyMatch(n -> n.dMatchingIdentity() == null);
-        }
-
-        public Newable newable() {
-            return newable;
-        }
-
-        public Object identity() {
-            if (identity == null) {
-                identity = newable.dMatchingIdentity();
-                if (identity == null) {
-                    identity = ConstantState.NULL;
+        private Set<Mutable> sources(Mutable thiz) {
+            Set<Mutable> result = Set.of(thiz);
+            for (int i = 0; i < size(); i++) {
+                Object v = get(thiz, i);
+                if (v instanceof Mutable) {
+                    result = result.add((Mutable) v);
                 }
             }
-            return identity == ConstantState.NULL ? null : identity;
+            return result;
         }
 
-        public Comparable sortKey() {
-            if (sortKey == null) {
-                Set<Newable> sources = sources();
-                sortKey = sources.exclude(a -> sources.anyMatch(s -> s.dHasAncestor(a))).map(Newable::dSortKey).sorted().findFirst().orElse(newable().dSortKey());
+        protected abstract Reason clone(Mutable thiz, Object[] identity);
+
+        public Set<Reason> actualize() {
+            Set<Reason> all = Set.of(this);
+            for (int i = 0; i < size(); i++) {
+                Object v = get(Mutable.THIS, i);
+                if (v instanceof Newable) {
+                    Newable replacing = ((Newable) v).dReplacing();
+                    if (replacing != null) {
+                        for (Reason r : all) {
+                            Object[] id = r.identity();
+                            id[i] = replacing;
+                            all = all.add(r.clone(Mutable.THIS, id));
+                        }
+                    }
+                } else if (v instanceof Reason) {
+                    for (Reason r : all) {
+                        for (Reason a : ((Reason) v).actualize()) {
+                            Object[] id = r.identity();
+                            id[i] = a;
+                            all = all.add(r.clone(Mutable.THIS, id));
+                        }
+                    }
+                }
             }
-            return sortKey;
+            return all;
         }
 
-        private Set<Newable> sources() {
-            if (notDerivedSources == null) {
-                notDerivedSources = newable.dSources();
-            }
-            return notDerivedSources;
-        }
-
-        public boolean isCarvedInStone() {
-            if (isCarvedInStone == null) {
-                isCarvedInStone = newable.dDirectConstruction() != null;
-            }
-            return isCarvedInStone;
-        }
-
-        @Override
-        public int hashCode() {
-            return newable.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof MatchInfo && newable.equals(((MatchInfo) other).newable);
-        }
-
-        @Override
-        public String toString() {
-            return newable.toString();
-        }
-
-        public String asString() {
-            return newable() + ":" + directions().toString().substring(3) + newable().dSources().toString().substring(3);
-        }
-
-    }
-
-    private final static Construction MERGER = Construction.of(null);;
-
-    @Override
-    public Construction merge(Construction[] branches, int length) {
-        for (int i = length - 1; i >= 0; i--) {
-            if (branches[i] != null) {
-                return branches[i];
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Construction getMerger() {
-        return MERGER;
-    }
-
-    @Override
-    public Class<?> getMeetClass() {
-        return Construction.class;
     }
 
 }

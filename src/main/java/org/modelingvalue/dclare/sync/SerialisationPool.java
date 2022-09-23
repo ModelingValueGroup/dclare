@@ -18,7 +18,10 @@ package org.modelingvalue.dclare.sync;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
 
 public class SerialisationPool {
     public static final boolean TRACE_SERIALIZATION = Boolean.getBoolean("TRACE_SERIALIZATION");
@@ -58,6 +61,7 @@ public class SerialisationPool {
     }
 
     public abstract static class BaseConverter<T> implements Converter<T> {
+
         private final Class<T>    clazz;
         private final String      prefix;
         private SerialisationPool pool;
@@ -156,7 +160,10 @@ public class SerialisationPool {
 
     public Object deserialize(String string, Object context) {
         if (string == null || string.isBlank()) {
-            throw problem("[DESERIALIZE] " + ("no deserialisation possible for null or empty string"));
+            if (TRACE_SERIALIZATION) {
+                System.err.printf("[DESERIALIZE] %-25s: %-25s -> <null>\n", context, string);
+            }
+            return null;
         }
         int i = string.indexOf(Converter.DELIMITER);
         String prefix = i < 0 ? string : string.substring(0, i);
@@ -178,16 +185,18 @@ public class SerialisationPool {
 
     public <T> String serialize(T o, Object context) {
         if (o == null) {
-            System.err.printf("[  SERIALIZE] %-25s: %-25s -> <null>\n", context, o);
+            if (TRACE_SERIALIZATION) {
+                System.err.printf("[  SERIALIZE] %-25s: %-25s -> <null>\n", context, o);
+            }
             return null;
         }
         @SuppressWarnings("unchecked")
-        Converter<T> serializer = getConverterFor((Class<T>) o.getClass());
+        Converter<T> converter = getConverterFor((Class<T>) o.getClass());
         String string;
-        if (serializer == null) {
+        if (converter == null) {
             throw problem(String.format("[  SERIALIZE] %-25s: no converter available for class %s\n", context, o.getClass().getSimpleName()));
         }
-        string = serializer.getPrefix() + Converter.DELIMITER + serializer.serialize(o, context);
+        string = converter.getPrefix() + Converter.DELIMITER + converter.serialize(o, context);
         if (TRACE_SERIALIZATION) {
             System.err.printf("[  SERIALIZE] %-25s: %-25s -> \"%s\"\n", context == null ? "<root>" : context.toString(), o, string);
         }

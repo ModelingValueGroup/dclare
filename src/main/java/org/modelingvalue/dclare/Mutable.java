@@ -15,11 +15,13 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+import static org.modelingvalue.dclare.SetableModifier.plumbing;
 
 import java.util.function.Predicate;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 
 @SuppressWarnings("unused")
@@ -30,14 +32,9 @@ public interface Mutable extends TransactionClass {
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = new Observed<>("D_PARENT_CONTAINING", null, null, null, null, plumbing) {
-                                                                                       @SuppressWarnings("rawtypes")
-                                                                                       @Override
-                                                                                       protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-                                                                                       }
-                                                                                   };
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = Observed.of("D_PARENT_CONTAINING", null, plumbing);
 
-    Setable<Mutable, Byte>                                D_CHANGE_NR              = Setable.of("D_CHANGE_NR", (byte) 0);
+    Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
@@ -63,10 +60,13 @@ public interface Mutable extends TransactionClass {
         return pair != null ? pair.b() : null;
     }
 
-    default void dDelete() {
+    default boolean dDelete() {
         Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
         if (pair != null) {
             pair.b().remove(pair.a(), this);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -132,6 +132,11 @@ public interface Mutable extends TransactionClass {
 
     MutableClass dClass();
 
+    @SuppressWarnings("rawtypes")
+    default Collection<Observer> dAllDerivers(Setable setable) {
+        return dClass().dDerivers(setable);
+    }
+
     default Collection<? extends Observer<?>> dAllObservers() {
         return dClass().dObservers();
     }
@@ -176,15 +181,6 @@ public interface Mutable extends TransactionClass {
     }
 
     @SuppressWarnings("rawtypes")
-    default boolean dToBeCleared(Setable setable) {
-        return true;
-    }
-
-    default Direction dDirection() {
-        return Action.DEFAULT_DIRECTION;
-    }
-
-    @SuppressWarnings("rawtypes")
     default void dHandleRemoved(Mutable parent) {
         for (Observer o : D_OBSERVERS.get(this)) {
             o.constructed().setDefault(this);
@@ -196,7 +192,11 @@ public interface Mutable extends TransactionClass {
     }
 
     default boolean dIsOrphan(State state) {
-        return state.get(this, Mutable.D_PARENT_CONTAINING) == null;
+        return state.get(this, D_PARENT_CONTAINING) == null;
+    }
+
+    default boolean dIsConstant() {
+        return false;
     }
 
 }

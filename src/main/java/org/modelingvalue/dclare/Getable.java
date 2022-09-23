@@ -15,7 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.ContainingCollection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.StringUtil;
 
@@ -24,10 +27,12 @@ public abstract class Getable<O, T> implements Feature, Internable {
 
     protected final Object id;
     protected final T      def;
+    private final int      hashCode;
 
     protected Getable(Object id, T def) {
         this.id = id;
         this.def = def;
+        this.hashCode = id.hashCode() ^ getClass().hashCode();
     }
 
     public T getDefault() {
@@ -35,8 +40,8 @@ public abstract class Getable<O, T> implements Feature, Internable {
     }
 
     @Override
-    public int hashCode() {
-        return id.hashCode() ^ getClass().hashCode();
+    public final int hashCode() {
+        return hashCode;
     }
 
     @SuppressWarnings("rawtypes")
@@ -49,7 +54,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
         } else if (getClass() != obj.getClass()) {
             return false;
         } else {
-            return id.equals(((Getable) obj).id);
+            return hashCode == ((Getable) obj).hashCode && id.equals(((Getable) obj).id);
         }
     }
 
@@ -92,6 +97,11 @@ public abstract class Getable<O, T> implements Feature, Internable {
     @SuppressWarnings("unchecked")
     public <E> Collection<E> collection(T v) {
         return v instanceof Collection ? (Collection<E>) v : v == null ? Set.of() : Set.of((E) v);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <E> List<E> list(T v) {
+        return v instanceof Collection ? ((Collection<E>) v).toList() : v == null ? List.of() : List.of((E) v);
     }
 
     public boolean containment() {

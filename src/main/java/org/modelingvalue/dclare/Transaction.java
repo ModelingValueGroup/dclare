@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.ConcurrentModificationException;
-
 import org.modelingvalue.collections.util.StringUtil;
+
+import java.util.ConcurrentModificationException;
 
 public abstract class Transaction {
 
@@ -31,7 +31,7 @@ public abstract class Transaction {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "@" + (cls != null ? /* (parent != null ? StringUtil.toString(parent.mutable()) + "." : "") + */ StringUtil.toString(cls) : super.toString());
+        return getClass().getSimpleName() + "@" + (cls != null ? StringUtil.toString(cls) : super.toString());
     }
 
     public MutableTransaction parent() {
@@ -77,14 +77,6 @@ public abstract class Transaction {
             i++;
         }
         return i;
-    }
-
-    public String indent(String indent) {
-        StringBuffer i = new StringBuffer();
-        for (Transaction t = parent(); t != null; t = t.parent()) {
-            i.append(indent);
-        }
-        return i.toString();
     }
 
     public abstract Mutable mutable();

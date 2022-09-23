@@ -17,6 +17,7 @@ package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.json.Config;
 import org.modelingvalue.json.FromJsonBase;
 import org.modelingvalue.json.Json;
 import org.modelingvalue.json.ToJson;
@@ -52,7 +53,7 @@ public class JsonIC extends Json {
 
         @Override
         protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
-            if (o instanceof Map) {
+            if (o instanceof Map) { // check if it is an Immutable Collections Map
                 @SuppressWarnings("unchecked")
                 Stream<Entry<Object, Object>> entryStream = ((Map<Object, Object>) o).map(e1 -> new SimpleEntry<>(e1.getKey(), e1.getValue()));
                 return entryStream.sorted(Comparator.comparing(e -> e.getKey().toString())).iterator();
@@ -68,7 +69,7 @@ public class JsonIC extends Json {
         }
 
         protected FromJsonIC(String input) {
-            super(input);
+            super(input, new Config());
         }
 
         @Override
@@ -92,7 +93,7 @@ public class JsonIC extends Json {
         }
 
         @Override
-        protected List<Object> makeArrayEntry(List<Object> l, Object o) {
+        protected List<Object> makeArrayEntry(List<Object> l, int index, Object o) {
             return l == null ? null : l.add(o);
         }
     }

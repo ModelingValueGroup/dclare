@@ -15,36 +15,42 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Arrays;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 
-public enum Priority implements Internable {
+public enum Priority implements LeafModifier, Internable {
 
-    urgent(0),
+    immediate,
 
-    forward(1),
+    inner,
 
-    backward(2),
+    mid,
 
-    scheduled(3);
+    outer,
+
+    scheduled;
+
+    // To prevent Array allocations each time Priority.values() is called.
+    public static final Priority[] ALL           = Priority.values();
+    public static final Priority[] NON_SCHEDULED = Arrays.copyOf(Priority.ALL, Priority.ALL.length - 1);
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;
-    public final int               nr;
 
-    Priority(int nr) {
-        actions = new Queued<>(true, nr);
-        children = new Queued<>(false, nr);
-        this.nr = nr;
+    Priority() {
+        actions = new Queued<>(true);
+        children = new Queued<>(false);
     }
 
     public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
 
         private final boolean actions;
 
-        private Queued(boolean actions, int nr) {
-            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, CoreSetableModifier.plumbing);
+        private Queued(boolean actions) {
+            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, SetableModifier.plumbing);
             this.actions = actions;
         }
 
@@ -58,6 +64,11 @@ public enum Priority implements Internable {
 
         public boolean children() {
             return !actions;
+        }
+
+        @Override
+        protected boolean deduplicate(Set<T> value) {
+            return false;
         }
 
         @Override

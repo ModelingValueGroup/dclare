@@ -15,7 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("unused")
 public class ReadOnlyTransaction extends LeafTransaction {
@@ -100,4 +102,14 @@ public class ReadOnlyTransaction extends LeafTransaction {
         state = null;
     }
 
+    @Override
+    public Direction direction() {
+        return Direction.DEFAULT;
+    }
+
+
+    @Override
+    protected String getCurrentTypeForTrace() {
+        return "RO";
+    }
 }

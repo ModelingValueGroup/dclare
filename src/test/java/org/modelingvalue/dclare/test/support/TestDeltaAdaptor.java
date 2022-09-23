@@ -17,10 +17,15 @@ package org.modelingvalue.dclare.test.support;
 
 import static org.modelingvalue.collections.util.TraceTimer.traceLog;
 
+import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.DeltaAdaptor;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 
@@ -33,9 +38,9 @@ public class TestDeltaAdaptor extends DeltaAdaptor<TestMutableClass, TestMutable
     }
 
     @Override
-    protected void queueDelta(State pre, State post, Boolean last) {
+    protected void queueDelta(State pre, State post, Boolean last, DefaultMap<Object, Set<Setable>> setted) {
         traceDiffHandler(pre, post);
-        super.queueDelta(pre, post, last);
+        super.queueDelta(pre, post, last, setted);
     }
 
     @Override

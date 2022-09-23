@@ -15,19 +15,50 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Supplier;
+
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
-public interface Direction extends Internable {
+public interface Direction extends LeafModifier, Internable {
 
-    static Direction of(Object id) {
-        return new DirectionImpl(id);
+    static Direction of(Object id, Direction... opposites) {
+        return new DirectionImpl(id, opposites);
     }
 
-    static final class DirectionImpl implements Direction {
-        private final Object id;
+    static Direction of(Object id, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, oppositeSupplier);
+    }
 
-        private DirectionImpl(Object id) {
+    Direction DEFAULT = new Direction() {
+        @Override
+        public String toString() {
+            return "<DEF>";
+        }
+
+        @Override
+        public Set<Direction> opposites() {
+            return Set.of();
+        }
+    };
+
+    Set<Direction> opposites();
+
+    static final class DirectionImpl implements Direction {
+
+        private final Object                   id;
+        private final Supplier<Set<Direction>> oppositeSupplier;
+
+        private Set<Direction>                 opposites = null;
+
+        private DirectionImpl(Object id, Direction... opposites) {
+            this(id, () -> Collection.of(opposites).toSet());
+        }
+
+        private DirectionImpl(Object id, Supplier<Set<Direction>> oppositeSupplier) {
             this.id = id;
+            this.oppositeSupplier = oppositeSupplier;
         }
 
         @Override
@@ -44,6 +75,21 @@ public interface Direction extends Internable {
         public String toString() {
             return id.toString();
         }
+
+        @Override
+        public Set<Direction> opposites() {
+            if (opposites == null) {
+                synchronized (DEFAULT) {
+                    opposites = Set.of();
+                    for (Direction oppopsite : oppositeSupplier.get()) {
+                        opposites = opposites.add(oppopsite);
+                        ((DirectionImpl) oppopsite).opposites = ((DirectionImpl) oppopsite).opposites().add(this);
+                    }
+                }
+            }
+            return opposites;
+        }
+
     }
 
 }
