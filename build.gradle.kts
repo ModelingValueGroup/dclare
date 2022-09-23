@@ -23,8 +23,8 @@ plugins {
     eclipse
 }
 dependencies {
-    implementation("org.modelingvalue:immutable-collections:1.7.0-BRANCHED")
-    implementation("org.modelingvalue:mvg-json:1.7.0-BRANCHED")
+    implementation("org.modelingvalue:immutable-collections:2.1.0-BRANCHED")
+    implementation("org.modelingvalue:mvg-json:2.1.0-BRANCHED")
     implementation("com.intellij:forms_rt:7.0.3")
 }
 publishing {
