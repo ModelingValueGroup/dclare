@@ -71,6 +71,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                doNotMerge;
     private final boolean                                doNotDerive;
     private final boolean                                equalSemantics;
+    private final boolean                                orphansAllowed;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -96,6 +97,7 @@ public class Setable<O, T> extends Getable<O, T> {
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
         this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
+        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -127,6 +129,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean equalSemantics() {
         return equalSemantics;
+    }
+
+    public boolean orphansAllowed() {
+        return orphansAllowed;
     }
 
     public boolean isReference() {
@@ -286,7 +292,11 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return !plumbing && (scope != null || isReference());
+        return !plumbing && (scope != null || checkForOrphans());
+    }
+
+    private boolean checkForOrphans() {
+        return !orphansAllowed() && isReference();
     }
 
     public boolean isTraced() {
@@ -300,7 +310,7 @@ public class Setable<O, T> extends Getable<O, T> {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public Set<ConsistencyError> checkConsistency(State state, O object, T post) {
         Set<ConsistencyError> errors = Set.of();
-        if (isReference()) {
+        if (checkForOrphans()) {
             for (Mutable m : mutables(post)) {
                 if (m.dIsOrphan(state)) {
                     errors = errors.add(new ReferencedOrphanException(object, this, m));

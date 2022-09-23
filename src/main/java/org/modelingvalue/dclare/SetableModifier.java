@@ -24,5 +24,6 @@ public enum SetableModifier implements FeatureModifier<SetableModifier> {
     durable,
     doNotMerge,
     doNotDerive,
-    equalSemantics;
+    equalSemantics,
+    orphansAllowed;
 }
