@@ -20,12 +20,16 @@ import java.util.Objects;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 
 public class MatchInfo {
 
     private final Newable                         newable;
     private final ObserverTransaction             otx;
+    private final Mutable                         object;
+    @SuppressWarnings("rawtypes")
+    private final Observed                        observed;
 
     private Object                                identity;
     private Set<Construction>                     directConstructions;
@@ -33,13 +37,17 @@ public class MatchInfo {
     private Set<Direction>                        directions;
     private QualifiedSet<Direction, Construction> derivedConstructions;
 
-    public static MatchInfo of(Newable newable, ObserverTransaction tx) {
-        return new MatchInfo(newable, tx);
+    @SuppressWarnings("rawtypes")
+    public static MatchInfo of(Newable newable, ObserverTransaction tx, Mutable object, Observed observed) {
+        return new MatchInfo(newable, tx, object, observed);
     }
 
-    private MatchInfo(Newable newable, ObserverTransaction otx) {
+    @SuppressWarnings("rawtypes")
+    private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
         this.otx = otx;
+        this.object = object;
+        this.observed = observed;
     }
 
     public boolean mustReplace(MatchInfo replaced) {
@@ -101,9 +109,12 @@ public class MatchInfo {
         return newable;
     }
 
+    @SuppressWarnings("unchecked")
     public Object identity() {
         if (identity == null) {
-            identity = otx.state().deriveIdentity(() -> newable.dIdentity(), otx, otx.universeTransaction().tmpConstants());
+            identity = otx.state().deriveIdentity(() -> newable.dIdentity(), otx, //
+                    observed.containment() ? newable : null, observed.containment() ? Pair.of(object, observed) : null, //
+                    otx.universeTransaction().tmpConstants());
             if (identity == null) {
                 identity = ConstantState.NULL;
             }

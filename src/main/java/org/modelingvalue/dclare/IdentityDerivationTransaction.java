@@ -27,14 +27,21 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         super(universeTransaction);
     }
 
-    private ObserverTransaction original;
+    private ObserverTransaction                original;
+    private Newable                            child;
+    private Pair<Mutable, Setable<Mutable, ?>> parent;
 
-    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, ConstantState constantState) {
+    @SuppressWarnings("rawtypes")
+    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         this.original = original;
+        this.child = child;
+        this.parent = parent;
         try {
             return derive(action, state, constantState);
         } finally {
             this.original = null;
+            this.child = null;
+            this.parent = null;
         }
     }
 
@@ -48,10 +55,13 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return super.doDerive(object, getable) && !isChanged(object, getable);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (object instanceof Mutable && isOld((Mutable) object)) {
             return original.outerStartState().get(object, getable);
+        } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
+            return (T) parent;
         } else {
             return super.getNonDerived(object, getable);
         }

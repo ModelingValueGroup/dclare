@@ -488,10 +488,10 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (after instanceof Newable) {
-            MatchInfo post = MatchInfo.of((Newable) after, this);
+            MatchInfo post = MatchInfo.of((Newable) after, this, object, observed);
             List<MatchInfo> pres;
             if (post.canBeReplaced() || post.canBeReplacing()) {
-                pres = observed.equalSemantics() ? preInfos(object, observed, before) : preInfos(observed, before);
+                pres = preInfos(object, observed, before);
                 for (MatchInfo pre : pres) {
                     if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                         replace(post, pre);
@@ -515,10 +515,10 @@ public class ObserverTransaction extends ActionTransaction {
         List<MatchInfo> pres = null;
         for (Object after : afters) {
             if (after instanceof Newable) {
-                MatchInfo post = MatchInfo.of((Newable) after, this);
+                MatchInfo post = MatchInfo.of((Newable) after, this, object, observed);
                 if (post.canBeReplaced() || post.canBeReplacing()) {
                     if (pres == null) {
-                        pres = observed.equalSemantics() ? preInfos(object, observed, befores) : preInfos(observed, befores);
+                        pres = preInfos(object, observed, befores);
                     }
                     for (MatchInfo pre : pres) {
                         if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
@@ -538,16 +538,16 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private List<MatchInfo> preInfos(Observed observed, Object before) {
-        Collection<Mutable> collection = observed.collection(before);
-        return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this)).toList();
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private List<MatchInfo> preInfos(Mutable object, Observed observed, Object before) {
-        Collection<Newable> befores = observed.collection(before).filter(Newable.class);
-        Collection<Newable> equalSemantics = equalSemantics(object, observed).filter(Newable.class);
-        return Collection.concat(befores.map(n -> MatchInfo.of(n, this)), equalSemantics.map(n -> MatchInfo.of(n, this)).filter(m -> m.identity() != null)).toList();
+        if (observed.equalSemantics()) {
+            Collection<Newable> befores = observed.collection(before).filter(Newable.class);
+            Collection<Newable> equalSemantics = equalSemantics(object, observed).filter(Newable.class);
+            return Collection.concat(befores.map(n -> MatchInfo.of(n, this, object, observed)), //
+                    equalSemantics.map(n -> MatchInfo.of(n, this, object, observed)).filter(m -> m.identity() != null)).toList();
+        } else {
+            Collection<Mutable> collection = observed.collection(before);
+            return collection.filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toList();
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

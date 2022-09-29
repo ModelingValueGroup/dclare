@@ -273,10 +273,10 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
+    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, original, constantState);
+            return tx.derive(supplier, this, original, child, parent, constantState);
         } finally {
             universeTransaction.identityDerivation.closeTransaction(tx);
         }
