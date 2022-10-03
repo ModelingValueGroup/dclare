@@ -33,9 +33,12 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private final CurrentState currentState = new CurrentState();
-    private State              preState;
-    private State              postState;
+
+    private static final BiFunction<TransactionId, TransactionId, TransactionId> HIGHEST      = (b, a) -> b == null || b.number() < a.number() ? a : b;
+
+    private final CurrentState                                                   currentState = new CurrentState();
+    private State                                                                preState;
+    private State                                                                postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -175,9 +178,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     private final <O, T> void setChanged(O object, Observed<O, T> observed, T postValue) {
         if (!observed.isPlumbing() || observed == Mutable.D_PARENT_CONTAINING) {
             TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, observed, postValue) : current().transactionId();
-            Mutable changed = (Mutable) object;
-            while (changed != null && !(changed instanceof Universe) && set(changed, Mutable.D_CHANGE_ID, txid) != txid) {
-                changed = dParent(changed);
+            for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
+                TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
+                if (old != null && old.number() >= txid.number()) {
+                    break;
+                }
             }
         }
     }
