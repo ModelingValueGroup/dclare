@@ -51,14 +51,14 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     @Override
-    public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
+    protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
         return super.doDerive(object, getable) && !isChanged(object, getable);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
-        if (object instanceof Mutable && isOld((Mutable) object)) {
+        if (isOld(object)) {
             return original.outerStartState().get(object, getable);
         } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
             return (T) parent;
@@ -67,14 +67,14 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         }
     }
 
-    private boolean isOld(Mutable object) {
-        return original.outerStartState().get(object, Mutable.D_PARENT_CONTAINING) != null;
-    }
-
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
         T pre = original.preOuterStartState().get(object, getable);
         T post = original.outerStartState().get(object, getable);
         return !Objects.equals(pre, post);
+    }
+
+    private <O> boolean isOld(O object) {
+        return object instanceof Mutable && original.outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @Override

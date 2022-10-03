@@ -409,4 +409,9 @@ public class State implements IState, Serializable {
         return universeTransaction;
     }
 
+    @Override
+    public TransactionId transactionId() {
+        return get(universeTransaction.universe(), Mutable.D_CHANGE_ID);
+    }
+
 }

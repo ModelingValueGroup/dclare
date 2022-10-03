@@ -172,7 +172,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     protected void mainLoop(State start) {
         state = start != null ? start.clone(this) : emptyState;
-        state = state.get(() -> state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++)));
+        state = state.get(() -> incrementChangeId(state));
         if (config.isTraceUniverse()) {
             System.err.println(DclareTrace.getLineStart("DCLARE") + "START UNIVERSE " + this);
         }
@@ -361,12 +361,12 @@ public class UniverseTransaction extends MutableTransaction {
     @Override
     protected State run(State state) {
         boolean again;
-        preOuterStartState = state;
         tmpConstants = new ConstantState(this::handleException);
         try {
             do {
                 preOrphansState = state;
                 orphansDetected.set(null);
+                preOuterStartState = state;
                 state = incrementChangeId(state);
                 outerStartState.setState(state);
                 do {
@@ -403,7 +403,6 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                     }
                 } while (again);
-                preOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
             } while (!killed && hasOuterQueued(state));
             return state;
@@ -778,10 +777,12 @@ public class UniverseTransaction extends MutableTransaction {
         return constantState;
     }
 
-    public <T, O> void setPreserved(O object, Setable<O, T> property, T post) {
-        innerStartState.set(object, property, post);
-        midStartState.set(object, property, post);
-        outerStartState.set(object, property, post);
+    public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post) {
+        TransactionId txid = outerStartState.transactionId();
+        innerStartState.set(object, property, post, txid);
+        midStartState.set(object, property, post, txid);
+        outerStartState.set(object, property, post, txid);
+        return txid;
     }
 
 }

@@ -83,25 +83,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    @Override
-    protected <O> void trigger(Observed<O, ?> observed, O o) {
-        if (o instanceof Mutable && !observed.isPlumbing()) {
-            setChanged((Mutable) o);
-        }
-        Mutable source = mutable();
-        for (Entry<Observer, Set<Mutable>> e : get(o, observed.observers())) {
-            Observer observer = e.getKey();
-            for (Mutable m : e.getValue()) {
-                //noinspection ConstantConditions
-                Mutable target = m.dResolve((Mutable) o);
-                if (!cls().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, observer.initPriority());
-                }
-            }
-        }
-    }
-
     protected String traceId() {
         return "leaf";
     }
@@ -148,9 +129,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected <T, O> void set(O object, Setable<O, T> property, T pre, T post) {
-        if (action().preserved() && object instanceof Mutable && (!property.isPlumbing() || property == Mutable.D_PARENT_CONTAINING)) {
-            universeTransaction().setPreserved(object, property, post);
-        }
         T[] oldNew = (T[]) new Object[2];
         if (currentState.change(s -> s.set(object, property, (br, po) -> {
             if (Objects.equals(br, po)) {
@@ -168,18 +146,46 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
-    private final class CurrentState extends Concurrent<State> {
-        @Override
-        protected State merge(State base, State[] branches, int length) {
-            return base.merge(ActionTransaction.this, branches, length);
+    @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
+    @Override
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
+        super.changed(object, setable, preValue, postValue);
+        if (setable instanceof Observed) {
+            setChanged(object, (Observed<O, T>) setable, postValue);
+            trigger(object, (Observed<O, T>) setable);
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private <O, T> void trigger(O object, Observed<O, T> observed) {
+        Mutable source = mutable();
+        for (Entry<Observer, Set<Mutable>> e : get(object, observed.observers())) {
+            Observer observer = e.getKey();
+            for (Mutable m : e.getValue()) {
+                //noinspection ConstantConditions
+                Mutable target = m.dResolve((Mutable) object);
+                if (!cls().equals(observer) || !source.equals(target)) {
+                    trigger(target, observer, observer.initPriority());
+                }
+            }
         }
     }
 
     @SuppressWarnings("rawtypes")
-    protected void setChanged(Mutable changed) {
-        TransactionId txid = state().get(universeTransaction().universe(), Mutable.D_CHANGE_ID);
-        while (changed != null && !(changed instanceof Universe) && set(changed, Mutable.D_CHANGE_ID, txid) != txid) {
-            changed = dParent(changed);
+    private final <O, T> void setChanged(O object, Observed<O, T> observed, T postValue) {
+        if (!observed.isPlumbing() || observed == Mutable.D_PARENT_CONTAINING) {
+            TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, observed, postValue) : current().transactionId();
+            Mutable changed = (Mutable) object;
+            while (changed != null && !(changed instanceof Universe) && set(changed, Mutable.D_CHANGE_ID, txid) != txid) {
+                changed = dParent(changed);
+            }
+        }
+    }
+
+    private final class CurrentState extends Concurrent<State> {
+        @Override
+        protected State merge(State base, State[] branches, int length) {
+            return base.merge(ActionTransaction.this, branches, length);
         }
     }
 
@@ -198,7 +204,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     protected Mutable dParent(Mutable object) {
-        return currentState.get().getA(object, Mutable.D_PARENT_CONTAINING);
+        return current().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
     @Override

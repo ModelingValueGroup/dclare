@@ -77,11 +77,8 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
-        property.changed(this, object, preValue, postValue);
-        if (property instanceof Observed) {
-            trigger((Observed<O, T>) property, object);
-        }
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
+        setable.changed(this, object, preValue, postValue);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -127,12 +124,8 @@ public abstract class LeafTransaction extends Transaction {
         return state().getA(object, Mutable.D_PARENT_CONTAINING);
     }
 
-    public void runNonObserving(Runnable action) {
+    protected void runNonObserving(Runnable action) {
         action.run();
-    }
-
-    public <T> T getNonObserving(Supplier<T> action) {
-        return action.get();
     }
 
     @Override
@@ -162,9 +155,6 @@ public abstract class LeafTransaction extends Transaction {
 
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
         return construct(reason, supplier);
-    }
-
-    protected <O> void trigger(Observed<O, ?> observed, O o) {
     }
 
     public abstract Direction direction();

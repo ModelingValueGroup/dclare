@@ -107,8 +107,26 @@ public class MutableState implements IState {
         });
     }
 
+    public <O, T> State set(O object, Setable<O, T> property, T value, TransactionId txid) {
+        return atomic.updateAndGet(s -> {
+            State r = s.set(object, property, value);
+            if (r != s && object instanceof Mutable && !property.isPlumbing()) {
+                r = setChanged(r, (Mutable) object, txid);
+            }
+            return r;
+        });
+    }
+
+    @Override
+    public TransactionId transactionId() {
+        return preState.transactionId();
+    }
+
     private State setChanged(State state, Mutable changed) {
-        TransactionId txid = state.get(state.universeTransaction().universe(), Mutable.D_CHANGE_ID);
+        return setChanged(state, changed, transactionId());
+    }
+
+    private State setChanged(State state, Mutable changed, TransactionId txid) {
         while (changed != null && !(changed instanceof Universe) && state.get(changed, Mutable.D_CHANGE_ID) != txid) {
             state = state.set(changed, Mutable.D_CHANGE_ID, txid);
             changed = state.getA(changed, Mutable.D_PARENT_CONTAINING);

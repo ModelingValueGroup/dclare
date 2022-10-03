@@ -19,4 +19,6 @@ public interface IState {
 
     <O, T> T get(O object, Getable<O, T> property);
 
+    TransactionId transactionId();
+
 }

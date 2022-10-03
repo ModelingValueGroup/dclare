@@ -306,20 +306,11 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
-    public void runNonObserving(Runnable action) {
+    protected void runNonObserving(Runnable action) {
         if (observeds.isInitialized()) {
             OBSERVE.run(false, action);
         } else {
             super.runNonObserving(action);
-        }
-    }
-
-    @Override
-    public <T> T getNonObserving(Supplier<T> action) {
-        if (observeds.isInitialized()) {
-            return OBSERVE.get(false, action);
-        } else {
-            return super.getNonObserving(action);
         }
     }
 
@@ -334,13 +325,6 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T> boolean observing(O object, Getable<O, T> setable) {
         return object instanceof Mutable && setable instanceof Observed && observeds.isInitialized() && OBSERVE.get();
-    }
-
-    @Override
-    protected void setChanged(Mutable changed) {
-        if (OBSERVE.get()) {
-            super.setChanged(changed);
-        }
     }
 
     @Override
@@ -464,7 +448,7 @@ public class ObserverTransaction extends ActionTransaction {
     private <O, T, E> boolean isChildChanged(Observed<O, T> observed, E element, IState preState, IState postState) {
         if (observed.containment() && element instanceof Mutable && preState.get((Mutable) element, Mutable.D_PARENT_CONTAINING) != null) {
             TransactionId txid = postState.get((Mutable) element, Mutable.D_CHANGE_ID);
-            return txid != null && txid.number() > preState.get(universeTransaction().universe(), Mutable.D_CHANGE_ID).number();
+            return txid != null && txid.number() > preState.transactionId().number();
         }
         return false;
     }
