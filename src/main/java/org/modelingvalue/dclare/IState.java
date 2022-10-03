@@ -15,10 +15,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Supplier;
+
 public interface IState {
 
     <O, T> T get(O object, Getable<O, T> property);
 
     TransactionId transactionId();
+
+    <R> R get(Supplier<R> supplier);
+
+    void run(Runnable action);
 
 }

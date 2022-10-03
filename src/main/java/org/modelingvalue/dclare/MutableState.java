@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public class MutableState implements IState {
@@ -132,6 +133,16 @@ public class MutableState implements IState {
             changed = state.getA(changed, Mutable.D_PARENT_CONTAINING);
         }
         return state;
+    }
+
+    @Override
+    public <R> R get(Supplier<R> supplier) {
+        return state().get(supplier);
+    }
+
+    @Override
+    public void run(Runnable action) {
+        state().run(action);
     }
 
 }
