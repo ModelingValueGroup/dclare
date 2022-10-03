@@ -306,7 +306,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
-    protected void runNonObserving(Runnable action) {
+    public void runNonObserving(Runnable action) {
         if (observeds.isInitialized()) {
             OBSERVE.run(false, action);
         } else {
