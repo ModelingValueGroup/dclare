@@ -409,8 +409,8 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post) {
         return observeds.get().anyMatch(e -> e.getValue().anyMatch(o -> {
-            if (!outObserved.isPlumbing()) {
-                Observed inObserved = e.getKey();
+            Observed inObserved = e.getKey();
+            if (!inObserved.isPlumbing()) {
                 Mutable inObject = o.dResolve(mutable());
                 if (inObject.equals(outObject) && inObserved.equals(outObserved)) {
                     if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
