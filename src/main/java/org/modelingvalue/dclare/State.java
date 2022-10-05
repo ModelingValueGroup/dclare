@@ -246,6 +246,7 @@ public class State implements IState, Serializable {
         }, (a, b) -> a.addAll(b, Integer::sum)));
     }
 
+    @Override
     public <R> R get(Supplier<R> supplier) {
         ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {
@@ -255,6 +256,7 @@ public class State implements IState, Serializable {
         }
     }
 
+    @Override
     public void run(Runnable action) {
         ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {

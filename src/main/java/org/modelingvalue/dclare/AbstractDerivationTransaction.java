@@ -23,6 +23,7 @@ import java.util.function.UnaryOperator;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
@@ -181,13 +182,36 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
+    @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+        Pair<Mutable, Observer> deriver = DERIVER.get();
+        O result = supplier.get();
+        Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
+        memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
+        return result;
+    }
+
+    protected <O> ConstantState memoization(O object) {
+        return object instanceof Mutable ? ((Mutable) object).dMemoization(this) : memoization();
+    }
+
+    protected <O> ConstantState memoization() {
+        return memoization;
+    }
+
     @SuppressWarnings("rawtypes")
     private boolean isTraceDerivation(Setable setable) {
         return !setable.isPlumbing() && universeTransaction().getConfig().isTraceDerivation();
     }
 
     private <O> String tracePre(O object) {
-        return DclareTrace.getLineStart(isConstant(object) ? "CONST" : "DERIVE");
+        return DclareTrace.getLineStart(memoization(object).toString());
     }
 
     @Override
@@ -195,11 +219,4 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         return INDENT.get();
     }
 
-    protected <O> ConstantState memoization(O object) {
-        return isConstant(object) ? universeTransaction().constantState() : memoization;
-    }
-
-    private <O> boolean isConstant(O object) {
-        return object instanceof Mutable && ((Mutable) object).dIsConstant();
-    }
 }

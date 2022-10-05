@@ -349,9 +349,12 @@ public class ObserverTransaction extends ActionTransaction {
                     if (result == null) {
                         result = (O) midStartState().get(mutable(), constructed).get(reason);
                         if (result == null) {
-                            result = (O) innerStartState().get(mutable(), constructed).get(reason);
+                            result = (O) preInnerStartState().get(mutable(), constructed).get(reason);
                             if (result == null) {
-                                result = supplier.get();
+                                result = (O) innerStartState().get(mutable(), constructed).get(reason);
+                                if (result == null) {
+                                    result = supplier.get();
+                                }
                             }
                         }
                     }
@@ -365,17 +368,18 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
+        boolean forward = isForward(object, observed, pre, post);
         if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
             ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
             Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
             Setable.<T, E> diff(pre, post, added -> {
-                Concurrent<Set<Boolean>> delay = added(object, many, added);
+                Concurrent<Set<Boolean>> delay = added(object, many, added, forward);
                 if (delay != null) {
                     delay.set(TRUE);
                     result[0] = result[0].remove(added);
                 }
             }, removed -> {
-                Concurrent<Set<Boolean>> delay = removed(object, many, removed);
+                Concurrent<Set<Boolean>> delay = removed(object, many, removed, forward);
                 if (delay != null) {
                     delay.set(TRUE);
                     if (pre instanceof List && post instanceof List) {
@@ -391,7 +395,7 @@ public class ObserverTransaction extends ActionTransaction {
             }
             return (T) result[0];
         } else {
-            Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post);
+            Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post, forward);
             if (delay != null) {
                 delay.set(TRUE);
                 traceRippleOut(object, observed, post, pre);
@@ -402,35 +406,64 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added) {
-        return added(object, observed, innerStartState(), state(), added) ? deferInner : //
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post) {
+        return observeds.get().anyMatch(e -> e.getValue().anyMatch(o -> {
+            Observed inObserved = e.getKey();
+            if (!inObserved.isPlumbing()) {
+                Mutable inObject = o.dResolve(mutable());
+                if (inObject.equals(outObject) && inObserved.equals(outObserved)) {
+                    if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                        return isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preInnerStartState(), innerStartState());
+                    }
+                } else {
+                    return !Objects.equals(preInnerStartState().get(inObject, inObserved), innerStartState().get(inObject, inObserved));
+                }
+            }
+            return false;
+        }));
+    }
+
+    private <O, T, E> boolean isChanged(O object, Observed<O, T> many, ContainingCollection<E> pre, ContainingCollection<E> post, IState preState, IState postState) {
+        boolean[] result = new boolean[1];
+        Setable.<T, E> diff(preState.get(object, many), postState.get(object, many), added -> {
+            result[0] = pre.contains(added) == post.contains(added);
+        }, removed -> {
+            result[0] = pre.contains(removed) == post.contains(removed);
+        });
+        return result[0];
+    }
+
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added, boolean forward) {
+        return added(object, observed, innerStartState(), state(), added, true) ? deferInner : //
                 isDerived(observed, added, midStartState(), current()) ? deferMid : //
-                        added(object, observed, preOuterStartState(), outerStartState(), added) ? deferOuter : null;
+                        added(object, observed, preOuterStartState(), outerStartState(), added, forward) ? deferOuter : null;
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed) {
-        return removed(object, observed, innerStartState(), state(), removed) ? deferInner : //
+    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed, boolean forward) {
+        return removed(object, observed, innerStartState(), state(), removed, true) ? deferInner : //
                 isContained(observed, removed, outerStartState(), innerStartState()) ? deferOuter : //
-                        removed(object, observed, preOuterStartState(), outerStartState(), removed) ? deferOuter : null;
+                        removed(object, observed, preOuterStartState(), outerStartState(), removed, forward) ? deferOuter : null;
     }
 
-    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post) {
-        return changed(object, observed, innerStartState(), state(), pre, post) ? deferInner : //
+    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post, boolean forward) {
+        return changed(object, observed, innerStartState(), state(), pre, post, true) ? deferInner : //
                 isDerived(observed, post, midStartState(), current()) ? deferMid : //
                         isContained(observed, pre, outerStartState(), innerStartState()) ? deferOuter : //
-                                changed(object, observed, preOuterStartState(), outerStartState(), pre, post) ? deferOuter : null;
+                                changed(object, observed, preOuterStartState(), outerStartState(), pre, post, forward) ? deferOuter : null;
     }
 
-    private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added) {
-        return isChildChanged(observed, added, preState, postState) || isChangedBack(object, observed, added, preState, postState);
+    private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added, boolean forward) {
+        return isChildChanged(observed, added, preState, postState) || isRemoved(object, observed, added, preState, postState, forward);
     }
 
-    private <O, T extends ContainingCollection<E>, E> boolean removed(O object, Observed<O, T> observed, IState preState, IState postState, E removed) {
-        return isChildChanged(observed, removed, preState, postState) || isChangedBack(object, observed, removed, postState, preState);
+    private <O, T extends ContainingCollection<E>, E> boolean removed(O object, Observed<O, T> observed, IState preState, IState postState, E removed, boolean forward) {
+        return isChildChanged(observed, removed, preState, postState) || isAdded(object, observed, removed, preState, postState, forward);
     }
 
-    private <O, T> boolean changed(O object, Observed<O, T> observed, IState preState, IState postState, T pre, T post) {
-        return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || isChangedBack(object, observed, pre, post, preState, postState);
+    private <O, T> boolean changed(O object, Observed<O, T> observed, IState preState, IState postState, T pre, T post, boolean forward) {
+        return isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState) || //
+                isChangedBack(object, observed, pre, post, preState, postState, forward);
     }
 
     private <O, T, E> boolean isDerived(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -453,13 +486,17 @@ public class ObserverTransaction extends ActionTransaction {
         return false;
     }
 
-    private <O, T extends ContainingCollection<E>, E> boolean isChangedBack(O object, Observed<O, T> observed, E element, IState state1, IState state2) {
-        return observed.collection(state1.get(object, observed)).contains(element) && !observed.collection(state2.get(object, observed)).contains(element);
+    private <O, T extends ContainingCollection<E>, E> boolean isAdded(O object, Observed<O, T> observed, E element, IState preState, IState postState, boolean forward) {
+        return !observed.collection(preState.get(object, observed)).contains(element) && (!forward || observed.collection(postState.get(object, observed)).contains(element));
     }
 
-    private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState) {
+    private <O, T extends ContainingCollection<E>, E> boolean isRemoved(O object, Observed<O, T> observed, E element, IState preState, IState postState, boolean forward) {
+        return observed.collection(preState.get(object, observed)).contains(element) && (!forward || !observed.collection(postState.get(object, observed)).contains(element));
+    }
+
+    private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState, boolean forward) {
         T before = preState.get(object, observed);
-        return Objects.equals(before, post) && !Objects.equals(before, postState.get(object, observed));
+        return Objects.equals(before, post) && (!forward || !Objects.equals(before, postState.get(object, observed)));
     }
 
     private <T, O> void traceRippleOut(O object, Observed<O, T> observed, Object post, Object result) {

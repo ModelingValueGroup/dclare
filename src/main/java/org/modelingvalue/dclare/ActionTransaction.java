@@ -222,6 +222,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return action().direction();
     }
 
+    protected State preInnerStartState() {
+        return universeTransaction().preInnerStartState();
+    }
+
     protected IState innerStartState() {
         return universeTransaction().innerStartState();
     }

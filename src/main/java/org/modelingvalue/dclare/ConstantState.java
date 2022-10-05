@@ -47,6 +47,7 @@ public class ConstantState {
     private final ReferenceQueue<Object>                             queue   = new ReferenceQueue<>();
     private final AtomicReference<QualifiedSet<Object, Constants>>   state   = new AtomicReference<>(QualifiedSet.of(Constants::object));
     private final Thread                                             remover;
+    private final String                                             name;
     private boolean                                                  stopRequested;
 
     private static final class ConstantDepthOverflowException extends RuntimeException {
@@ -256,7 +257,8 @@ public class ConstantState {
         }
     }
 
-    public ConstantState(Consumer<Throwable> errorHandler) {
+    public ConstantState(String name, Consumer<Throwable> errorHandler) {
+        this.name = name;
         remover = new Thread(() -> {
             while (!stopRequested) {
                 try {
@@ -270,6 +272,11 @@ public class ConstantState {
         }, "ConstantState.remover");
         remover.setDaemon(true);
         remover.start();
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     public void stop() {

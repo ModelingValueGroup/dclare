@@ -19,7 +19,6 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -75,21 +74,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
 
     private <O> boolean isOld(O object) {
         return object instanceof Mutable && original.outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
-    }
-
-    @Override
-    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        return super.construct(reason, supplier);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
-        Pair<Mutable, Observer> deriver = DERIVER.get();
-        O result = supplier.get();
-        Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
-        return result;
     }
 
     @Override

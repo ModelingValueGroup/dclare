@@ -76,7 +76,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final UniverseStatistics                                                                   universeStatistics;
     private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
-    private final ConstantState                                                                        constantState           = new ConstantState(this::handleException);
+    private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
     private final MutableState                                                                         innerStartState         = new MutableState(emptyState);
@@ -91,6 +91,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
     private State                                                                                      preOrphansState;
+    private State                                                                                      preInnerStartState;
     private State                                                                                      preOuterStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
@@ -361,12 +362,13 @@ public class UniverseTransaction extends MutableTransaction {
     @Override
     protected State run(State state) {
         boolean again;
-        tmpConstants = new ConstantState(this::handleException);
+        tmpConstants = new ConstantState("TEMP", this::handleException);
         try {
             do {
                 preOrphansState = state;
                 orphansDetected.set(null);
                 preOuterStartState = state;
+                preInnerStartState = state;
                 state = incrementChangeId(state);
                 outerStartState.setState(state);
                 do {
@@ -375,6 +377,7 @@ public class UniverseTransaction extends MutableTransaction {
                         innerStartState.setState(state);
                         state = incrementChangeId(state);
                         state = super.run(state);
+                        preInnerStartState = innerStartState.state();
                         again = false;
                         if (!killed) {
                             if (orphansDetected.get() == Boolean.TRUE) {
@@ -407,6 +410,7 @@ public class UniverseTransaction extends MutableTransaction {
             } while (!killed && hasOuterQueued(state));
             return state;
         } finally {
+            preInnerStartState = null;
             innerStartState.setState(emptyState);
             midStartState.setState(emptyState);
             outerStartState.setState(emptyState);
@@ -724,6 +728,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State currentState() {
         return state;
+    }
+
+    public State preInnerStartState() {
+        return preInnerStartState;
     }
 
     public IState innerStartState() {

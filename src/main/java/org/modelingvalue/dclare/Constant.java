@@ -73,7 +73,7 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     @Override
-    protected Constant<O, T> constant() {
+    public Constant<O, T> constant() {
         return this;
     }
 

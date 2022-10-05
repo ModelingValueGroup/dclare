@@ -139,7 +139,7 @@ public class Setable<O, T> extends Getable<O, T> {
         return isReference != null && isReference;
     }
 
-    protected Constant<O, T> constant() {
+    public Constant<O, T> constant() {
         if (constant == null) {
             constant = Constant.of(this, def);
         }
