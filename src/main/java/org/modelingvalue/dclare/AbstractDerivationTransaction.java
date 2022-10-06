@@ -201,7 +201,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         return object instanceof Mutable ? ((Mutable) object).dMemoization(this) : memoization();
     }
 
-    protected <O> ConstantState memoization() {
+    public <O> ConstantState memoization() {
         return memoization;
     }
 
