@@ -68,59 +68,61 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @Override
     public <O, T> T get(O object, Getable<O, T> getable) {
         T nonDerived = getNonDerived(object, getable);
-        return derive(object, (Observed<O, T>) getable, nonDerived);
+        return derive(object, getable, nonDerived);
     }
 
     @Override
     protected <O, T> T current(O object, Getable<O, T> getable) {
         T nonDerived = super.current(object, getable);
-        return derive(object, (Observed<O, T>) getable, nonDerived);
+        return derive(object, getable, nonDerived);
     }
 
     @SuppressWarnings("rawtypes")
-    private <O, T> T derive(O object, Observed<O, T> observed, T nonDerived) {
-        if (doDerive(object, observed)) {
-            ConstantState mem = memoization(object);
-            Constant<O, T> constant = observed.constant();
-            if (!mem.isSet(this, object, constant)) {
-                if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
-                    return nonDerived;
-                } else {
-                    Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
-                    Set<Pair<Mutable, Observed>> oldDerived = DERIVED.get();
-                    Set<Pair<Mutable, Observed>> newDerived = oldDerived.add(derived);
-                    if (oldDerived == newDerived) {
-                        if (isTraceDerivation(observed)) {
-                            runNonDeriving(() -> System.err.println(tracePre(object) + "RECU " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + nonDerived));
-                        }
+    private <O, T> T derive(O object, Getable<O, T> getable, T nonDerived) {
+        if (getable instanceof Observed) {
+            Observed<O, T> observed = (Observed<O, T>) getable;
+            if (doDerive(object, observed)) {
+                ConstantState mem = memoization(object);
+                Constant<O, T> constant = observed.constant();
+                if (!mem.isSet(this, object, constant)) {
+                    if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                         return nonDerived;
                     } else {
-                        if (isTraceDerivation(observed)) {
-                            runNonDeriving(() -> System.err.println(tracePre(object) + ">>>> " + object + "." + observed));
-                        }
-                        INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
-                            int i = 0;
-                            Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
-                            for (Observer observer : observers.filter(Observer::anonymous)) {
-                                runDeriver((Mutable) object, observed, observer, ++i);
-                            }
-                            for (Observer observer : observers.exclude(Observer::anonymous)) {
-                                runDeriver((Mutable) object, observed, observer, ++i);
-                            }
-                        }));
-                        if (!mem.isSet(this, object, constant)) {
+                        Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
+                        Set<Pair<Mutable, Observed>> oldDerived = DERIVED.get();
+                        Set<Pair<Mutable, Observed>> newDerived = oldDerived.add(derived);
+                        if (oldDerived == newDerived) {
                             if (isTraceDerivation(observed)) {
-                                INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + nonDerived)));
+                                runNonDeriving(() -> System.err.println(tracePre(object) + "RECU " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + nonDerived));
                             }
                             return nonDerived;
+                        } else {
+                            if (isTraceDerivation(observed)) {
+                                runNonDeriving(() -> System.err.println(tracePre(object) + ">>>> " + object + "." + observed));
+                            }
+                            INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
+                                int i = 0;
+                                Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
+                                for (Observer observer : observers.filter(Observer::anonymous)) {
+                                    runDeriver((Mutable) object, observed, observer, ++i);
+                                }
+                                for (Observer observer : observers.exclude(Observer::anonymous)) {
+                                    runDeriver((Mutable) object, observed, observer, ++i);
+                                }
+                            }));
+                            if (!mem.isSet(this, object, constant)) {
+                                if (isTraceDerivation(observed)) {
+                                    INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + nonDerived)));
+                                }
+                                return nonDerived;
+                            }
                         }
                     }
                 }
+                return mem.get(this, object, constant);
             }
-            return mem.get(this, object, constant);
-        } else {
-            return nonDerived;
         }
+        return nonDerived;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
