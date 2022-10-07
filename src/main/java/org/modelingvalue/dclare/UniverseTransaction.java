@@ -167,12 +167,12 @@ public class UniverseTransaction extends MutableTransaction {
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = emptyState;
-        pool.execute(() -> mainLoop(config.getStart()));
+        pool.execute(() -> mainLoop());
         init();
     }
 
-    protected void mainLoop(State start) {
-        state = start != null ? start.clone(this) : emptyState;
+    protected void mainLoop() {
+        state = emptyState;
         state = state.get(() -> incrementChangeId(state));
         if (config.isTraceUniverse()) {
             System.err.println(DclareTrace.getLineStart("DCLARE") + "START UNIVERSE " + this);
