@@ -59,13 +59,9 @@ public class State implements IState, Serializable {
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
 
-    State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
         this.map = map;
-    }
-
-    protected State clone(UniverseTransaction universeTransaction) {
-        return universeTransaction == this.universeTransaction ? this : new State(universeTransaction, map);
     }
 
     @Override
@@ -162,7 +158,7 @@ public class State implements IState, Serializable {
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
         if (post.isEmpty()) {
             DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
-            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+            return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
         } else {
             return new State(universeTransaction, map.put(object, post));
         }
@@ -206,7 +202,7 @@ public class State implements IState, Serializable {
             }
             return props;
         }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+        return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

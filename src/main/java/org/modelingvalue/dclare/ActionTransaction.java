@@ -153,8 +153,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
         super.changed(object, setable, preValue, postValue);
+        if (setable.preserved()) {
+            setChanged(object, setable, postValue);
+        }
         if (setable instanceof Observed) {
-            setChanged(object, (Observed<O, T>) setable, postValue);
             trigger(object, (Observed<O, T>) setable);
         }
     }
@@ -175,14 +177,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     @SuppressWarnings("rawtypes")
-    private final <O, T> void setChanged(O object, Observed<O, T> observed, T postValue) {
-        if (!observed.isPlumbing() || observed == Mutable.D_PARENT_CONTAINING) {
-            TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, observed, postValue) : current().transactionId();
-            for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
-                TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
-                if (old != null && old.number() >= txid.number()) {
-                    break;
-                }
+    private final <O, T> void setChanged(O object, Setable<O, T> setable, T postValue) {
+        TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue) : current().transactionId();
+        for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
+            TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
+            if (old != null && old.number() >= txid.number()) {
+                break;
             }
         }
     }
@@ -192,6 +192,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         protected State merge(State base, State[] branches, int length) {
             return base.merge(ActionTransaction.this, branches, length);
         }
+
     }
 
     @SuppressWarnings("rawtypes")

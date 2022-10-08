@@ -72,6 +72,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                doNotDerive;
     private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
+    private final boolean                                preserved;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -98,6 +99,7 @@ public class Setable<O, T> extends Getable<O, T> {
         this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
         this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
+        this.preserved = SetableModifier.preserved.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -117,6 +119,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected boolean deduplicate(T value) {
         return value instanceof ContainingCollection;
+    }
+
+    public boolean preserved() {
+        return preserved;
     }
 
     public boolean doNotMerge() {

@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.SetableModifier.plumbing;
+import static org.modelingvalue.dclare.SetableModifier.preserved;
 
 import java.util.function.Predicate;
 
@@ -32,7 +33,7 @@ public interface Mutable extends TransactionClass {
     Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = Observed.of("D_PARENT_CONTAINING", null, plumbing);
+    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = Observed.of("D_PARENT_CONTAINING", null, plumbing, preserved);
 
     Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 

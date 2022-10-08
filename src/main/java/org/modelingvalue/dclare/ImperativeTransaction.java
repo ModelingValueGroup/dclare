@@ -24,7 +24,6 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
-import org.modelingvalue.dclare.Priority.Queued;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -57,7 +56,7 @@ public class ImperativeTransaction extends LeafTransaction {
     protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
-        this.state = new MutableState(init);
+        this.state = universeTransaction.createMutableState(init);
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
         this.diffHandler = diffHandler;
@@ -151,13 +150,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
-                        if (p instanceof Queued) {
-                            for (Action action : (Set<Action>) props.get(p)) {
-                                action.trigger((Mutable) e.getKey());
-                            }
-                        } else {
-                            p.set(e.getKey(), props.get(p));
-                        }
+                        p.set(e.getKey(), props.get(p));
                     }
                 });
             } catch (Throwable t) {
@@ -169,7 +162,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        set(target, priority.actions, Set::add, action);
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unchecked")

@@ -60,7 +60,9 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>>    nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
     private final Action<Universe>                                                                     init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> {
+                                                                                                                                   STOPPED.set(universe(), true);
+                                                                                                                               });
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
     private final Action<Universe>                                                                     commit                  = Action.of("$commit");
@@ -69,7 +71,7 @@ public class UniverseTransaction extends MutableTransaction {
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    private final State                                                                                emptyState              = createState(State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
@@ -79,9 +81,9 @@ public class UniverseTransaction extends MutableTransaction {
     private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
-    private final MutableState                                                                         innerStartState         = new MutableState(emptyState);
-    private final MutableState                                                                         midStartState           = new MutableState(emptyState);
-    private final MutableState                                                                         outerStartState         = new MutableState(emptyState);
+    private final MutableState                                                                         innerStartState         = createMutableState(emptyState);
+    private final MutableState                                                                         midStartState           = createMutableState(emptyState);
+    private final MutableState                                                                         outerStartState         = createMutableState(emptyState);
 
     private List<Action<Universe>>                                                                     timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                     preActions              = List.of();
@@ -169,6 +171,15 @@ public class UniverseTransaction extends MutableTransaction {
         preState = emptyState;
         pool.execute(() -> mainLoop());
         init();
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected State createState(DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+        return new State(this, map);
+    }
+
+    protected MutableState createMutableState(State state) {
+        return new MutableState(state);
     }
 
     protected void mainLoop() {
