@@ -81,6 +81,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
+    private final MutableState                                                                         preInnerStartState      = createMutableState(emptyState);
     private final MutableState                                                                         innerStartState         = createMutableState(emptyState);
     private final MutableState                                                                         midStartState           = createMutableState(emptyState);
     private final MutableState                                                                         outerStartState         = createMutableState(emptyState);
@@ -93,7 +94,6 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
     private State                                                                                      preOrphansState;
-    private State                                                                                      preInnerStartState;
     private State                                                                                      preOuterStartState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
@@ -379,8 +379,8 @@ public class UniverseTransaction extends MutableTransaction {
                 preOrphansState = state;
                 orphansDetected.set(null);
                 preOuterStartState = state;
-                preInnerStartState = state;
                 state = incrementChangeId(state);
+                preInnerStartState.setState(state);
                 outerStartState.setState(state);
                 do {
                     midStartState.setState(state);
@@ -388,7 +388,7 @@ public class UniverseTransaction extends MutableTransaction {
                         innerStartState.setState(state);
                         state = incrementChangeId(state);
                         state = super.run(state);
-                        preInnerStartState = innerStartState.state();
+                        preInnerStartState.setState(innerStartState.state());
                         again = false;
                         if (!killed) {
                             if (orphansDetected.get() == Boolean.TRUE) {
@@ -421,7 +421,7 @@ public class UniverseTransaction extends MutableTransaction {
             } while (!killed && hasOuterQueued(state));
             return state;
         } finally {
-            preInnerStartState = null;
+            preInnerStartState.setState(emptyState);
             innerStartState.setState(emptyState);
             midStartState.setState(emptyState);
             outerStartState.setState(emptyState);
@@ -741,7 +741,7 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
-    public State preInnerStartState() {
+    public IState preInnerStartState() {
         return preInnerStartState;
     }
 
@@ -798,6 +798,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post) {
         TransactionId txid = outerStartState.transactionId();
+        preInnerStartState.set(object, property, post, txid);
         innerStartState.set(object, property, post, txid);
         midStartState.set(object, property, post, txid);
         outerStartState.set(object, property, post, txid);

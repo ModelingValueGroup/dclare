@@ -369,7 +369,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings("unchecked")
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         boolean forward = isForward(object, observed, pre, post);
-        if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+        if (isNonMapCollection(pre) && isNonMapCollection(post)) {
             ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
             Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
             Setable.<T, E> diff(pre, post, added -> {
@@ -404,6 +404,10 @@ public class ObserverTransaction extends ActionTransaction {
                 return post;
             }
         }
+    }
+
+    private <T> boolean isNonMapCollection(T t) {
+        return t instanceof ContainingCollection && !(t instanceof Map) && !(t instanceof DefaultMap);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
