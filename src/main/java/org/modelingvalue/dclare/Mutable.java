@@ -52,17 +52,17 @@ public interface Mutable extends TransactionClass {
     }
 
     default Mutable dParent() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         return pair != null ? pair.a() : null;
     }
 
     default Setable<Mutable, ?> dContaining() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         return pair != null ? pair.b() : null;
     }
 
     default boolean dDelete() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         if (pair != null) {
             pair.b().remove(pair.a(), this);
             return true;
@@ -104,7 +104,7 @@ public interface Mutable extends TransactionClass {
     default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
         Mutable result = this;
         Pair<Mutable, Setable<Mutable, ?>> pair;
-        while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
+        while ((pair = result.dParentContaining()) != null) {
             if (cls.isInstance(result) && containing.test(pair.b())) {
                 return (C) result;
             } else {

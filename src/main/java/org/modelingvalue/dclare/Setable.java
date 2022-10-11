@@ -184,22 +184,22 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         if (containment) {
             Setable.<T, Mutable> diff(preValue, postValue, added -> {
-                Pair<Mutable, Setable<Mutable, ?>> prePair = Mutable.D_PARENT_CONTAINING.get(added);
+                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.get(added, Mutable.D_PARENT_CONTAINING);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
-                Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
+                tx.set(added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    Priority.immediate.children.set((Mutable) object, Set::add, added);
+                    tx.set((Mutable) object, Priority.immediate.children, Set::add, added);
                 }
             }, removed -> {
                 for (Priority dir : Priority.ALL) {
-                    dir.children.set((Mutable) object, Set::remove, removed);
+                    tx.set((Mutable) object, dir.children, Set::remove, removed);
                 }
                 if (!MOVING.get()) {
-                    Mutable.D_PARENT_CONTAINING.setDefault(removed);
+                    tx.setDefault(removed, Mutable.D_PARENT_CONTAINING);
                     removed.dHandleRemoved((Mutable) object);
                 }
             });
@@ -225,7 +225,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public T setDefault(O object) {
-        return currentLeaf(object).set(object, this, getDefault());
+        return currentLeaf(object).setDefault(object, this);
     }
 
     public T set(O object, T value) {

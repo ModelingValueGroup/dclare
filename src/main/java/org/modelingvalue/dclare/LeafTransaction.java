@@ -65,6 +65,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
+    public <O, T> T setDefault(O object, Setable<O, T> property) {
+        return set(object, property, property.getDefault());
+    }
+
     public <O, T> T get(O object, Getable<O, T> property) {
         return state().get(object, property);
     }
