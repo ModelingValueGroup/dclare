@@ -69,7 +69,6 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
-    private final boolean                                doNotDerive;
     private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
@@ -96,7 +95,6 @@ public class Setable<O, T> extends Getable<O, T> {
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
-        this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
         this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
         this.preserved = SetableModifier.preserved.in(modifiers);
@@ -127,10 +125,6 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean doNotMerge() {
         return doNotMerge;
-    }
-
-    public boolean doNotDerive() {
-        return doNotDerive;
     }
 
     public boolean equalSemantics() {
@@ -241,8 +235,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})
-    public <E> void add(O obj, E e) {
-        set(obj, (v, a) -> {
+    public <E> T add(O obj, E e) {
+        return set(obj, (v, a) -> {
             if (v instanceof ContainingCollection) {
                 return (T) ((ContainingCollection<E>) v).addUnique(a);
             } else if (!a.equals(v)) {
@@ -253,8 +247,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})
-    public <E> void remove(O obj, E e) {
-        set(obj, (v, r) -> {
+    public <E> T remove(O obj, E e) {
+        return set(obj, (v, r) -> {
             if (v instanceof ContainingCollection) {
                 return (T) ((ContainingCollection<E>) v).remove(r);
             } else if (r.equals(v)) {

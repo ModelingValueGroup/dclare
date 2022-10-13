@@ -160,7 +160,7 @@ public class State implements IState, Serializable {
             DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
             return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
         } else {
-            return new State(universeTransaction, map.put(object, post));
+            return universeTransaction.createState(map.put(object, post));
         }
     }
 
@@ -271,10 +271,10 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, original, child, parent, constantState);
+            return tx.derive(supplier, this, depth, child, parent, constantState);
         } finally {
             universeTransaction.identityDerivation.closeTransaction(tx);
         }

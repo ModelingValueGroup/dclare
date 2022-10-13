@@ -51,6 +51,10 @@ public interface Mutable extends TransactionClass {
         return D_PARENT_CONTAINING.superGet(this);
     }
 
+    default Pair<Mutable, Setable<Mutable, ?>> dSetParentContaining(Pair<Mutable, Setable<Mutable, ?>> pc) {
+        return D_PARENT_CONTAINING.superSet(this, pc);
+    }
+
     default Mutable dParent() {
         Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         return pair != null ? pair.a() : null;
@@ -200,7 +204,7 @@ public interface Mutable extends TransactionClass {
         return tx.memoization();
     }
 
-    static class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
+    static final class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
 
         private ParentContaining(Object id, Pair<Mutable, Setable<Mutable, ?>> def, SetableModifier... modifiers) {
             super(id, def, null, null, null, modifiers);
@@ -213,6 +217,15 @@ public interface Mutable extends TransactionClass {
 
         private Pair<Mutable, Setable<Mutable, ?>> superGet(Mutable object) {
             return super.get(object);
+        }
+
+        @Override
+        public Pair<Mutable, Setable<Mutable, ?>> set(Mutable object, Pair<Mutable, Setable<Mutable, ?>> value) {
+            return object.dSetParentContaining(value);
+        }
+
+        private Pair<Mutable, Setable<Mutable, ?>> superSet(Mutable object, Pair<Mutable, Setable<Mutable, ?>> value) {
+            return super.set(object, value);
         }
 
     }

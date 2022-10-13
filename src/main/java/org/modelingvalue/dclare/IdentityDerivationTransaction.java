@@ -26,27 +26,22 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         super(universeTransaction);
     }
 
-    private ObserverTransaction                original;
+    private int                                depth;
     private Newable                            child;
     private Pair<Mutable, Setable<Mutable, ?>> parent;
 
     @SuppressWarnings("rawtypes")
-    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
-        this.original = original;
+    public <R> R derive(Supplier<R> action, State state, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+        this.depth = depth;
         this.child = child;
         this.parent = parent;
         try {
             return derive(action, state, constantState);
         } finally {
-            this.original = null;
+            this.depth = 0;
             this.child = null;
             this.parent = null;
         }
-    }
-
-    @Override
-    public State current() {
-        return original.current();
     }
 
     @Override
@@ -58,7 +53,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (isOld(object)) {
-            return original.outerStartState().get(object, getable);
+            return universeTransaction().outerStartState().get(object, getable);
         } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
             return (T) parent;
         } else {
@@ -67,18 +62,18 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
-        T pre = original.preOuterStartState().get(object, getable);
-        T post = original.outerStartState().get(object, getable);
+        T pre = universeTransaction().preOuterStartState().get(object, getable);
+        T post = universeTransaction().outerStartState().get(object, getable);
         return !Objects.equals(pre, post);
     }
 
     private <O> boolean isOld(O object) {
-        return object instanceof Mutable && original.outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
+        return object instanceof Mutable && universeTransaction().outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @Override
     public int depth() {
-        return original.depth() + super.depth();
+        return depth + super.depth();
     }
 
     @Override

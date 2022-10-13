@@ -34,7 +34,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     private static final Context<Boolean>                        DERIVE  = Context.of(true);
     private static final Context<Integer>                        INDENT  = Context.of(0);
 
-    public boolean isDeriving() {
+    public static boolean isDeriving() {
         return !DERIVED.get().isEmpty();
     }
 
@@ -58,7 +58,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings("rawtypes")
     protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && !((Observed) getable).doNotDerive() && DERIVE.get();
+        return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
