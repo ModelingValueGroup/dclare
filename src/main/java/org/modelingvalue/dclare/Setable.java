@@ -182,7 +182,7 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
-                tx.set(added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
+                Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
                 if (prePair == null) {
                     added.dActivate();
                 } else {
@@ -193,7 +193,7 @@ public class Setable<O, T> extends Getable<O, T> {
                     tx.set((Mutable) object, dir.children, Set::remove, removed);
                 }
                 if (!MOVING.get()) {
-                    tx.setDefault(removed, Mutable.D_PARENT_CONTAINING);
+                    Mutable.D_PARENT_CONTAINING.setDefault(removed);
                     removed.dHandleRemoved((Mutable) object);
                 }
             });
@@ -219,7 +219,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public T setDefault(O object) {
-        return currentLeaf(object).setDefault(object, this);
+        return set(object, getDefault());
     }
 
     public T set(O object, T value) {
