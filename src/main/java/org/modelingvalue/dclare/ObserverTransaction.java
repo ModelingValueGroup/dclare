@@ -553,11 +553,11 @@ public class ObserverTransaction extends ActionTransaction {
                     for (MatchInfo pre : pres) {
                         if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
                             replace(post, pre);
-                            if (befores instanceof List && afters instanceof List) {
-                                afters = replaceInList((List<Object>) befores, (List<Object>) afters, post.newable(), pre.newable());
-                            } else {
-                                afters = afters.replace(post.newable(), pre.newable());
-                            }
+                            //                            if (befores instanceof List && afters instanceof List) {
+                            //                                afters = replaceInList((List<Object>) befores, (List<Object>) afters, post.newable(), pre.newable());
+                            //                            } else {
+                            afters = afters.replace(post.newable(), pre.newable());
+                            //                            }
                             break;
                         } else if (post.canBeReplacing() && pre.canBeReplaced() && post.mustReplace(pre)) {
                             replace(pre, post);
@@ -571,15 +571,15 @@ public class ObserverTransaction extends ActionTransaction {
         return !Objects.equals(befores, afters) ? rippleOut(object, observed, befores, afters) : afters;
     }
 
-    private List<Object> replaceInList(List<Object> befores, List<Object> afters, Newable post, Newable pre) {
-        int ib = befores.firstIndexOf(pre);
-        int ia = afters.firstIndexOf(post);
-        if (ib >= 0 && ib != ia && ib < afters.size()) {
-            return afters.removeIndex(ia).insert(ib, pre);
-        } else {
-            return afters.replace(ia, pre);
-        }
-    }
+    //    private List<Object> replaceInList(List<Object> befores, List<Object> afters, Newable post, Newable pre) {
+    //        int ib = befores.firstIndexOf(pre);
+    //        int ia = afters.firstIndexOf(post);
+    //        if (ib >= 0 && ib != ia && ib < afters.size()) {
+    //            return afters.removeIndex(ia).insert(ib, pre);
+    //        } else {
+    //            return afters.replace(ia, pre);
+    //        }
+    //    }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private List<MatchInfo> preInfos(Mutable object, Observed observed, Object before) {
