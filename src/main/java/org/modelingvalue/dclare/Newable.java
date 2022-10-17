@@ -21,7 +21,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Observer.Constructed;
 
 public interface Newable extends Mutable {
@@ -70,6 +69,10 @@ public interface Newable extends Mutable {
         return direct != null ? derived.add(direct) : derived;
     }
 
+    default Collection<Direction> dDirections() {
+        return dConstructions().toKeys();
+    }
+
     @Override
     default void dActivate() {
         Mutable.super.dActivate();
@@ -78,12 +81,6 @@ public interface Newable extends Mutable {
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
-    }
-
-    default Collection<Direction> dDirections() {
-        Construction direct = dDirectConstruction();
-        Collection<Direction> derived = dDerivedConstructions().toKeys();
-        return Collection.concat(derived, direct != null ? Set.of(direct.reason().direction()) : Set.of());
     }
 
 }

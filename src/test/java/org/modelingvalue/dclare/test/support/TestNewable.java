@@ -83,7 +83,7 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private Collection<AnonymousClass> anonymous() {
-        return dDerivedConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
+        return dConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
     }
 
     @Override
