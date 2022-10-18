@@ -761,6 +761,14 @@ public class UniverseTransaction extends MutableTransaction {
         return preOuterStartState;
     }
 
+    public List<State> history() {
+        return history;
+    }
+
+    public Collection<IState> detailedHistory() {
+        return Collection.concat(history, Collection.of(preOuterStartState(), outerStartState(), midStartState(), preInnerStartState(), innerStartState()));
+    }
+
     public ConstantState tmpConstants() {
         return tmpConstants;
     }

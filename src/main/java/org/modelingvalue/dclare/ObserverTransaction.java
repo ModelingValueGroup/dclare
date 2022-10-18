@@ -334,7 +334,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked"})
     public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
@@ -344,21 +344,15 @@ public class ObserverTransaction extends ActionTransaction {
             cons = cons.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
             O result = (O) cons.get(reason);
             if (result == null) {
-                result = (O) preOuterStartState().get(mutable(), constructed).get(reason);
-                if (result == null) {
-                    result = (O) outerStartState().get(mutable(), constructed).get(reason);
-                    if (result == null) {
-                        result = (O) midStartState().get(mutable(), constructed).get(reason);
-                        if (result == null) {
-                            result = (O) preInnerStartState().get(mutable(), constructed).get(reason);
-                            if (result == null) {
-                                result = (O) innerStartState().get(mutable(), constructed).get(reason);
-                                if (result == null) {
-                                    result = supplier.get();
-                                }
-                            }
-                        }
+                for (IState state : detailedHistory()) {
+                    Newable found = state.get(mutable(), constructed).get(reason);
+                    if (found != null && state().get(found, Mutable.D_PARENT_CONTAINING) == null) {
+                        result = (O) found;
+                        break;
                     }
+                }
+                if (result == null) {
+                    result = supplier.get();
                 }
                 constructed.set(mutable(), (map, e) -> map.put(reason, e), result);
             }

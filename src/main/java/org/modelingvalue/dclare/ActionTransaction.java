@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -241,6 +242,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     protected State preOuterStartState() {
         return universeTransaction().preOuterStartState();
+    }
+
+    protected Collection<IState> detailedHistory() {
+        return universeTransaction().detailedHistory();
     }
 
     @Override
