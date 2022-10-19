@@ -252,4 +252,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     protected String getCurrentTypeForTrace() {
         return "AC";
     }
+
+    @SuppressWarnings("unchecked")
+    public void retrigger(Priority prio) {
+        trigger(mutable(), (Action<Mutable>) action(), prio);
+    }
+
 }
