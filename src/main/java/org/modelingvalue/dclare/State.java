@@ -89,7 +89,7 @@ public class State implements IState, Serializable {
         return set != props ? set(object, set) : this;
     }
 
-    public <O, T> State set(O object, Setable<O, T> property, T value, T[] old) {
+    public <O, T extends A, A> State set(O object, Setable<O, T> property, T value, A[] old) {
         return set(object, property, (pre, post) -> {
             old[0] = pre;
             return post;
@@ -196,7 +196,7 @@ public class State implements IState, Serializable {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
                         deduplicate(p);
-                        changeHandler.handleChange(o, ps, p, pss);
+                        changeHandler.handleChange(o, p.getKey(), ps, pss, props);
                     }
                 }
             }
