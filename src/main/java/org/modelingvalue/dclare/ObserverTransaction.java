@@ -409,22 +409,27 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post) {
-        return observeds.get().anyMatch(e -> e.getValue().anyMatch(o -> {
-            Observed inObserved = e.getKey();
-            if (!inObserved.isPlumbing()) {
-                Mutable inObject = o.dResolve(mutable());
-                if (inObject.equals(outObject) && inObserved.equals(outObserved)) {
-                    if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
-                        return isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preInnerStartState(), innerStartState()) || //
-                                isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, innerStartState(), state());
+        if (!Objects.equals(preInnerStartState().get(mutable(), Mutable.D_PARENT_CONTAINING), innerStartState().get(mutable(), Mutable.D_PARENT_CONTAINING)) || //
+                !Objects.equals(innerStartState().get(mutable(), Mutable.D_PARENT_CONTAINING), state().get(mutable(), Mutable.D_PARENT_CONTAINING))) {
+            return true;
+        } else {
+            return observeds.get().anyMatch(e -> e.getValue().anyMatch(o -> {
+                Observed inObserved = e.getKey();
+                if (!inObserved.isPlumbing()) {
+                    Mutable inObject = o.dResolve(mutable());
+                    if (inObject.equals(outObject) && inObserved.equals(outObserved)) {
+                        if (pre instanceof ContainingCollection && post instanceof ContainingCollection) {
+                            return isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preInnerStartState(), innerStartState()) || //
+                                    isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, innerStartState(), state());
+                        }
+                    } else {
+                        return !Objects.equals(preInnerStartState().get(inObject, inObserved), innerStartState().get(inObject, inObserved)) || //
+                                !Objects.equals(innerStartState().get(inObject, inObserved), state().get(inObject, inObserved));
                     }
-                } else {
-                    return !Objects.equals(preInnerStartState().get(inObject, inObserved), innerStartState().get(inObject, inObserved)) || //
-                            !Objects.equals(innerStartState().get(inObject, inObserved), state().get(inObject, inObserved));
                 }
-            }
-            return false;
-        }));
+                return false;
+            }));
+        }
     }
 
     private <O, T, E> boolean isChanged(O object, Observed<O, T> many, ContainingCollection<E> pre, ContainingCollection<E> post, IState preState, IState postState) {
