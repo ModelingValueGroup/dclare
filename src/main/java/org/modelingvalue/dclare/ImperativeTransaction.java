@@ -24,6 +24,7 @@ import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
+import org.modelingvalue.dclare.Priority.Queued;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -150,7 +151,13 @@ public class ImperativeTransaction extends LeafTransaction {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
-                        p.set(e.getKey(), props.get(p));
+                        if (p instanceof Queued && !((Queued) p).children()) {
+                            for (Action action : (Set<Action>) props.get(p)) {
+                                action.trigger((Mutable) e.getKey(), ((Queued) p).priority());
+                            }
+                        } else {
+                            p.set(e.getKey(), props.get(p));
+                        }
                     }
                 });
             } catch (Throwable t) {
@@ -162,7 +169,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        throw new UnsupportedOperationException();
+        set(target, priority.actions, Set::add, action);
     }
 
     @SuppressWarnings("unchecked")

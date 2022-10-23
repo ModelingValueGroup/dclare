@@ -55,7 +55,11 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     public void trigger(O mutable) {
-        LeafTransaction.getCurrent().trigger(mutable, this, initPriority());
+        trigger(mutable, initPriority());
+    }
+
+    public void trigger(O mutable, Priority priority) {
+        LeafTransaction.getCurrent().trigger(mutable, this, priority);
     }
 
     @Override
