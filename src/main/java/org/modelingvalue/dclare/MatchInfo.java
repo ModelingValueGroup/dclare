@@ -59,7 +59,7 @@ public class MatchInfo {
             } else if (Objects.equals(identity(), replaced.identity())) {
                 return true;
             } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
-                otx.runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH") + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
+                otx.runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", otx) + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
             }
         }
         return false;

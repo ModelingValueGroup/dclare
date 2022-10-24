@@ -163,6 +163,4 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract Direction direction();
 
-    protected abstract String getCurrentTypeForTrace();
-
 }

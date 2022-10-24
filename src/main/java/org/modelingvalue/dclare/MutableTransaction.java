@@ -35,14 +35,17 @@ import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
+
+    private static final State[]                          EMPTY_STATE_ARRAY = new State[0];
+
     @SuppressWarnings("rawtypes")
     private final Concurrent<Map<Observer, Set<Mutable>>> triggeredActions;
     private final Concurrent<Set<Mutable>>[]              triggeredMutables;
     @SuppressWarnings("unchecked")
-    private final Set<Action<?>>[]                        actions  = new Set[1];
+    private final Set<Action<?>>[]                        actions           = new Set[1];
     @SuppressWarnings("unchecked")
-    private final Set<Mutable>[]                          children = new Set[1];
-    private final State[]                                 state    = new State[1];
+    private final Set<Mutable>[]                          children          = new Set[1];
+    private final State[]                                 state             = new State[1];
 
     @SuppressWarnings("unchecked")
 
@@ -115,9 +118,9 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private <T extends TransactionClass> void run(Collection<T> todo) {
         List<T> list = todo.random().toList();
         if (universeTransaction().getConfig().isTraceMutable()) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + mutable() + " " + list.toString().substring(4));
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + " " + list.toString().substring(4));
         }
-        if (universeTransaction().getConfig().isRunSequential()) {
+        if (list.size() <= 2 || universeTransaction().getConfig().isRunSequential()) {
             runSequential(list);
         } else {
             int half = list.size() >> 1;
@@ -134,7 +137,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private <T extends TransactionClass> void runParallel(List<T> todo) {
         if (todo.size() > 1) {
             try {
-                State[] branches = todo.reduce(state, this::accumulate, MutableTransaction::combine);
+                State[] branches = todo.reduce(EMPTY_STATE_ARRAY, this::accumulate, MutableTransaction::combine);
                 state[0] = merge(state[0], branches);
             } catch (NotMergeableException nme) {
                 runSequential(todo);
@@ -145,7 +148,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     private <T extends TransactionClass> State[] accumulate(State[] s, T t) {
-        return new State[]{t.run(s[0], this)};
+        return new State[]{t.run(state[0], this)};
     }
 
     private static State[] combine(State[] a, State[] b) {
@@ -268,6 +271,11 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     protected State lastState() {
         return state[0];
+    }
+
+    @Override
+    protected String getCurrentTypeForTrace() {
+        return "MU";
     }
 
 }

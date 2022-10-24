@@ -510,7 +510,7 @@ public class ObserverTransaction extends ActionTransaction {
     private <T, O> void traceRippleOut(O object, Observed<O, T> observed, Object post, Object result, boolean forward) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
             String level = deferInner.get().equals(TRUE) ? "INNER" : deferMid.get().equals(TRUE) ? "MID" : forward ? "OUTER" : "BACKWARD";
-            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER") + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
+            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER", this) + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
         }
     }
 
@@ -592,7 +592,7 @@ public class ObserverTransaction extends ActionTransaction {
         if (!replacing.newable().equals(replaced.replacing())) {
             replacing.replace(replaced);
             if (universeTransaction().getConfig().isTraceMatching()) {
-                runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH") + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
+                runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
             }
             super.set(replaced.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), replacing.newable());
             QualifiedSet<Direction, Construction> fromCons = current().get(replaced.newable(), Newable.D_DERIVED_CONSTRUCTIONS);

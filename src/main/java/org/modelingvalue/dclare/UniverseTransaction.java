@@ -186,7 +186,7 @@ public class UniverseTransaction extends MutableTransaction {
         state = emptyState;
         state = state.get(() -> incrementChangeId(state));
         if (config.isTraceUniverse()) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "START UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "START UNIVERSE " + this);
         }
         timer.schedule(new TimerTask() {
             @Override
@@ -206,7 +206,7 @@ public class UniverseTransaction extends MutableTransaction {
                 universeStatistics.setDebugging(false);
                 handling = true; //TODO wire onto MoodManager
                 if (config.isTraceUniverse()) {
-                    System.err.println(DclareTrace.getLineStart("DCLARE") + "BEGIN TRANSACTION " + this);
+                    System.err.println(DclareTrace.getLineStart("DCLARE", this) + "BEGIN TRANSACTION " + this);
                 }
                 TraceTimer.traceBegin("root");
                 try {
@@ -246,7 +246,7 @@ public class UniverseTransaction extends MutableTransaction {
                     handleException(t);
                 } finally {
                     if (config.isTraceUniverse()) {
-                        System.err.println(DclareTrace.getLineStart("DCLARE") + "END TRANSACTION " + this);
+                        System.err.println(DclareTrace.getLineStart("DCLARE", this) + "END TRANSACTION " + this);
                     }
                     end(action);
                     universeStatistics.completeRun();
@@ -257,7 +257,7 @@ public class UniverseTransaction extends MutableTransaction {
             }
         }
         if (config.isTraceUniverse()) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "STOP UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "STOP UNIVERSE " + this);
         }
         timer.cancel();
         state.run(() -> UniverseTransaction.this.universe().exit());
@@ -438,7 +438,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasInnerQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.inner);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "INNER UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "INNER UNIVERSE " + this);
         }
         return result;
     }
@@ -446,7 +446,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasMidQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.mid);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "MID UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "MID UNIVERSE " + this);
         }
         return result;
     }
@@ -454,7 +454,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasOuterQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.outer);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "OUTER UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "OUTER UNIVERSE " + this);
         }
         return result;
     }
@@ -491,7 +491,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void handleExceptions(Set<Throwable> errors) {
         if (config.isTraceUniverse()) {
             List<Throwable> list = errors.sorted(this::compareThrowable).toList();
-            System.err.println(DclareTrace.getLineStart("DCLARE") + list.size() + " EXCEPTION(S) " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
             list.first().printStackTrace();
         }
         kill();

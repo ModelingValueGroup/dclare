@@ -68,7 +68,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                     Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
                     if (!diff.isEmpty()) {
                         runNonObserving(() -> {
-                            System.err.println(DclareTrace.getLineStart("DCLARE") + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")");
+                            System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")");
                         });
                     }
                 } else {

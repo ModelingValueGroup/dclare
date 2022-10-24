@@ -212,7 +212,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private <O> String tracePre(O object) {
-        return DclareTrace.getLineStart(memoization(object).toString());
+        return DclareTrace.getLineStart(memoization(object).toString(), this);
     }
 
     @Override
