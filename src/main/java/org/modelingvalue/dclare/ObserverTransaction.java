@@ -166,8 +166,10 @@ public class ObserverTransaction extends ActionTransaction {
         } else if (!preSources.isEmpty() && observeds.isEmpty()) {
             observer.removeInstance();
         }
-        if (emptyMandatory.get().equals(TRUE) && throwable != null && throwable.b() instanceof NullPointerException) {
-            throwable = null;
+        if (throwable != null && universeTransaction().getConfig().isTraceActions()) {
+            runNonObserving(() -> {
+                System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + observer() + " (" + throwable.b() + ")");
+            });
         }
         observer.exception().set(mutable(), throwable);
     }
@@ -225,7 +227,6 @@ public class ObserverTransaction extends ActionTransaction {
                     "' while initializing constant '" + Constant.DERIVED.get().a() + "." + Constant.DERIVED.get().b() + "'");
         }
         if (observing(object, getable)) {
-            //noinspection ConstantConditions
             observe(object, (Observed<O, T>) getable);
         }
         T result = super.get(object, getable);

@@ -168,10 +168,14 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         for (Entry<Observer, Set<Mutable>> e : get(object, observed.observers())) {
             Observer observer = e.getKey();
             for (Mutable m : e.getValue()) {
-                //noinspection ConstantConditions
                 Mutable target = m.dResolve((Mutable) object);
-                if (!cls().equals(observer) || !source.equals(target)) {
+                if (!action().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, observer.initPriority());
+                    if (universeTransaction().getConfig().isTraceActions()) {
+                        runNonObserving(() -> {
+                            System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (TRIGGER " + target + "." + observer + ")");
+                        });
+                    }
                 }
             }
         }
