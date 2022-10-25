@@ -171,6 +171,9 @@ public class ObserverTransaction extends ActionTransaction {
                 System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + observer() + " (" + throwable.b() + ")");
             });
         }
+        if (throwable != null && throwable.b() instanceof NullPointerException && emptyMandatory.get().equals(TRUE)) {
+            throwable = null;
+        }
         observer.exception().set(mutable(), throwable);
     }
 
