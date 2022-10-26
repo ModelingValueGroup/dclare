@@ -68,14 +68,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     private void move(Mutable object, Priority from, Priority to) {
-        if (!universeTransaction().isKilled()) {
-            state[0] = state[0].set(object, from.actions, Set.of(), actions);
-            state[0] = state[0].set(object, to.actions, Set::addAll, actions[0]);
-            state[0] = state[0].set(object, from.children, Set.of(), children);
-            state[0] = state[0].set(object, to.children, Set::addAll, children[0]);
-            for (Mutable child : children[0].filter(Mutable.class)) {
-                move(child, from, to);
-            }
+        state[0] = state[0].set(object, from.actions, Set.of(), actions);
+        state[0] = state[0].set(object, to.actions, Set::addAll, actions[0]);
+        state[0] = state[0].set(object, from.children, Set.of(), children);
+        state[0] = state[0].set(object, to.children, Set::addAll, children[0]);
+        for (Mutable child : children[0].filter(Mutable.class)) {
+            move(child, from, to);
         }
     }
 
@@ -128,8 +126,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             int half = list.size() >> 1;
             runParallel(list.sublist(0, half));
             if (!universeTransaction().isKilled()) {
+                move(mutable(), immediate, scheduled);
                 runParallel(list.sublist(half, list.size()));
             }
+        }
+        if (!universeTransaction().isKilled()) {
+            move(mutable(), immediate, scheduled);
         }
     }
 
@@ -138,7 +140,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             try {
                 State[] branches = todo.reduce(EMPTY_STATE_ARRAY, this::accumulate, MutableTransaction::combine);
                 state[0] = merge(state[0], branches);
-                move(mutable(), immediate, scheduled);
             } catch (NotMergeableException nme) {
                 runSequential(todo);
             }
@@ -167,7 +168,6 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
             state[0] = result;
         }
-        move(mutable(), immediate, scheduled);
     }
 
     private State merge(State base, State[] branches) {
