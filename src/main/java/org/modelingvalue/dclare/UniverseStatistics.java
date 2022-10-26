@@ -61,23 +61,19 @@ public class UniverseStatistics {
     }
 
     public int maxTotalNrOfChanges() {
-        DclareConfig config = tx.getConfig();
-        return config.isDevMode() ? config.getMaxTotalNrOfChanges() : Integer.MAX_VALUE;
+        return tx.getConfig().getMaxTotalNrOfChanges();
     }
 
     public int maxNrOfChanges() {
-        DclareConfig config = tx.getConfig();
-        return config.isDevMode() ? tx.getConfig().getMaxNrOfChanges() : Integer.MAX_VALUE;
+        return tx.getConfig().getMaxNrOfChanges();
     }
 
     public int maxNrOfObserved() {
-        DclareConfig config = tx.getConfig();
-        return config.isDevMode() ? tx.getConfig().getMaxNrOfObserved() : Integer.MAX_VALUE;
+        return tx.getConfig().getMaxNrOfObserved();
     }
 
     public int maxNrOfObservers() {
-        DclareConfig config = tx.getConfig();
-        return config.isDevMode() ? tx.getConfig().getMaxNrOfObservers() : Integer.MAX_VALUE;
+        return tx.getConfig().getMaxNrOfObservers();
     }
 
     public int maxNrOfHistory() {

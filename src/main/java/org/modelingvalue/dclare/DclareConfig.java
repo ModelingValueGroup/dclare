@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
+@SuppressWarnings("unused")
 public class DclareConfig {
     private static final int     MAX_TOTAL_NR_OF_CHANGES_DEFAULT = 10000;
     private static final int     MAX_NR_OF_CHANGES_DEFAULT       = 200;
@@ -191,35 +192,35 @@ public class DclareConfig {
     }
 
     public boolean isCheckOrphanState() {
-        return checkOrphanState;
+        return devMode && checkOrphanState;
     }
 
     public boolean isRunSequential() {
-        return runSequential;
+        return devMode && runSequential;
     }
 
     public boolean isTraceUniverse() {
-        return traceUniverse;
+        return devMode && traceUniverse;
     }
 
     public boolean isTraceMutable() {
-        return traceMutable;
+        return devMode && traceMutable;
     }
 
     public boolean isTraceMatching() {
-        return traceMatching;
+        return devMode && traceMatching;
     }
 
     public boolean isTraceActions() {
-        return traceActions;
+        return devMode && traceActions;
     }
 
     public boolean isTraceRippleOut() {
-        return traceRippleOut;
+        return devMode && traceRippleOut;
     }
 
     public boolean isTraceDerivation() {
-        return traceDerivation;
+        return devMode && traceDerivation;
     }
 
     public int getMaxInInQueue() {
@@ -227,19 +228,19 @@ public class DclareConfig {
     }
 
     public int getMaxTotalNrOfChanges() {
-        return maxTotalNrOfChanges;
+        return devMode ? maxTotalNrOfChanges : Integer.MAX_VALUE;
     }
 
     public int getMaxNrOfChanges() {
-        return maxNrOfChanges;
+        return devMode ? maxNrOfChanges : Integer.MAX_VALUE;
     }
 
     public int getMaxNrOfObserved() {
-        return maxNrOfObserved;
+        return devMode ? maxNrOfObserved : Integer.MAX_VALUE;
     }
 
     public int getMaxNrOfObservers() {
-        return maxNrOfObservers;
+        return devMode ? maxNrOfObservers : Integer.MAX_VALUE;
     }
 
     public int getMaxNrOfHistory() {
