@@ -52,6 +52,7 @@ public class StateToJson extends ToJson {
             return m.dClass().dSetables()
                     .filter(setableFilter)
                     .map(setable -> Pair.of(setable, state.get(m, (Setable) setable)))
+                    .filter(pair -> pair.b() != null)
                     .map(pair -> (Entry<Object, Object>) new SimpleEntry<Object, Object>(pair.a().id().toString().substring(1), pair.b()))
                     .sortedBy(e -> e.getKey().toString())
                     .iterator();
