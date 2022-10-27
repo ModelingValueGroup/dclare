@@ -63,8 +63,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         return (Mutable) cls();
     }
 
-    protected boolean hasQueued(State state, Mutable object, Priority dir) {
-        return !state.get(object, dir.actions).isEmpty() || !state.get(object, dir.children).isEmpty();
+    protected boolean hasQueued(State state, Mutable object, Priority prio) {
+        return !state.get(object, prio.actions).isEmpty() || !state.get(object, prio.children).isEmpty();
+    }
+
+    private boolean isQueued(State state, Mutable object, Priority prio, TransactionClass tc) {
+        return state.get(object, prio.children).contains(tc) || state.get(object, prio.actions).contains(tc);
     }
 
     private void move(Mutable object, Priority from, Priority to) {
@@ -136,6 +140,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     private <T extends TransactionClass> void runParallel(List<T> todo) {
+        todo = todo.filter(tc -> !isQueued(state[0], mutable(), scheduled, tc)).toList();
         if (todo.size() > 1) {
             try {
                 State[] branches = todo.reduce(EMPTY_STATE_ARRAY, this::accumulate, MutableTransaction::combine);
@@ -148,8 +153,8 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
-    private <T extends TransactionClass> State[] accumulate(State[] s, T t) {
-        return new State[]{t.run(state[0], this)};
+    private <T extends TransactionClass> State[] accumulate(State[] accum, T tc) {
+        return new State[]{tc.run(state[0], this)};
     }
 
     private static State[] combine(State[] a, State[] b) {
@@ -161,12 +166,14 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
 
     private <T extends TransactionClass> void runSequential(List<T> todo) {
         State result;
-        for (TransactionClass t : todo) {
-            result = t.run(state[0], this);
-            if (universeTransaction().isKilled()) {
-                return;
+        for (TransactionClass tc : todo) {
+            if (!isQueued(state[0], mutable(), scheduled, tc)) {
+                result = tc.run(state[0], this);
+                if (universeTransaction().isKilled()) {
+                    return;
+                }
+                state[0] = result;
             }
-            state[0] = result;
         }
     }
 
