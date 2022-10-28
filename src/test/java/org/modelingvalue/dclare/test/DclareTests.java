@@ -21,9 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.mutable.MutableSet;
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.dclare.DclareConfig;
 import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Setable;
@@ -37,9 +34,6 @@ import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestUniverse;
 
 import java.math.BigInteger;
-import java.util.Comparator;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,6 +44,7 @@ import static org.modelingvalue.dclare.SetableModifier.mandatory;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import static org.modelingvalue.dclare.test.support.Shared.printState;
 
+@SuppressWarnings("EmptyClassInitializer")
 public class DclareTests {
     static {
         //        System.setProperty("TRACE_LOG", "true");
@@ -222,76 +217,26 @@ public class DclareTests {
         printState(universeTransaction, result);
     }
 
-    @RepeatedTest(600)
+    @Test
     public void zuperBig() {
-        int cutOff = 5; //<=7
-        int expect = new int[]{1, 2, 12, 112, 1_112, 11_112, 111_112, 1_111_112}[cutOff];
-
-        Observed<TestUniverse, TestMutable>     child       = Observed.of("child", null, containment);
-        Observed<TestMutable, Set<TestMutable>> children    = Observed.of("children", Set.of(), containment);
-        TestUniverse                            universe    = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
-        AtomicLong                              numInvokes  = new AtomicLong(0);
-        AtomicLong                              numCreates  = new AtomicLong(0);
-        MutableSet<TestMutable>                 allMutables = (MutableSet<TestMutable>) Set.<TestMutable> of().toMutable();
+        Observed<TestUniverse, TestMutable>     child    = Observed.of("child", null, containment);
+        Observed<TestMutable, Set<TestMutable>> children = Observed.of("children", Set.of(), containment);
+        TestUniverse                            universe = TestUniverse.of("universe", TestMutableClass.of("Universe", child));
         TestMutableClass clazz = TestMutableClass.of("Object", children).observe(o -> {
-            numInvokes.incrementAndGet();
             String name = o.id().toString();
-            if (name.length() < cutOff) {
-                for (int i = 0; i <= 9; i++) {
-                    numCreates.incrementAndGet();
-                    TestMutable nuw = TestMutable.of(name + i, o.dClass());
-                    synchronized (allMutables) {
-                        allMutables.add(nuw);
-                    }
-                    children.set(o, Set::add, nuw);
+            if (name.length() < 12) {
+                for (int i = 0; i < 10; i++) {
+                    children.set(o, Set::add, TestMutable.of(name + i, o.dClass()));
                 }
             }
         });
-        ContextPool         pool                = ContextThread.createPool();
-        UniverseTransaction universeTransaction = new UniverseTransaction(universe, pool, new DclareConfig().withDevMode(true).withMaxTotalNrOfChanges(1_000_000_000));
-        universeTransaction.put("init", () -> child.set(universe, TestMutable.of("1", clazz)));
+        UniverseTransaction universeTransaction = new UniverseTransaction(universe, THE_POOL, new DclareConfig().withDevMode(true).withMaxTotalNrOfChanges(1000000000));
+        universeTransaction.put("init", () -> child.set(universe, TestMutable.of("object", clazz)));
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
-        List<TestMutable> allSurvivers = result.getObjects(TestMutable.class).toList();
-        int               size         = allSurvivers.size();
-        boolean           BAD          = size != expect;
-
-        System.err.printf("#### %s steal=%,8d running=%,8d active=%,8d poolsize=%,8d qSub=%,8d qTask=%,8d overflow=%,8d numInvoke=%,8d numCreates=%,8d allMutables=%,8d\n",//
-                BAD ? "BAD" : "OK ",//
-                pool.getStealCount(), //
-                pool.getRunningThreadCount(), //
-                pool.getActiveThreadCount(), //
-                pool.getPoolSize(),//
-                pool.getQueuedSubmissionCount(), //
-                pool.getQueuedTaskCount(),//
-                pool.getNumInOverflow(),//
-                numInvokes.get(),//
-                numCreates.get(),//
-                allMutables.size()//
-        );
-
-        if (BAD) {
-            allMutables.stream()//
-                    .filter(e -> !allSurvivers.contains(e))//
-                    .map(e -> Integer.parseInt(e.id().toString()))//
-                    .collect(Collectors.groupingBy(i1 -> i1 / 10)).values()//
-                    .stream()//
-                    .sorted(Comparator.comparing(l -> l.get(0)))//
-                    .forEach(l -> {
-                        if (l.size() == 10) {
-                            Integer i = l.get(0);
-                            System.err.printf("    missing %5sx\n", i / 10);
-                        } else {
-                            l.forEach(s -> System.err.printf("  * missing %6d\n", s));
-                        }
-                    });
-        }
-
         printState(universeTransaction, result);
-        pool.shutdown();
-
-        assertEquals(expect, size);
+        assertEquals(1_111_112, result.getObjects(TestMutable.class).size());
     }
 
     @Test
