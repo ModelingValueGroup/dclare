@@ -75,6 +75,14 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
+    private State remove(State state, Priority prio, TransactionClass tc) {
+        if (tc instanceof Mutable) {
+            return state.set(mutable(), prio.children, Set::remove, tc);
+        } else {
+            return state.set(mutable(), prio.actions, Set::remove, tc);
+        }
+    }
+
     @Override
     protected State run(State pre) {
         TraceTimer.traceBegin("compound");
@@ -149,7 +157,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private <T extends TransactionClass> State[] accumulate(State[] a, T tc) {
         State[] r = a.clone();
         int lastIndex = r.length - 1;
-        r[lastIndex] = tc.run(a[lastIndex], this);
+        r[lastIndex] = tc.run(remove(a[lastIndex], immediate, tc), this);
         return r;
     }
 
@@ -163,7 +171,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     private <T extends TransactionClass> void runSequential(List<T> todo) {
         State result;
         for (TransactionClass tc : todo) {
-            result = tc.run(state[0], this);
+            result = tc.run(remove(state[0], immediate, tc), this);
             if (universeTransaction().isKilled()) {
                 return;
             }
