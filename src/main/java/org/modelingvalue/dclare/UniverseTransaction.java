@@ -169,7 +169,7 @@ public class UniverseTransaction extends MutableTransaction {
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = emptyState;
-        pool.execute(() -> mainLoop());
+        pool.execute(this::mainLoop);
         init();
     }
 
