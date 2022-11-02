@@ -804,7 +804,7 @@ public class UniverseTransaction extends MutableTransaction {
         return constantState;
     }
 
-    public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post) {
+    public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post, Action<?> action) {
         TransactionId txid = outerStartState.transactionId();
         preInnerStartState.set(object, property, post, txid);
         innerStartState.set(object, property, post, txid);

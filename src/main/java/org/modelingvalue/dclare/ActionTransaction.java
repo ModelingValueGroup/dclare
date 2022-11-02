@@ -183,7 +183,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("rawtypes")
     private final <O, T> void setChanged(O object, Setable<O, T> setable, T postValue) {
-        TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue) : current().transactionId();
+        TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue, action()) : current().transactionId();
         for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
             TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
             if (old != null && old.number() >= txid.number()) {

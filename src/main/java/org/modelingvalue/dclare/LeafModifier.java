@@ -38,4 +38,11 @@ public interface LeafModifier extends FeatureModifier<LeafModifier> {
                                       }
                                   };
 
+    static LeafModifier read      = new LeafModifier() {
+                                      @Override
+                                      public String toString() {
+                                          return "read";
+                                      }
+                                  };
+
 }
