@@ -65,7 +65,6 @@ public class UniverseTransaction extends MutableTransaction {
                                                                                                                                });
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
-    private final Action<Universe>                                                                     commit                  = Action.of("$commit");
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
@@ -212,33 +211,37 @@ public class UniverseTransaction extends MutableTransaction {
                 try {
                     timeTraveling = timeTravelingActions.contains(action);
                     start(action);
-                    if (action == backward) {
-                        if (history.size() > 3) {
-                            future = future.prepend(state);
-                            state = history.last();
-                            history = history.removeLast();
-                        }
-                    } else if (action == forward) {
-                        if (!future.isEmpty()) {
+                    if (action.id() instanceof ImperativeTransaction) {
+                        commit(state, timeTraveling, (ImperativeTransaction) action.id());
+                    } else {
+                        if (action == backward) {
+                            if (history.size() > 3) {
+                                future = future.prepend(state);
+                                state = history.last();
+                                history = history.removeLast();
+                            }
+                        } else if (action == forward) {
+                            if (!future.isEmpty()) {
+                                history = history.append(state);
+                                state = future.first();
+                                future = future.removeFirst();
+                            }
+                        } else {
                             history = history.append(state);
-                            state = future.first();
-                            future = future.removeFirst();
+                            future = List.of();
+                            if (history.size() > universeStatistics.maxNrOfHistory()) {
+                                history = history.removeFirst();
+                            }
+                            runActions(preActions);
+                            runAction(action);
+                            if (initialized) {
+                                runAction(checkConsistency);
+                            }
+                            handleTooManyChanges(state);
+                            runActions(postActions);
                         }
-                    } else if (action != commit) {
-                        history = history.append(state);
-                        future = List.of();
-                        if (history.size() > universeStatistics.maxNrOfHistory()) {
-                            history = history.removeFirst();
-                        }
-                        runActions(preActions);
-                        runAction(action);
-                        if (initialized) {
-                            runAction(checkConsistency);
-                        }
-                        handleTooManyChanges(state);
-                        runActions(postActions);
+                        commit(state, timeTraveling, imperativeTransactions.iterator());
                     }
-                    commit(state, timeTraveling, imperativeTransactions.iterator());
                     if (!killed && inQueue.isEmpty() && isStopped(state)) {
                         break;
                     }
@@ -716,12 +719,14 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public void backward() {
-        put(backward);
+    private void commit(State state, boolean timeTraveling, ImperativeTransaction itx) {
+        if (!killed) {
+            itx.schedule(() -> itx.commit(state, timeTraveling));
+        }
     }
 
-    public void commit() {
-        put(commit);
+    public void backward() {
+        put(backward);
     }
 
     @Override
