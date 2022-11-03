@@ -15,13 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
-
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -34,7 +27,15 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
+
 public class Setable<O, T> extends Getable<O, T> {
+    private static final boolean DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
@@ -96,7 +97,7 @@ public class Setable<O, T> extends Getable<O, T> {
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
-        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
+        this.orphansAllowed = DANGER_ALWAYS_ALLOW_ORPHANS || SetableModifier.orphansAllowed.in(modifiers);
         this.preserved = SetableModifier.preserved.in(modifiers);
     }
 
