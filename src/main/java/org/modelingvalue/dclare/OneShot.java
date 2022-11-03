@@ -28,18 +28,18 @@ import java.util.function.Predicate;
  */
 @SuppressWarnings("unused")
 public abstract class OneShot<U extends Universe> {
-    private final ContextPool         contextPool;
-    private final U                   universe;
-    private final UniverseTransaction universeTransaction;
-    private final State               endState;
+    private final State endState;
 
     public OneShot() {
-        universe            = createUniverse();
-        contextPool         = ContextThread.createPool();
-        universeTransaction = new UniverseTransaction(universe, contextPool, new DclareConfig().withTraceMatching(true).withDevMode(true));
-        universeTransaction.put("build-model", this::buildModel);
-        universeTransaction.stop();
-        endState = universeTransaction.waitForEnd();
+        ContextPool contextPool = getContextPool();
+        try {
+            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
+            universeTransaction.put("build-model", this::buildModel);
+            universeTransaction.stop();
+            endState = universeTransaction.waitForEnd();
+        } finally {
+            contextPool.shutdownNow();
+        }
     }
 
     public String getJson() {
@@ -56,25 +56,15 @@ public abstract class OneShot<U extends Universe> {
         return s -> !s.isPlumbing();
     }
 
+    public static DclareConfig getConfig() {
+        return new DclareConfig().withTraceMatching(true).withDevMode(true);
+    }
+
     /**
      * @return the ContextPool that was created
      */
     public ContextPool getContextPool() {
-        return contextPool;
-    }
-
-    /**
-     * @return the universe that was created
-     */
-    public U getUniverse() {
-        return universe;
-    }
-
-    /**
-     * @return the universe transactionthat was created
-     */
-    public UniverseTransaction getUniverseTransaction() {
-        return universeTransaction;
+        return ContextThread.createPool();
     }
 
     /**
@@ -85,11 +75,9 @@ public abstract class OneShot<U extends Universe> {
     }
 
     /**
-     * you need to create the correct Universe here
-     *
-     * @return the Universe for this repo
+     * @return the universe
      */
-    protected abstract U createUniverse();
+    public abstract U getUniverse();
 
     /**
      * do the actual model building
