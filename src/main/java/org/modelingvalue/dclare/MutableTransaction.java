@@ -95,19 +95,23 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                 }
             }
             while (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable(), scheduled.actions, Set.of(), actions);
-                state[0] = state[0].set(mutable(), scheduled.children, Set.of(), children);
-                if (!actions[0].isEmpty() || !children[0].isEmpty()) {
-                    run(Collection.concat(actions[0], children[0]));
+                state[0] = state[0].set(mutable(), Priority.scheduled.actions, Set.of(), actions);
+                if (!actions[0].isEmpty()) {
+                    run(actions[0]);
                 } else {
-                    if (parent() != null) {
-                        for (int i = 1; i < NON_SCHEDULED.length; i++) {
-                            if (hasQueued(state[0], mutable(), NON_SCHEDULED[i])) {
-                                state[0] = state[0].set(parent().mutable(), NON_SCHEDULED[i].children, Set::add, mutable());
+                    state[0] = state[0].set(mutable(), Priority.scheduled.children, Set.of(), children);
+                    if (!children[0].isEmpty()) {
+                        run(children[0]);
+                    } else {
+                        if (parent() != null) {
+                            for (int i = 1; i < NON_SCHEDULED.length; i++) {
+                                if (hasQueued(state[0], mutable(), NON_SCHEDULED[i])) {
+                                    state[0] = state[0].set(parent().mutable(), NON_SCHEDULED[i].children, Set::add, mutable());
+                                }
                             }
                         }
+                        break;
                     }
-                    break;
                 }
             }
             return state[0];
