@@ -19,7 +19,6 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.dclare.Construction.Reason;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -27,64 +26,54 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         super(universeTransaction);
     }
 
-    private ObserverTransaction original;
+    private int                                depth;
+    private Newable                            child;
+    private Pair<Mutable, Setable<Mutable, ?>> parent;
 
-    public <R> R derive(Supplier<R> action, State state, ObserverTransaction original, ConstantState constantState) {
-        this.original = original;
+    @SuppressWarnings("rawtypes")
+    public <R> R derive(Supplier<R> action, State state, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+        this.depth = depth;
+        this.child = child;
+        this.parent = parent;
         try {
             return derive(action, state, constantState);
         } finally {
-            this.original = null;
+            this.depth = 0;
+            this.child = null;
+            this.parent = null;
         }
     }
 
     @Override
-    public State current() {
-        return original.current();
-    }
-
-    @Override
-    public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
+    protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
         return super.doDerive(object, getable) && !isChanged(object, getable);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
-        if (object instanceof Mutable && isOld((Mutable) object)) {
-            return original.outerStartState().get(object, getable);
+        if (isOld(object)) {
+            return universeTransaction().outerStartState().get(object, getable);
+        } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
+            return (T) parent;
         } else {
             return super.getNonDerived(object, getable);
         }
     }
 
-    private boolean isOld(Mutable object) {
-        return original.outerStartState().get(object, Mutable.D_PARENT_CONTAINING) != null;
-    }
-
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
-        T pre = original.preOuterStartState().get(object, getable);
-        T post = original.outerStartState().get(object, getable);
+        T pre = universeTransaction().preOuterStartState().get(object, getable);
+        T post = universeTransaction().outerStartState().get(object, getable);
         return !Objects.equals(pre, post);
     }
 
-    @Override
-    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
-        return super.construct(reason, supplier);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
-        Pair<Mutable, Observer> deriver = DERIVER.get();
-        O result = supplier.get();
-        Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
-        return result;
+    private <O> boolean isOld(O object) {
+        return object instanceof Mutable && universeTransaction().outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     @Override
     public int depth() {
-        return original.depth() + super.depth();
+        return depth + super.depth();
     }
 
     @Override

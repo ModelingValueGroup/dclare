@@ -15,17 +15,6 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.SetableModifier.*;
-import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
-import static org.modelingvalue.dclare.test.support.TestNewable.create;
-import static org.modelingvalue.dclare.test.support.TestNewable.n;
-
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
@@ -39,13 +28,38 @@ import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.DclareConfig;
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Newable;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.UniverseTransaction.Status;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestNewable;
 import org.modelingvalue.dclare.test.support.TestNewableClass;
 import org.modelingvalue.dclare.test.support.TestUniverse;
+
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.modelingvalue.dclare.SetableModifier.containment;
+import static org.modelingvalue.dclare.SetableModifier.equalSemantics;
+import static org.modelingvalue.dclare.SetableModifier.mandatory;
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
+import static org.modelingvalue.dclare.SetableModifier.synthetic;
+import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
+import static org.modelingvalue.dclare.test.support.TestNewable.create;
+import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
@@ -54,15 +68,29 @@ public class NewableTests {
     //        System.setProperty("TRACE_STATUS", "true");
     //    }
 
-    private static final DclareConfig   BASE_CONFIG        = new DclareConfig().withDevMode(true).withCheckOrphanState(true).              //
-            withMaxNrOfChanges(16).withMaxTotalNrOfChanges(1000).withMaxNrOfObserved(36).withMaxNrOfObservers(36).                         //
-            withTraceUniverse(false).withTraceActions(false).withTraceMatching(false).withTraceRippleOut(false).withTraceDerivation(false);
-    private static final DclareConfig[] CONFIGS            = new DclareConfig[]{BASE_CONFIG, BASE_CONFIG.withRunSequential(true)};
+    private static final DclareConfig BASE_CONFIG = new DclareConfig() //
+            .withDevMode(true)               //
+            .withCheckOrphanState(true)      //
+            .withMaxNrOfChanges(16)          //
+            .withMaxTotalNrOfChanges(1000)   //
+            .withMaxNrOfObserved(40)         //
+            .withMaxNrOfObservers(40)        //
+            .withTraceUniverse(false)        //
+            .withTraceActions(false)         //
+            .withTraceMatching(false)        //
+            .withTraceRippleOut(false)       //
+            .withTraceDerivation(false);
+    private static final DclareConfig[] CONFIGS = new DclareConfig[]{ //
+            BASE_CONFIG, //
+            BASE_CONFIG  //
+                    .withDevMode(true)          //
+                    .withRunSequential(true)    //
+    };
     private static final int            NUM_CONFIGS        = 2;                                                                            // = CONFIGS.length; // used in annotation which requires a hardconstant
 
     private static final boolean        FULL               = true;
     private static final boolean        DEFAULT_ROLES      = true;
-    private static final int            MANY_NR            = 16;
+    private static final int            MANY_NR            = 32;
 
     private static final boolean        PRINT_RESULT_STATE = false;                                                                        // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 

@@ -31,11 +31,10 @@ public class DclareTrace {
     private static final String   TRACE_BASE        = fill(TAG_LENGTH + 1 + THREAD_NUM_LENGTH + 1 + TX_TYPE_LENGTH, '_');
 
     //  produces a string like: "DCLARE__06_OB            "
-    public static String getLineStart(String tag) {
+    public static String getLineStart(String tag, Transaction current) {
         StringBuilder b = new StringBuilder(TRACE_BASE);
         superImpose(b, tag.length() <= TAG_LENGTH ? tag : tag.substring(0, TAG_LENGTH), 0);
         superImpose(b, getThreadNum(ContextThread.getNr()), TAG_LENGTH + 1);
-        LeafTransaction current = LeafTransaction.getCurrent();
         if (current != null) {
             superImpose(b, current.getCurrentTypeForTrace(), TAG_LENGTH + 1 + THREAD_NUM_LENGTH + 1);
         }

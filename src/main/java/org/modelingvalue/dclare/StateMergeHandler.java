@@ -16,12 +16,11 @@
 package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
 
 public interface StateMergeHandler {
 
     @SuppressWarnings("rawtypes")
-    void handleChange(Object o, DefaultMap<Setable, Object> ps, Entry<Setable, Object> p, DefaultMap<Setable, Object>[] psbs);
+    void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] bracnhesValues, DefaultMap<Setable, Object> resultValues);
 
     @SuppressWarnings("rawtypes")
     void handleMergeConflict(Object object, Setable property, Object pre, Object... branches);

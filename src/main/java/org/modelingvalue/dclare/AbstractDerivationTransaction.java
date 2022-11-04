@@ -23,6 +23,7 @@ import java.util.function.UnaryOperator;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction {
@@ -33,7 +34,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     private static final Context<Boolean>                        DERIVE  = Context.of(true);
     private static final Context<Integer>                        INDENT  = Context.of(0);
 
-    public boolean isDeriving() {
+    public static boolean isDeriving() {
         return !DERIVED.get().isEmpty();
     }
 
@@ -56,8 +57,8 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings("rawtypes")
-    public <O, T> boolean doDerive(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && !((Observed) getable).doNotDerive() && DERIVE.get();
+    protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
+        return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
@@ -66,33 +67,34 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @Override
     public <O, T> T get(O object, Getable<O, T> getable) {
-        T value = getNonDerived(object, getable);
-        return derive(object, (Observed<O, T>) getable, value);
+        T nonDerived = getNonDerived(object, getable);
+        return derive(object, getable, nonDerived);
     }
 
     @Override
     protected <O, T> T current(O object, Getable<O, T> getable) {
-        T value = super.current(object, getable);
-        return derive(object, (Observed<O, T>) getable, value);
+        T nonDerived = super.current(object, getable);
+        return derive(object, getable, nonDerived);
     }
 
     @SuppressWarnings("rawtypes")
-    private <O, T> T derive(O object, Observed<O, T> observed, T value) {
-        if (doDerive(object, observed)) {
+    private <O, T> T derive(O object, Getable<O, T> getable, T nonDerived) {
+        if (doDerive(object, getable)) {
+            Observed<O, T> observed = (Observed<O, T>) getable;
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
             if (!mem.isSet(this, object, constant)) {
                 if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
-                    return value;
+                    return nonDerived;
                 } else {
                     Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
                     Set<Pair<Mutable, Observed>> oldDerived = DERIVED.get();
                     Set<Pair<Mutable, Observed>> newDerived = oldDerived.add(derived);
                     if (oldDerived == newDerived) {
                         if (isTraceDerivation(observed)) {
-                            runNonDeriving(() -> System.err.println(tracePre(object) + "RECU " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + value));
+                            runNonDeriving(() -> System.err.println(tracePre(object) + "RECU " + object + "." + observed + " => RECURSIVE DERIVATION, result is the non-derived value: " + nonDerived));
                         }
-                        return value;
+                        return nonDerived;
                     } else {
                         if (isTraceDerivation(observed)) {
                             runNonDeriving(() -> System.err.println(tracePre(object) + ">>>> " + object + "." + observed));
@@ -109,16 +111,16 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                         }));
                         if (!mem.isSet(this, object, constant)) {
                             if (isTraceDerivation(observed)) {
-                                INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + value)));
+                                INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + nonDerived)));
                             }
-                            return value;
+                            return nonDerived;
                         }
                     }
                 }
             }
             return mem.get(this, object, constant);
         } else {
-            return value;
+            return nonDerived;
         }
     }
 
@@ -127,14 +129,17 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         if (isTraceDerivation(observed)) {
             runNonDeriving(() -> System.err.println(tracePre(mutable) + String.format(">>%d> ", i) + mutable + "." + observer + "()"));
         }
-        try {
-            INDENT.run(INDENT.get() + 1, () -> DERIVER.run(Pair.of(mutable, observer), () -> observer.run(mutable)));
-        } catch (Throwable t) {
-            if (isTraceDerivation(observed)) {
-                runNonDeriving(() -> System.err.println(tracePre(mutable) + "!!!! " + mutable + "." + observer + "() => THROWS " + t));
+        INDENT.run(INDENT.get() + 1, () -> DERIVER.run(Pair.of(mutable, observer), () -> {
+            try {
+                observer.run(mutable);
+            } catch (Throwable t) {
+                if (isTraceDerivation(observed)) {
+                    runNonDeriving(() -> System.err.println(tracePre(mutable) + "!!!! " + mutable + "." + observer + "() => THROWS " + t));
+                }
+                universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
             }
-            universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
-        }
+        }));
+
     }
 
     @Override
@@ -178,13 +183,36 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
+    @Override
+    public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {
+        return super.construct(reason, supplier);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Override
+    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+        Pair<Mutable, Observer> deriver = DERIVER.get();
+        O result = supplier.get();
+        Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
+        memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
+        return result;
+    }
+
+    protected <O> ConstantState memoization(O object) {
+        return object instanceof Mutable ? ((Mutable) object).dMemoization(this) : memoization();
+    }
+
+    public <O> ConstantState memoization() {
+        return memoization;
+    }
+
     @SuppressWarnings("rawtypes")
     private boolean isTraceDerivation(Setable setable) {
         return !setable.isPlumbing() && universeTransaction().getConfig().isTraceDerivation();
     }
 
     private <O> String tracePre(O object) {
-        return DclareTrace.getLineStart(isConstant(object) ? "CONST" : "DERIVE");
+        return DclareTrace.getLineStart(memoization(object).toString(), this);
     }
 
     @Override
@@ -192,11 +220,4 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         return INDENT.get();
     }
 
-    protected <O> ConstantState memoization(O object) {
-        return isConstant(object) ? universeTransaction().constantState() : memoization;
-    }
-
-    private <O> boolean isConstant(O object) {
-        return object instanceof Mutable && ((Mutable) object).dIsConstant();
-    }
 }

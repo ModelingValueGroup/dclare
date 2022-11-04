@@ -15,13 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
-
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -34,7 +27,15 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
+
 public class Setable<O, T> extends Getable<O, T> {
+    private static final boolean DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
 
     private static final Context<Boolean> MOVING = Context.of(false);
 
@@ -69,9 +70,9 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
-    private final boolean                                doNotDerive;
     private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
+    private final boolean                                preserved;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -95,9 +96,9 @@ public class Setable<O, T> extends Getable<O, T> {
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
-        this.doNotDerive = SetableModifier.doNotDerive.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
-        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
+        this.orphansAllowed = DANGER_ALWAYS_ALLOW_ORPHANS || SetableModifier.orphansAllowed.in(modifiers);
+        this.preserved = SetableModifier.preserved.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -119,12 +120,12 @@ public class Setable<O, T> extends Getable<O, T> {
         return value instanceof ContainingCollection;
     }
 
-    public boolean doNotMerge() {
-        return doNotMerge;
+    public boolean preserved() {
+        return preserved;
     }
 
-    public boolean doNotDerive() {
-        return doNotDerive;
+    public boolean doNotMerge() {
+        return doNotMerge;
     }
 
     public boolean equalSemantics() {
@@ -139,7 +140,7 @@ public class Setable<O, T> extends Getable<O, T> {
         return isReference != null && isReference;
     }
 
-    protected Constant<O, T> constant() {
+    public Constant<O, T> constant() {
         if (constant == null) {
             constant = Constant.of(this, def);
         }
@@ -178,7 +179,7 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         if (containment) {
             Setable.<T, Mutable> diff(preValue, postValue, added -> {
-                Pair<Mutable, Setable<Mutable, ?>> prePair = Mutable.D_PARENT_CONTAINING.get(added);
+                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.get(added, Mutable.D_PARENT_CONTAINING);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
@@ -186,11 +187,11 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    Priority.immediate.children.set((Mutable) object, Set::add, added);
+                    tx.set((Mutable) object, Priority.immediate.children, Set::add, added);
                 }
             }, removed -> {
                 for (Priority dir : Priority.ALL) {
-                    dir.children.set((Mutable) object, Set::remove, removed);
+                    tx.set((Mutable) object, dir.children, Set::remove, removed);
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);
@@ -219,7 +220,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public T setDefault(O object) {
-        return currentLeaf(object).set(object, this, getDefault());
+        return set(object, getDefault());
     }
 
     public T set(O object, T value) {
@@ -235,8 +236,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})
-    public <E> void add(O obj, E e) {
-        set(obj, (v, a) -> {
+    public <E> T add(O obj, E e) {
+        return set(obj, (v, a) -> {
             if (v instanceof ContainingCollection) {
                 return (T) ((ContainingCollection<E>) v).addUnique(a);
             } else if (!a.equals(v)) {
@@ -247,8 +248,8 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     @SuppressWarnings({"unchecked", "unlikely-arg-type"})
-    public <E> void remove(O obj, E e) {
-        set(obj, (v, r) -> {
+    public <E> T remove(O obj, E e) {
+        return set(obj, (v, r) -> {
             if (v instanceof ContainingCollection) {
                 return (T) ((ContainingCollection<E>) v).remove(r);
             } else if (r.equals(v)) {

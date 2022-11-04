@@ -140,4 +140,9 @@ public class Observed<O, T> extends Setable<O, T> {
         return errors;
     }
 
+    @Override
+    public boolean preserved() {
+        return super.preserved() || !isPlumbing();
+    }
+
 }

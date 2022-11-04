@@ -15,9 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.util.StringUtil;
-
 import java.util.ConcurrentModificationException;
+
+import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Transaction {
 
@@ -80,5 +80,7 @@ public abstract class Transaction {
     }
 
     public abstract Mutable mutable();
+
+    protected abstract String getCurrentTypeForTrace();
 
 }

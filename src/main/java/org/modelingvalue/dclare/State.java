@@ -59,13 +59,9 @@ public class State implements IState, Serializable {
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
 
-    State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
         this.map = map;
-    }
-
-    protected State clone(UniverseTransaction universeTransaction) {
-        return universeTransaction == this.universeTransaction ? this : new State(universeTransaction, map);
     }
 
     @Override
@@ -93,7 +89,7 @@ public class State implements IState, Serializable {
         return set != props ? set(object, set) : this;
     }
 
-    public <O, T> State set(O object, Setable<O, T> property, T value, T[] old) {
+    public <O, T extends A, A> State set(O object, Setable<O, T> property, T value, A[] old) {
         return set(object, property, (pre, post) -> {
             old[0] = pre;
             return post;
@@ -162,9 +158,9 @@ public class State implements IState, Serializable {
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
         if (post.isEmpty()) {
             DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
-            return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+            return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
         } else {
-            return new State(universeTransaction, map.put(object, post));
+            return universeTransaction.createState(map.put(object, post));
         }
     }
 
@@ -200,13 +196,13 @@ public class State implements IState, Serializable {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
                         deduplicate(p);
-                        changeHandler.handleChange(o, ps, p, pss);
+                        changeHandler.handleChange(o, p.getKey(), ps, pss, props);
                     }
                 }
             }
             return props;
         }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, niw);
+        return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -246,6 +242,7 @@ public class State implements IState, Serializable {
         }, (a, b) -> a.addAll(b, Integer::sum)));
     }
 
+    @Override
     public <R> R get(Supplier<R> supplier) {
         ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {
@@ -255,6 +252,7 @@ public class State implements IState, Serializable {
         }
     }
 
+    @Override
     public void run(Runnable action) {
         ReadOnlyTransaction tx = universeTransaction.runOnState.openTransaction(universeTransaction);
         try {
@@ -273,10 +271,10 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R deriveIdentity(Supplier<R> supplier, ObserverTransaction original, ConstantState constantState) {
+    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, original, constantState);
+            return tx.derive(supplier, this, depth, child, parent, constantState);
         } finally {
             universeTransaction.identityDerivation.closeTransaction(tx);
         }
@@ -407,6 +405,11 @@ public class State implements IState, Serializable {
 
     public UniverseTransaction universeTransaction() {
         return universeTransaction;
+    }
+
+    @Override
+    public TransactionId transactionId() {
+        return get(universeTransaction.universe(), Mutable.D_CHANGE_ID);
     }
 
 }

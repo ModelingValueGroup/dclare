@@ -15,15 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.NamedIdentity;
-
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.NamedIdentity;
+import org.modelingvalue.dclare.Priority.Queued;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -37,6 +38,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
+    private final Action<Universe>                            commit    = Action.of(this);
     private final Consumer<Runnable>                          scheduler;
     @SuppressWarnings("rawtypes")
     private final StateDeltaHandler                           diffHandler;
@@ -56,7 +58,7 @@ public class ImperativeTransaction extends LeafTransaction {
     protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         super(universeTransaction);
         this.pre = init;
-        this.state = new MutableState(init);
+        this.state = universeTransaction.createMutableState(init);
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
         this.diffHandler = diffHandler;
@@ -150,7 +152,13 @@ public class ImperativeTransaction extends LeafTransaction {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
-                        p.set(e.getKey(), props.get(p));
+                        if (p instanceof Queued && !((Queued) p).children()) {
+                            for (Action action : (Set<Action>) props.get(p)) {
+                                action.trigger((Mutable) e.getKey(), ((Queued) p).priority());
+                            }
+                        } else {
+                            p.set(e.getKey(), props.get(p));
+                        }
                     }
                 });
             } catch (Throwable t) {
@@ -158,6 +166,11 @@ public class ImperativeTransaction extends LeafTransaction {
                 universeTransaction().handleException(t);
             }
         }, direction, LeafModifier.preserved));
+    }
+
+    @Override
+    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
+        set(target, priority.actions, Set::add, action);
     }
 
     @SuppressWarnings("unchecked")
@@ -201,7 +214,7 @@ public class ImperativeTransaction extends LeafTransaction {
                         active = true;
                         universeTransaction().addActive(this);
                     }
-                    universeTransaction().commit();
+                    universeTransaction().put(commit);
                 }
             }
         }

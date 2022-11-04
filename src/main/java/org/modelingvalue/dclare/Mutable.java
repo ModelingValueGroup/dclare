@@ -16,6 +16,7 @@
 package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.SetableModifier.plumbing;
+import static org.modelingvalue.dclare.SetableModifier.preserved;
 
 import java.util.function.Predicate;
 
@@ -27,41 +28,44 @@ import org.modelingvalue.collections.util.Pair;
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
 
-    Mutable                                               THIS                     = new This();
+    Mutable                                      THIS                     = new This();
 
-    Set<Mutable>                                          THIS_SINGLETON           = Set.of(THIS);
+    Set<Mutable>                                 THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> D_PARENT_CONTAINING      = Observed.of("D_PARENT_CONTAINING", null, plumbing);
+    ParentContaining                             D_PARENT_CONTAINING      = new ParentContaining("D_PARENT_CONTAINING", null, plumbing, preserved);
 
-    Setable<Mutable, TransactionId>                       D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
+    Setable<Mutable, TransactionId>              D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    Setable<Mutable, Set<? extends Observer<?>>>          D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
-            added -> added.trigger(obj),                                                                                                                                                                                     //
+    Setable<Mutable, Set<? extends Observer<?>>> D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
+            added -> added.trigger(obj),                                                                                                                                                                            //
             removed -> removed.deObserve(obj)));
 
-    Observer<Mutable>                                     D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
+    Observer<Mutable>                            D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
 
     @SuppressWarnings("unchecked")
-    Observer<Mutable>                                     D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
+    Observer<Mutable>                            D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
 
     default Pair<Mutable, Setable<Mutable, ?>> dParentContaining() {
-        return D_PARENT_CONTAINING.get(this);
+        return D_PARENT_CONTAINING.superGet(this);
+    }
+
+    default void dChangedParentContaining(Pair<Mutable, Setable<Mutable, ?>> pre, Pair<Mutable, Setable<Mutable, ?>> post) {
     }
 
     default Mutable dParent() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         return pair != null ? pair.a() : null;
     }
 
     default Setable<Mutable, ?> dContaining() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         return pair != null ? pair.b() : null;
     }
 
     default boolean dDelete() {
-        Pair<Mutable, Setable<Mutable, ?>> pair = D_PARENT_CONTAINING.get(this);
+        Pair<Mutable, Setable<Mutable, ?>> pair = dParentContaining();
         if (pair != null) {
             pair.b().remove(pair.a(), this);
             return true;
@@ -103,7 +107,7 @@ public interface Mutable extends TransactionClass {
     default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
         Mutable result = this;
         Pair<Mutable, Setable<Mutable, ?>> pair;
-        while ((pair = D_PARENT_CONTAINING.get(result)) != null) {
+        while ((pair = result.dParentContaining()) != null) {
             if (cls.isInstance(result) && containing.test(pair.b())) {
                 return (C) result;
             } else {
@@ -195,8 +199,25 @@ public interface Mutable extends TransactionClass {
         return state.get(this, D_PARENT_CONTAINING) == null;
     }
 
-    default boolean dIsConstant() {
-        return false;
+    default ConstantState dMemoization(AbstractDerivationTransaction tx) {
+        return tx.memoization();
+    }
+
+    static final class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
+
+        private ParentContaining(Object id, Pair<Mutable, Setable<Mutable, ?>> def, SetableModifier... modifiers) {
+            super(id, def, null, null, (tx, m, b, a) -> m.dChangedParentContaining(b, a), modifiers);
+        }
+
+        @Override
+        public Pair<Mutable, Setable<Mutable, ?>> get(Mutable object) {
+            return object.dParentContaining();
+        }
+
+        private Pair<Mutable, Setable<Mutable, ?>> superGet(Mutable object) {
+            return super.get(object);
+        }
+
     }
 
 }

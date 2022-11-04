@@ -31,6 +31,7 @@ public class Action<O extends Mutable> extends Leaf {
     private final Consumer<O> action;
     private final Direction   direction;
     private final boolean     preserved;
+    private final boolean     read;
 
     protected Action(Object id, Consumer<O> action, LeafModifier... modifiers) {
         super(id, modifiers);
@@ -38,6 +39,7 @@ public class Action<O extends Mutable> extends Leaf {
         Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
         this.direction = dir == null ? Direction.DEFAULT : dir;
         this.preserved = LeafModifier.preserved.in(modifiers);
+        this.read = LeafModifier.read.in(modifiers);
     }
 
     @Override
@@ -55,7 +57,11 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     public void trigger(O mutable) {
-        LeafTransaction.getCurrent().trigger(mutable, this, initPriority());
+        trigger(mutable, initPriority());
+    }
+
+    public void trigger(O mutable, Priority priority) {
+        LeafTransaction.getCurrent().trigger(mutable, this, priority);
     }
 
     @Override
@@ -74,6 +80,10 @@ public class Action<O extends Mutable> extends Leaf {
 
     public boolean preserved() {
         return preserved;
+    }
+
+    public boolean read() {
+        return read;
     }
 
 }

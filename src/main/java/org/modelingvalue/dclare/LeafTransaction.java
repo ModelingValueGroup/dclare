@@ -65,6 +65,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
+    public <O, T> T setDefault(O object, Setable<O, T> property) {
+        return set(object, property, property.getDefault());
+    }
+
     public <O, T> T get(O object, Getable<O, T> property) {
         return state().get(object, property);
     }
@@ -77,11 +81,8 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
-        property.changed(this, object, preValue, postValue);
-        if (property instanceof Observed) {
-            trigger((Observed<O, T>) property, object);
-        }
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
+        setable.changed(this, object, preValue, postValue);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -131,10 +132,6 @@ public abstract class LeafTransaction extends Transaction {
         action.run();
     }
 
-    public <T> T getNonObserving(Supplier<T> action) {
-        return action.get();
-    }
-
     @Override
     public Mutable mutable() {
         return parent().mutable();
@@ -164,11 +161,6 @@ public abstract class LeafTransaction extends Transaction {
         return construct(reason, supplier);
     }
 
-    protected <O> void trigger(Observed<O, ?> observed, O o) {
-    }
-
     public abstract Direction direction();
-
-    protected abstract String getCurrentTypeForTrace();
 
 }

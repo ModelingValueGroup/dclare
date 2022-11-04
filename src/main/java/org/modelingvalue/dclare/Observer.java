@@ -292,13 +292,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println(DclareTrace.getLineStart("MATCH") + tx.mutable() + "." + tx.leaf() + " (" + reason + "<=" + before + ")");
+                                System.err.println(DclareTrace.getLineStart("MATCH", tx) + tx.mutable() + "." + tx.leaf() + " (" + reason + "<=" + before + ")");
                             }
                             Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
                         }
                         if (after != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println(DclareTrace.getLineStart("MATCH") + tx.mutable() + "." + tx.leaf() + " (" + reason + "=>" + after + ")");
+                                System.err.println(DclareTrace.getLineStart("MATCH", tx) + tx.mutable() + "." + tx.leaf() + " (" + reason + "=>" + after + ")");
                             }
                             Newable.D_DERIVED_CONSTRUCTIONS.set(after, QualifiedSet::put, cons);
                         }

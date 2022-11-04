@@ -60,28 +60,30 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>>    nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
     private final Action<Universe>                                                                     init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
+    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> {
+                                                                                                                                   STOPPED.set(universe(), true);
+                                                                                                                               });
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
-    private final Action<Universe>                                                                     commit                  = Action.of("$commit");
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = new State(this, State.EMPTY_OBJECTS_MAP);
+    private final State                                                                                emptyState              = createState(State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
     private final UniverseStatistics                                                                   universeStatistics;
     private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
-    private final ConstantState                                                                        constantState           = new ConstantState(this::handleException);
+    private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
-    private final MutableState                                                                         innerStartState         = new MutableState(emptyState);
-    private final MutableState                                                                         midStartState           = new MutableState(emptyState);
-    private final MutableState                                                                         outerStartState         = new MutableState(emptyState);
+    private final MutableState                                                                         preInnerStartState      = createMutableState(emptyState);
+    private final MutableState                                                                         innerStartState         = createMutableState(emptyState);
+    private final MutableState                                                                         midStartState           = createMutableState(emptyState);
+    private final MutableState                                                                         outerStartState         = createMutableState(emptyState);
 
     private List<Action<Universe>>                                                                     timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                     preActions              = List.of();
@@ -166,15 +168,24 @@ public class UniverseTransaction extends MutableTransaction {
         this.universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = emptyState;
-        pool.execute(() -> mainLoop(config.getStart()));
+        pool.execute(this::mainLoop);
         init();
     }
 
-    protected void mainLoop(State start) {
-        state = start != null ? start.clone(this) : emptyState;
-        state = state.get(() -> state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++)));
+    @SuppressWarnings("rawtypes")
+    protected State createState(DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+        return new State(this, map);
+    }
+
+    protected MutableState createMutableState(State state) {
+        return new MutableState(state);
+    }
+
+    protected void mainLoop() {
+        state = emptyState;
+        state = state.get(() -> incrementChangeId(state));
         if (config.isTraceUniverse()) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "START UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "START UNIVERSE " + this);
         }
         timer.schedule(new TimerTask() {
             @Override
@@ -194,39 +205,43 @@ public class UniverseTransaction extends MutableTransaction {
                 universeStatistics.setDebugging(false);
                 handling = true; //TODO wire onto MoodManager
                 if (config.isTraceUniverse()) {
-                    System.err.println(DclareTrace.getLineStart("DCLARE") + "BEGIN TRANSACTION " + this);
+                    System.err.println(DclareTrace.getLineStart("DCLARE", this) + "BEGIN TRANSACTION " + this);
                 }
                 TraceTimer.traceBegin("root");
                 try {
                     timeTraveling = timeTravelingActions.contains(action);
                     start(action);
-                    if (action == backward) {
-                        if (history.size() > 3) {
-                            future = future.prepend(state);
-                            state = history.last();
-                            history = history.removeLast();
-                        }
-                    } else if (action == forward) {
-                        if (!future.isEmpty()) {
+                    if (action.id() instanceof ImperativeTransaction) {
+                        commit(state, timeTraveling, (ImperativeTransaction) action.id());
+                    } else {
+                        if (action == backward) {
+                            if (history.size() > 3) {
+                                future = future.prepend(state);
+                                state = history.last();
+                                history = history.removeLast();
+                            }
+                        } else if (action == forward) {
+                            if (!future.isEmpty()) {
+                                history = history.append(state);
+                                state = future.first();
+                                future = future.removeFirst();
+                            }
+                        } else {
                             history = history.append(state);
-                            state = future.first();
-                            future = future.removeFirst();
+                            future = List.of();
+                            if (history.size() > universeStatistics.maxNrOfHistory()) {
+                                history = history.removeFirst();
+                            }
+                            runActions(preActions);
+                            runAction(action);
+                            if (initialized) {
+                                runAction(checkConsistency);
+                            }
+                            handleTooManyChanges(state);
+                            runActions(postActions);
                         }
-                    } else if (action != commit) {
-                        history = history.append(state);
-                        future = List.of();
-                        if (history.size() > universeStatistics.maxNrOfHistory()) {
-                            history = history.removeFirst();
-                        }
-                        runActions(preActions);
-                        runAction(action);
-                        if (initialized) {
-                            runAction(checkConsistency);
-                        }
-                        handleTooManyChanges(state);
-                        runActions(postActions);
+                        commit(state, timeTraveling, imperativeTransactions.iterator());
                     }
-                    commit(state, timeTraveling, imperativeTransactions.iterator());
                     if (!killed && inQueue.isEmpty() && isStopped(state)) {
                         break;
                     }
@@ -234,7 +249,7 @@ public class UniverseTransaction extends MutableTransaction {
                     handleException(t);
                 } finally {
                     if (config.isTraceUniverse()) {
-                        System.err.println(DclareTrace.getLineStart("DCLARE") + "END TRANSACTION " + this);
+                        System.err.println(DclareTrace.getLineStart("DCLARE", this) + "END TRANSACTION " + this);
                     }
                     end(action);
                     universeStatistics.completeRun();
@@ -245,7 +260,7 @@ public class UniverseTransaction extends MutableTransaction {
             }
         }
         if (config.isTraceUniverse()) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "STOP UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "STOP UNIVERSE " + this);
         }
         timer.cancel();
         state.run(() -> UniverseTransaction.this.universe().exit());
@@ -361,13 +376,14 @@ public class UniverseTransaction extends MutableTransaction {
     @Override
     protected State run(State state) {
         boolean again;
-        preOuterStartState = state;
-        tmpConstants = new ConstantState(this::handleException);
+        tmpConstants = new ConstantState("TEMP", this::handleException);
         try {
             do {
                 preOrphansState = state;
                 orphansDetected.set(null);
+                preOuterStartState = state;
                 state = incrementChangeId(state);
+                preInnerStartState.setState(state);
                 outerStartState.setState(state);
                 do {
                     midStartState.setState(state);
@@ -375,6 +391,7 @@ public class UniverseTransaction extends MutableTransaction {
                         innerStartState.setState(state);
                         state = incrementChangeId(state);
                         state = super.run(state);
+                        preInnerStartState.setState(innerStartState.state());
                         again = false;
                         if (!killed) {
                             if (orphansDetected.get() == Boolean.TRUE) {
@@ -403,11 +420,11 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                     }
                 } while (again);
-                preOuterStartState = outerStartState.state();
                 universeStatistics.completeForward();
             } while (!killed && hasOuterQueued(state));
             return state;
         } finally {
+            preInnerStartState.setState(emptyState);
             innerStartState.setState(emptyState);
             midStartState.setState(emptyState);
             outerStartState.setState(emptyState);
@@ -424,7 +441,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasInnerQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.inner);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "INNER UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "INNER UNIVERSE " + this);
         }
         return result;
     }
@@ -432,7 +449,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasMidQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.mid);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "MID UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "MID UNIVERSE " + this);
         }
         return result;
     }
@@ -440,7 +457,7 @@ public class UniverseTransaction extends MutableTransaction {
     private boolean hasOuterQueued(State state) {
         boolean result = hasQueued(state, universe(), Priority.outer);
         if (config.isTraceUniverse() && result) {
-            System.err.println(DclareTrace.getLineStart("DCLARE") + "OUTER UNIVERSE " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + "OUTER UNIVERSE " + this);
         }
         return result;
     }
@@ -477,7 +494,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void handleExceptions(Set<Throwable> errors) {
         if (config.isTraceUniverse()) {
             List<Throwable> list = errors.sorted(this::compareThrowable).toList();
-            System.err.println(DclareTrace.getLineStart("DCLARE") + list.size() + " EXCEPTION(S) " + this);
+            System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
             list.first().printStackTrace();
         }
         kill();
@@ -702,12 +719,14 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public void backward() {
-        put(backward);
+    private void commit(State state, boolean timeTraveling, ImperativeTransaction itx) {
+        if (!killed) {
+            itx.schedule(() -> itx.commit(state, timeTraveling));
+        }
     }
 
-    public void commit() {
-        put(commit);
+    public void backward() {
+        put(backward);
     }
 
     @Override
@@ -727,6 +746,10 @@ public class UniverseTransaction extends MutableTransaction {
         return state;
     }
 
+    public IState preInnerStartState() {
+        return preInnerStartState;
+    }
+
     public IState innerStartState() {
         return innerStartState;
     }
@@ -741,6 +764,14 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State preOuterStartState() {
         return preOuterStartState;
+    }
+
+    public List<State> history() {
+        return history;
+    }
+
+    public Collection<IState> detailedHistory() {
+        return Collection.concat(history, Collection.of(preOuterStartState(), outerStartState(), midStartState(), preInnerStartState(), innerStartState()));
     }
 
     public ConstantState tmpConstants() {
@@ -778,10 +809,13 @@ public class UniverseTransaction extends MutableTransaction {
         return constantState;
     }
 
-    public <T, O> void setPreserved(O object, Setable<O, T> property, T post) {
-        innerStartState.set(object, property, post);
-        midStartState.set(object, property, post);
-        outerStartState.set(object, property, post);
+    public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post, Action<?> action) {
+        TransactionId txid = outerStartState.transactionId();
+        preInnerStartState.set(object, property, post, txid);
+        innerStartState.set(object, property, post, txid);
+        midStartState.set(object, property, post, txid);
+        outerStartState.set(object, property, post, txid);
+        return txid;
     }
 
 }
