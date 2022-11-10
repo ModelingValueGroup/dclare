@@ -105,13 +105,14 @@ public class ImperativeTransaction extends LeafTransaction {
         return state;
     }
 
-    public void commit(State dclare, boolean timeTraveling) {
+    public final boolean commit(State dclare, boolean timeTraveling) {
         commiting = true;
         boolean insync = setted.isEmpty() && dclare.get(this, CHANGE_NR).equals(state.get(this, CHANGE_NR));
         if (pre != dclare) {
             dclare2imper(dclare, timeTraveling, insync);
         }
         if (!setted.isEmpty()) {
+            insync = false;
             imper2dclare();
         } else if (insync && active) {
             active = false;
@@ -119,6 +120,7 @@ public class ImperativeTransaction extends LeafTransaction {
         }
         pre = state();
         commiting = false;
+        return insync;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

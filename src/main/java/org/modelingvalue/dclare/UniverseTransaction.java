@@ -211,37 +211,33 @@ public class UniverseTransaction extends MutableTransaction {
                 try {
                     timeTraveling = timeTravelingActions.contains(action);
                     start(action);
-                    if (action.id() instanceof ImperativeTransaction) {
-                        commit(state, timeTraveling, (ImperativeTransaction) action.id());
-                    } else {
-                        if (action == backward) {
-                            if (history.size() > 3) {
-                                future = future.prepend(state);
-                                state = history.last();
-                                history = history.removeLast();
-                            }
-                        } else if (action == forward) {
-                            if (!future.isEmpty()) {
-                                history = history.append(state);
-                                state = future.first();
-                                future = future.removeFirst();
-                            }
-                        } else {
-                            history = history.append(state);
-                            future = List.of();
-                            if (history.size() > universeStatistics.maxNrOfHistory()) {
-                                history = history.removeFirst();
-                            }
-                            runActions(preActions);
-                            runAction(action);
-                            if (initialized) {
-                                runAction(checkConsistency);
-                            }
-                            handleTooManyChanges(state);
-                            runActions(postActions);
+                    if (action == backward) {
+                        if (history.size() > 3) {
+                            future = future.prepend(state);
+                            state = history.last();
+                            history = history.removeLast();
                         }
-                        commit(state, timeTraveling, imperativeTransactions.iterator());
+                    } else if (action == forward) {
+                        if (!future.isEmpty()) {
+                            history = history.append(state);
+                            state = future.first();
+                            future = future.removeFirst();
+                        }
+                    } else if (!(action.id() instanceof ImperativeTransaction)) {
+                        history = history.append(state);
+                        future = List.of();
+                        if (history.size() > universeStatistics.maxNrOfHistory()) {
+                            history = history.removeFirst();
+                        }
+                        runActions(preActions);
+                        runAction(action);
+                        if (initialized) {
+                            runAction(checkConsistency);
+                        }
+                        handleTooManyChanges(state);
+                        runActions(postActions);
                     }
+                    commit(state, timeTraveling, imperativeTransactions.iterator());
                     if (!killed && inQueue.isEmpty() && isStopped(state)) {
                         break;
                     }
@@ -711,17 +707,12 @@ public class UniverseTransaction extends MutableTransaction {
 
     private void commit(State state, boolean timeTraveling, Iterator<ImperativeTransaction> it) {
         if (!killed && it.hasNext()) {
-            ImperativeTransaction n = it.next();
-            n.schedule(() -> {
-                n.commit(state, timeTraveling);
-                commit(n.state(), timeTraveling, it);
+            ImperativeTransaction itx = it.next();
+            itx.schedule(() -> {
+                if (itx.commit(state, timeTraveling)) {
+                    commit(itx.state(), timeTraveling, it);
+                }
             });
-        }
-    }
-
-    private void commit(State state, boolean timeTraveling, ImperativeTransaction itx) {
-        if (!killed) {
-            itx.schedule(() -> itx.commit(state, timeTraveling));
         }
     }
 
