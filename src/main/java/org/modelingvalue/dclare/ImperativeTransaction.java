@@ -38,7 +38,6 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
-    private final Action<Universe>                            commit    = Action.of(this);
     private final Consumer<Runnable>                          scheduler;
     @SuppressWarnings("rawtypes")
     private final StateDeltaHandler                           diffHandler;
@@ -216,7 +215,7 @@ public class ImperativeTransaction extends LeafTransaction {
                         active = true;
                         universeTransaction().addActive(this);
                     }
-                    universeTransaction().put(commit);
+                    universeTransaction().commit();
                 }
             }
         }

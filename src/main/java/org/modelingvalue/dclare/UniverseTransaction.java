@@ -65,6 +65,7 @@ public class UniverseTransaction extends MutableTransaction {
                                                                                                                                });
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
+    private final Action<Universe>                                                                     commit                  = Action.of("$commit");
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     //
@@ -223,7 +224,7 @@ public class UniverseTransaction extends MutableTransaction {
                             state = future.first();
                             future = future.removeFirst();
                         }
-                    } else if (!(action.id() instanceof ImperativeTransaction)) {
+                    } else if (action != commit) {
                         history = history.append(state);
                         future = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
@@ -714,6 +715,10 @@ public class UniverseTransaction extends MutableTransaction {
                 }
             });
         }
+    }
+
+    public void commit() {
+        put(commit);
     }
 
     public void backward() {

@@ -31,6 +31,7 @@ import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.DebugTrace;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
@@ -76,6 +77,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private int                                 instances;
     private int                                 changes;
     private boolean                             stopped;
+    private boolean                             trace;
 
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -163,6 +165,14 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
     }
 
+    public void setTracing(boolean trace) {
+        this.trace = trace;
+    }
+
+    public boolean isTracing() {
+        return trace;
+    }
+
     protected final int countChangesPerInstance() {
         ++changes;
         return changesPerInstance();
@@ -194,14 +204,37 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         stopped = true;
     }
 
+    @SuppressWarnings("rawtypes")
     public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
-        protected Traces(Object id) {
+
+        protected Traces(Pair<Observer, String> id) {
             super(id, Set.of(), null, null, null);
         }
 
         @Override
         protected boolean deduplicate(Set<ObserverTrace> value) {
             return false;
+        }
+
+        @Override
+        public boolean checkConsistency() {
+            return true;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Set<ConsistencyError> checkConsistency(State state, Mutable object, Set<ObserverTrace> post) {
+            Set<ConsistencyError> result = super.checkConsistency(state, object, post);
+            int nr = 0;
+            for (ObserverTrace trace : post) {
+                result = result.add(new DebugTrace(object, observer(), trace, ++nr));
+            }
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        private Observer observer() {
+            return ((Pair<Observer, String>) id()).a();
         }
 
     }
