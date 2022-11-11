@@ -201,6 +201,7 @@ public class UniverseTransaction extends MutableTransaction {
                 //==========================================================================
                 Action<Universe> action = take();
                 //==========================================================================
+                clearErrors();
                 setBusyMood(action);
                 preState = state;
                 universeStatistics.setDebugging(false);
