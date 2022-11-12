@@ -18,8 +18,6 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 
-import java.util.function.Predicate;
-
 /**
  * This class will enable you to build a model in a dclare repo and then finish.
  * You can get the json of the contents of this repo afterwards.
@@ -43,18 +41,10 @@ public abstract class OneShot<U extends Universe> {
     }
 
     public String getJson() {
-        return StateToJson.toJson(getUniverse(), getEndState(), getJsonFilter());
+        return getStateToJson().render();
     }
 
-    /**
-     * overrule this if you need to further reduce the set of Setables to serialize to json
-     *
-     * @return a filter that passes all Setables to include
-     */
-    @SuppressWarnings("rawtypes")
-    protected Predicate<Setable> getJsonFilter() {
-        return s -> !s.isPlumbing();
-    }
+    protected abstract StateToJson getStateToJson();
 
     public static DclareConfig getConfig() {
         return new DclareConfig().withTraceMatching(true).withDevMode(true);
