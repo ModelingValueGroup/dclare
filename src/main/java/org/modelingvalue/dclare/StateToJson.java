@@ -34,13 +34,13 @@ public abstract class StateToJson extends ToJson {
     private static final String                            ID_REF_FIELD_NAME = "$idref";
     private static final String                            NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
-    private static final Comparator<Object>                SET_SORTER        = Comparator.comparing(Object::toString);
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
         return e.getKey().equals(NAME_FIELD_NAME) || e.getKey().equals(ID_FIELD_NAME);
     }
 
-    private final State state;
+    private final Comparator<Object> setSorter = Comparator.comparing(o -> o instanceof Mutable ? getId((Mutable) o) : "" + o);
+    private final State              state;
 
     public StateToJson(Mutable o, State state) {
         super(o);
@@ -68,27 +68,22 @@ public abstract class StateToJson extends ToJson {
         if (o instanceof Mutable) {
             Mutable                           mutable = (Mutable) o;
             Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
-            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables()
-                    .filter(getSetableFilter())
-                    .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable)))
-                    .filter(pair -> pair.b() != null)
-                    .map(pair -> {
-                        Setable<? extends Mutable, ?> setable = pair.a();
-                        Object                        value   = pair.b();
-                        if (setable.containment() || value.getClass().isPrimitive() || value instanceof String || value instanceof QualifiedSet) {
-                            return pair;
-                        } else if (value instanceof Mutable) {
-                            Mutable mutableValue = (Mutable) value;
-                            return Pair.of(setable, makeRef(mutableValue));
-                        } else if (value instanceof List) {
-                            return Pair.of(setable, ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v));
-                        } else if (value instanceof Set) {
-                            return Pair.of(setable, ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER));
-                        } else {
-                            return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE@" + value + "@" + value.getClass().getSimpleName() + "@@");
-                        }
-                    })
-                    .map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
+            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables().filter(getSetableFilter()).map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))).filter(pair -> pair.b() != null).map(pair -> {
+                Setable<? extends Mutable, ?> setable = pair.a();
+                Object                        value   = pair.b();
+                if (setable.containment() || value.getClass().isPrimitive() || value instanceof String || value instanceof QualifiedSet) {
+                    return pair;
+                } else if (value instanceof Mutable) {
+                    Mutable mutableValue = (Mutable) value;
+                    return Pair.of(setable, makeRef(mutableValue));
+                } else if (value instanceof List) {
+                    return Pair.of(setable, ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v));
+                } else if (value instanceof Set) {
+                    return Pair.of(setable, ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER));
+                } else {
+                    return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE@" + value + "@" + value.getClass().getSimpleName() + "@@");
+                }
+            }).map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
             return Collection.concat(idEntry, rest).sorted(FIELD_SORTER).iterator();
         }
         if (o instanceof QualifiedSet) {
@@ -106,7 +101,7 @@ public abstract class StateToJson extends ToJson {
     @Override
     protected Iterator<Object> getArrayIterator(Object o) {
         if (o instanceof Set) {
-            return (Iterator<Object>) ((Set) o).toList().sorted(SET_SORTER).iterator();
+            return (Iterator<Object>) ((Set) o).toList().sorted(setSorter).iterator();
         }
         return super.getArrayIterator(o);
     }
