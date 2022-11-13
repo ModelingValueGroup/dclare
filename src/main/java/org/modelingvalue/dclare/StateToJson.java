@@ -95,7 +95,7 @@ public abstract class StateToJson extends ToJson {
                 } else {
                     return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE-TYPE@" + value + "@" + value.getClass().getSimpleName() + "@@");
                 }
-            }).map(pair -> new SimpleEntry<>(renderSetable((Setable) pair.a()), pair.b()));
+            }).map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
             return Collection.concat(idEntry, rest).sorted(FIELD_SORTER).iterator();
         }
         if (o instanceof QualifiedSet) {
