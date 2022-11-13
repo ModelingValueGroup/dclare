@@ -15,18 +15,18 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.json.ToJson;
-
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.function.Predicate;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public abstract class StateToJson extends ToJson {
@@ -66,11 +66,11 @@ public abstract class StateToJson extends ToJson {
     @Override
     protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
         if (o instanceof Mutable) {
-            Mutable                           mutable = (Mutable) o;
+            Mutable mutable = (Mutable) o;
             Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
             Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables().filter(getSetableFilter()).map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))).filter(pair -> pair.b() != null).map(pair -> {
                 Setable<? extends Mutable, ?> setable = pair.a();
-                Object                        value   = pair.b();
+                Object value = pair.b();
                 if (setable.containment() || value.getClass().isPrimitive() || value instanceof String || value instanceof QualifiedSet) {
                     return pair;
                 } else if (value instanceof Mutable) {
@@ -83,7 +83,7 @@ public abstract class StateToJson extends ToJson {
                 } else {
                     return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE@" + value + "@" + value.getClass().getSimpleName() + "@@");
                 }
-            }).map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
+            }).map(pair -> new SimpleEntry<>(renderSetable((Setable) pair.a()), pair.b()));
             return Collection.concat(idEntry, rest).sorted(FIELD_SORTER).iterator();
         }
         if (o instanceof QualifiedSet) {
