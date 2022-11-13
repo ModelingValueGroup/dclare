@@ -77,6 +77,7 @@ public abstract class StateToJson extends ToJson {
     @SuppressWarnings("unchecked")
     @Override
     protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
+        List<Entry<Object, Object>> entries;
         if (o instanceof Mutable) {
             Mutable                           mutable = (Mutable) o;
             Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
@@ -91,18 +92,20 @@ public abstract class StateToJson extends ToJson {
                 } else if (value instanceof List) {
                     return Pair.of(setable, ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v));
                 } else if (value instanceof Set) {
-                    return Pair.of(setable, ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER));
+                    List collection = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER).toList();
+                    return Pair.of(setable, collection);
                 } else {
                     return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE-TYPE@" + value + "@" + value.getClass().getSimpleName() + "@@");
                 }
             }).map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
-            return Collection.concat(idEntry, rest).sorted(FIELD_SORTER).iterator();
-        }
-        if (o instanceof QualifiedSet) {
+            entries = Collection.concat(idEntry, rest).sorted(FIELD_SORTER).toList();
+        } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
-            return q.toKeys().map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))).sortedBy(e -> e.getKey().toString()).iterator();
+            entries = q.toKeys().map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))).sortedBy(e -> e.getKey().toString()).toList();
+        } else {
+            throw new RuntimeException("this should not be reachable");
         }
-        throw new RuntimeException("this should not be reachable");
+        return entries.iterator();
     }
 
     private QualifiedSet<String, String> makeRef(Mutable mutableValue) {
