@@ -15,10 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings("unused")
@@ -32,6 +35,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     private final Map<ObservedInstance, Object>             written;
     private final Set<ObserverTrace>                        done;
     private final Map<ObservedInstance, Set<ObserverTrace>> backTrace;
+    private final Instant                                   time;
 
     protected ObserverTrace(Mutable mutable, Observer<?> observer, ObserverTrace previous, int nrOfChanges, Map<ObservedInstance, Object> read, Map<ObservedInstance, Object> written) {
         this.mutable = mutable;
@@ -60,6 +64,11 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         }
         this.backTrace = backTrace;
         this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
+        this.time = Instant.now();
+    }
+
+    public Instant time() {
+        return time;
     }
 
     public Mutable mutable() {

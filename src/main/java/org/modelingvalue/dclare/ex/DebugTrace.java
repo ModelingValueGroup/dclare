@@ -24,20 +24,19 @@ public final class DebugTrace extends ConsistencyError {
     private static final long   serialVersionUID = 8369169825319766128L;
 
     private final ObserverTrace trace;
-    private final int           nr;
 
-    public DebugTrace(Object object, Feature feature, ObserverTrace trace, int nr) {
-        super(object, feature, Integer.MAX_VALUE, "DEBUG_TRACE_" + nr);
+    public DebugTrace(Object object, Feature feature, ObserverTrace trace) {
+        super(object, feature, Integer.MAX_VALUE, "Run of " + object + "." + feature + ", at " + trace.time());
         this.trace = trace;
-        this.nr = nr;
     }
 
     public ObserverTrace trace() {
         return trace;
     }
 
-    public int nr() {
-        return nr;
+    @Override
+    public int compareTo(ConsistencyError o) {
+        return o instanceof DebugTrace ? trace.time().compareTo(((DebugTrace) o).trace.time()) : super.compareTo(o);
     }
 
 }

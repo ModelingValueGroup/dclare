@@ -225,9 +225,13 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         @Override
         public Set<ConsistencyError> checkConsistency(State state, Mutable object, Set<ObserverTrace> post) {
             Set<ConsistencyError> result = super.checkConsistency(state, object, post);
-            int nr = 0;
-            for (ObserverTrace trace : post) {
-                result = result.add(new DebugTrace(object, observer(), trace, ++nr));
+            if (!post.isEmpty()) {
+                for (ObserverTrace trace : post) {
+                    result = result.add(new DebugTrace(object, observer(), trace));
+                }
+                if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
+                    set(object, getDefault());
+                }
             }
             return result;
         }

@@ -76,7 +76,8 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
     private final UniverseStatistics                                                                   universeStatistics;
-    private final AtomicReference<Set<Throwable>>                                                      errors                  = new AtomicReference<>(Set.of());
+    protected final AtomicReference<Set<Throwable>>                                                    errors                  = new AtomicReference<>(Set.of());
+    private final AtomicReference<Set<Throwable>>                                                      inconsistencies         = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
     private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
     private final StatusProvider<Status>                                                               statusProvider;
@@ -488,9 +489,14 @@ public class UniverseTransaction extends MutableTransaction {
         return result;
     }
 
-    protected void handleExceptions(Set<Throwable> errors) {
+    protected void handleInconsistencies(Set<Throwable> inconsistencies) {
+        errors.updateAndGet(inconsistencies::addAll);
+        handleExceptions();
+    }
+
+    protected void handleExceptions() {
         if (config.isTraceUniverse()) {
-            List<Throwable> list = errors.sorted(this::compareThrowable).toList();
+            List<Throwable> list = errors.get().sorted(this::compareThrowable).toList();
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
             list.first().printStackTrace();
         }
@@ -498,15 +504,8 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public final void handleException(Throwable t) {
-        handleExceptions(errors.updateAndGet(e -> e.add(t)));
-    }
-
-    public Set<Throwable> errors() {
-        return errors.get();
-    }
-
-    protected void clearErrors() {
-        errors.set(Set.of());
+        errors.updateAndGet(Set.of(t)::addAll);
+        handleExceptions();
     }
 
     public void throwIfError() {
@@ -547,16 +546,16 @@ public class UniverseTransaction extends MutableTransaction {
                 Collection.concat(values.map(Entry::getKey), dClass.dSetables(), dClass.dObservers().map(Observer::exception)).distinct().filter(Setable::checkConsistency).forEach(s -> {
                     if (!(s instanceof Constant) || constantState.isSet(lt, mutable, (Constant) s)) {
                         Set<Throwable> es = s.checkConsistency(post, mutable, s instanceof Constant ? constantState.get(lt, mutable, (Constant) s) : values.get(s));
-                        errors.updateAndGet(es::addAll);
+                        inconsistencies.updateAndGet(es::addAll);
                     }
                 });
             } else {
                 checkOrphanState(mutable, values);
             }
         });
-        Set<Throwable> es = errors.get();
-        if (!es.isEmpty()) {
-            handleExceptions(es);
+        Set<Throwable> result = inconsistencies.getAndSet(Set.of());
+        if (!result.isEmpty()) {
+            handleInconsistencies(result);
         }
     }
 
