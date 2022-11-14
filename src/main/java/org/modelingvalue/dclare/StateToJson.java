@@ -15,6 +15,12 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.QualifiedSet;
@@ -22,30 +28,13 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.json.ToJson;
 
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.function.Predicate;
-
 @SuppressWarnings({"rawtypes", "unused"})
 public abstract class StateToJson extends ToJson {
     private static final String                            ID_FIELD_NAME     = "$id";
     private static final String                            ID_REF_FIELD_NAME = "$idref";
     private static final String                            NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
-    private static final Set<Class<?>>                     BASIC_TYPES       = Set.of(
-            Integer.class,
-            Byte.class,
-            Character.class,
-            Boolean.class,
-            Double.class,
-            Float.class,
-            Long.class,
-            Short.class,
-            Void.class,
-            String.class
-    );
+    private static final Set<Class<?>>                     BASIC_TYPES       = Set.of(Integer.class, Byte.class, Character.class, Boolean.class, Double.class, Float.class, Long.class, Short.class, Void.class, String.class);
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
         return e.getKey().equals(NAME_FIELD_NAME) || e.getKey().equals(ID_FIELD_NAME);
@@ -79,26 +68,29 @@ public abstract class StateToJson extends ToJson {
     protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
         List<Entry<Object, Object>> entries;
         if (o instanceof Mutable) {
-            Mutable                           mutable = (Mutable) o;
+            Mutable mutable = (Mutable) o;
             Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
-            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables().filter(getSetableFilter()).map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))).filter(pair -> pair.b() != null).map(pair -> {
+            Collection<Pair<Setable<? extends Mutable, ?>, ?>> setableValues = mutable.dClass().dSetables().filter(getSetableFilter()).map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable)));
+            Collection<Pair<Setable<? extends Mutable, ?>, ?>> normalizedValues = setableValues.filter(pair -> pair.b() != null).map(pair -> { // Eclipse compiler prevents one-liner
                 Setable<? extends Mutable, ?> setable = pair.a();
-                Object                        value   = pair.b();
+                Object value = pair.b();
                 if (setable.containment() || BASIC_TYPES.contains(value.getClass()) || value instanceof QualifiedSet) {
                     return pair;
                 } else if (value instanceof Mutable) {
-                    Mutable mutableValue = (Mutable) value;
-                    return Pair.of(setable, makeRef(mutableValue));
+                    QualifiedSet<String, String> mutableRef = makeRef((Mutable) value);
+                    return Pair.of(setable, mutableRef);
                 } else if (value instanceof List) {
-                    return Pair.of(setable, ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v));
+                    List list = ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v).toList() : v).toList();
+                    return Pair.of(setable, list);
                 } else if (value instanceof Set) {
-                    List collection = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER).toList();
-                    return Pair.of(setable, collection);
+                    List list = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(FIELD_SORTER).toList();
+                    return Pair.of(setable, list);
                 } else {
                     return Pair.of(setable, "@@ERROR-UNKNOWN-VALUE-TYPE@" + value + "@" + value.getClass().getSimpleName() + "@@");
                 }
-            }).map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
-            entries = Collection.concat(idEntry, rest).sorted(FIELD_SORTER).toList();
+            });
+            Collection<Entry<Object, Object>> entryValues = normalizedValues.map(pair -> new SimpleEntry<>(renderSetable(pair.a()), pair.b()));
+            entries = Collection.concat(idEntry, entryValues).sorted(FIELD_SORTER).toList();
         } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
             entries = q.toKeys().map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))).sortedBy(e -> e.getKey().toString()).toList();
