@@ -60,9 +60,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>>    nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
     private final Action<Universe>                                                                     init                    = Action.of("$init", o -> universe().init());
-    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> {
-                                                                                                                                   STOPPED.set(universe(), true);
-                                                                                                                               });
+    private final Action<Universe>                                                                     stop                    = Action.of("$stop", o -> STOPPED.set(universe(), true));
     private final Action<Universe>                                                                     backward                = Action.of("$backward");
     private final Action<Universe>                                                                     forward                 = Action.of("$forward");
     private final Action<Universe>                                                                     commit                  = Action.of("$commit");
@@ -146,11 +144,11 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public static enum Mood {
+    public enum Mood {
         starting(),
         busy(),
         idle(),
-        stopped();
+        stopped()
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool) {
@@ -163,6 +161,9 @@ public class UniverseTransaction extends MutableTransaction {
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Status[] startStatus) {
         super(null);
+        if (universe == null) {
+            throw new IllegalArgumentException("UniverseTransaction can not start without a Universe (universe argument is null)");
+        }
         startStatus[0] = new Status(Mood.starting, null, emptyState, null, Set.of());
         this.statusProvider = new StatusProvider<>(this, startStatus[0]);
         this.config = Objects.requireNonNull(config);
