@@ -26,31 +26,50 @@ import org.modelingvalue.collections.util.ContextThread.ContextPool;
  */
 @SuppressWarnings("unused")
 public abstract class OneShot<U extends Universe> {
-    private final State endState;
+    /**
+     * implement this in your subclass
+     *
+     * @return the universe
+     */
+    public abstract U getUniverse();
 
-    public OneShot() {
-        ContextPool contextPool = getContextPool();
-        try {
-            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
-            universeTransaction.put("build-model", this::buildModel);
-            universeTransaction.stop();
-            endState = universeTransaction.waitForEnd();
-        } finally {
-            contextPool.shutdownNow();
-        }
-    }
+    /**
+     * implement the actual model building in your subclass
+     */
+    protected abstract void buildModel();
 
+    /**
+     * get the json string after building the model
+     *
+     * @return the json string
+     */
     public String getJson() {
-        return getStateToJson().render();
+        return getStateToJson(getUniverse(), getEndState()).render();
     }
 
-    protected abstract StateToJson getStateToJson();
+    /**
+     * get the StateToJson serialiser that is suitable for this universe
+     *
+     * @param universe the universe to use
+     * @param endState the end state to serialize
+     * @return the StateToJson to render with
+     */
+    protected StateToJson getStateToJson(U universe, State endState) {
+        return new StateToJson(universe, endState);
+    }
 
-    public static DclareConfig getConfig() {
+    /**
+     * overrule where needed
+     *
+     * @return the config
+     */
+    public DclareConfig getConfig() {
         return new DclareConfig().withTraceMatching(true).withDevMode(true);
     }
 
     /**
+     * overrule where needed
+     *
      * @return the ContextPool that was created
      */
     public ContextPool getContextPool() {
@@ -61,16 +80,14 @@ public abstract class OneShot<U extends Universe> {
      * @return the final state after the model was build.
      */
     public State getEndState() {
-        return endState;
+        ContextPool contextPool = getContextPool();
+        try {
+            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
+            universeTransaction.put("build-model", this::buildModel);
+            universeTransaction.stop();
+            return universeTransaction.waitForEnd();
+        } finally {
+            contextPool.shutdownNow();
+        }
     }
-
-    /**
-     * @return the universe
-     */
-    public abstract U getUniverse();
-
-    /**
-     * do the actual model building
-     */
-    protected abstract void buildModel();
 }

@@ -29,7 +29,7 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.json.ToJson;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public abstract class StateToJson extends ToJson {
+public class StateToJson extends ToJson {
     private static final String                            ID_FIELD_NAME     = "$id";
     private static final String                            ID_REF_FIELD_NAME = "$idref";
     private static final String                            NAME_FIELD_NAME   = "name";
@@ -60,7 +60,9 @@ public abstract class StateToJson extends ToJson {
         return s.id().toString();
     }
 
-    protected abstract String getId(Mutable m);
+    protected String getId(Mutable m) {
+        return m.getClass().getName() + "@" + m.hashCode();
+    }
 
     @Override
     protected boolean isMapType(Object o) {
