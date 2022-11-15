@@ -144,8 +144,9 @@ public class ObserverTransaction extends ActionTransaction {
     private void finish(State pre, Observer<?> observer) {
         DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
         checkTooManyObserved(observeds);
+        boolean traced = false;
         if (!observer.atomic() && changed.get().equals(TRUE)) {
-            checkTooManyChanges(pre, observeds);
+            traced = checkTooManyChanges(pre, observeds);
             trigger(mutable(), (Observer<Mutable>) observer, Priority.immediate);
         } else if (deferInner.get().equals(TRUE)) {
             rollback(observer.atomic());
@@ -157,10 +158,12 @@ public class ObserverTransaction extends ActionTransaction {
             rollback(observer.atomic());
             trigger(mutable(), (Observer<Mutable>) observer, Priority.outer);
         } else if (observer.atomic() && changed.get().equals(TRUE)) {
-            checkTooManyChanges(pre, observeds);
+            traced = checkTooManyChanges(pre, observeds);
             trigger(mutable(), (Observer<Mutable>) observer, Priority.immediate);
         }
-        trace(pre, observeds);
+        if (!traced && (observer().isTracing() || (universeTransaction().stats().debugging() && changed.get().equals(TRUE)))) {
+            trace(pre, observeds);
+        }
         DefaultMap preSources = super.set(mutable(), observer.observeds(), observeds);
         if (preSources.isEmpty() && !observeds.isEmpty()) {
             observer.addInstance();
@@ -186,43 +189,44 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected void checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+    protected boolean checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
         UniverseStatistics stats = universeTransaction().stats();
         int totalChanges = stats.bumpAndGetTotalChanges();
         int changesPerInstance = observer().countChangesPerInstance();
         if (changesPerInstance > stats.maxNrOfChanges() || totalChanges > stats.maxTotalNrOfChanges()) {
             stats.setDebugging(true);
-        }
-        if (changesPerInstance > stats.maxNrOfChanges() * 2) {
-            handleTooManyChanges(universeTransaction(), mutable(), observer(), changesPerInstance);
-        } else if (totalChanges > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges()) {
-            handleTooManyChanges(universeTransaction(), mutable(), observer(), totalChanges);
+            ObserverTrace last = trace(pre, observeds);
+            if (changesPerInstance > stats.maxNrOfChanges() * 2) {
+                handleTooManyChanges(last, changesPerInstance);
+            } else if (totalChanges > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges()) {
+                handleTooManyChanges(last, totalChanges);
+            }
+            return true;
+        } else {
+            return false;
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
-        if (observer().isTracing() || (universeTransaction().stats().debugging() && changed.get().equals(TRUE))) {
-            State result = merge();
-            Set<ObserverTrace> traces = observer().traces.get(mutable());
-            ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.sorted().findFirst().orElse(null), observer().changesPerInstance(), //
-                    observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
-                        m = m.dResolve(mutable());
-                        return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
-                    })).toMap(e -> e), //
-                    pre.diff(result, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
-                        return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
-                    }).toMap(e -> e));
-            observer().traces.set(mutable(), traces.add(trace));
-        }
+    protected ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+        List<ObserverTrace> traces = observer().traces().get(mutable());
+        ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), observer().changesPerInstance(), //
+                observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
+                    m = m.dResolve(mutable());
+                    return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
+                })).toMap(e -> e), //
+                pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
+                    return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
+                }).toMap(e -> e));
+        observer().traces().set(mutable(), traces.append(trace));
+        return trace;
     }
 
-    private void handleTooManyChanges(UniverseTransaction universeTransaction, Mutable mutable, Observer<?> observer, int changes) {
-        State result = merge();
-        ObserverTrace last = result.get(mutable, observer.traces).sorted().findFirst().orElse(null);
-        if (last != null && last.done().size() >= (changes > universeTransaction.stats().maxTotalNrOfChanges() ? 1 : universeTransaction.stats().maxNrOfChanges())) {
-            observer.stop();
-            throw new TooManyChangesException(result, last, changes);
+    @SuppressWarnings("rawtypes")
+    private void handleTooManyChanges(ObserverTrace last, int changes) {
+        if (last.done().size() >= (changes > universeTransaction().stats().maxTotalNrOfChanges() ? 1 : universeTransaction().stats().maxNrOfChanges())) {
+            observer().stop();
+            throw new TooManyChangesException(current(), last, changes);
         }
     }
 

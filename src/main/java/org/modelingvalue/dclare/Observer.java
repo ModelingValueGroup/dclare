@@ -24,6 +24,7 @@ import java.util.function.Predicate;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
@@ -64,7 +65,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
-    public final Traces                         traces;
+    private final Traces                        traces;
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
@@ -205,14 +206,14 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
+    public static final class Traces extends Setable<Mutable, List<ObserverTrace>> {
 
         protected Traces(Pair<Observer, String> id) {
-            super(id, Set.of(), null, null, null);
+            super(id, List.of(), null, null, null);
         }
 
         @Override
-        protected boolean deduplicate(Set<ObserverTrace> value) {
+        protected boolean deduplicate(List<ObserverTrace> value) {
             return false;
         }
 
@@ -223,7 +224,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @SuppressWarnings("unchecked")
         @Override
-        public Set<ConsistencyError> checkConsistency(State state, Mutable object, Set<ObserverTrace> post) {
+        public Set<ConsistencyError> checkConsistency(State state, Mutable object, List<ObserverTrace> post) {
             Set<ConsistencyError> result = super.checkConsistency(state, object, post);
             if (!post.isEmpty()) {
                 for (ObserverTrace trace : post) {
@@ -366,6 +367,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public boolean atomic() {
         return atomic;
+    }
+
+    public Traces traces() {
+        return traces;
     }
 
 }

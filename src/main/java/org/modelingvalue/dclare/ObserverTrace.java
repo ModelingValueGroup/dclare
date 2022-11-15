@@ -110,7 +110,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
 
     @Override
     public int compareTo(ObserverTrace o) {
-        return Integer.compare(o.nrOfChanges, nrOfChanges);
+        return time.compareTo(o.time);
     }
 
     @SuppressWarnings("unchecked")
