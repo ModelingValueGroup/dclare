@@ -15,18 +15,20 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.function.Predicate;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.dclare.sync.Util;
 import org.modelingvalue.json.ToJson;
+
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class StateToJson extends ToJson {
@@ -34,7 +36,6 @@ public class StateToJson extends ToJson {
     private static final String                            ID_REF_FIELD_NAME = "$idref";
     private static final String                            NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
-    private static final Set<Class<?>>                     BASIC_TYPES       = Set.of(Integer.class, Byte.class, Character.class, Boolean.class, Double.class, Float.class, Long.class, Short.class, Void.class, String.class);
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
         return isNameOrId(e.getKey());
@@ -52,16 +53,8 @@ public class StateToJson extends ToJson {
         this.state = state;
     }
 
-    protected Predicate<Setable> getSetableFilter() {
-        return ((Predicate<Setable>) Setable::isPlumbing).negate();
-    }
-
-    protected String renderSetable(Setable s) {
-        return s.id().toString();
-    }
-
-    protected String getId(Mutable m) {
-        return m.getClass().getName() + "@" + m.hashCode();
+    public State getState() {
+        return state;
     }
 
     @Override
@@ -71,50 +64,74 @@ public class StateToJson extends ToJson {
 
     @SuppressWarnings("unchecked")
     @Override
+    protected Iterator<Object> getArrayIterator(Object o) {
+        if (o instanceof Set) {
+            return (Iterator<Object>) ((Set) o).sorted(setSorter).toList().iterator();
+        } else {
+            return super.getArrayIterator(o);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
     protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
         List<Entry<Object, Object>> entries;
         if (o instanceof Mutable) {
-            Mutable mutable = (Mutable) o;
+            Mutable                           mutable = (Mutable) o;
             Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
-            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables().filter(getSetableFilter()).map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))).filter(pair -> pair.b() != null).map(this::mapToEntry);
+            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables() //
+                    .filter(getSetableFilter()) //
+                    .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))) //
+                    .filter(pair -> !Objects.equals(pair.b(), pair.a().getDefault())) //
+                    .map(p -> new SimpleEntry<>(renderTag(p.a()), renderValue(o, p.a(), p.b())));
             entries = Collection.concat(idEntry, rest).sorted(FIELD_SORTER).toList();
         } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
-            entries = q.toKeys().map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))).sortedBy(e -> e.getKey().toString()).toList();
+            entries = q.toKeys() //
+                    .map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))) //
+                    .sortedBy(e -> e.getKey().toString()) //
+                    .toList();
         } else {
             throw new RuntimeException("this should not be reachable");
         }
         return entries.iterator();
     }
 
-    @SuppressWarnings("unchecked")
-    private Entry<Object, Object> mapToEntry(Pair<? extends Setable<? extends Mutable, ?>, Object> pair) {
-        Setable<? extends Mutable, ?> setable = pair.a();
-        Object value = pair.b();
-        if (!setable.containment() && !BASIC_TYPES.contains(value.getClass()) && !(value instanceof QualifiedSet)) {
-            if (value instanceof Mutable) {
-                value = makeRef((Mutable) value);
-            } else if (value instanceof List) {
-                value = ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).toList();
-            } else if (value instanceof Set) {
-                value = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(setSorter).toList();
-            } else {
-                value = "@@ERROR-UNKNOWN-VALUE-TYPE@" + value + "@" + value.getClass().getSimpleName() + "@@";
-            }
-        }
-        return new SimpleEntry<>(renderSetable(setable), value);
+    protected Predicate<Setable> getSetableFilter() {
+        return ((Predicate<Setable>) Setable::isPlumbing).negate();
     }
 
-    private QualifiedSet<String, String> makeRef(Mutable mutableValue) {
+    protected String getId(Mutable m) {
+        return m.getClass().getName() + "@" + m.hashCode();
+    }
+
+    protected String renderTag(Setable s) {
+        return s.id().toString();
+    }
+
+    protected Object renderValue(Object o, Setable setable, Object value) {
+        return setable.containment() ? renderContainmentValue(o, setable, value) : renderReferenceValue(o, setable, value);
+    }
+
+    protected Object renderContainmentValue(Object o, Setable setable, Object value) {
+        return value;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Object renderReferenceValue(Object o, Setable setable, Object value) {
+        if (value instanceof Mutable) {
+            value = makeRef((Mutable) value);
+        } else if (value instanceof List) {
+            value = ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).toList();
+        } else if (value instanceof Set) {
+            value = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(setSorter).toList();
+        } else if (!Util.PREFIX_MAP.containsKey(value.getClass())) {
+            value = "@@ERROR@REF_TO_UNKNOWN_TYPE@" + value.getClass().getSimpleName() + "@" + value + "@@";
+        }
+        return value;
+    }
+
+    protected QualifiedSet<String, String> makeRef(Mutable mutableValue) {
         return QualifiedSet.of(__ -> ID_REF_FIELD_NAME, getId(mutableValue));
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected Iterator<Object> getArrayIterator(Object o) {
-        if (o instanceof Set) {
-            return (Iterator<Object>) ((Set) o).sorted(setSorter).toList().iterator();
-        }
-        return super.getArrayIterator(o);
     }
 }

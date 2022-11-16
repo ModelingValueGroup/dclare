@@ -15,13 +15,13 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.Comparator;
-import java.util.stream.Collectors;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class SerialisationPool {
     public static final boolean TRACE_SERIALIZATION = Boolean.getBoolean("TRACE_SERIALIZATION");
@@ -130,6 +130,11 @@ public class SerialisationPool {
         }
     }
 
+    @SuppressWarnings("unused")
+    public <T> boolean canConvert(Class<T> cls) {
+        return getConverterFor(cls)!=null;
+    }
+
     private <T> Converter<T> getConverterFor(Class<T> cls) {
         Converter<T> result = getConverter(cls, serializeMap);
         if (result == null) {
@@ -177,6 +182,12 @@ public class SerialisationPool {
             System.err.println("[DESERIALIZE] (" + prefix + "," + rest + ") -> " + value);
         }
         return value;
+    }
+
+    @SuppressWarnings("unused")
+    public <T> boolean canSerialize(T o) {
+        //noinspection unchecked
+        return o == null || getConverterFor((Class<T>) o.getClass()) != null;
     }
 
     public <T> String serialize(T o) {
