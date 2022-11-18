@@ -15,13 +15,6 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.function.Predicate;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Entry;
@@ -33,6 +26,13 @@ import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.sync.Converters;
 import org.modelingvalue.dclare.sync.SerializationHelperWithPool;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.function.Predicate;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SerialisationPoolTests {
     private static final String BIG_INTEGER_VALUE = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
@@ -62,14 +62,14 @@ public class SerialisationPoolTests {
 
     @Test
     public void bigIntegerTests() {
-        assertEquals("II:" + BIG_INTEGER_VALUE, h.serializeValue(null, new BigInteger(BIG_INTEGER_VALUE)));
-        assertEquals(new BigInteger(BIG_INTEGER_VALUE), h.deserializeValue(null, "II:" + BIG_INTEGER_VALUE));
+        assertEquals("BI:" + BIG_INTEGER_VALUE, h.serializeValue(null, new BigInteger(BIG_INTEGER_VALUE)));
+        assertEquals(new BigInteger(BIG_INTEGER_VALUE), h.deserializeValue(null, "BI:" + BIG_INTEGER_VALUE));
     }
 
     @Test
     public void bigDecimalTests() {
-        assertEquals("DD:" + BIG_DECIMAL_VALUE, h.serializeValue(null, new BigDecimal(BIG_DECIMAL_VALUE)));
-        assertEquals(new BigDecimal(BIG_DECIMAL_VALUE), h.deserializeValue(null, "DD:" + BIG_DECIMAL_VALUE));
+        assertEquals("BD:" + BIG_DECIMAL_VALUE, h.serializeValue(null, new BigDecimal(BIG_DECIMAL_VALUE)));
+        assertEquals(new BigDecimal(BIG_DECIMAL_VALUE), h.deserializeValue(null, "BD:" + BIG_DECIMAL_VALUE));
     }
 
     @Test
