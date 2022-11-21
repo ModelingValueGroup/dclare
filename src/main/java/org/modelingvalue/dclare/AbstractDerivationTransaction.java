@@ -20,6 +20,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -195,6 +196,11 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
         memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
+        for (Entry<Setable, Set<Observer>> d : MutableClass.D_DERIVERS.get(result.dClass())) {
+            if (!d.getValue().isEmpty()) {
+                get(result, (Setable<O, ?>) d.getValue());
+            }
+        }
         return result;
     }
 
