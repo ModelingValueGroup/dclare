@@ -76,6 +76,12 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return depth + super.depth();
     }
 
+    @SuppressWarnings("rawtypes")
+    @Override
+    protected boolean isTraceDerivation(Setable setable) {
+        return super.isTraceDerivation(setable) && universeTransaction().getConfig().isTraceMatching();
+    }
+
     @Override
     protected String getCurrentTypeForTrace() {
         return "ID";

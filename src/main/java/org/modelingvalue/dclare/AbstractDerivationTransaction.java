@@ -207,7 +207,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings("rawtypes")
-    private boolean isTraceDerivation(Setable setable) {
+    protected boolean isTraceDerivation(Setable setable) {
         return !setable.isPlumbing() && universeTransaction().getConfig().isTraceDerivation();
     }
 
