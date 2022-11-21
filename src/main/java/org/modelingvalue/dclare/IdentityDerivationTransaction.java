@@ -78,8 +78,8 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
 
     @SuppressWarnings("rawtypes")
     @Override
-    protected boolean isTraceDerivation(Setable setable) {
-        return super.isTraceDerivation(setable) && universeTransaction().getConfig().isTraceMatching();
+    protected <O> boolean isTraceDerivation(O object, Setable setable) {
+        return super.isTraceDerivation(object, setable) && (universeTransaction().getConfig().isTraceMatching() || memoization(object) != memoization());
     }
 
     @Override
