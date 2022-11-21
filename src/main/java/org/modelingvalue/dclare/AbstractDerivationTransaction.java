@@ -20,7 +20,6 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -173,11 +172,6 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             if (setable.containment()) {
                 Setable.<T, Mutable> diff(pre, post, added -> {
                     mem.set(this, added, Mutable.D_PARENT_CONTAINING.constant(), Pair.of((Mutable) object, (Setable<Mutable, ?>) setable), true);
-                    for (Entry<Setable, Set<Observer>> d : MutableClass.D_DERIVERS.get(added.dClass())) {
-                        if (!d.getValue().isEmpty()) {
-                            derive(added, d.getKey(), d.getKey().getDefault());
-                        }
-                    }
                 }, removed -> {
                 });
             }
