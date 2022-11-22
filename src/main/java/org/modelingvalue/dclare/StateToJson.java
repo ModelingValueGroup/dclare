@@ -57,6 +57,10 @@ public class StateToJson extends ToJson {
         return state;
     }
 
+    public boolean renderIdFor(Mutable mutable) {
+        return true;
+    }
+
     @Override
     protected boolean isMapType(Object o) {
         return o instanceof Mutable || o instanceof QualifiedSet;
@@ -77,14 +81,18 @@ public class StateToJson extends ToJson {
     protected Iterator<Entry<Object, Object>> getMapIterator(Object o) {
         List<Entry<Object, Object>> entries;
         if (o instanceof Mutable) {
-            Mutable                           mutable = (Mutable) o;
-            Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
-            Collection<Entry<Object, Object>> rest = mutable.dClass().dSetables() //
+            Mutable mutable = (Mutable) o;
+            Collection<Entry<Object, Object>> stream = mutable.dClass().dSetables() //
                     .filter(getSetableFilter()) //
                     .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))) //
                     .filter(pair -> !Objects.equals(pair.b(), pair.a().getDefault())) //
-                    .map(p -> new SimpleEntry<>(renderTag(p.a()), renderValue(o, p.a(), p.b())));
-            entries = Collection.concat(idEntry, rest).sorted(FIELD_SORTER).toList();
+                    .map(p -> (Entry<Object, Object>) new SimpleEntry<>((Object) renderTag(p.a()), renderValue(o, p.a(), p.b()))) //
+                    .sorted(FIELD_SORTER);
+            if (renderIdFor(mutable)) {
+                Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
+                stream = Collection.concat(idEntry, stream);
+            }
+            entries = stream.toList();
         } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
             entries = q.toKeys() //
@@ -132,6 +140,9 @@ public class StateToJson extends ToJson {
     }
 
     protected QualifiedSet<String, String> makeRef(Mutable mutableValue) {
+        if (!renderIdFor(mutableValue)) {
+            throw new IllegalArgumentException("json serialisation can not proceed: need to " + ID_REF_FIELD_NAME + " to mutable " + getId(mutableValue) + " that does not render its " + ID_FIELD_NAME);
+        }
         return QualifiedSet.of(__ -> ID_REF_FIELD_NAME, getId(mutableValue));
     }
 }
