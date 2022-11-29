@@ -48,8 +48,8 @@ public class StateToJson extends ToJson {
     private final Comparator<Object> setSorter = Comparator.comparing(o -> o instanceof Mutable ? getId((Mutable) o) : "" + o);
     private final State              state;
 
-    public StateToJson(Mutable o, State state) {
-        super(o);
+    public StateToJson(Mutable m, State state) {
+        super(m);
         this.state = state;
     }
 

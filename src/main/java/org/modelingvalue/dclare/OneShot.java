@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 
@@ -25,37 +26,90 @@ import org.modelingvalue.collections.util.ContextThread.ContextPool;
  * @param <U> the Universe class for this repo
  */
 @SuppressWarnings("unused")
-public abstract class OneShot<U extends Universe> {
-    /**
-     * implement this in your subclass
-     *
-     * @return the universe
-     */
-    public abstract U getUniverse();
+public class OneShot<U extends Universe> {
+    private final U      universe;
+    private final String jsonIn;
+    private       State  endState;
+
+    public OneShot(U universe, String jsonIn) {
+        this.universe = universe;
+        this.jsonIn   = jsonIn;
+    }
 
     /**
-     * implement the actual model building in your subclass
+     * Return the Mutable that should be serialised from the given state.
+     * By default this is the whole universe
+     *
+     * @param state the state that is going to be serialized
+     * @return the mutable to serialize
      */
-    protected abstract void buildModel();
+    public Mutable getRootToSerialise(State state) {
+        return universe;
+    }
 
     /**
      * get the json string after building the model
      *
      * @return the json string
      */
-    public String getJson() {
-        return getStateToJson(getUniverse(), getEndState()).render();
+    public String fromJsonToJson() {
+        State endState = getState();
+        return getStateToJson(getRootToSerialise(endState), endState).render();
+    }
+
+    public State getState() {
+        synchronized (this) {
+            if (endState == null) {
+                List<Action<U>> actionList = List.of();
+                if (jsonIn != null) {
+                    actionList = actionList.append(Action.of("~readJson", u -> getJsonToState(universe, jsonIn).parse()));
+                }
+                actionList = actionList.appendList(getActions());
+                actionList = actionList.append(Action.of("~build", u -> build(universe)));
+                endState   = runAndGetEndState(universe, actionList);
+            }
+        }
+        return endState;
     }
 
     /**
-     * get the StateToJson serialiser that is suitable for this universe
+     * Get all the actions that should be run.
+     * The default is an empty list
      *
-     * @param universe the universe to use
+     * @return the list of actions to perform
+     */
+    protected List<Action<U>> getActions() {
+        return List.of();
+    }
+
+    /**
+     * This is the body of the last action to run.
+     * Overrule if you can use it.
+     * Leave empty if you do not need is.
+     */
+    public void build(U universe) {
+    }
+
+    /**
+     * get the StateToJson serialiser that is suitable for this mutable root
+     *
+     * @param root     the mutable root to use
      * @param endState the end state to serialize
      * @return the StateToJson to render with
      */
-    protected StateToJson getStateToJson(U universe, State endState) {
-        return new StateToJson(universe, endState);
+    protected StateToJson getStateToJson(Mutable root, State endState) {
+        return new StateToJson(root, endState);
+    }
+
+    /**
+     * get the JsonToState deserialiser that is suitable for this Universe
+     *
+     * @param universe the universe to use
+     * @param jsonIn   the input json string
+     * @return the JsonToState to accept the json with
+     */
+    protected JsonToState getJsonToState(U universe, String jsonIn) {
+        return new JsonToState(universe, jsonIn);
     }
 
     /**
@@ -77,13 +131,20 @@ public abstract class OneShot<U extends Universe> {
     }
 
     /**
+     * run the list of actions in sequence with wait for idles in between
+     * then stop the universe tx and return the resulting state
+     *
      * @return the final state after the model was build.
      */
-    public State getEndState() {
+    @SuppressWarnings("unchecked")
+    private State runAndGetEndState(U universe, List<Action<U>> actionList) {
         ContextPool contextPool = getContextPool();
         try {
-            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
-            universeTransaction.put("build-model", this::buildModel);
+            UniverseTransaction universeTransaction = new UniverseTransaction(universe, contextPool, getConfig());
+            actionList.forEach(a -> {
+                universeTransaction.put((Action<Universe>) a);
+                universeTransaction.waitForIdle();
+            });
             universeTransaction.stop();
             return universeTransaction.waitForEnd();
         } finally {
