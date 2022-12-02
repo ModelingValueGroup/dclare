@@ -18,6 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.json.FromJsonBase;
 
 /**
  * This class will enable you to build a model in a dclare repo and then finish.
@@ -37,14 +38,46 @@ public class OneShot<U extends Universe> {
     }
 
     /**
+     * get the universe passed at creation.
+     *
+     * @return the universe
+     */
+    public U getUniverse() {
+        return universe;
+    }
+
+    /**
+     * get the jsonIn passed at creation
+     *
+     * @return the json input string
+     */
+    public String getJsonIn() {
+        return jsonIn;
+    }
+
+    /**
      * Return the Mutable that should be serialised from the given state.
      * By default this is the whole universe
      *
-     * @param state the state that is going to be serialized
      * @return the mutable to serialize
      */
-    public Mutable getRootToSerialise(State state) {
+    public Mutable getRootToSerialise() {
         return universe;
+    }
+
+    /**
+     * get the end state after all actions are done.
+     * if the actions have not run yet they will first be executed.
+     *
+     * @return the end state
+     */
+    public State getEndState() {
+        synchronized (this) {
+            if (endState == null) {
+                endState = runAndGetEndState();
+            }
+        }
+        return endState;
     }
 
     /**
@@ -53,63 +86,99 @@ public class OneShot<U extends Universe> {
      * @return the json string
      */
     public String fromJsonToJson() {
-        State endState = getState();
-        return getStateToJson(getRootToSerialise(endState), endState).render();
-    }
-
-    public State getState() {
-        synchronized (this) {
-            if (endState == null) {
-                List<Action<U>> actionList = List.of();
-                if (jsonIn != null) {
-                    actionList = actionList.append(Action.of("~readJson", u -> getJsonToState(universe, jsonIn).parse()));
-                }
-                actionList = actionList.appendList(getActions());
-                actionList = actionList.append(Action.of("~build", u -> build(universe)));
-                endState   = runAndGetEndState(universe, actionList);
-            }
-        }
-        return endState;
+        getEndState(); // force all to run first
+        return getStateToJson().render();
     }
 
     /**
      * Get all the actions that should be run.
-     * The default is an empty list
+     * The default is: preread/read/postread/build/last
      *
      * @return the list of actions to perform
      */
-    protected List<Action<U>> getActions() {
-        return List.of();
+    protected List<Action<U>> getAllActions() {
+        List<Action<U>> actionList = List.of();
+        actionList = actionList.append(Action.of("~preread", u -> preread()));
+        if (jsonIn != null) {
+            actionList = actionList.append(Action.of("~read", u -> read()));
+        }
+        actionList = actionList.append(Action.of("~postread", u -> postread()));
+        actionList = actionList.append(Action.of("~action1", u -> action1()));
+        actionList = actionList.append(Action.of("~action2", u -> action2()));
+        actionList = actionList.append(Action.of("~action3", u -> action3()));
+        return actionList;
     }
 
     /**
-     * This is the body of the last action to run.
+     * This is the body of the pre-read action to run.
      * Overrule if you can use it.
      * Leave empty if you do not need is.
      */
-    public void build(U universe) {
+    protected void preread() {
+    }
+
+    /**
+     * read the json input into the state
+     */
+    protected void read() {
+        if (getJsonIn() != null) {
+            FromJsonBase<Object, Object> jsonToState = getJsonToState();
+            if (jsonToState == null) {
+                throw new IllegalArgumentException("no json reader available while json should be read");
+            }
+            jsonToState.parse();
+        }
+    }
+
+    /**
+     * This is the body of the post-read action to run.
+     * Overrule if you can use it.
+     * Leave empty if you do not need it.
+     */
+    protected void postread() {
+    }
+
+    /**
+     * This is the body of the one of the action to run.
+     * Overrule if you can use it.
+     * Leave empty if you do not need it.
+     */
+    protected void action1() {
+    }
+
+    /**
+     * This is the body of the one of the action to run.
+     * Overrule if you can use it.
+     * Leave empty if you do not need it.
+     */
+    protected void action2() {
+    }
+
+    /**
+     * This is the body of the one of the action to run.
+     * Overrule if you can use it.
+     * Leave empty if you do not need it.
+     */
+    protected void action3() {
     }
 
     /**
      * get the StateToJson serialiser that is suitable for this mutable root
      *
-     * @param root     the mutable root to use
-     * @param endState the end state to serialize
      * @return the StateToJson to render with
      */
-    protected StateToJson getStateToJson(Mutable root, State endState) {
-        return new StateToJson(root, endState);
+    protected StateToJson getStateToJson() {
+        return new StateToJson(getRootToSerialise(), getEndState());
     }
 
     /**
-     * get the JsonToState deserialiser that is suitable for this Universe
+     * get the JsonToState deserialiser that is suitable for this Universe.
+     * the default is null, which means "no json read"
      *
-     * @param universe the universe to use
-     * @param jsonIn   the input json string
      * @return the JsonToState to accept the json with
      */
-    protected JsonToState getJsonToState(U universe, String jsonIn) {
-        return new JsonToState(universe, jsonIn);
+    protected <L, M> FromJsonBase<L, M> getJsonToState() {
+        return null;
     }
 
     /**
@@ -137,11 +206,11 @@ public class OneShot<U extends Universe> {
      * @return the final state after the model was build.
      */
     @SuppressWarnings("unchecked")
-    private State runAndGetEndState(U universe, List<Action<U>> actionList) {
+    private State runAndGetEndState() {
         ContextPool contextPool = getContextPool();
         try {
-            UniverseTransaction universeTransaction = new UniverseTransaction(universe, contextPool, getConfig());
-            actionList.forEach(a -> {
+            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
+            getAllActions().forEach(a -> {
                 universeTransaction.put((Action<Universe>) a);
                 universeTransaction.waitForIdle();
             });
