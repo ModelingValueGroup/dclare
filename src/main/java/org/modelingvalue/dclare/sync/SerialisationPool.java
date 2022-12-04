@@ -112,6 +112,7 @@ public class SerialisationPool {
         serializeMap = conv.toMap(c -> Entry.of(c.getClazz(), c));
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private void sanityCheck(List<Converter<?>> conv) {
         if (TRACE_SERIALIZATION) {
             System.err.println("serialisation-pool vacabulary:");
@@ -184,9 +185,8 @@ public class SerialisationPool {
         return value;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "unchecked"})
     public <T> boolean canSerialize(T o) {
-        //noinspection unchecked
         return o == null || getConverterFor((Class<T>) o.getClass()) != null;
     }
 
@@ -197,7 +197,7 @@ public class SerialisationPool {
     public <T> String serialize(T o, Object context) {
         if (o == null) {
             if (TRACE_SERIALIZATION) {
-                System.err.printf("[  SERIALIZE] %-25s: %-25s -> <null>\n", context, o);
+                System.err.printf("[  SERIALIZE] %-25s: <null> -> <null>\n", context);
             }
             return null;
         }
