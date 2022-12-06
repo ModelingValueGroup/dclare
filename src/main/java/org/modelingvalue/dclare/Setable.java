@@ -74,15 +74,15 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
 
-    private Boolean                                      isReference;
-    private Constant<O, T>                               constant;
+    private Boolean        isReference;
+    private Constant<O, T> constant;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.plumbing = SetableModifier.plumbing.in(modifiers);
+        this.plumbing    = SetableModifier.plumbing.in(modifiers);
         this.containment = SetableModifier.containment.in(modifiers);
-        this.synthetic = SetableModifier.synthetic.in(modifiers);
-        this.changed = changed;
+        this.synthetic   = SetableModifier.synthetic.in(modifiers);
+        this.changed     = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
                 throw new Error("The setable " + this + " is already a symetric-opposite");
@@ -92,13 +92,13 @@ public class Setable<O, T> extends Getable<O, T> {
         } else {
             this.opposite = opposite;
         }
-        this.scope = scope;
-        this.nullEntry = Entry.of(this, null);
-        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
-        this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
+        this.scope          = scope;
+        this.nullEntry      = Entry.of(this, null);
+        this.internal       = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.doNotMerge     = SetableModifier.doNotMerge.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
-        this.orphansAllowed = DANGER_ALWAYS_ALLOW_ORPHANS || SetableModifier.orphansAllowed.in(modifiers);
-        this.preserved = SetableModifier.preserved.in(modifiers);
+        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
+        this.preserved      = SetableModifier.preserved.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -314,7 +314,12 @@ public class Setable<O, T> extends Getable<O, T> {
         if (checkForOrphans()) {
             for (Mutable m : mutables(post)) {
                 if (m.dIsOrphan(state)) {
-                    errors = errors.add(new ReferencedOrphanException(object, this, m));
+                    ReferencedOrphanException oe = new ReferencedOrphanException(object, this, m);
+                    if (DANGER_ALWAYS_ALLOW_ORPHANS) {
+                        System.err.println("DANGER: suppressed orphan exception: " + oe.getMessage());
+                    } else {
+                        errors = errors.add(oe);
+                    }
                 }
             }
         }
