@@ -99,9 +99,7 @@ public class OneShot<U extends Universe> {
     protected List<Action<U>> getAllActions() {
         List<Action<U>> actionList = List.of();
         actionList = actionList.append(Action.of("~preread", u -> preread()));
-        if (jsonIn != null) {
-            actionList = actionList.append(Action.of("~read", u -> read()));
-        }
+        actionList = actionList.append(Action.of("~read", u -> read()));
         actionList = actionList.append(Action.of("~postread", u -> postread()));
         actionList = actionList.append(Action.of("~action1", u -> action1()));
         actionList = actionList.append(Action.of("~action2", u -> action2()));
