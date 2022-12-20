@@ -94,7 +94,7 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
-        return state().getProperties(object).map(Entry::getKey);
+        return state().getProperties(object).map(Entry::getKey).exclude(Setable::doNotClear);
     }
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {

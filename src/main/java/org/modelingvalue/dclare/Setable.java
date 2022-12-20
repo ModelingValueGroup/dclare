@@ -15,6 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
+
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -27,17 +34,10 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
-import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
-
 public class Setable<O, T> extends Getable<O, T> {
-    private static final boolean DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
+    private static final boolean          DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
 
-    private static final Context<Boolean> MOVING = Context.of(false);
+    private static final Context<Boolean> MOVING                      = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
@@ -73,16 +73,17 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
+    private final boolean                                doNotClear;
 
-    private Boolean        isReference;
-    private Constant<O, T> constant;
+    private Boolean                                      isReference;
+    private Constant<O, T>                               constant;
 
     protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
-        this.plumbing    = SetableModifier.plumbing.in(modifiers);
+        this.plumbing = SetableModifier.plumbing.in(modifiers);
         this.containment = SetableModifier.containment.in(modifiers);
-        this.synthetic   = SetableModifier.synthetic.in(modifiers);
-        this.changed     = changed;
+        this.synthetic = SetableModifier.synthetic.in(modifiers);
+        this.changed = changed;
         if (symmetricOpposite.in(modifiers)) {
             if (opposite != null) {
                 throw new Error("The setable " + this + " is already a symetric-opposite");
@@ -92,13 +93,14 @@ public class Setable<O, T> extends Getable<O, T> {
         } else {
             this.opposite = opposite;
         }
-        this.scope          = scope;
-        this.nullEntry      = Entry.of(this, null);
-        this.internal       = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
-        this.doNotMerge     = SetableModifier.doNotMerge.in(modifiers);
+        this.scope = scope;
+        this.nullEntry = Entry.of(this, null);
+        this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
+        this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
         this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
         this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
-        this.preserved      = SetableModifier.preserved.in(modifiers);
+        this.preserved = SetableModifier.preserved.in(modifiers);
+        this.doNotClear = SetableModifier.doNotClear.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -126,6 +128,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean doNotMerge() {
         return doNotMerge;
+    }
+
+    public boolean doNotClear() {
+        return doNotClear;
     }
 
     public boolean equalSemantics() {
