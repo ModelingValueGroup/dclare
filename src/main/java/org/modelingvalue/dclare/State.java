@@ -207,7 +207,9 @@ public class State implements IState, Serializable {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static <K, V> void deduplicate(Entry<K, V> e) {
-        e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
+        if (e.getValue() != null) {
+            e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
+        }
     }
 
     @Override
