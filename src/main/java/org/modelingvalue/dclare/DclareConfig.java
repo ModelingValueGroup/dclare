@@ -20,7 +20,7 @@ import java.util.Objects;
 @SuppressWarnings("unused")
 public class DclareConfig {
     private static final int     MAX_TOTAL_NR_OF_CHANGES_DEFAULT = 10000;
-    private static final int     MAX_NR_OF_CHANGES_DEFAULT       = 200;
+    private static final int     MAX_NR_OF_CHANGES_DEFAULT       = 20;
     private static final int     MAX_NR_OF_OBSERVED_DEFAULT      = 1000;
     private static final int     MAX_NR_OF_OBSERVERS_DEFAULT     = 1000;
     private static final int     MAX_IN_IN_QUEUE_DEFAULT         = 100;
