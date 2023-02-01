@@ -490,12 +490,8 @@ public class UniverseTransaction extends MutableTransaction {
         return result;
     }
 
-    protected void handleInconsistencies(Set<Throwable> inconsistencies) {
-        errors.updateAndGet(inconsistencies::addAll);
-        handleExceptions();
-    }
-
-    protected void handleExceptions() {
+    protected void handleExceptions(Set<Throwable> exceptions) {
+        errors.updateAndGet(exceptions::addAll);
         if (config.isTraceUniverse()) {
             List<Throwable> list = errors.get().sorted(this::compareThrowable).toList();
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
@@ -505,8 +501,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public final void handleException(Throwable t) {
-        errors.updateAndGet(Set.of(t)::addAll);
-        handleExceptions();
+        handleExceptions(Set.of(t));
     }
 
     public void throwIfError() {
@@ -556,7 +551,7 @@ public class UniverseTransaction extends MutableTransaction {
         });
         Set<Throwable> result = inconsistencies.getAndSet(Set.of());
         if (!result.isEmpty()) {
-            handleInconsistencies(result);
+            handleExceptions(result);
         }
     }
 
