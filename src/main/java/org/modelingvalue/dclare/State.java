@@ -67,7 +67,6 @@ public class State implements IState, Serializable {
         this.previous = previous;
         this.map = map;
         this.age = previous == null ? 0 : previous.age() + 1;
-        System.err.println("!!!!!!!!!!!! " + this.age);
     }
 
     @Override
