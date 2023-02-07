@@ -231,6 +231,7 @@ public class UniverseTransaction extends MutableTransaction {
                         future = List.of();
                         if (history.size() > universeStatistics.maxNrOfHistory()) {
                             history = history.removeFirst();
+                            history.first().clearPrevious();
                         }
                         runActions(preActions);
                         runAction(action);

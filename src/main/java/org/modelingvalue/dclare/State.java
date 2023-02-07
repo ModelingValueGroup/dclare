@@ -57,7 +57,7 @@ public class State implements IState, Serializable {
                                                                                                return v;
                                                                                            });
 
-    private final IState                                                previous;
+    private IState                                                      previous;
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
 
@@ -70,6 +70,10 @@ public class State implements IState, Serializable {
     @Override
     public IState previous() {
         return previous;
+    }
+
+    void clearPrevious() {
+        previous = null;
     }
 
     @Override
