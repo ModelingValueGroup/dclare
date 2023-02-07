@@ -136,7 +136,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 for (Setable setable : e.getValue()) {
                     dclareProps = State.setProperties(dclareProps, setable, imperProps.get(setable));
                 }
-                dclare = dclare.set(object, dclareProps);
+                dclare = dclare.set(dclare.previous(), object, dclareProps);
             }
         }
         imper = state.setState(dclare);

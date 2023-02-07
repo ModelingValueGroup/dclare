@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
@@ -56,12 +57,18 @@ public class State implements IState, Serializable {
                                                                                                return v;
                                                                                            });
 
+    private final IState                                                previous;
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
 
-    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    protected State(UniverseTransaction universeTransaction, IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
+        this.previous = previous;
         this.map = map;
+    }
+
+    public IState previous() {
+        return previous;
     }
 
     @Override
@@ -83,12 +90,6 @@ public class State implements IState, Serializable {
         return v instanceof Collection ? (Collection<E>) v : v instanceof Iterable ? Collection.of((Iterable<E>) v) : v == null ? Set.of() : Set.of((E) v);
     }
 
-    public <O, T> State set(O object, Setable<O, T> property, T value) {
-        DefaultMap<Setable, Object> props = getProperties(object);
-        DefaultMap<Setable, Object> set = setProperties(props, property, value);
-        return set != props ? set(object, set) : this;
-    }
-
     public <O, T extends A, A> State set(O object, Setable<O, T> property, T value, A[] old) {
         return set(object, property, (pre, post) -> {
             old[0] = pre;
@@ -102,32 +103,38 @@ public class State implements IState, Serializable {
         return entry != null ? (O) entry.getKey() : object;
     }
 
+    public <O, T> State set(O object, Setable<O, T> property, T postVal) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        return set(props, object, property, preVal, postVal);
+    }
+
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew) {
         DefaultMap<Setable, Object> props = getProperties(object);
         oldNew[0] = get(props, property);
         oldNew[1] = function.apply(oldNew[0], element);
-        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+        return set(props, object, property, oldNew[0], oldNew[1]);
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
         DefaultMap<Setable, Object> props = getProperties(object);
         oldNew[0] = get(props, property);
         oldNew[1] = oper.apply(oldNew[0]);
-        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+        return set(props, object, property, oldNew[0], oldNew[1]);
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
         T postVal = function.apply(preVal, element);
-        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+        return set(props, object, property, preVal, postVal);
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
         T postVal = function.apply(preVal);
-        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+        return set(props, object, property, preVal, postVal);
     }
 
     public <O> DefaultMap<Setable, Object> getProperties(O object) {
@@ -151,17 +158,45 @@ public class State implements IState, Serializable {
         return pair != null ? pair.b() : null;
     }
 
+    @SuppressWarnings("unchecked")
+    private <O, T> State set(DefaultMap<Setable, Object> props, O object, Setable<O, T> property, T preVal, T postVal) {
+        if (Objects.equals(preVal, postVal)) {
+            return this;
+        } else {
+            IState prev;
+            if (property.isPlumbing()) {
+                prev = previous;
+            } else {
+                T prePreVal = previous != null ? previous.get(object, property) : property.getDefault();
+                if (Objects.equals(prePreVal, preVal)) {
+                    prev = previous;
+                } else if (Objects.equals(prePreVal, postVal)) {
+                    prev = this;
+                } else if (isNonMapCollection(prePreVal) && isNonMapCollection(preVal) && isNonMapCollection(postVal)) {
+                    Set<Object> prePreSet = prePreVal != null ? ((ContainingCollection<Object>) prePreVal).toSet() : Set.of();
+                    Set<Object> preSet = preVal != null ? ((ContainingCollection<Object>) preVal).toSet() : Set.of();
+                    Set<Object> postSet = postVal != null ? ((ContainingCollection<Object>) postVal).toSet() : Set.of();
+                    prev = prePreSet.anyMatch(e -> !preSet.contains(e) && postSet.contains(e)) || //
+                            preSet.anyMatch(e -> !prePreSet.contains(e) && !postSet.contains(e)) ? //
+                                    this : previous;
+                } else {
+                    prev = this;
+                }
+            }
+            return set(prev, object, setProperties(props, property, postVal));
+        }
+    }
+
+    private <T> boolean isNonMapCollection(T t) {
+        return t == null || (t instanceof ContainingCollection && !(t instanceof Map) && !(t instanceof DefaultMap));
+    }
+
     protected static <O, T> DefaultMap<Setable, Object> setProperties(DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
         return Objects.equals(property.getDefault(), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
     }
 
-    <O, T> State set(O object, DefaultMap<Setable, Object> post) {
-        if (post.isEmpty()) {
-            DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.removeKey(object);
-            return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
-        } else {
-            return universeTransaction.createState(map.put(object, post));
-        }
+    <O, T> State set(IState previous, O object, DefaultMap<Setable, Object> post) {
+        return universeTransaction.createState(previous, post.isEmpty() ? map.removeKey(object) : map.put(object, post));
     }
 
     @SuppressWarnings("unchecked")
@@ -202,7 +237,7 @@ public class State implements IState, Serializable {
             }
             return props;
         }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(niw);
+        return universeTransaction.createState(this, niw);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

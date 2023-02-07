@@ -69,7 +69,7 @@ public class UniverseTransaction extends MutableTransaction {
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = createState(State.EMPTY_OBJECTS_MAP);
+    private final State                                                                                emptyState              = createState(null, State.EMPTY_OBJECTS_MAP);
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
@@ -176,8 +176,8 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     @SuppressWarnings("rawtypes")
-    protected State createState(DefaultMap<Object, DefaultMap<Setable, Object>> map) {
-        return new State(this, map);
+    protected State createState(IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+        return new State(this, previous, map);
     }
 
     protected MutableState createMutableState(State state) {
