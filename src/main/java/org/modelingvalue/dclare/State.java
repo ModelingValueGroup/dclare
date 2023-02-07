@@ -60,13 +60,11 @@ public class State implements IState, Serializable {
     private final IState                                                previous;
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
-    private final int                                                   age;
 
     protected State(UniverseTransaction universeTransaction, IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
         this.previous = previous;
         this.map = map;
-        this.age = previous == null ? 0 : previous.age() + 1;
     }
 
     @Override
@@ -76,7 +74,7 @@ public class State implements IState, Serializable {
 
     @Override
     public int age() {
-        return age;
+        return previous != null ? previous.age() + 1 : 0;
     }
 
     @Override
