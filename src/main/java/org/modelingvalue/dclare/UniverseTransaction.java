@@ -394,7 +394,7 @@ public class UniverseTransaction extends MutableTransaction {
                         again = false;
                         if (!killed) {
                             if (orphansDetected.get() == Boolean.TRUE) {
-                                preOrphansState = innerStartState.preState();
+                                preOrphansState = innerStartState.previous();
                                 state = trigger(state, universe(), clearOrphans, Priority.inner);
                                 again = true;
                             } else if (hasInnerQueued(state)) {

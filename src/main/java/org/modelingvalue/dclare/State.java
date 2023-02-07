@@ -60,15 +60,24 @@ public class State implements IState, Serializable {
     private final IState                                                previous;
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
+    private final int                                                   age;
 
     protected State(UniverseTransaction universeTransaction, IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
         this.previous = previous;
         this.map = map;
+        this.age = previous == null ? 0 : previous.age() + 1;
+        System.err.println("!!!!!!!!!!!! " + this.age);
     }
 
+    @Override
     public IState previous() {
         return previous;
+    }
+
+    @Override
+    public int age() {
+        return age;
     }
 
     @Override
@@ -202,7 +211,9 @@ public class State implements IState, Serializable {
     @SuppressWarnings("unchecked")
     public State merge(StateMergeHandler changeHandler, State[] branches, int length) {
         DefaultMap<Object, DefaultMap<Setable, Object>>[] maps = new DefaultMap[length];
+        boolean notMergeable = false;
         for (int i = 0; i < length; i++) {
+            notMergeable |= branches[i].previous() != previous;
             maps[i] = branches[i].map;
         }
         DefaultMap<Object, DefaultMap<Setable, Object>> niw = map.merge((o, ps, pss, pl) -> {
@@ -237,7 +248,8 @@ public class State implements IState, Serializable {
             }
             return props;
         }, maps, maps.length);
-        return universeTransaction.createState(this, niw);
+        return universeTransaction.createState(notMergeable ? this : previous, niw);
+
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

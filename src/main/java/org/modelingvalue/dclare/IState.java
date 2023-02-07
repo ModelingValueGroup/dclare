@@ -27,4 +27,8 @@ public interface IState {
 
     void run(Runnable action);
 
+    IState previous();
+
+    int age();
+
 }

@@ -22,11 +22,11 @@ import java.util.function.UnaryOperator;
 
 public class MutableState implements IState {
 
-    private State                        preState;
+    private State                        previous;
     private final AtomicReference<State> atomic;
 
     public MutableState(State state) {
-        this.preState = state;
+        this.previous = state;
         this.atomic = new AtomicReference<>(state);
     }
 
@@ -35,16 +35,22 @@ public class MutableState implements IState {
         return state().get(object, property);
     }
 
-    public State preState() {
-        return preState;
+    @Override
+    public State previous() {
+        return previous;
     }
 
     public State state() {
         return atomic.get();
     }
 
+    @Override
+    public int age() {
+        return previous.age() + 1;
+    }
+
     public State setState(State state) {
-        preState = state;
+        previous = state;
         return atomic.getAndUpdate(s -> state);
     }
 
@@ -120,7 +126,7 @@ public class MutableState implements IState {
 
     @Override
     public TransactionId transactionId() {
-        return preState.transactionId();
+        return previous.transactionId();
     }
 
     private State setChanged(State state, Mutable changed) {
