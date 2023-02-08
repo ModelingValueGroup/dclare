@@ -56,7 +56,7 @@ public class MutableState implements IState {
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, value);
+            State r = s.set(object, property, value, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -66,7 +66,7 @@ public class MutableState implements IState {
 
     public <O, E, T> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, function, element);
+            State r = s.set(object, property, function, element, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -76,7 +76,7 @@ public class MutableState implements IState {
 
     public <O, T> State set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, oper);
+            State r = s.set(object, property, oper, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -86,7 +86,7 @@ public class MutableState implements IState {
 
     public <O, T> State set(O object, Setable<O, T> property, T value, T[] oldNew) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, value, oldNew);
+            State r = s.set(object, property, value, oldNew, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -96,7 +96,7 @@ public class MutableState implements IState {
 
     public <O, E, T> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, function, element, oldNew);
+            State r = s.set(object, property, function, element, oldNew, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -106,7 +106,7 @@ public class MutableState implements IState {
 
     public <O, T> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, oper, oldNew);
+            State r = s.set(object, property, oper, oldNew, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object);
             }
@@ -116,7 +116,7 @@ public class MutableState implements IState {
 
     public <O, T> State set(O object, Setable<O, T> property, T value, TransactionId txid) {
         return atomic.updateAndGet(s -> {
-            State r = s.set(object, property, value);
+            State r = s.set(object, property, value, s.previous());
             if (r != s && object instanceof Mutable && !property.isPlumbing()) {
                 r = setChanged(r, (Mutable) object, txid);
             }
@@ -135,7 +135,7 @@ public class MutableState implements IState {
 
     private State setChanged(State state, Mutable changed, TransactionId txid) {
         while (changed != null && !(changed instanceof Universe) && state.get(changed, Mutable.D_CHANGE_ID) != txid) {
-            state = state.set(changed, Mutable.D_CHANGE_ID, txid);
+            state = state.set(changed, Mutable.D_CHANGE_ID, txid, state.previous());
             changed = state.getA(changed, Mutable.D_PARENT_CONTAINING);
         }
         return state;

@@ -57,18 +57,18 @@ public class State implements IState, Serializable {
                                                                                                return v;
                                                                                            });
 
-    private IState                                                      previous;
+    private State                                                       previous;
     private final DefaultMap<Object, DefaultMap<Setable, Object>>       map;
     private final UniverseTransaction                                   universeTransaction;
 
-    protected State(UniverseTransaction universeTransaction, IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    protected State(UniverseTransaction universeTransaction, State previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         this.universeTransaction = universeTransaction;
         this.previous = previous;
         this.map = map;
     }
 
     @Override
-    public IState previous() {
+    public State previous() {
         return previous;
     }
 
@@ -100,51 +100,51 @@ public class State implements IState, Serializable {
         return v instanceof Collection ? (Collection<E>) v : v instanceof Iterable ? Collection.of((Iterable<E>) v) : v == null ? Set.of() : Set.of((E) v);
     }
 
-    public <O, T extends A, A> State set(O object, Setable<O, T> property, T value, A[] old) {
-        return set(object, property, (pre, post) -> {
-            old[0] = pre;
-            return post;
-        }, value);
-    }
-
     @SuppressWarnings("unchecked")
     public <O> O canonical(O object) {
         Entry<Object, DefaultMap<Setable, Object>> entry = map.getEntry(object);
         return entry != null ? (O) entry.getKey() : object;
     }
 
-    public <O, T> State set(O object, Setable<O, T> property, T postVal) {
+    public <O, T> State set(O object, Setable<O, T> property, T postVal, State prev) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
-        return set(props, object, property, preVal, postVal);
+        return set(prev, props, object, property, preVal, postVal);
     }
 
-    public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew) {
+    @SuppressWarnings("unchecked")
+    public <O, T extends A, A> State set(O object, Setable<O, T> property, T postVal, A[] old, State prev) {
         DefaultMap<Setable, Object> props = getProperties(object);
-        oldNew[0] = get(props, property);
-        oldNew[1] = function.apply(oldNew[0], element);
-        return set(props, object, property, oldNew[0], oldNew[1]);
+        old[0] = get(props, property);
+        return set(prev, props, object, property, (T) old[0], postVal);
     }
 
-    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
-        DefaultMap<Setable, Object> props = getProperties(object);
-        oldNew[0] = get(props, property);
-        oldNew[1] = oper.apply(oldNew[0]);
-        return set(props, object, property, oldNew[0], oldNew[1]);
-    }
-
-    public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
+    public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, State prev) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
         T postVal = function.apply(preVal, element);
-        return set(props, object, property, preVal, postVal);
+        return set(prev, props, object, property, preVal, postVal);
     }
 
-    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
+    public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew, State prev) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        oldNew[0] = get(props, property);
+        oldNew[1] = function.apply(oldNew[0], element);
+        return set(prev, props, object, property, oldNew[0], oldNew[1]);
+    }
+
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, State prev) {
         DefaultMap<Setable, Object> props = getProperties(object);
         T preVal = get(props, property);
-        T postVal = function.apply(preVal);
-        return set(props, object, property, preVal, postVal);
+        T postVal = oper.apply(preVal);
+        return set(prev, props, object, property, preVal, postVal);
+    }
+
+    public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew, State prev) {
+        DefaultMap<Setable, Object> props = getProperties(object);
+        oldNew[0] = get(props, property);
+        oldNew[1] = oper.apply(oldNew[0]);
+        return set(prev, props, object, property, oldNew[0], oldNew[1]);
     }
 
     public <O> DefaultMap<Setable, Object> getProperties(O object) {
@@ -169,11 +169,10 @@ public class State implements IState, Serializable {
     }
 
     @SuppressWarnings("unchecked")
-    private <O, T> State set(DefaultMap<Setable, Object> props, O object, Setable<O, T> property, T preVal, T postVal) {
+    private <O, T> State set(State prev, DefaultMap<Setable, Object> props, O object, Setable<O, T> property, T preVal, T postVal) {
         if (Objects.equals(preVal, postVal)) {
             return this;
-        } else {
-            IState prev;
+        } else if (prev == null) {
             if (property.isPlumbing()) {
                 prev = previous;
             } else {
@@ -193,8 +192,8 @@ public class State implements IState, Serializable {
                     prev = this;
                 }
             }
-            return set(prev, object, setProperties(props, property, postVal));
         }
+        return set(prev, object, setProperties(props, property, postVal));
     }
 
     private <T> boolean isNonMapCollection(T t) {
@@ -205,7 +204,7 @@ public class State implements IState, Serializable {
         return Objects.equals(property.getDefault(), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
     }
 
-    <O, T> State set(IState previous, O object, DefaultMap<Setable, Object> post) {
+    <O, T> State set(State previous, O object, DefaultMap<Setable, Object> post) {
         return universeTransaction.createState(previous, post.isEmpty() ? map.removeKey(object) : map.put(object, post));
     }
 

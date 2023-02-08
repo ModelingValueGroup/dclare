@@ -145,7 +145,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 }
             }
             return po;
-        }, post, oldNew))) {
+        }, post, oldNew, null))) {
             changed(object, property, oldNew[0], oldNew[1]);
         }
     }

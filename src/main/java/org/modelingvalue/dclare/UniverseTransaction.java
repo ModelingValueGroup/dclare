@@ -176,7 +176,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     @SuppressWarnings("rawtypes")
-    protected State createState(IState previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    protected State createState(State previous, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
         return new State(this, previous, map);
     }
 
@@ -435,7 +435,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected final State incrementChangeId(State state) {
-        return state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++));
+        return state.set(universe(), Mutable.D_CHANGE_ID, TransactionId.of(transactionNumber++), state);
     }
 
     private boolean hasInnerQueued(State state) {

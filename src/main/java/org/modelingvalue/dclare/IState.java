@@ -27,7 +27,7 @@ public interface IState {
 
     void run(Runnable action);
 
-    IState previous();
+    State previous();
 
     int age();
 
