@@ -273,10 +273,10 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Mutable contextMutable, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, depth, child, parent, constantState);
+            return tx.derive(supplier, this, depth, contextMutable, child, parent, constantState);
         } finally {
             universeTransaction.identityDerivation.closeTransaction(tx);
         }

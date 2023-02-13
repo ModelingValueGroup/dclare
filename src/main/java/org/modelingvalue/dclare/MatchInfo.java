@@ -112,7 +112,7 @@ public class MatchInfo {
     @SuppressWarnings("unchecked")
     public Object identity() {
         if (identity == null) {
-            identity = otx.current().deriveIdentity(() -> newable.dIdentity(), otx.depth(), //
+            identity = otx.current().deriveIdentity(() -> newable.dIdentity(), otx.depth(), otx.mutable(), //
                     observed.containment() ? newable : null, observed.containment() ? Pair.of(object, observed) : null, //
                     otx.universeTransaction().tmpConstants());
             if (identity == null) {

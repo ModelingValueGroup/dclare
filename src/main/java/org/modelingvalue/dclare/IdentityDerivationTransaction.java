@@ -29,18 +29,21 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     private int                                depth;
     private Newable                            child;
     private Pair<Mutable, Setable<Mutable, ?>> parent;
+    private Mutable                            contextMutable;
 
     @SuppressWarnings("rawtypes")
-    public <R> R derive(Supplier<R> action, State state, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+    public <R> R derive(Supplier<R> action, State state, int depth, Mutable contextMutable, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
         this.depth = depth;
         this.child = child;
         this.parent = parent;
+        this.contextMutable = contextMutable;
         try {
             return derive(action, state, constantState);
         } finally {
             this.depth = 0;
             this.child = null;
             this.parent = null;
+            this.contextMutable = null;
         }
     }
 
@@ -69,6 +72,10 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
 
     private <O> boolean isOld(O object) {
         return object instanceof Mutable && universeTransaction().outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
+    }
+
+    public Mutable getContextMutable() {
+        return contextMutable;
     }
 
     @Override
