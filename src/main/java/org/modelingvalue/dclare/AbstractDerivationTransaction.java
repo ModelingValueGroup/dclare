@@ -16,10 +16,13 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -163,6 +166,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             ConstantState mem = memoization(object);
             mem.set(this, object, setable.constant(), post, true);
             T pre = getNonDerived(object, setable);
+            match(mem, setable, pre, post);
             if (isTraceDerivation(object, setable)) {
                 runNonDeriving(() -> {
                     Pair<Mutable, Observer> deriver = DERIVER.get();
@@ -180,6 +184,18 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             return super.set(object, setable, post);
         } else {
             return post;
+        }
+    }
+
+    private <T, O> void match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
+        List<Newable> pres = setable.collection(pre).filter(Newable.class).filter(pr -> Newable.D_DIRECT_CONSTRUCTION.isSet(pr)).distinct().toList();
+        Collection<Newable> posts = setable.collection(post).filter(Newable.class).filter(po -> !Newable.D_DIRECT_CONSTRUCTION.isSet(po));
+        for (Newable po : posts.filter(po -> mem.isSet(this, po, Newable.D_DERIVED_CONSTRUCTIONS.constant()))) {
+            Optional<Newable> match = pres.sequential().filter(pr -> po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())).findFirst();
+            if (match.isPresent()) {
+                pres = pres.remove(match.get());
+                Newable.D_DIRECT_CONSTRUCTION.force(po, Newable.D_DIRECT_CONSTRUCTION.get(match.get()));
+            }
         }
     }
 
