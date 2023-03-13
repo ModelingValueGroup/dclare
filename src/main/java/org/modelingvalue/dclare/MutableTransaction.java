@@ -20,7 +20,6 @@ import static org.modelingvalue.dclare.Priority.*;
 
 import java.util.Objects;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
@@ -95,13 +94,13 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                 }
             }
             while (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable(), Priority.scheduled.actions, Set.of(), actions);
+                state[0] = state[0].set(mutable(), scheduled.actions, Set.of(), actions);
                 if (!actions[0].isEmpty()) {
-                    run(actions[0]);
+                    run(actions[0], scheduled.actions);
                 } else {
-                    state[0] = state[0].set(mutable(), Priority.scheduled.children, Set.of(), children);
+                    state[0] = state[0].set(mutable(), scheduled.children, Set.of(), children);
                     if (!children[0].isEmpty()) {
-                        run(children[0]);
+                        run(children[0], scheduled.children);
                     } else {
                         if (parent() != null) {
                             for (int i = 1; i < NON_SCHEDULED.length; i++) {
@@ -126,7 +125,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
     }
 
-    private <T extends TransactionClass> void run(Collection<T> todo) {
+    private <T extends TransactionClass> void run(Set<T> todo, Queued<T> queued) {
         List<T> list = todo.random().toList();
         if (universeTransaction().getConfig().isTraceMutable()) {
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + " " + list.toString().substring(4));
@@ -137,7 +136,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             int half = list.size() >> 1;
             runParallel(list.sublist(0, half));
             if (!universeTransaction().isKilled()) {
-                runParallel(list.sublist(half, list.size()));
+                state[0] = state[0].set(mutable(), queued, Set::addAll, list.sublist(half, list.size()));
             }
         }
         if (!universeTransaction().isKilled()) {
