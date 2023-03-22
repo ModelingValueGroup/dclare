@@ -531,18 +531,16 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable) {
             MatchInfo post = MatchInfo.of((Newable) after, this, object, observed);
             List<MatchInfo> pres;
-            if (post.canBeReplaced() || post.canBeReplacing()) {
-                pres = preInfos(object, observed, before);
-                for (MatchInfo pre : pres) {
-                    if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
-                        replace(post, pre);
-                        after = pre.newable();
-                        break;
-                    } else if (post.canBeReplacing() && pre.canBeReplaced() && post.mustReplace(pre)) {
-                        replace(pre, post);
-                        before = post.newable();
-                        break;
-                    }
+            pres = preInfos(object, observed, before);
+            for (MatchInfo pre : pres) {
+                if (post.canBeReplaced() && pre.mustReplace(post)) {
+                    replace(post, pre);
+                    after = pre.newable();
+                    break;
+                } else if (pre.canBeReplaced() && post.mustReplace(pre)) {
+                    replace(pre, post);
+                    before = post.newable();
+                    break;
                 }
             }
         }
@@ -557,20 +555,18 @@ public class ObserverTransaction extends ActionTransaction {
         for (Object after : afters) {
             if (after instanceof Newable) {
                 MatchInfo post = MatchInfo.of((Newable) after, this, object, observed);
-                if (post.canBeReplaced() || post.canBeReplacing()) {
-                    if (pres == null) {
-                        pres = preInfos(object, observed, befores);
-                    }
-                    for (MatchInfo pre : pres) {
-                        if (pre.canBeReplacing() && post.canBeReplaced() && pre.mustReplace(post)) {
-                            replace(post, pre);
-                            afters = afters.replace(post.newable(), pre.newable());
-                            break;
-                        } else if (post.canBeReplacing() && pre.canBeReplaced() && post.mustReplace(pre)) {
-                            replace(pre, post);
-                            befores = befores.replace(pre.newable(), post.newable());
-                            break;
-                        }
+                if (pres == null) {
+                    pres = preInfos(object, observed, befores);
+                }
+                for (MatchInfo pre : pres) {
+                    if (post.canBeReplaced() && pre.mustReplace(post)) {
+                        replace(post, pre);
+                        afters = afters.replace(post.newable(), pre.newable());
+                        break;
+                    } else if (pre.canBeReplaced() && post.mustReplace(pre)) {
+                        replace(pre, post);
+                        befores = befores.replace(pre.newable(), post.newable());
+                        break;
                     }
                 }
             }

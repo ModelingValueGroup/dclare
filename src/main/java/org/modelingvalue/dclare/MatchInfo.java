@@ -73,10 +73,6 @@ public class MatchInfo {
         replaced.derivedConstructions = derivedConstructions.clear();
     }
 
-    public boolean canBeReplacing() {
-        return replacing() == null;
-    }
-
     public boolean canBeReplaced() {
         return !isDirect();
     }
