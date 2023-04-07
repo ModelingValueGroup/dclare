@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.SetableModifier.*;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
@@ -25,23 +24,23 @@ import org.modelingvalue.dclare.Observer.Constructed;
 
 public interface Newable extends Mutable {
 
-    Constant<Newable, Construction>                          D_DIRECT_CONSTRUCTION   = Constant.of("D_DIRECT_CONSTRUCTION", null, plumbing, durable);
+    Constant<Newable, Construction>                          D_INITIAL_CONSTRUCTION = Constant.of("D_INITIAL_CONSTRUCTION", null, plumbing, durable);
     @SuppressWarnings({"unchecked", "rawtypes"})
-    Observed<Newable, QualifiedSet<Direction, Construction>> D_DERIVED_CONSTRUCTIONS = Observed.of("D_DERIVED_CONSTRUCTIONS", QualifiedSet.of(c -> c.reason().direction()), (t, o, b, a) -> {
-                                                                                         Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                            //
-                                                                                                 add -> {
-                                                                                                     Constructed cons = add.observer().constructed();
-                                                                                                     cons.set(add.object(), Map::put, Entry.of(add.reason(), o));
-                                                                                                 },                                                                                          //
-                                                                                                 rem -> {
-                                                                                                     Constructed cons = rem.observer().constructed();
-                                                                                                     if (o.equals(cons.current(rem.object()).get(rem.reason()))) {
-                                                                                                         cons.set(rem.object(), Map::removeKey, rem.reason());
-                                                                                                     }
-                                                                                                 });
-                                                                                     }, plumbing, doNotMerge);
+    Observed<Newable, QualifiedSet<Direction, Construction>> D_ALL_DERIVATIONS      = Observed.of("D_ALL_DERIVATIONS", QualifiedSet.of(c -> c.reason().direction()), (tx, o, b, a) -> {
+                                                                                        Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                       //
+                                                                                                add -> {
+                                                                                                    Constructed cons = add.observer().constructed();
+                                                                                                    cons.set(add.object(), Map::put, Entry.of(add.reason(), o));
+                                                                                                },                                                                                     //
+                                                                                                rem -> {
+                                                                                                    Constructed cons = rem.observer().constructed();
+                                                                                                    if (o.equals(cons.current(rem.object()).get(rem.reason()))) {
+                                                                                                        cons.set(rem.object(), Map::removeKey, rem.reason());
+                                                                                                    }
+                                                                                                });
+                                                                                    }, plumbing, doNotMerge);
 
-    Setable<Newable, Newable>                                D_REPLACING             = Setable.of("D_REPLACING", null, plumbing);
+    Constant<Newable, Object>                                D_IDENTITY             = Constant.of("D_IDENTITY", null, plumbing, durable);
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();
@@ -51,26 +50,12 @@ public interface Newable extends Mutable {
     @SuppressWarnings("rawtypes")
     Comparable dSortKey();
 
-    default Construction dDirectConstruction() {
-        return D_DIRECT_CONSTRUCTION.get(this);
+    default Construction dInitialConstruction() {
+        return D_INITIAL_CONSTRUCTION.get(this);
     }
 
-    default QualifiedSet<Direction, Construction> dDerivedConstructions() {
-        return D_DERIVED_CONSTRUCTIONS.current(this);
-    }
-
-    default Newable dReplacing() {
-        return D_REPLACING.current(this);
-    }
-
-    default QualifiedSet<Direction, Construction> dConstructions() {
-        QualifiedSet<Direction, Construction> derived = dDerivedConstructions();
-        Construction direct = dDirectConstruction();
-        return direct != null ? derived.add(direct) : derived;
-    }
-
-    default Collection<Direction> dDirections() {
-        return dConstructions().toKeys();
+    default QualifiedSet<Direction, Construction> dAllDerivations() {
+        return D_ALL_DERIVATIONS.current(this);
     }
 
     @Override
@@ -81,6 +66,11 @@ public interface Newable extends Mutable {
     @Override
     default void dDeactivate() {
         Mutable.super.dDeactivate();
+    }
+
+    @Override
+    default void dHandleRemoved(Mutable parent) {
+        Mutable.super.dHandleRemoved(parent);
     }
 
 }

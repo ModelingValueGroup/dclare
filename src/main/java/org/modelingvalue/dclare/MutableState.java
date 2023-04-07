@@ -39,6 +39,7 @@ public class MutableState implements IState {
         return preState;
     }
 
+    @Override
     public State state() {
         return atomic.get();
     }

@@ -65,6 +65,11 @@ public class State implements IState, Serializable {
     }
 
     @Override
+    public State state() {
+        return this;
+    }
+
+    @Override
     public <O, T> T get(O object, Getable<O, T> property) {
         return get(getProperties(object), (Setable<O, T>) property);
     }
@@ -273,10 +278,10 @@ public class State implements IState, Serializable {
         }
     }
 
-    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Mutable contextMutable, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+    public <R> R deriveIdentity(Supplier<R> supplier, int depth, Mutable contextMutable, ConstantState constantState) {
         IdentityDerivationTransaction tx = universeTransaction.identityDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, depth, contextMutable, child, parent, constantState);
+            return tx.derive(supplier, this, depth, contextMutable, constantState);
         } finally {
             universeTransaction.identityDerivation.closeTransaction(tx);
         }

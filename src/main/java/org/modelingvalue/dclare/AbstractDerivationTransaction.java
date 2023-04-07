@@ -87,7 +87,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
             if (!mem.isSet(this, object, constant)) {
-                if (Newable.D_DERIVED_CONSTRUCTIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
+                if (Newable.D_ALL_DERIVATIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                     return nonDerived;
                 } else {
                     Pair<Mutable, Observed> derived = Pair.of((Mutable) object, observed);
@@ -104,7 +104,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                         }
                         INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
                             int i = 0;
-                            Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
+                            Set<Observer> observers = allDerivers(object, observed).toSet();
                             for (Observer observer : observers.filter(Observer::anonymous)) {
                                 runDeriver((Mutable) object, observed, observer, ++i);
                             }
@@ -125,6 +125,11 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         } else {
             return nonDerived;
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected <O, T> Collection<Observer> allDerivers(O object, Observed<O, T> observed) {
+        return ((Mutable) object).dAllDerivers(observed);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -188,13 +193,14 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private <T, O> void match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
-        List<Newable> pres = setable.collection(pre).filter(Newable.class).filter(pr -> Newable.D_DIRECT_CONSTRUCTION.isSet(pr)).distinct().toList();
-        Collection<Newable> posts = setable.collection(post).filter(Newable.class).filter(po -> !Newable.D_DIRECT_CONSTRUCTION.isSet(po));
-        for (Newable po : posts.filter(po -> mem.isSet(this, po, Newable.D_DERIVED_CONSTRUCTIONS.constant()))) {
-            Optional<Newable> match = pres.sequential().filter(pr -> po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())).findFirst();
-            if (match.isPresent()) {
-                pres = pres.remove(match.get());
-                Newable.D_DIRECT_CONSTRUCTION.force(po, Newable.D_DIRECT_CONSTRUCTION.get(match.get()));
+        List<Newable> pres = setable.collection(pre).filter(Newable.class).filter(n -> Newable.D_INITIAL_CONSTRUCTION.get(n).isDirect()).distinct().toList();
+        if (!pres.isEmpty()) {
+            for (Newable po : setable.collection(post).filter(Newable.class).filter(n -> mem.isSet(this, n, Newable.D_ALL_DERIVATIONS.constant()))) {
+                Optional<Newable> match = pres.sequential().filter(pr -> po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())).findFirst();
+                if (match.isPresent()) {
+                    pres = pres.remove(match.get());
+                    Newable.D_INITIAL_CONSTRUCTION.force(po, Newable.D_INITIAL_CONSTRUCTION.get(match.get()));
+                }
             }
         }
     }
@@ -210,7 +216,8 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        memoization(deriver.a()).set(this, result, Newable.D_DERIVED_CONSTRUCTIONS.constant(), Newable.D_DERIVED_CONSTRUCTIONS.getDefault().add(cons), true);
+        memoization(deriver.a()).set(this, result, Newable.D_ALL_DERIVATIONS.constant(), Newable.D_ALL_DERIVATIONS.getDefault().add(cons), true);
+        Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
         return result;
     }
 

@@ -70,7 +70,6 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
-    private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
     private final boolean                                doNotClear;
@@ -97,7 +96,6 @@ public class Setable<O, T> extends Getable<O, T> {
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
-        this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
         this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
         this.preserved = SetableModifier.preserved.in(modifiers);
         this.doNotClear = SetableModifier.doNotClear.in(modifiers);
@@ -132,10 +130,6 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public boolean doNotClear() {
         return doNotClear;
-    }
-
-    public boolean equalSemantics() {
-        return equalSemantics;
     }
 
     public boolean orphansAllowed() {

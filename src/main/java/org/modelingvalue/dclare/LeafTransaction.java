@@ -132,6 +132,10 @@ public abstract class LeafTransaction extends Transaction {
         action.run();
     }
 
+    public <T> T getNonObserving(Supplier<T> action) {
+        return action.get();
+    }
+
     @Override
     public Mutable mutable() {
         return parent().mutable();
@@ -148,7 +152,7 @@ public abstract class LeafTransaction extends Transaction {
             result = constantState().get(this, reason, Construction.CONSTRUCTED);
         }
         if (result != null) {
-            constantState().set(this, result, Newable.D_DIRECT_CONSTRUCTION, Construction.of(reason), true);
+            constantState().set(this, result, Newable.D_INITIAL_CONSTRUCTION, Construction.of(reason), true);
         }
         return (O) result;
     }

@@ -23,7 +23,6 @@ public enum SetableModifier implements FeatureModifier<SetableModifier> {
     plumbing,
     durable,
     doNotMerge,
-    equalSemantics,
     orphansAllowed,
     preserved,
     doNotClear;

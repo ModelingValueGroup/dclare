@@ -82,6 +82,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
     private final MutableState                                                                         preInnerStartState      = createMutableState(emptyState);
     private final MutableState                                                                         innerStartState         = createMutableState(emptyState);
+    private final MutableState                                                                         preMidStartState        = createMutableState(emptyState);
     private final MutableState                                                                         midStartState           = createMutableState(emptyState);
     private final MutableState                                                                         outerStartState         = createMutableState(emptyState);
 
@@ -375,14 +376,15 @@ public class UniverseTransaction extends MutableTransaction {
     @Override
     protected State run(State state) {
         boolean again;
-        tmpConstants = new ConstantState("TEMP", this::handleException);
         try {
             do {
+                tmpConstants = new ConstantState("TEMP", this::handleException);
                 preOrphansState = state;
                 orphansDetected.set(null);
                 preOuterStartState = state;
                 state = incrementChangeId(state);
                 preInnerStartState.setState(state);
+                preMidStartState.setState(state);
                 outerStartState.setState(state);
                 do {
                     midStartState.setState(state);
@@ -406,6 +408,7 @@ public class UniverseTransaction extends MutableTransaction {
                             }
                         }
                     } while (again);
+                    preMidStartState.setState(midStartState.state());
                     if (!killed) {
                         if (hasMidQueued(state)) {
                             again = true;
@@ -420,6 +423,8 @@ public class UniverseTransaction extends MutableTransaction {
                     }
                 } while (again);
                 universeStatistics.completeForward();
+                tmpConstants.stop();
+                tmpConstants = null;
             } while (!killed && hasOuterQueued(state));
             return state;
         } finally {
@@ -429,7 +434,6 @@ public class UniverseTransaction extends MutableTransaction {
             outerStartState.setState(emptyState);
             preOuterStartState = null;
             preOrphansState = null;
-            tmpConstants.stop();
         }
     }
 
@@ -749,6 +753,10 @@ public class UniverseTransaction extends MutableTransaction {
         return midStartState;
     }
 
+    public IState preMidStartState() {
+        return preMidStartState;
+    }
+
     public IState outerStartState() {
         return outerStartState;
     }
@@ -761,8 +769,8 @@ public class UniverseTransaction extends MutableTransaction {
         return history;
     }
 
-    public Collection<IState> detailedHistory() {
-        return Collection.concat(history, Collection.of(preOuterStartState(), outerStartState(), midStartState(), preInnerStartState(), innerStartState()));
+    public Collection<IState> longHistory() {
+        return Collection.concat(history, preOuterStartState()); // Collection.of(preOuterStartState(), outerStartState(), midStartState(), preInnerStartState(), innerStartState()));
     }
 
     public ConstantState tmpConstants() {
@@ -804,6 +812,7 @@ public class UniverseTransaction extends MutableTransaction {
         TransactionId txid = outerStartState.transactionId();
         preInnerStartState.set(object, property, post, txid);
         innerStartState.set(object, property, post, txid);
+        preMidStartState.set(object, property, post, txid);
         midStartState.set(object, property, post, txid);
         outerStartState.set(object, property, post, txid);
         return txid;

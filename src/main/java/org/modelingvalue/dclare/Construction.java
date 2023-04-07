@@ -72,7 +72,7 @@ public class Construction extends IdentifiedByArray {
         return super.size() == 3;
     }
 
-    public boolean isNotDerived() {
+    public boolean isDirect() {
         return super.size() != 3;
     }
 
@@ -123,14 +123,23 @@ public class Construction extends IdentifiedByArray {
             for (int i = 0; i < size(); i++) {
                 Object v = get(Mutable.THIS, i);
                 if (v instanceof Newable) {
-                    Newable replacing = ((Newable) v).dReplacing();
-                    if (replacing != null) {
-                        for (Reason r : all) {
-                            Object[] id = r.identity();
-                            id[i] = replacing;
-                            all = all.add(r.clone(Mutable.THIS, id));
-                        }
-                    }
+                    //                    Newable replacing = ((Newable) v).dReplacing();
+                    //                    if (replacing != null) {
+                    //                        for (Reason r : all) {
+                    //                            Object[] id = r.identity();
+                    //                            id[i] = replacing;
+                    //                            all = all.add(r.clone(Mutable.THIS, id));
+                    //                        }
+                    //                    }
+
+                    //                    Newable replaced = ((Newable) v).dReplaced();
+                    //                    if (replaced != null) {
+                    //                        for (Reason r : all) {
+                    //                            Object[] id = r.identity();
+                    //                            id[i] = replaced;
+                    //                            all = all.add(r.clone(Mutable.THIS, id));
+                    //                        }
+                    //                    }
                 } else if (v instanceof Reason) {
                     for (Reason r : all) {
                         for (Reason a : ((Reason) v).actualize()) {

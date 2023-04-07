@@ -53,7 +53,7 @@ public class TestUniverse extends TestMutable implements Universe {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
-                    if (n.dDirectConstruction() == null) {
+                    if (n.dInitialConstruction().isDerived()) {
                         TestNewable.construct(n, "init" + uniqueInt());
                     }
                 }

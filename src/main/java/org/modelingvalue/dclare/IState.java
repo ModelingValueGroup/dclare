@@ -27,4 +27,6 @@ public interface IState {
 
     void run(Runnable action);
 
+    State state();
+
 }

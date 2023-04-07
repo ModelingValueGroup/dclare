@@ -18,7 +18,7 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.Collection;
 
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
@@ -26,25 +26,25 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         super(universeTransaction);
     }
 
-    private int                                depth;
-    private Newable                            child;
-    private Pair<Mutable, Setable<Mutable, ?>> parent;
-    private Mutable                            contextMutable;
+    private int     depth;
+    private Mutable contextMutable;
 
     @SuppressWarnings("rawtypes")
-    public <R> R derive(Supplier<R> action, State state, int depth, Mutable contextMutable, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
-        this.depth = depth;
-        this.child = child;
-        this.parent = parent;
+    public <R> R derive(Supplier<R> action, State state, int depth, Mutable contextMutable, ConstantState constantState) {
         this.contextMutable = contextMutable;
+        this.depth = depth;
         try {
             return derive(action, state, constantState);
         } finally {
             this.depth = 0;
-            this.child = null;
-            this.parent = null;
             this.contextMutable = null;
         }
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Override
+    protected <O, T> Collection<Observer> allDerivers(O object, Observed<O, T> observed) {
+        return super.allDerivers(object, observed); //.exclude(o -> o.direction().opposites().contains(direction));
     }
 
     @Override
@@ -57,8 +57,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (isOld(object)) {
             return universeTransaction().outerStartState().get(object, getable);
-        } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
-            return (T) parent;
         } else {
             return super.getNonDerived(object, getable);
         }
