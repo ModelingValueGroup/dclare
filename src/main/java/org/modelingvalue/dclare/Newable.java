@@ -73,4 +73,16 @@ public interface Newable extends Mutable {
         Mutable.super.dHandleRemoved(parent);
     }
 
+    default Newable dReplacing() {
+        Construction init = D_INITIAL_CONSTRUCTION.get(this);
+        if (init.isDerived()) {
+            Constructed cons = init.observer().constructed();
+            Mutable mut = init.object();
+            Newable newable = cons.get(mut).get(init.reason());
+            return equals(newable) ? null : newable;
+        } else {
+            return null;
+        }
+    }
+
 }

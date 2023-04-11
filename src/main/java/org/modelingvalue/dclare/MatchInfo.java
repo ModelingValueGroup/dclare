@@ -70,7 +70,7 @@ public class MatchInfo {
     }
 
     private boolean canBeReplacing() {
-        return !removed && isDirect();
+        return !removed && (isDirect() || isDerived());
     }
 
     private boolean canBeReplaced() {

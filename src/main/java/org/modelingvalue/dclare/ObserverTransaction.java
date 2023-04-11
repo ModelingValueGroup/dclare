@@ -17,6 +17,7 @@ package org.modelingvalue.dclare;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.*;
@@ -364,7 +365,7 @@ public class ObserverTransaction extends ActionTransaction {
             Constructed constructed = observer().constructed();
             Construction cons = Construction.of(mutable(), observer(), reason);
             Map<Reason, Newable> map = current(mutable(), constructed);
-            // map = map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
+            map = map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
             O result = (O) map.get(reason);
             if (result == null) {
                 for (IState state : longHistory()) {
@@ -382,6 +383,7 @@ public class ObserverTransaction extends ActionTransaction {
                 O pre = (O) preMidStartState().get(mutable(), constructed).get(reason);
                 O post = (O) midStartState().get(mutable(), constructed).get(reason);
                 if (pre == null && post != null && !post.equals(result)) {
+                    Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
                     constructions.set((m, e) -> m.put(reason, e), result);
                     deferMid.set(TRUE);
                     return post;
@@ -550,6 +552,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (after instanceof Newable && before instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) before).dNewableType())) {
+            // System.err.println("!!!!!!!!!!!!!!!!! " + object + "." + observed + " = " + before + " -> " + after);
             MatchInfo preInfo = MatchInfo.of((Newable) before, this, object, observed);
             MatchInfo postInfo = MatchInfo.of((Newable) after, this, object, observed);
             if (preInfo.mustReplace(postInfo, false)) {
@@ -559,23 +562,23 @@ public class ObserverTransaction extends ActionTransaction {
                 replace(object, observed, preInfo, postInfo);
                 before = postInfo.newable();
             } else if (observed.containment()) {
-                boolean found = false;
-                for (Observed cont : MutableClass.D_CONTAINMENTS.get(object.dClass()).filter(Observed.class).exclude(observed::equals)) {
-                    Object val = cont.current(object);
-                    if (val instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) val).dNewableType())) {
-                        if (after.equals(val)) {
-                            found = true;
-                            break;
-                        }
-                        MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont);
-                        if (valInfo.mustReplace(postInfo, false)) {
-                            found = true;
-                            replace(object, cont, postInfo, valInfo);
-                            break;
-                        }
-                    }
-                }
-                if (!found && universeTransaction().getConfig().isTraceMatching()) {
+                // boolean found = false;
+                //                for (Observed cont : MutableClass.D_CONTAINMENTS.get(object.dClass()).filter(Observed.class).exclude(observed::equals)) {
+                //                    Object val = cont.current(object);
+                //                    if (val instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) val).dNewableType())) {
+                //                        if (after.equals(val)) {
+                //                            found = true;
+                //                            break;
+                //                        }
+                //                        MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont);
+                //                        if (valInfo.identity() != null && valInfo.mustReplace(postInfo, false)) {
+                //                            found = true;
+                //                            replace(object, cont, postInfo, valInfo);
+                //                            break;
+                //                        }
+                //                    }
+                //                }
+                if (/* !found && */universeTransaction().getConfig().isTraceMatching()) {
                     MatchInfo finalPostInfo = postInfo;
                     runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + preInfo + "!=" + finalPostInfo + ")"));
                 }
@@ -603,6 +606,7 @@ public class ObserverTransaction extends ActionTransaction {
                             break;
                         }
                         if (infos == null) {
+                            // System.err.println("!!!!!!!!!!!!!!!!! " + object + "." + observed + " = " + bef + " -> " + aft);
                             infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
                         }
