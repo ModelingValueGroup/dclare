@@ -29,7 +29,6 @@ public class MatchInfo {
     private final Construction                          initialConstruction;
     private final QualifiedSet<Direction, Construction> allDerivations;
     private final boolean                               removed;
-    private final boolean                               containment;
 
     @SuppressWarnings("rawtypes")
     public static MatchInfo of(Newable newable, ObserverTransaction tx, Mutable object, Observed observed) {
@@ -39,7 +38,6 @@ public class MatchInfo {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
-        containment = observed.containment();
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.midStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
                 otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
@@ -49,9 +47,7 @@ public class MatchInfo {
             if (!removed && (isDirect() || isDerived())) {
                 State s = otx.midStartState().state();
                 s = s.set(newable, Newable.D_ALL_DERIVATIONS, allDerivations);
-                if (observed.containment()) {
-                    s = s.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
-                }
+                s = s.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
                 return s.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
             } else {
                 return null;
@@ -60,9 +56,7 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced, boolean forward) {
-        if (!containment) {
-            return false;
-        } else if (replaced.isDirect() && !isDirect()) {
+        if (replaced.isDirect() && !isDirect()) {
             return false;
         } else {
             return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());

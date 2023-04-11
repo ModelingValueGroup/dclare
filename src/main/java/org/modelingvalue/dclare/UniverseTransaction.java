@@ -770,7 +770,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public Collection<IState> longHistory() {
-        return Collection.concat(history, Collection.of(preOuterStartState(), outerStartState(), preMidStartState(), midStartState(), preInnerStartState(), innerStartState()));
+        return Collection.concat(Collection.of(innerStartState(), preInnerStartState(), midStartState(), preMidStartState(), outerStartState(), preOuterStartState()), history);
     }
 
     public ConstantState tmpConstants() {
