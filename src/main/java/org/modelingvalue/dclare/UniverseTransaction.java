@@ -442,7 +442,6 @@ public class UniverseTransaction extends MutableTransaction {
             outerStartState.setState(emptyState);
             preOuterStartState = null;
             preOrphansState = null;
-            tmpConstants.stop();
         }
     }
 
