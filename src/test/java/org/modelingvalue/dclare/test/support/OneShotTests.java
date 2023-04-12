@@ -16,43 +16,104 @@
 package org.modelingvalue.dclare.test.support;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Mutable;
 import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.OneShot;
 import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State.StateMap;
 import org.modelingvalue.dclare.Universe;
 
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.BASE;
+import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.ELSE;
+import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.STAR;
+
 public class OneShotTests {
-    private static class MyMutableClass implements MutableClass {
-        @Override
-        public Collection<? extends Observer<?>> dObservers() {
-            return null;
+    static {
+        System.setProperty("TRACE_ONE_SHOT", "false");
+    }
+
+    private static final String MARKER = "xyzzy";
+    private static final String SEP    = "-";
+
+    @Test
+    public void reuseInOneTest() {
+        AtomicInteger invokes1 = new AtomicInteger();
+        AtomicInteger invokes2 = new AtomicInteger();
+
+        for (int i = 0; i < 100; i++) {
+            boolean          starred  = new Random().nextBoolean();
+            TestOneShotInOne oneShot2 = new TestOneShotInOne(starred, i, invokes1, invokes2);
+            StateMap         map2     = oneShot2.getEndStateMap();
+
+            Observed<TestUniverse, String> updated    = starred ? STAR : ELSE;
+            Observed<TestUniverse, String> notUpdated = starred ? ELSE : STAR;
+
+            Assertions.assertEquals(MARKER, map2.get(TEST_UNIVERSE, BASE), "at " + i);
+            Assertions.assertEquals(MARKER + SEP + i, map2.get(TEST_UNIVERSE, updated), "at " + i);
+            Assertions.assertNull(map2.get(TEST_UNIVERSE, notUpdated), "at " + i);
+        }
+        Assertions.assertEquals(1, invokes1.get());
+        Assertions.assertEquals(100, invokes2.get());
+    }
+
+    private static final TestUniverse TEST_UNIVERSE = new TestUniverse();
+
+    public static class TestOneShotInOne extends OneShot<TestUniverse> {
+        private final boolean       starred;
+        private final int           end;
+        private final AtomicInteger invokes1;
+        private final AtomicInteger invokes2;
+
+        public TestOneShotInOne(boolean starred, int end, AtomicInteger invokes1, AtomicInteger invokes2) {
+            super(TEST_UNIVERSE);
+            this.starred  = starred;
+            this.end      = end;
+            this.invokes1 = invokes1;
+            this.invokes2 = invokes2;
         }
 
-        @Override
-        public Collection<? extends Setable<? extends Mutable, ?>> dSetables() {
-            return null;
+        @OneShotAction(caching = true)
+        @SuppressWarnings("unused")
+        public void action_00() {
+            BASE.set(getUniverse(), MARKER);
+            invokes1.incrementAndGet();
+        }
+
+        @OneShotAction
+        @SuppressWarnings("unused")
+        public void action_10() {
+            Observed<TestUniverse, String> obs = starred ? STAR : ELSE;
+            obs.set(getUniverse(), BASE.get(getUniverse()) + SEP + end);
+            invokes2.incrementAndGet();
         }
     }
 
-    private static class MyUniverse implements Universe {
+    public static class TestUniverse implements Universe {
+        public static final Observed<TestUniverse, String> BASE    = Observed.of("BASE", null);
+        public static final Observed<TestUniverse, String> STAR    = Observed.of("STAR", null);
+        public static final Observed<TestUniverse, String> ELSE    = Observed.of("ELSE", null);
+        public static final MutableClass                   D_CLASS = new MutableClass() {
+            @Override
+            public Collection<? extends Observer<?>> dObservers() {
+                return Collection.of();
+            }
+
+            @Override
+            public Collection<? extends Setable<? extends Mutable, ?>> dSetables() {
+                return Collection.of();
+            }
+        };
+
         @Override
         public MutableClass dClass() {
-            return null;
+            return D_CLASS;
         }
-    }
-
-    @Disabled
-    @Test
-    public void simple() {
-        String              jsonIn  = "{}";
-        OneShot<MyUniverse> oneShot = new OneShot<>(new MyUniverse(), jsonIn);
-        String              jsonOut = oneShot.fromJsonToJson();
-
-        Assertions.assertEquals("xxx", jsonOut);
     }
 }

@@ -42,6 +42,7 @@ import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
+import org.modelingvalue.dclare.State.StateMap;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 
@@ -69,7 +70,8 @@ public class UniverseTransaction extends MutableTransaction {
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
-    private final State                                                                                emptyState              = createState(State.EMPTY_OBJECTS_MAP);
+    private final State                                                                                emptyState              = createState(State.EMPTY_STATE_MAP);
+    private final State                                                                                startState;
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.immediate);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.immediate);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.immediate);
@@ -85,7 +87,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final MutableState                                                                         preMidStartState        = createMutableState(emptyState);
     private final MutableState                                                                         midStartState           = createMutableState(emptyState);
     private final MutableState                                                                         outerStartState         = createMutableState(emptyState);
-
+    //
     private List<Action<Universe>>                                                                     timeTravelingActions    = List.of(backward, forward);
     private List<Action<Universe>>                                                                     preActions              = List.of();
     private List<Action<Universe>>                                                                     postActions             = List.of();
@@ -105,7 +107,6 @@ public class UniverseTransaction extends MutableTransaction {
     private long                                                                                       transactionNumber;
 
     public class Status extends AbstractStatus {
-
         public final Mood               mood;
         public final Action<Universe>   action;
         public final State              state;
@@ -157,28 +158,35 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config) {
-        this(universe, pool, config, new Status[1]);
+        this(universe, pool, config, null);
     }
 
-    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Status[] startStatus) {
+    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer) {
+        this(universe, pool, config, startStatusConsumer, null);
+    }
+
+    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap) {
         super(null);
         if (universe == null) {
             throw new IllegalArgumentException("UniverseTransaction can not start without a Universe (universe argument is null)");
         }
-        startStatus[0] = new Status(Mood.starting, null, emptyState, null, Set.of());
-        this.statusProvider = new StatusProvider<>(this, startStatus[0]);
+        startState = createState(startStateMap == null ? State.EMPTY_STATE_MAP : startStateMap.clear(universe, STOPPED));
+        Status startStatus = new Status(Mood.starting, null, startState, null, Set.of());
+        statusProvider = new StatusProvider<>(this, startStatus);
         this.config = Objects.requireNonNull(config);
-        this.inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
-        this.universeStatistics = new UniverseStatistics(this);
+        inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
+        universeStatistics = new UniverseStatistics(this);
         start(universe, null);
-        preState = emptyState;
+        preState = startState;
         pool.execute(this::mainLoop);
         init();
+        if (startStatusConsumer != null) {
+            startStatusConsumer.accept(startStatus);
+        }
     }
 
-    @SuppressWarnings("rawtypes")
-    protected State createState(DefaultMap<Object, DefaultMap<Setable, Object>> map) {
-        return new State(this, map);
+    protected State createState(StateMap stateMap) {
+        return new State(this, stateMap);
     }
 
     protected MutableState createMutableState(State state) {
@@ -186,7 +194,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     protected void mainLoop() {
-        state = emptyState;
+        state = startState;
         state = state.get(() -> incrementChangeId(state));
         if (config.isTraceUniverse()) {
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + "START UNIVERSE " + this);
@@ -434,6 +442,7 @@ public class UniverseTransaction extends MutableTransaction {
             outerStartState.setState(emptyState);
             preOuterStartState = null;
             preOrphansState = null;
+            tmpConstants.stop();
         }
     }
 
@@ -696,7 +705,6 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    @SuppressWarnings("rawtypes")
     public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
         ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
         synchronized (this) {

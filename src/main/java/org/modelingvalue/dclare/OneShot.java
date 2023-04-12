@@ -16,25 +16,57 @@
 package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.json.FromJsonBase;
+import org.modelingvalue.collections.util.MutationWrapper;
+import org.modelingvalue.dclare.State.StateMap;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 /**
- * This class will enable you to build a model in a dclare repo and then finish.
- * You can get the json of the contents of this repo afterwards.
+ * This class will enable you to build a model in a dclare universe and then finish.
+ * All methods marked with {@link OneShotAction} will be executed in alphabetical order.
+ * <p>
+ * You can mark the first method with {@link OneShotAction#caching()} to cache the state after running the method the first time.
+ * This state will be the start state at the next invocation of this class and the method can (and will) be skipped.
+ * This is meant for setting up a constant state in the universe that is used every time.
  *
  * @param <U> the Universe class for this repo
  */
 @SuppressWarnings("unused")
-public class OneShot<U extends Universe> {
-    private final U      universe;
-    private final String jsonIn;
-    private       State  endState;
+public abstract class OneShot<U extends Universe> {
+    private static final boolean                                     TRACE_ONE_SHOT    = Boolean.getBoolean("TRACE_ONE_SHOT");
+    private static final MutationWrapper<Map<Class<?>, StateMap>>    STATE_MAP_CACHE   = new MutationWrapper<>(Map.of());
+    private static final MutationWrapper<Map<Class<?>, Set<Method>>> ALL_METHODS_CACHE = new MutationWrapper<>(Map.of());
+    private final        Class<?>                                    cacheKey          = getClass();
+    private final        U                                           universe;
+    private              State                                       endState;
 
-    public OneShot(U universe, String jsonIn) {
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface OneShotAction {
+        boolean caching() default false;
+    }
+
+
+    @SuppressWarnings("DataFlowIssue")
+    public OneShot(U universe) {
         this.universe = universe;
-        this.jsonIn   = jsonIn;
+
+        List<String> cachingMethods = getAllMethodsOf(cacheKey).filter(m -> m.getAnnotation(OneShotAction.class).caching()).map(Method::getName).toList();
+        if (1 < cachingMethods.count()) {
+            throw new IllegalStateException("the oneshot " + cacheKey.getSimpleName() + " has too many caching actions: " + cachingMethods.collect(Collectors.joining(", ")));
+        }
     }
 
     /**
@@ -47,145 +79,12 @@ public class OneShot<U extends Universe> {
     }
 
     /**
-     * get the jsonIn passed at creation
-     *
-     * @return the json input string
-     */
-    public String getJsonIn() {
-        return jsonIn;
-    }
-
-    /**
-     * Return the Mutable that should be serialised from the given state.
-     * By default this is the whole universe
-     *
-     * @return the mutable to serialize
-     */
-    public Mutable getRootToSerialise() {
-        return universe;
-    }
-
-    /**
-     * get the end state after all actions are done.
-     * if the actions have not run yet they will first be executed.
-     *
-     * @return the end state
-     */
-    public State getEndState() {
-        synchronized (this) {
-            if (endState == null) {
-                endState = runAndGetEndState();
-            }
-        }
-        return endState;
-    }
-
-    /**
-     * get the json string after building the model
-     *
-     * @return the json string
-     */
-    public String fromJsonToJson() {
-        getEndState(); // force all to run first
-        return getStateToJson().render();
-    }
-
-    /**
-     * Get all the actions that should be run.
-     * The default is: preread/read/postread/build/last
-     *
-     * @return the list of actions to perform
-     */
-    protected List<Action<U>> getAllActions() {
-        List<Action<U>> actionList = List.of();
-        actionList = actionList.append(Action.of("~preread", u -> preread()));
-        actionList = actionList.append(Action.of("~read", u -> read()));
-        actionList = actionList.append(Action.of("~postread", u -> postread()));
-        actionList = actionList.append(Action.of("~action1", u -> action1()));
-        actionList = actionList.append(Action.of("~action2", u -> action2()));
-        actionList = actionList.append(Action.of("~action3", u -> action3()));
-        return actionList;
-    }
-
-    /**
-     * This is the body of the pre-read action to run.
-     * Overrule if you can use it.
-     * Leave empty if you do not need is.
-     */
-    protected void preread() {
-    }
-
-    /**
-     * read the json input into the state
-     */
-    protected void read() {
-        if (getJsonIn() != null) {
-            FromJsonBase<Object, Object> jsonToState = getJsonToState();
-            if (jsonToState == null) {
-                throw new IllegalArgumentException("no json reader available while json should be read");
-            }
-            jsonToState.parse();
-        }
-    }
-
-    /**
-     * This is the body of the post-read action to run.
-     * Overrule if you can use it.
-     * Leave empty if you do not need it.
-     */
-    protected void postread() {
-    }
-
-    /**
-     * This is the body of the one of the action to run.
-     * Overrule if you can use it.
-     * Leave empty if you do not need it.
-     */
-    protected void action1() {
-    }
-
-    /**
-     * This is the body of the one of the action to run.
-     * Overrule if you can use it.
-     * Leave empty if you do not need it.
-     */
-    protected void action2() {
-    }
-
-    /**
-     * This is the body of the one of the action to run.
-     * Overrule if you can use it.
-     * Leave empty if you do not need it.
-     */
-    protected void action3() {
-    }
-
-    /**
-     * get the StateToJson serialiser that is suitable for this mutable root
-     *
-     * @return the StateToJson to render with
-     */
-    protected StateToJson getStateToJson() {
-        return new StateToJson(getRootToSerialise(), getEndState());
-    }
-
-    /**
-     * get the JsonToState deserialiser that is suitable for this Universe.
-     * the default is null, which means "no json read"
-     *
-     * @return the JsonToState to accept the json with
-     */
-    protected <L, M> FromJsonBase<L, M> getJsonToState() {
-        return null;
-    }
-
-    /**
      * overrule where needed
      *
      * @return the config
      */
     public DclareConfig getConfig() {
-        return new DclareConfig().withTraceMatching(true).withDevMode(true);
+        return new DclareConfig();
     }
 
     /**
@@ -197,25 +96,112 @@ public class OneShot<U extends Universe> {
         return ContextThread.createPool();
     }
 
+    public StateMap getEndStateMap() {
+        return getEndState().getStateMap();
+    }
+
+    public void clearCache() {
+        STATE_MAP_CACHE.update(m -> m.remove(cacheKey));
+    }
+
     /**
-     * run the list of actions in sequence with wait for idles in between
-     * then stop the universe tx and return the resulting state
+     * get the end state after all actions are done.
+     * if the actions have not run yet they will first be executed.
      *
-     * @return the final state after the model was build.
+     * @return the end state
      */
-    @SuppressWarnings("unchecked")
-    private State runAndGetEndState() {
-        ContextPool contextPool = getContextPool();
-        try {
-            UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig());
-            getAllActions().forEach(a -> {
-                universeTransaction.put((Action<Universe>) a);
-                universeTransaction.waitForIdle();
+    @SuppressWarnings("DataFlowIssue")
+    public State getEndState() {
+        if (endState != null) {
+            return endState;
+        }
+        synchronized (this) {
+            if (endState == null) {
+                ContextPool contextPool = getContextPool();
+                try {
+                    StateMap            cachedStateMap      = STATE_MAP_CACHE.get().get(cacheKey);
+                    boolean             runningFromCache    = cachedStateMap != null;
+                    UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig(), null, cachedStateMap);
+                    long                t0                  = System.currentTimeMillis();
+                    List<MyAction>      allActions          = getAllActions(runningFromCache);
+                    trace("TRACE_ONE_SHOT: %-6s %-40s actions=[%s]\n", "START", cacheKey.getSimpleName(), allActions.map(a -> a.id().toString()).collect(Collectors.joining(", ")));
+                    allActions.forEach(a -> a.putAndWaitForIdle(universeTransaction));
+                    universeTransaction.stop();
+                    endState = universeTransaction.waitForEnd();
+                    trace("TRACE_ONE_SHOT: %-6s %-40s duration=%5d ms\n", "DONE", cacheKey.getSimpleName(), System.currentTimeMillis() - t0);
+                } finally {
+                    contextPool.shutdownNow();
+                }
+            }
+            return endState;
+        }
+    }
+
+    /**
+     * Get all the actions that should be run: all methods starting with 'action' and having no parameters and no result.
+     *
+     * @return the list of actions to perform
+     */
+    private List<MyAction> getAllActions(boolean runningFromCache) {
+        return getAllMethodsOf(cacheKey).map(method -> new MyAction(method, runningFromCache)).sorted(Comparator.comparing(a -> a.id().toString())).toList();
+    }
+
+    private class MyAction extends Action<Universe> {
+        private final boolean runningFromCache;
+        private final boolean isCachingMethod;
+
+        protected MyAction(Method method, boolean runningFromCache) {
+            super("~~" + method.getName(), (u) -> {
+                try {
+                    method.invoke(OneShot.this);
+                } catch (InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                } catch (IllegalAccessException e) {
+                    throw new Error(e);
+                }
             });
-            universeTransaction.stop();
-            return universeTransaction.waitForEnd();
-        } finally {
-            contextPool.shutdownNow();
+            isCachingMethod       = method.getAnnotation(OneShotAction.class).caching();
+            this.runningFromCache = runningFromCache;
+        }
+
+        protected void putAndWaitForIdle(UniverseTransaction universeTransaction) {
+            long    t00                = System.currentTimeMillis();
+            boolean writeResultToCache = isCachingMethod && !runningFromCache;
+            boolean skip               = isCachingMethod && runningFromCache;
+            if (!skip) {
+                State intermediateState = universeTransaction.putAndWaitForIdle(this);
+                if (writeResultToCache) {
+                    STATE_MAP_CACHE.update(a -> a.computeIfAbsent(cacheKey, __ -> intermediateState.getStateMap()));
+                }
+            }
+            trace("TRACE_ONE_SHOT: %-6s %-40s     %-40s (%5d ms)%s%s\n", "ACTION", cacheKey.getSimpleName(), id(), System.currentTimeMillis() - t00, writeResultToCache ? " CACHE-WRITE" : "", skip ? " CACHE-SKIP" : "");
+        }
+
+    }
+
+    private static Set<Method> getAllMethodsOf(Class<?> clazz) {
+        return ALL_METHODS_CACHE.updateAndGet(a -> a.computeIfAbsent(clazz, __ -> computeAllMethodsOf(clazz))).get(clazz);
+    }
+
+    private static Set<Method> computeAllMethodsOf(Class<?> clazz) {
+        Map<String, Method> map = Map.of();
+        for (Class<?> c = clazz; c != Object.class; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                if (m.isAnnotationPresent(OneShotAction.class) //
+                    && m.getParameterCount() == 0//
+                    && m.getReturnType().equals(void.class)//
+                    && Modifier.isPublic(m.getModifiers())//
+                    && !map.containsKey(m.getName())) {//
+                    map = map.put(m.getName(), m);
+                }
+            }
+        }
+        return map.toValues().toSet();
+    }
+
+    private static void trace(String format, Object... args) {
+        if (TRACE_ONE_SHOT) {
+            System.err.printf(format, args);
         }
     }
 }
