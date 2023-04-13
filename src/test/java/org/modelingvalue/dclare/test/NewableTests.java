@@ -76,6 +76,7 @@ public class NewableTests {
     private static final int            NUM_CONFIGS        = 2;                    // = CONFIGS.length; // used in annotation which requires a hardconstant
 
     private static final boolean        FULL               = true;
+    private static final boolean        DEFAULT_ROLES      = true;
     private static final int            MANY_NR            = 100;
 
     private static final boolean        PRINT_RESULT_STATE = false;                // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
@@ -375,6 +376,16 @@ public class NewableTests {
             TestNewable ft = (TestNewable) rl.dParent();
             return rl.equals(left.get(ft)) ? right.get(ft) : left.get(ft);
         });
+
+        if (DEFAULT_ROLES) {
+            FAT.observe(left, ft -> {
+                TestNewable l = left.get(ft);
+                return l != null ? l : create(ROL, "L", ft);
+            }).observe(right, ft -> {
+                TestNewable r = right.get(ft);
+                return r != null ? r : create(ROL, "R", ft);
+            });
+        }
 
         FAT.observe(n, ft -> {
             String ln = n.get(left.get(ft));

@@ -29,25 +29,31 @@ public class MatchInfo {
     private final Construction                          initialConstruction;
     private final QualifiedSet<Direction, Construction> allDerivations;
     private final boolean                               removed;
+    private final boolean                               containment;
+    private final boolean                               isNewlyDerived;
 
     @SuppressWarnings("rawtypes")
-    public static MatchInfo of(Newable newable, ObserverTransaction tx, Mutable object, Observed observed) {
-        return new MatchInfo(newable, tx, object, observed);
+    public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
+        return new MatchInfo(newable, otx, object, observed);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
+        containment = observed.containment();
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.midStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
                 otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
         initialConstruction = newable.dInitialConstruction();
+        isNewlyDerived = isDerived() && otx.outerStartState().get(newable, Newable.D_ALL_DERIVATIONS).isEmpty();
         allDerivations = isDerived() ? newable.dAllDerivations().put(initialConstruction) : newable.dAllDerivations();
         identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {
             if (!removed && (isDirect() || isDerived())) {
                 State s = otx.midStartState().state();
                 s = s.set(newable, Newable.D_ALL_DERIVATIONS, allDerivations);
-                s = s.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                if (containment) {
+                    s = s.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                }
                 return s.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
             } else {
                 return null;
@@ -56,7 +62,9 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced, boolean forward) {
-        if (replaced.isDirect() && !isDirect()) {
+        if (!containment && !replaced.isNewlyDerived) {
+            return false;
+        } else if (replaced.isDirect() && !isDirect()) {
             return false;
         } else {
             return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());

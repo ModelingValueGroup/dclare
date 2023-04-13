@@ -287,9 +287,9 @@ public class ObserverTransaction extends ActionTransaction {
             if (!setable.isPlumbing() && !Objects.equals(pre, post)) {
                 merge();
                 result = getNonObserving(() -> {
-                    if (setable.containment() && (pre instanceof Newable || post instanceof Newable)) {
+                    if (pre instanceof Newable || post instanceof Newable) {
                         return (T) singleMatch((Mutable) object, (Observed) setable, pre, post);
-                    } else if (setable.containment() && isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
+                    } else if (isCollection(pre) && isCollection(post) && (isNewableCollection(pre) || isNewableCollection(post))) {
                         return (T) manyMatch((Mutable) object, (Observed) setable, (ContainingCollection<Object>) pre, (ContainingCollection<Object>) post);
                     } else {
                         return rippleOut(object, (Observed<O, T>) setable, pre, post);
@@ -386,6 +386,7 @@ public class ObserverTransaction extends ActionTransaction {
                     Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
                     constructions.set((m, e) -> m.put(reason, e), result);
                     deferMid.set(TRUE);
+                    traceRippleOut(mutable(), observer(), result, post, false);
                     return post;
                 }
             }
@@ -511,8 +512,8 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T, E> boolean becameDerived(Observed<O, T> observed, E element, IState preState, IState postState) {
         return element instanceof Newable && ((Newable) element).dInitialConstruction().isDerived() && //
-                preState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty() && //
-                !postState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty();
+                preState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty() != //
+                        postState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty();
     }
 
     private <O, T, E> boolean becameContained(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -542,10 +543,10 @@ public class ObserverTransaction extends ActionTransaction {
         return Objects.equals(before, post) && (!forward || !Objects.equals(before, postState.get(object, observed)));
     }
 
-    private <T, O> void traceRippleOut(O object, Observed<O, T> observed, Object post, Object result, boolean forward) {
+    private <T, O> void traceRippleOut(O object, Feature feature, Object post, Object result, boolean forward) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
             String level = deferInner.get().equals(TRUE) ? "INNER" : deferMid.get().equals(TRUE) ? "MID" : forward ? "OUTER" : "BACKWARD";
-            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER", this) + mutable() + "." + observer() + " " + level + " (" + object + "." + observed + "=" + result + "<-" + post + ")"));
+            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER", this) + mutable() + "." + observer() + " " + level + " (" + object + "." + feature + "=" + result + "<-" + post + ")"));
         }
     }
 
@@ -554,11 +555,12 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable && before instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) before).dNewableType())) {
             MatchInfo preInfo = MatchInfo.of((Newable) before, this, object, observed);
             MatchInfo postInfo = MatchInfo.of((Newable) after, this, object, observed);
+            // System.err.println("!!!!!!!!!!!!!!! " + object + "." + observed + "= " + preInfo + " -> " + postInfo);
             if (preInfo.mustReplace(postInfo, false)) {
-                replace(postInfo, preInfo);
+                replace(postInfo, preInfo, object, observed);
                 after = preInfo.newable();
             } else if (postInfo.mustReplace(preInfo, true)) {
-                replace(preInfo, postInfo);
+                replace(preInfo, postInfo, object, observed);
                 before = postInfo.newable();
             } else {
                 boolean found = false;
@@ -572,7 +574,7 @@ public class ObserverTransaction extends ActionTransaction {
                         MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont);
                         if (valInfo.identity() != null && valInfo.mustReplace(postInfo, false)) {
                             found = true;
-                            replace(postInfo, valInfo);
+                            replace(postInfo, valInfo, object, observed);
                             after = val;
                             break;
                         }
@@ -591,6 +593,7 @@ public class ObserverTransaction extends ActionTransaction {
     private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> bef, ContainingCollection<Object> aft) {
         ContainingCollection<Object> befores = bef != null ? bef : aft.clear();
         ContainingCollection<Object> afters = aft != null ? aft : bef.clear();
+        // System.err.println("!!!!!!!!!!!!!!! " + object + "." + observed + "= " + befores + " -> " + afters);
         QualifiedSet<Newable, MatchInfo> infos = null;
         ContainingCollection<Object> pres = befores;
         ContainingCollection<Object> results = afters.clear();
@@ -612,12 +615,12 @@ public class ObserverTransaction extends ActionTransaction {
                         MatchInfo preInfo = infos.get((Newable) pre);
                         if (preInfo.mustReplace(postInfo, false)) {
                             pres = pres.remove(pre);
-                            replace(postInfo, preInfo);
+                            replace(postInfo, preInfo, object, observed);
                             after = preInfo.newable();
                             break;
                         } else if (postInfo.mustReplace(preInfo, true)) {
                             pres = pres.remove(pre);
-                            replace(preInfo, postInfo);
+                            replace(preInfo, postInfo, object, observed);
                             befRem = befRem.add(preInfo.newable());
                             befAdd = befAdd.add(postInfo.newable());
                             break;
@@ -638,15 +641,20 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
-    private void replace(MatchInfo replaced, MatchInfo replacing) {
-        if (universeTransaction().getConfig().isTraceMatching()) {
-            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
-        }
-        for (Construction cons : replaced.allDerivations()) {
-            super.set(replacing.newable(), Newable.D_ALL_DERIVATIONS, QualifiedSet::put, cons);
-            if (cons.object().equals(mutable()) && cons.observer().equals(observer())) {
-                constructions.set((map, c) -> map.put(c.reason(), replacing.newable()), cons);
+    private void replace(MatchInfo replaced, MatchInfo replacing, Mutable object, Observed observed) {
+        if (observed.containment()) {
+            if (universeTransaction().getConfig().isTraceMatching()) {
+                runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
             }
+            for (Construction cons : replaced.allDerivations()) {
+                super.set(replacing.newable(), Newable.D_ALL_DERIVATIONS, QualifiedSet::put, cons);
+                if (cons.object().equals(mutable()) && cons.observer().equals(observer())) {
+                    constructions.set((map, c) -> map.put(c.reason(), replacing.newable()), cons);
+                }
+            }
+        } else {
+            deferOuter.set(TRUE);
+            traceRippleOut(object, observed, replaced, replacing, false);
         }
     }
 
