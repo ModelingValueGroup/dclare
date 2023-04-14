@@ -55,7 +55,8 @@ public interface Newable extends Mutable {
     }
 
     default QualifiedSet<Direction, Construction> dAllDerivations() {
-        return D_ALL_DERIVATIONS.current(this);
+        Construction init = dInitialConstruction();
+        return init.isDerived() ? D_ALL_DERIVATIONS.current(this).add(init) : D_ALL_DERIVATIONS.current(this);
     }
 
     @Override

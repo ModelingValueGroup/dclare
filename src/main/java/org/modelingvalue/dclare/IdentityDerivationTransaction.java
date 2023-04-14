@@ -18,8 +18,6 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.Collection;
-
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
     protected IdentityDerivationTransaction(UniverseTransaction universeTransaction) {
@@ -39,12 +37,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
             this.depth = 0;
             this.contextMutable = null;
         }
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    protected <O, T> Collection<Observer> allDerivers(O object, Observed<O, T> observed) {
-        return super.allDerivers(object, observed); //.exclude(o -> o.direction().opposites().contains(direction));
     }
 
     @Override

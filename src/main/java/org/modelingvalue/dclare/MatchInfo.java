@@ -25,12 +25,12 @@ import org.modelingvalue.dclare.Construction.Reason;
 public class MatchInfo {
 
     private final Newable                               newable;
-    private final Object                                identity;
     private final Construction                          initialConstruction;
     private final QualifiedSet<Direction, Construction> allDerivations;
     private final boolean                               removed;
     private final boolean                               containment;
     private final boolean                               isNewlyDerived;
+    private final Object                                identity;
 
     @SuppressWarnings("rawtypes")
     public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
@@ -46,28 +46,22 @@ public class MatchInfo {
                 otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
         initialConstruction = newable.dInitialConstruction();
         isNewlyDerived = isDerived() && otx.outerStartState().get(newable, Newable.D_ALL_DERIVATIONS).isEmpty();
-        allDerivations = isDerived() ? newable.dAllDerivations().put(initialConstruction) : newable.dAllDerivations();
-        identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {
+        allDerivations = newable.dAllDerivations();
+        identity = containment ? constants.get(otx, newable, Newable.D_IDENTITY, n -> {
             if (!removed && (isDirect() || isDerived())) {
-                State s = otx.midStartState().state();
-                s = s.set(newable, Newable.D_ALL_DERIVATIONS, allDerivations);
-                if (containment) {
-                    s = s.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
-                }
-                return s.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
+                State state = otx.current().set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                return state.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
             } else {
                 return null;
             }
-        });
+        }) : null;
     }
 
     public boolean mustReplace(MatchInfo replaced, boolean forward) {
-        if (!containment && !replaced.isNewlyDerived) {
-            return false;
-        } else if (replaced.isDirect() && !isDirect()) {
-            return false;
-        } else {
+        if (containment) {
             return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());
+        } else {
+            return replaced.isNewlyDerived && canBeReplacing() && replaced.canBeReplaced();
         }
     }
 

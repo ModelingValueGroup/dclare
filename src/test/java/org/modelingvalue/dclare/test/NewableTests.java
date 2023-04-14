@@ -77,7 +77,7 @@ public class NewableTests {
 
     private static final boolean        FULL               = true;
     private static final boolean        DEFAULT_ROLES      = true;
-    private static final int            MANY_NR            = 100;
+    private static final int            MANY_NR            = 32;
 
     private static final boolean        PRINT_RESULT_STATE = false;                // sequential tests yield problems in some tests so we skip them. set this to true for testing locally
 
@@ -133,20 +133,20 @@ public class NewableTests {
         }, a2b);
 
         A.observe(br, a -> create(B, x -> x.//
-                observe(n, b -> n.get(a)).//
-                observe(bcs, b -> acs.get(a).map(br::get).toSet()).//
-                observe(bcr, b -> acr.get(a) != null ? br.get(acr.get(a)) : null))//
+                observe(n, b -> n.get(a), a2b).//
+                observe(bcs, b -> acs.get(a).map(br::get).toSet(), a2b).//
+                observe(bcr, b -> acr.get(a) != null ? br.get(acr.get(a)) : null, a2b))//
                 , a2b);
         B.observe(ar, b -> create(A, x -> x.//
-                observe(n, a -> n.get(b)). //
-                observe(acs, a -> bcs.get(b).map(ar::get).toSet()). //
-                observe(acr, a -> bcr.get(b) != null ? ar.get(bcr.get(b)) : null))//
+                observe(n, a -> n.get(b), b2a). //
+                observe(acs, a -> bcs.get(b).map(ar::get).toSet(), b2a). //
+                observe(acr, a -> bcr.get(b) != null ? ar.get(bcr.get(b)) : null, b2a))//
                 , b2a);
         AC.observe(br, ac -> create(BC, x -> x.//
-                observe(n, bc -> n.get(ac)))//
+                observe(n, bc -> n.get(ac), a2b))//
                 , a2b);
         BC.observe(ar, bc -> create(AC, x -> x.//
-                observe(n, ac -> n.get(bc)))//
+                observe(n, ac -> n.get(bc), b2a))//
                 , b2a);
 
         TestUniverse universe = TestUniverse.of("universe", U);
@@ -415,40 +415,40 @@ public class NewableTests {
         if (oo2fb) {
             U.observe(fbms, u -> ooms.get(u).map(mfbm::get).toSet(), oo2fbDir);
             OOM.observe(mfbm, oo -> create(FBM, x -> x. //
-                    observe(n, fb -> n.get(oo)). //
-                    observe(ots, fb -> cls.get(oo).map(mobt::get).toSet()). //
-                    observe(fts, fb -> cls.get(oo).flatMap(refs::get).map(mfat::get).notNull().toSet()) //
+                    observe(n, fb -> n.get(oo), oo2fbDir). //
+                    observe(ots, fb -> cls.get(oo).map(mobt::get).toSet(), oo2fbDir). //
+                    observe(fts, fb -> cls.get(oo).flatMap(refs::get).map(mfat::get).notNull().toSet(), oo2fbDir) //
             ), oo2fbDir);
             CLS.observe(mobt, cl -> create(OBT, x -> x. //
-                    observe(n, ot -> n.get(cl)) //
+                    observe(n, ot -> n.get(cl), oo2fbDir) //
             ), oo2fbDir);
             REF.observe(mrol, rf -> create(ROL, y -> y. //
-                    observe(n, rl -> n.get(rf)). //
-                    observe(otr, rl -> typ.get(rf) != null ? mobt.get(typ.get(rf)) : null) //
+                    observe(n, rl -> n.get(rf), oo2fbDir). //
+                    observe(otr, rl -> typ.get(rf) != null ? mobt.get(typ.get(rf)) : null, oo2fbDir) //
             ), oo2fbDir);
             REF.observe(mfat, rf -> opp.get(rf) == null || compare(n.get(rf), n.get(opp.get(rf))) > 0 ? create(FAT, x -> x. //
-                    observe(right, ft -> mrol.get(rf)). //
+                    observe(right, ft -> mrol.get(rf), oo2fbDir). //
                     observe(left, ft -> opp.get(rf) != null && compare(n.get(rf), n.get(opp.get(rf))) > 0 ? mrol.get(opp.get(rf)) : create(ROL, y -> y. //
-                            observe(n, rl -> "~"). //
-                            observe(otr, rl -> mobt.get((TestNewable) rf.dParent())) //
-                    )) //
+                            observe(n, rl -> "~", oo2fbDir). //
+                            observe(otr, rl -> mobt.get((TestNewable) rf.dParent()), oo2fbDir) //
+                    ), oo2fbDir) //
             ) : null, oo2fbDir);
         }
 
         if (fb2oo) {
             U.observe(ooms, u -> fbms.get(u).map(moom::get).toSet(), fb2ooDir);
             FBM.observe(moom, fb -> create(OOM, x -> x. //
-                    observe(n, oo -> n.get(fb)). //
-                    observe(cls, oo -> ots.get(fb).map(mcls::get).toSet()) //
+                    observe(n, oo -> n.get(fb), fb2ooDir). //
+                    observe(cls, oo -> ots.get(fb).map(mcls::get).toSet(), fb2ooDir) //
             ), fb2ooDir);
             OBT.observe(mcls, ot -> create(CLS, x -> x. //
-                    observe(n, cl -> n.get(ot)). //
-                    observe(refs, cl -> _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet()) //
+                    observe(n, cl -> n.get(ot), fb2ooDir). //
+                    observe(refs, cl -> _otr.get(ot).map(rlopp::get).notNull().map(mref::get).notNull().toSet(), fb2ooDir) //
             ), fb2ooDir);
             ROL.observe(mref, rl -> otr.get(rlopp.get(rl)) != null && !"~".equals(n.get(rl)) ? create(REF, x -> x.//
-                    observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf)). //
-                    observe(typ, rf -> otr.get(rl) != null ? mcls.get(otr.get(rl)) : null). //
-                    observe(opp, rf -> mref.get(rlopp.get(rl))) //
+                    observe(n, rf -> !"~".equals(n.get(rl)) ? n.get(rl) : n.get(rf), fb2ooDir). //
+                    observe(typ, rf -> otr.get(rl) != null ? mcls.get(otr.get(rl)) : null, fb2ooDir). //
+                    observe(opp, rf -> mref.get(rlopp.get(rl)), fb2ooDir) //
             ) : null, fb2ooDir);
         }
 

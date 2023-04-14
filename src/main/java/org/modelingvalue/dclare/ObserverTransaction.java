@@ -593,7 +593,6 @@ public class ObserverTransaction extends ActionTransaction {
     private Object manyMatch(Mutable object, Observed observed, ContainingCollection<Object> bef, ContainingCollection<Object> aft) {
         ContainingCollection<Object> befores = bef != null ? bef : aft.clear();
         ContainingCollection<Object> afters = aft != null ? aft : bef.clear();
-        // System.err.println("!!!!!!!!!!!!!!! " + object + "." + observed + "= " + befores + " -> " + afters);
         QualifiedSet<Newable, MatchInfo> infos = null;
         ContainingCollection<Object> pres = befores;
         ContainingCollection<Object> results = afters.clear();
@@ -604,15 +603,18 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo postInfo = infos != null ? infos.get((Newable) after) : null;
                 for (Object pre : pres) {
                     if (pre instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) pre).dNewableType())) {
-                        if (after.equals(pre)) {
-                            pres = pres.remove(pre);
-                            break;
-                        }
                         if (infos == null) {
                             infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
+                            // System.err.println("!!!!!!!!!!!!!!! " + object + "." + observed + "= " + befores.filter(Newable.class).map(infos::get).toSet() + " -> " + afters.filter(Newable.class).map(infos::get).toSet());
                         }
                         MatchInfo preInfo = infos.get((Newable) pre);
+                        if (after.equals(pre)) {
+                            if (!preInfo.allDerivations().isEmpty()) {
+                                pres = pres.remove(pre);
+                            }
+                            break;
+                        }
                         if (preInfo.mustReplace(postInfo, false)) {
                             pres = pres.remove(pre);
                             replace(postInfo, preInfo, object, observed);
