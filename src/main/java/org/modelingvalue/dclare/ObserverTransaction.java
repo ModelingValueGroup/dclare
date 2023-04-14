@@ -580,7 +580,7 @@ public class ObserverTransaction extends ActionTransaction {
                         }
                     }
                 }
-                if (!found && universeTransaction().getConfig().isTraceMatching()) {
+                if (!found && observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
                     MatchInfo finalPostInfo = postInfo;
                     runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + preInfo + "!=" + finalPostInfo + ")"));
                 }
@@ -626,7 +626,7 @@ public class ObserverTransaction extends ActionTransaction {
                             befRem = befRem.add(preInfo.newable());
                             befAdd = befAdd.add(postInfo.newable());
                             break;
-                        } else if (universeTransaction().getConfig().isTraceMatching()) {
+                        } else if (observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
                             MatchInfo finalPostInfo = postInfo;
                             runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + preInfo + "!=" + finalPostInfo + ")"));
                         }
