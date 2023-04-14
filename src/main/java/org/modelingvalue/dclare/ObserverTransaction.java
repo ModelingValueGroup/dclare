@@ -555,10 +555,10 @@ public class ObserverTransaction extends ActionTransaction {
         if (after instanceof Newable && before instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) before).dNewableType())) {
             MatchInfo preInfo = MatchInfo.of((Newable) before, this, object, observed);
             MatchInfo postInfo = MatchInfo.of((Newable) after, this, object, observed);
-            if (preInfo.mustReplace(postInfo, false)) {
+            if (preInfo.mustReplace(postInfo)) {
                 replace(postInfo, preInfo);
                 after = preInfo.newable();
-            } else if (postInfo.mustReplace(preInfo, true)) {
+            } else if (postInfo.mustReplace(preInfo)) {
                 replace(preInfo, postInfo);
                 before = postInfo.newable();
             } else {
@@ -571,7 +571,7 @@ public class ObserverTransaction extends ActionTransaction {
                             break;
                         }
                         MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont);
-                        if (valInfo.identity() != null && valInfo.mustReplace(postInfo, false)) {
+                        if (valInfo.identity() != null && valInfo.mustReplace(postInfo)) {
                             found = true;
                             replace(postInfo, valInfo);
                             after = val;
@@ -602,27 +602,29 @@ public class ObserverTransaction extends ActionTransaction {
                 MatchInfo postInfo = infos != null ? infos.get((Newable) after) : null;
                 for (Object pre : pres) {
                     if (pre instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) pre).dNewableType())) {
+                        if (after.equals(pre)) {
+                            if (pres instanceof List) {
+                                pres = pres.remove(pre);
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
                         if (infos == null) {
                             infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
                         }
                         MatchInfo preInfo = infos.get((Newable) pre);
-                        if (after.equals(pre)) {
-                            if (!preInfo.allDerivations().isEmpty()) {
-                                pres = pres.remove(pre);
-                            }
-                            break;
-                        }
-                        if (preInfo.mustReplace(postInfo, false)) {
-                            pres = pres.remove(pre);
+                        if (preInfo.mustReplace(postInfo)) {
                             replace(postInfo, preInfo);
                             after = preInfo.newable();
-                            break;
-                        } else if (postInfo.mustReplace(preInfo, true)) {
                             pres = pres.remove(pre);
+                            break;
+                        } else if (postInfo.mustReplace(preInfo)) {
                             replace(preInfo, postInfo);
                             befRem = befRem.add(preInfo.newable());
                             befAdd = befAdd.add(postInfo.newable());
+                            pres = pres.remove(pre);
                             break;
                         } else if (universeTransaction().getConfig().isTraceMatching()) {
                             MatchInfo finalPostInfo = postInfo;
@@ -631,7 +633,7 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             }
-            results = results.add(after);
+            results = results.addUnique(after);
         }
         if (bef instanceof List && aft instanceof List && !results.equals(aft)) {
             results = results.clear().addAll(bef.filter(results::contains)).addAll(results.exclude(bef::contains));

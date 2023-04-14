@@ -56,7 +56,7 @@ public class MatchInfo {
         });
     }
 
-    public boolean mustReplace(MatchInfo replaced, boolean forward) {
+    public boolean mustReplace(MatchInfo replaced) {
         return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());
     }
 

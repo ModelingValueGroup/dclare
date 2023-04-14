@@ -104,7 +104,7 @@ public class NewableTests {
     }
 
     public State bidirectional(DclareConfig config) {
-        Observed<TestMutable, Set<TestNewable>> cs = Observed.of("cs", Set.of(), containment);
+        Observed<TestMutable, List<TestNewable>> cs = Observed.of("cs", List.of(), containment);
         TestMutableClass U = TestMutableClass.of("Universe", cs);
 
         Observed<TestMutable, TestNewable> acr = Observed.of("acr", null, containment);
@@ -125,11 +125,11 @@ public class NewableTests {
         Direction b2a = Direction.of("B2A", a2b);
 
         U.observe(cs, u -> {
-            Set<TestNewable> bs = cs.get(u).filter(B::isInstance).toSet();
-            return bs.addAll(bs.map(ar::get));
+            List<TestNewable> bs = cs.get(u).filter(B::isInstance).toList();
+            return Collection.concat(bs.map(ar::get), bs).toList();
         }, b2a).observe(cs, u -> {
-            Set<TestNewable> as = cs.get(u).filter(A::isInstance).toSet();
-            return as.addAll(as.map(br::get));
+            List<TestNewable> as = cs.get(u).filter(A::isInstance).toList();
+            return Collection.concat(as, as.map(br::get)).toList();
         }, a2b);
 
         A.observe(br, a -> create(B, x -> x.//
@@ -171,7 +171,7 @@ public class NewableTests {
                 TestNewable b6 = c.create(B);
                 TestNewable a7 = c.create(A);
                 TestNewable b7 = c.create(B);
-                cs.set(universe, Set.of(a0, b0, a1, b1, a2, b2, a3, b3, a4, b4, a5, b5, a6, b6, a7, b7));
+                cs.set(universe, List.of(a0, b0, a1, b1, a2, b2, a3, b3, a4, b4, a5, b5, a6, b6, a7, b7));
                 n.set(a0, "x");
                 n.set(b0, "x");
                 n.set(a1, "y");
@@ -211,7 +211,7 @@ public class NewableTests {
                 TestNewable b0 = c.create(B);
                 TestNewable a1 = c.create(A);
                 TestNewable b1 = c.create(B);
-                cs.set(universe, Set.of(a0, b0, a1, b1));
+                cs.set(universe, List.of(a0, b0, a1, b1));
                 n.set(a0, "x");
                 n.set(b0, "x");
                 n.set(a1, "y");
