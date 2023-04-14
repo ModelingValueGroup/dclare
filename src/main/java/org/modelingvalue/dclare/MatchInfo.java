@@ -28,8 +28,6 @@ public class MatchInfo {
     private final Construction                          initialConstruction;
     private final QualifiedSet<Direction, Construction> allDerivations;
     private final boolean                               removed;
-    private final boolean                               containment;
-    private final boolean                               isNewlyDerived;
     private final Object                                identity;
 
     @SuppressWarnings("rawtypes")
@@ -40,29 +38,26 @@ public class MatchInfo {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
-        containment = observed.containment();
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.midStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
                 otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
         initialConstruction = newable.dInitialConstruction();
-        isNewlyDerived = isDerived() && otx.outerStartState().get(newable, Newable.D_ALL_DERIVATIONS).isEmpty();
         allDerivations = newable.dAllDerivations();
-        identity = containment ? constants.get(otx, newable, Newable.D_IDENTITY, n -> {
+        identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {
             if (!removed && (isDirect() || isDerived())) {
-                State state = otx.current().set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                State state = otx.current();
+                if (observed.containment()) {
+                    state = state.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                }
                 return state.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
             } else {
                 return null;
             }
-        }) : null;
+        });
     }
 
     public boolean mustReplace(MatchInfo replaced, boolean forward) {
-        if (containment) {
-            return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());
-        } else {
-            return replaced.isNewlyDerived && canBeReplacing() && replaced.canBeReplaced();
-        }
+        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());
     }
 
     private boolean canBeReplacing() {
