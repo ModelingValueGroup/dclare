@@ -21,7 +21,6 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.MutationWrapper;
-import org.modelingvalue.dclare.State.StateMap;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

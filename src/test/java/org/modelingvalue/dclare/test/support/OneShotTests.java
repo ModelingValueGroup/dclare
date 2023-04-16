@@ -24,7 +24,7 @@ import org.modelingvalue.dclare.Observed;
 import org.modelingvalue.dclare.Observer;
 import org.modelingvalue.dclare.OneShot;
 import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.State.StateMap;
+import org.modelingvalue.dclare.StateMap;
 import org.modelingvalue.dclare.Universe;
 
 import java.util.Random;

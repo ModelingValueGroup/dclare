@@ -35,20 +35,17 @@ import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 @SuppressWarnings({"rawtypes", "unused"})
-public class State implements IState, Serializable {
-    private static final long serialVersionUID = -3468784705870374732L;
+public class State extends StateMap implements IState, Serializable {
+    public static final  Predicate<Object>      ALL_OBJECTS   = __ -> true;
+    public static final  Predicate<Setable>     ALL_SETTABLES = __ -> true;
+    public static final  BinaryOperator<String> CONCAT        = (a, b) -> a + b;
+    public static final  BinaryOperator<String> CONCAT_COMMA  = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
+    private static final Comparator<Entry>      COMPARATOR    = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    public static final  DefaultMap<Setable, Object> EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final  StateMap                    EMPTY_STATE_MAP    = new StateMap(DefaultMap.of(o -> EMPTY_SETABLES_MAP));
-    public static final  Predicate<Object>           ALL_OBJECTS        = __ -> true;
-    public static final  Predicate<Setable>          ALL_SETTABLES      = __ -> true;
-    public static final  BinaryOperator<String>      CONCAT             = (a, b) -> a + b;
-    public static final  BinaryOperator<String>      CONCAT_COMMA       = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
-    private static final Comparator<Entry>           COMPARATOR         = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
-    private static final Constant<Object, Object>    INTERNAL           = Constant.of("$INTERNAL", v -> {
+    private static final long                     serialVersionUID = -3468784705870374732L;
+    private static final Constant<Object, Object> INTERNAL         = Constant.of("$INTERNAL", v -> {
         if (v instanceof DefaultMap) {
             ((DefaultMap<?, ?>) v).forEach(State::deduplicate);
         } else if (v instanceof Map) {
@@ -57,59 +54,20 @@ public class State implements IState, Serializable {
         return v;
     });
 
-    public static class StateMap {
-        private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
-
-        private StateMap(DefaultMap<Object, DefaultMap<Setable, Object>> map) {
-            this.map = map;
-        }
-
-        public StateMap(StateMap stateMap) {
-            this(stateMap.map);
-        }
-
-        public StateMap(State state) {
-            this(state.stateMap);
-        }
-
-        private DefaultMap<Object, DefaultMap<Setable, Object>> map() {
-            return map;
-        }
-
-        @Override
-        public String toString() {
-            return map
-                    .sorted(Comparator.comparing(e2 -> e2.getKey().toString()))
-                    .map(e1 -> {
-                        String val = e1.getValue()
-                                .sorted(Comparator.comparing(e2 -> e2.getKey().toString()))
-                                .map(e2 -> String.format("%-50s = %s", e2.getKey(), e2.getValue()))
-                                .collect(Collectors.joining("\n    ", "    ", "\n"));
-                        return String.format("%-50s =\n%s", e1.getKey().toString(), val);
-                    })
-                    .collect(Collectors.joining("\n"));
-        }
-
-        @SuppressWarnings("unchecked")
-        public <O,T> T get(O obj, Setable<O, T> settable) {
-            return (T) map.get(obj).get(settable);
-        }
-
-        public <O,T> StateMap clear(O obj, Setable<O, T> settable) {
-            return new StateMap(map.put(obj, map.get(obj).removeKey(settable)));
-        }
-    }
-
-    private final StateMap            stateMap;
     private final UniverseTransaction universeTransaction;
 
     protected State(UniverseTransaction universeTransaction, StateMap stateMap) {
+        super(stateMap);
         this.universeTransaction = universeTransaction;
-        this.stateMap            = stateMap;
     }
 
-    public StateMap getStateMap() {
-        return stateMap;
+    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+        super(map);
+        this.universeTransaction = universeTransaction;
+    }
+
+    private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
+        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap);
     }
 
     @Override
@@ -151,7 +109,7 @@ public class State implements IState, Serializable {
 
     @SuppressWarnings("unchecked")
     public <O> O canonical(O object) {
-        Entry<Object, DefaultMap<Setable, Object>> entry = stateMap.map().getEntry(object);
+        Entry<Object, DefaultMap<Setable, Object>> entry = map().getEntry(object);
         return entry != null ? (O) entry.getKey() : object;
     }
 
@@ -184,7 +142,7 @@ public class State implements IState, Serializable {
     }
 
     public <O> DefaultMap<Setable, Object> getProperties(O object) {
-        return stateMap.map().get(object);
+        return map().get(object);
     }
 
     @SuppressWarnings("unchecked")
@@ -209,17 +167,16 @@ public class State implements IState, Serializable {
     }
 
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
-        DefaultMap<Object, DefaultMap<Setable, Object>> niw = post.isEmpty() ? stateMap.map().removeKey(object) : stateMap.map().put(object, post);
-        return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(new StateMap(niw));
+        return newState(post.isEmpty() ? map().removeKey(object) : map().put(object, post));
     }
 
     @SuppressWarnings("unchecked")
     public State merge(StateMergeHandler changeHandler, State[] branches, int length) {
         DefaultMap<Object, DefaultMap<Setable, Object>>[] maps = new DefaultMap[length];
         for (int i = 0; i < length; i++) {
-            maps[i] = branches[i].stateMap.map();
+            maps[i] = branches[i].map();
         }
-        DefaultMap<Object, DefaultMap<Setable, Object>> niw = stateMap.map().merge((o, ps, pss, pl) -> {
+        return newState(map().merge((o, ps, pss, pl) -> {
             DefaultMap<Setable, Object> props = ps.merge((p, v, vs, vl) -> {
                 Object r = v;
                 if (v instanceof Mergeable) {
@@ -250,8 +207,7 @@ public class State implements IState, Serializable {
                 }
             }
             return props;
-        }, maps, maps.length);
-        return niw.isEmpty() ? universeTransaction.emptyState() : universeTransaction.createState(new StateMap(niw));
+        }, maps, maps.length));
     }
 
     @SuppressWarnings("unchecked")
@@ -287,7 +243,7 @@ public class State implements IState, Serializable {
     }
 
     public Map<Setable, Integer> count() {
-        return get(() -> stateMap.map().toValues().flatMap(m -> m).reduce(Map.of(), (m, e) -> {
+        return get(() -> map().toValues().flatMap(m -> m).reduce(Map.of(), (m, e) -> {
             Integer cnt = m.get(e.getKey());
             return m.put(e.getKey(), cnt == null ? 1 : cnt + 1);
         }, (a, b) -> a.addAll(b, Integer::sum)));
@@ -332,7 +288,7 @@ public class State implements IState, Serializable {
     }
 
     public <T> Collection<T> getObjects(Class<T> filter) {
-        return stateMap.map().toKeys().filter(filter);
+        return map().toKeys().filter(filter);
     }
 
     public Collection<?> getObjects() {
@@ -340,15 +296,15 @@ public class State implements IState, Serializable {
     }
 
     public int size() {
-        return stateMap.map().size();
+        return map().size();
     }
 
     public boolean isEmpty() {
-        return stateMap.map().isEmpty();
+        return map().isEmpty();
     }
 
     public Collection<Entry<Object, Collection<Entry<Setable, Object>>>> filter(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return stateMap.map().filter(e1 -> objectFilter.test(e1.getKey())).map(e1 -> Entry.of(e1.getKey(), e1.getValue().filter(e2 -> setableFilter.test(e2.getKey()))));
+        return map().filter(e1 -> objectFilter.test(e1.getKey())).map(e1 -> Entry.of(e1.getKey(), e1.getValue().filter(e2 -> setableFilter.test(e2.getKey()))));
     }
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other) {
@@ -356,7 +312,7 @@ public class State implements IState, Serializable {
     }
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return stateMap.map().diff(other.stateMap.map()).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
+        return map().diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
             DefaultMap<Setable, Object>        map2 = d2.getValue().a();
             Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
             return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
@@ -364,7 +320,7 @@ public class State implements IState, Serializable {
     }
 
     public Collection<Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>>> diff(State other, Predicate<Object> objectFilter) {
-        return stateMap.map().diff(other.stateMap.map()).filter(d1 -> objectFilter.test(d1.getKey()));
+        return map().diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey()));
     }
 
     public String diffString(State other) {
@@ -433,12 +389,12 @@ public class State implements IState, Serializable {
     }
 
     public void forEach(TriConsumer<Object, Setable, Object> consumer) {
-        stateMap.map().forEachOrdered(e0 -> e0.getValue().forEachOrdered(e1 -> consumer.accept(e0.getKey(), e1.getKey(), e1.getValue())));
+        map().forEachOrdered(e0 -> e0.getValue().forEachOrdered(e1 -> consumer.accept(e0.getKey(), e1.getKey(), e1.getValue())));
     }
 
     @Override
     public int hashCode() {
-        return universeTransaction.universe().hashCode() + stateMap.hashCode();
+        return universeTransaction.universe().hashCode() + map().hashCode();
     }
 
     @Override
@@ -447,10 +403,10 @@ public class State implements IState, Serializable {
             return true;
         } else if (!(obj instanceof State)) {
             return false;
-        } else if (!universeTransaction.universe().equals(((State) obj).universeTransaction.universe())) {
-            return false;
         } else {
-            return Objects.equals(stateMap, ((State) obj).stateMap);
+            State other = (State) obj;
+            return Objects.equals(universeTransaction.universe(), other.universeTransaction.universe()) //
+                   && Objects.equals(map(), other.map());
         }
     }
 
