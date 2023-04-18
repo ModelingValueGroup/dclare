@@ -54,8 +54,8 @@ public class Construction extends IdentifiedByArray {
         return (Reason) (isDerived() ? super.get(2) : super.get(0));
     }
 
-    public Set<Mutable> sources() {
-        return isDerived() ? reason().sources(object()) : Set.of();
+    public boolean hasSource(Mutable source) {
+        return isDerived() ? reason().hasSource(object(), source) : false;
     }
 
     @Override
@@ -105,15 +105,19 @@ public class Construction extends IdentifiedByArray {
 
         public abstract Direction direction();
 
-        private Set<Mutable> sources(Mutable thiz) {
-            Set<Mutable> result = Set.of(thiz);
+        private boolean hasSource(Mutable thiz, Mutable source) {
+            if (thiz.equals(source)) {
+                return true;
+            }
             for (int i = 0; i < size(); i++) {
                 Object v = get(thiz, i);
                 if (v instanceof Mutable) {
-                    result = result.add((Mutable) v);
+                    if (((Mutable) v).equals(source)) {
+                        return true;
+                    }
                 }
             }
-            return result;
+            return false;
         }
 
         protected abstract Reason clone(Mutable thiz, Object[] identity);

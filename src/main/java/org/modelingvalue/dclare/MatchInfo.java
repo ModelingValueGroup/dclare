@@ -57,7 +57,11 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity());
+        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && !replaced.allDerivations.anyMatch(this::isSource);
+    }
+
+    private boolean isSource(Construction cons) {
+        return cons.hasSource(newable);
     }
 
     private boolean canBeReplacing() {

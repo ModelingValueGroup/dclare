@@ -364,12 +364,10 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             Constructed constructed = observer().constructed();
             Construction cons = Construction.of(mutable(), observer(), reason);
-            Map<Reason, Newable> map = current(mutable(), constructed);
-            map = map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
-            O result = (O) map.get(reason);
+            O result = (O) actualize(get(mutable(), constructed)).get(reason);
             if (result == null) {
                 for (IState state : longHistory()) {
-                    Newable found = state.get(mutable(), constructed).get(reason);
+                    Newable found = actualize(state.get(mutable(), constructed)).get(reason);
                     if (found != null && state().get(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
                         result = (O) found;
                         break;
@@ -380,21 +378,27 @@ public class ObserverTransaction extends ActionTransaction {
                     Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
                 }
             } else {
-                O pre = (O) preMidStartState().get(mutable(), constructed).get(reason);
-                O post = (O) midStartState().get(mutable(), constructed).get(reason);
-                if (pre == null && post != null && !post.equals(result)) {
-                    Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
-                    constructions.set((m, e) -> m.put(reason, e), result);
+                O post = (O) actualize(midStartState().get(mutable(), constructed)).get(reason);
+                if (post != null && !post.equals(result)) {
+                    setConstructed(reason, cons, result);
                     deferMid.set(TRUE);
                     traceRippleOut(mutable(), observer(), result, post, false);
                     return post;
                 }
             }
-            Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
-            constructions.set((m, e) -> m.put(reason, e), result);
+            setConstructed(reason, cons, result);
             return result;
         }
 
+    }
+
+    private void setConstructed(Construction.Reason reason, Construction cons, Newable result) {
+        Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
+        constructions.set((m, e) -> m.put(reason, e), result);
+    }
+
+    private Map<Reason, Newable> actualize(Map<Reason, Newable> map) {
+        return map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
     }
 
     @SuppressWarnings("unchecked")
@@ -512,8 +516,8 @@ public class ObserverTransaction extends ActionTransaction {
 
     private <O, T, E> boolean becameDerived(Observed<O, T> observed, E element, IState preState, IState postState) {
         return element instanceof Newable && ((Newable) element).dInitialConstruction().isDerived() && //
-                preState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty() != //
-                        postState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty();
+                preState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty() && //
+                !postState.get((Newable) element, Newable.D_ALL_DERIVATIONS).isEmpty();
     }
 
     private <O, T, E> boolean becameContained(Observed<O, T> observed, E element, IState preState, IState postState) {
@@ -561,7 +565,7 @@ public class ObserverTransaction extends ActionTransaction {
             } else if (postInfo.mustReplace(preInfo)) {
                 replace(preInfo, postInfo);
                 before = postInfo.newable();
-            } else {
+            } else if (observed.containment()) {
                 boolean found = false;
                 for (Observed cont : MutableClass.D_CONTAINMENTS.get(object.dClass()).filter(Observed.class).exclude(observed::equals)) {
                     Object val = cont.current(object);
@@ -626,7 +630,7 @@ public class ObserverTransaction extends ActionTransaction {
                             befAdd = befAdd.add(postInfo.newable());
                             pres = pres.remove(pre);
                             break;
-                        } else if (universeTransaction().getConfig().isTraceMatching()) {
+                        } else if (observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
                             MatchInfo finalPostInfo = postInfo;
                             runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + preInfo + "!=" + finalPostInfo + ")"));
                         }
