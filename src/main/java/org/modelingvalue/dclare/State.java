@@ -25,7 +25,6 @@ import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.collections.util.TriConsumer;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -38,21 +37,11 @@ import java.util.function.UnaryOperator;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State extends StateMap implements IState, Serializable {
-    public static final  Predicate<Object>      ALL_OBJECTS   = __ -> true;
-    public static final  Predicate<Setable>     ALL_SETTABLES = __ -> true;
-    public static final  BinaryOperator<String> CONCAT        = (a, b) -> a + b;
-    public static final  BinaryOperator<String> CONCAT_COMMA  = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
-    private static final Comparator<Entry>      COMPARATOR    = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    public static final  BinaryOperator<String> CONCAT       = (a, b) -> a + b;
+    public static final  BinaryOperator<String> CONCAT_COMMA = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
+    private static final Comparator<Entry>      COMPARATOR   = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private static final long                     serialVersionUID = -3468784705870374732L;
-    private static final Constant<Object, Object> INTERNAL         = Constant.of("$INTERNAL", v -> {
-        if (v instanceof DefaultMap) {
-            ((DefaultMap<?, ?>) v).forEach(State::deduplicate);
-        } else if (v instanceof Map) {
-            ((Map<?, ?>) v).forEach(State::deduplicate);
-        }
-        return v;
-    });
+    private static final long serialVersionUID = -3468784705870374732L;
 
     private final UniverseTransaction universeTransaction;
 
@@ -75,25 +64,6 @@ public class State extends StateMap implements IState, Serializable {
         return this;
     }
 
-    @Override
-    public <O, T> T get(O object, Getable<O, T> property) {
-        return get(getProperties(object), (Setable<O, T>) property);
-    }
-
-    public <O, A, B> A getA(O object, Getable<O, Pair<A, B>> property) {
-        return getA(getProperties(object), (Setable<O, Pair<A, B>>) property);
-    }
-
-    public <O, A, B> B getB(O object, Getable<O, Pair<A, B>> property) {
-        return getB(getProperties(object), (Setable<O, Pair<A, B>>) property);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <O, E, T> Collection<E> getCollection(O object, Getable<O, T> property) {
-        T v = get(object, property);
-        return v instanceof Collection ? (Collection<E>) v : v instanceof Iterable ? Collection.of((Iterable<E>) v) : v == null ? Set.of() : Set.of((E) v);
-    }
-
     public <O, T> State set(O object, Setable<O, T> property, T value) {
         DefaultMap<Setable, Object> props = getProperties(object);
         DefaultMap<Setable, Object> set   = setProperties(props, property, value);
@@ -105,12 +75,6 @@ public class State extends StateMap implements IState, Serializable {
             old[0] = pre;
             return post;
         }, value);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <O> O canonical(O object) {
-        Entry<Object, DefaultMap<Setable, Object>> entry = map().getEntry(object);
-        return entry != null ? (O) entry.getKey() : object;
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element, T[] oldNew) {
@@ -139,31 +103,6 @@ public class State extends StateMap implements IState, Serializable {
         T                           preVal  = get(props, property);
         T                           postVal = function.apply(preVal);
         return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
-    }
-
-    public <O> DefaultMap<Setable, Object> getProperties(O object) {
-        return map().get(object);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <O, T> T get(DefaultMap<Setable, Object> props, Setable<O, T> property) {
-        return (T) props.get(property);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <O, A, B> A getA(DefaultMap<Setable, Object> props, Setable<O, Pair<A, B>> property) {
-        Pair<A, B> pair = (Pair<A, B>) props.get(property);
-        return pair != null ? pair.a() : null;
-    }
-
-    @SuppressWarnings("unchecked")
-    static <O, A, B> B getB(DefaultMap<Setable, Object> props, Setable<O, Pair<A, B>> property) {
-        Pair<A, B> pair = (Pair<A, B>) props.get(property);
-        return pair != null ? pair.b() : null;
-    }
-
-    protected static <O, T> DefaultMap<Setable, Object> setProperties(DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
-        return Objects.equals(property.getDefault(), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
     }
 
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
@@ -208,13 +147,6 @@ public class State extends StateMap implements IState, Serializable {
             }
             return props;
         }, maps, maps.length));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <K, V> void deduplicate(Entry<K, V> e) {
-        if (e.getValue() != null) {
-            e.setValueIfEqual((V) INTERNAL.object(e.getValue()));
-        }
     }
 
     @Override
@@ -287,53 +219,24 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    public <T> Collection<T> getObjects(Class<T> filter) {
-        return map().toKeys().filter(filter);
-    }
-
-    public Collection<?> getObjects() {
-        return getObjects(Object.class);
-    }
-
-    public int size() {
-        return map().size();
-    }
-
-    public boolean isEmpty() {
-        return map().isEmpty();
-    }
-
-    public Collection<Entry<Object, Collection<Entry<Setable, Object>>>> filter(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return map().filter(e1 -> objectFilter.test(e1.getKey())).map(e1 -> Entry.of(e1.getKey(), e1.getValue().filter(e2 -> setableFilter.test(e2.getKey()))));
-    }
-
-    public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other) {
-        return diff(other, ALL_OBJECTS, ALL_SETTABLES);
-    }
-
-    public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
-        return map().diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
-            DefaultMap<Setable, Object>        map2 = d2.getValue().a();
-            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
-            return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
-        }).notNull();
-    }
-
-    public Collection<Entry<Object, Pair<DefaultMap<Setable, Object>, DefaultMap<Setable, Object>>>> diff(State other, Predicate<Object> objectFilter) {
-        return map().diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey()));
-    }
-
-    public String diffString(State other) {
+    public String diffString(StateMap other) {
         return diffString(diff(other));
     }
 
-    public String diffString(State other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
+    public String diffString(StateMap other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return diffString(diff(other, objectFilter, setableFilter));
     }
 
     public String diffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff) {
-        return get(() -> diff.reduce("", (s1, e1) -> s1 + "\n  " + StringUtil.toString(e1.getKey()) + " {" + e1.getValue().reduce("", (s2, e2) -> s2 + "\n      " + //
-                                                                                                                                                  StringUtil.toString(e2.getKey()) + " =" + valueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT) + "}", CONCAT));
+        return get(() -> diff.reduce("", (s1, e1) -> {
+            String sub = e1.getValue().reduce("", (s2, e2) -> {
+                String r = valueDiffString(e2.getValue().a(), e2.getValue().b());
+                return s2 + "\n" +//
+                       "      " + StringUtil.toString(e2.getKey()) + " =" + r;
+            }, CONCAT);
+            return s1 + "\n" + //
+                   "  " + StringUtil.toString(e1.getKey()) + " {" + sub + "}";
+        }, CONCAT));
     }
 
     public String shortDiffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff, Object self) {
@@ -388,13 +291,9 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    public void forEach(TriConsumer<Object, Setable, Object> consumer) {
-        map().forEachOrdered(e0 -> e0.getValue().forEachOrdered(e1 -> consumer.accept(e0.getKey(), e1.getKey(), e1.getValue())));
-    }
-
     @Override
     public int hashCode() {
-        return universeTransaction.universe().hashCode() + map().hashCode();
+        return universeTransaction.universe().hashCode() ^ super.hashCode();
     }
 
     @Override

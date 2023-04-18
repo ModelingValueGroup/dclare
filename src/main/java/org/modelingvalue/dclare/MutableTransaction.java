@@ -15,11 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Mutable.D_PARENT_CONTAINING;
-import static org.modelingvalue.dclare.Priority.*;
-
-import java.util.Objects;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -33,6 +28,13 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Observed.Observers;
 import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
+
+import java.util.Objects;
+
+import static org.modelingvalue.dclare.Mutable.D_PARENT_CONTAINING;
+import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
+import static org.modelingvalue.dclare.Priority.immediate;
+import static org.modelingvalue.dclare.Priority.scheduled;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
@@ -219,17 +221,17 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     public void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] branchesValues, DefaultMap<Setable, Object> resultValues) {
         if (setable instanceof Observers) {
             Observers<?, ?> os = (Observers) setable;
-            DefaultMap<Observer, Set<Mutable>> baseObservers = State.get(baseValues, os);
-            DefaultMap<Observer, Set<Mutable>> resultObservers = State.get(resultValues, os);
+            DefaultMap<Observer, Set<Mutable>> baseObservers = StateMap.get(baseValues, os);
+            DefaultMap<Observer, Set<Mutable>> resultObservers = StateMap.get(resultValues, os);
             os.observed().checkTooManyObservers(universeTransaction(), object, resultObservers);
             DefaultMap<Observer, Set<Mutable>> addedResultObservers = resultObservers.removeAll(baseObservers, Set::removeAll);
             if (!addedResultObservers.isEmpty()) {
                 Observed<?, ?> observedProp = os.observed();
-                Object baseValue = State.get(baseValues, observedProp);
+                Object baseValue = StateMap.get(baseValues, observedProp);
                 for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                    Object branchValue = State.get(branchValues, observedProp);
+                    Object branchValue = StateMap.get(branchValues, observedProp);
                     if (!Objects.equals(branchValue, baseValue)) {
-                        DefaultMap<Observer, Set<Mutable>> branchObservers = State.get(branchValues, os);
+                        DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
                         Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
                                 toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).toSet()));
                         triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
@@ -239,13 +241,13 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         } else if (setable instanceof Queued) {
             Queued<TransactionClass> q = (Queued) setable;
             if (q.priority() != scheduled) {
-                Set<TransactionClass> resultTriggered = State.get(resultValues, q);
-                Set<TransactionClass> baseTriggered = State.get(baseValues, q);
+                Set<TransactionClass> resultTriggered = StateMap.get(resultValues, q);
+                Set<TransactionClass> baseTriggered = StateMap.get(baseValues, q);
                 if (!resultTriggered.removeAll(baseTriggered).isEmpty()) {
-                    Mutable resultParent = State.getA(resultValues, D_PARENT_CONTAINING);
+                    Mutable resultParent = StateMap.getA(resultValues, D_PARENT_CONTAINING);
                     if (resultParent != null) {
                         for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                            Mutable branchParent = State.getA(branchValues, D_PARENT_CONTAINING);
+                            Mutable branchParent = StateMap.getA(branchValues, D_PARENT_CONTAINING);
                             if (!resultParent.equals(branchParent)) {
                                 triggeredMutables[q.priority().ordinal()].change(ts -> ts.add(resultParent));
                                 break;
