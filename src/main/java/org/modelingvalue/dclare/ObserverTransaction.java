@@ -599,8 +599,6 @@ public class ObserverTransaction extends ActionTransaction {
         QualifiedSet<Newable, MatchInfo> infos = null;
         ContainingCollection<Object> pres = befores;
         ContainingCollection<Object> results = afters.clear();
-        Set<Object> befAdd = Set.of();
-        Set<Object> befRem = Set.of();
         for (Object after : afters) {
             if (after instanceof Newable) {
                 MatchInfo postInfo = infos != null ? infos.get((Newable) after) : null;
@@ -626,8 +624,7 @@ public class ObserverTransaction extends ActionTransaction {
                             break;
                         } else if (postInfo.mustReplace(preInfo)) {
                             replace(preInfo, postInfo);
-                            befRem = befRem.add(preInfo.newable());
-                            befAdd = befAdd.add(postInfo.newable());
+                            befores = befores.replace(preInfo.newable(), postInfo.newable());
                             pres = pres.remove(pre);
                             break;
                         } else if (observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
@@ -637,12 +634,8 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             }
-            results = results.addUnique(after);
+            results = results.add(after);
         }
-        if (bef instanceof List && aft instanceof List && !results.equals(aft)) {
-            results = results.clear().addAll(bef.filter(results::contains)).addAll(results.exclude(bef::contains));
-        }
-        befores = befores.removeAll(befRem).addAll(befAdd);
         return !befores.equals(results) ? rippleOut(object, observed, befores, results) : results;
     }
 
