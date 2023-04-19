@@ -15,6 +15,12 @@
 
 package org.modelingvalue.dclare;
 
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -23,27 +29,21 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.TriConsumer;
 
-import java.io.Serializable;
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 @SuppressWarnings("rawtypes")
 public class StateMap implements Serializable {
-    private static final long                        serialVersionUID   = -7537530409013376084L;
-    public static final  DefaultMap<Setable, Object> EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final  StateMap                    EMPTY_STATE_MAP    = new StateMap(DefaultMap.of(o -> EMPTY_SETABLES_MAP));
-    public static final  Predicate<Object>           ALL_OBJECTS        = __ -> true;
-    public static final  Predicate<Setable>          ALL_SETTABLES      = __ -> true;
-    private static final Constant<Object, Object>    INTERNAL           = Constant.of("$INTERNAL", v -> {
-        if (v instanceof DefaultMap) {
-            ((DefaultMap<?, ?>) v).forEach(StateMap::deduplicate);
-        } else if (v instanceof Map) {
-            ((Map<?, ?>) v).forEach(StateMap::deduplicate);
-        }
-        return v;
-    });
+    private static final long                                     serialVersionUID   = -7537530409013376084L;
+    public static final DefaultMap<Setable, Object>               EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
+    public static final StateMap                                  EMPTY_STATE_MAP    = new StateMap(DefaultMap.of(o -> EMPTY_SETABLES_MAP));
+    public static final Predicate<Object>                         ALL_OBJECTS        = __ -> true;
+    public static final Predicate<Setable>                        ALL_SETTABLES      = __ -> true;
+    private static final Constant<Object, Object>                 INTERNAL           = Constant.of("$INTERNAL", v -> {
+                                                                                         if (v instanceof DefaultMap) {
+                                                                                             ((DefaultMap<?, ?>) v).forEach(StateMap::deduplicate);
+                                                                                         } else if (v instanceof Map) {
+                                                                                             ((Map<?, ?>) v).forEach(StateMap::deduplicate);
+                                                                                         }
+                                                                                         return v;
+                                                                                     });
 
     private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
 
@@ -71,6 +71,7 @@ public class StateMap implements Serializable {
         return map.size();
     }
 
+    @Override
     public int hashCode() {
         return map.hashCode();
     }
@@ -166,7 +167,7 @@ public class StateMap implements Serializable {
 
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(StateMap other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return map.diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
-            DefaultMap<Setable, Object>        map2 = d2.getValue().a();
+            DefaultMap<Setable, Object> map2 = d2.getValue().a();
             Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
             return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
         }).notNull();
