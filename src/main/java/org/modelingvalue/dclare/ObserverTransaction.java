@@ -598,15 +598,17 @@ public class ObserverTransaction extends ActionTransaction {
         ContainingCollection<Object> afters = aft != null ? aft : bef.clear();
         QualifiedSet<Newable, MatchInfo> infos = null;
         ContainingCollection<Object> pres = befores;
-        ContainingCollection<Object> results = afters.clear();
-        for (Object after : afters) {
+        ContainingCollection<Object> posts = afters;
+        while (!posts.isEmpty()) {
+            Object after = posts.get(0);
+            posts = posts.remove(after);
             if (after instanceof Newable) {
                 MatchInfo postInfo = infos != null ? infos.get((Newable) after) : null;
-                for (Object pre : pres) {
-                    if (pre instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) pre).dNewableType())) {
-                        if (after.equals(pre)) {
+                for (Object before : pres) {
+                    if (before instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) before).dNewableType())) {
+                        if (after.equals(before)) {
                             if (pres instanceof List) {
-                                pres = pres.remove(pre);
+                                pres = pres.remove(before);
                                 break;
                             } else {
                                 continue;
@@ -616,16 +618,27 @@ public class ObserverTransaction extends ActionTransaction {
                             infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
                         }
-                        MatchInfo preInfo = infos.get((Newable) pre);
+                        MatchInfo preInfo = infos.get((Newable) before);
                         if (preInfo.mustReplace(postInfo)) {
-                            replace(postInfo, preInfo);
-                            after = preInfo.newable();
-                            pres = pres.remove(pre);
+                            pres = pres.remove(before);
+                            if (posts.contains(before)) {
+                                posts = posts.replaceFirst(before, after);
+                                if (pres instanceof List) {
+                                    afters = afters.replaceFirst(before, after);
+                                    afters = afters.replaceFirst(after, before);
+                                }
+                                replace(postInfo, preInfo);
+                                replace(preInfo, postInfo);
+                                postInfo.setAllDerivations(preInfo);
+                            } else {
+                                afters = afters.replaceFirst(after, before);
+                                replace(postInfo, preInfo);
+                            }
                             break;
-                        } else if (postInfo.mustReplace(preInfo)) {
+                        } else if (postInfo.mustReplace(preInfo) && !posts.contains(before)) {
+                            pres = pres.remove(before);
+                            befores = befores.replaceFirst(before, after);
                             replace(preInfo, postInfo);
-                            befores = befores.replace(preInfo.newable(), postInfo.newable());
-                            pres = pres.remove(pre);
                             break;
                         } else if (observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
                             MatchInfo finalPostInfo = postInfo;
@@ -634,9 +647,8 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 }
             }
-            results = results.add(after);
         }
-        return !befores.equals(results) ? rippleOut(object, observed, befores, results) : results;
+        return !befores.equals(afters) ? rippleOut(object, observed, befores, afters) : afters;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})

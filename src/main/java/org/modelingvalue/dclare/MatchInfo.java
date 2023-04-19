@@ -24,11 +24,12 @@ import org.modelingvalue.dclare.Construction.Reason;
 
 public class MatchInfo {
 
-    private final Newable                               newable;
-    private final Construction                          initialConstruction;
-    private final QualifiedSet<Direction, Construction> allDerivations;
-    private final boolean                               removed;
-    private final Object                                identity;
+    private final Newable                         newable;
+    private final Construction                    initialConstruction;
+    private final boolean                         removed;
+    private final Object                          identity;
+
+    private QualifiedSet<Direction, Construction> allDerivations;
 
     @SuppressWarnings("rawtypes")
     public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
@@ -58,6 +59,10 @@ public class MatchInfo {
 
     public boolean mustReplace(MatchInfo replaced) {
         return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && !replaced.allDerivations.anyMatch(this::isSource);
+    }
+
+    protected void setAllDerivations(MatchInfo other) {
+        allDerivations = other.allDerivations;
     }
 
     private boolean isSource(Construction cons) {
