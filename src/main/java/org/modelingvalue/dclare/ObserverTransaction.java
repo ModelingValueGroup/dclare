@@ -368,7 +368,8 @@ public class ObserverTransaction extends ActionTransaction {
             if (result == null) {
                 for (IState state : longHistory()) {
                     Newable found = actualize(state.get(mutable(), constructed)).get(reason);
-                    if (found != null && state().get(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
+                    if (found != null && state().get(found, Mutable.D_PARENT_CONTAINING) == null && //
+                            state().get(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
                         result = (O) found;
                         break;
                     }
