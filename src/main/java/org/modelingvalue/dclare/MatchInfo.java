@@ -58,15 +58,12 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && !replaced.allDerivations.anyMatch(this::isSource);
+        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && //
+                !replaced.allDerivations.anyMatch(c -> (isDerived() && initialConstruction.reason().equals(c.reason())) || c.hasSource(newable));
     }
 
     protected void setAllDerivations(MatchInfo other) {
         allDerivations = other.allDerivations;
-    }
-
-    private boolean isSource(Construction cons) {
-        return cons.hasSource(newable);
     }
 
     private boolean canBeReplacing() {

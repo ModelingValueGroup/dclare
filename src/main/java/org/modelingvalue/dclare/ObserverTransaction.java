@@ -379,8 +379,9 @@ public class ObserverTransaction extends ActionTransaction {
                     Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
                 }
             } else {
+                O pre = (O) actualize(preMidStartState().get(mutable(), constructed)).get(reason);
                 O post = (O) actualize(midStartState().get(mutable(), constructed)).get(reason);
-                if (post != null && !post.equals(result)) {
+                if (pre == null && post != null && !post.equals(result)) {
                     setConstructed(reason, cons, result);
                     deferMid.set(TRUE);
                     traceRippleOut(mutable(), observer(), result, post, false);
