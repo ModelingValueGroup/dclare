@@ -650,6 +650,12 @@ public class ObserverTransaction extends ActionTransaction {
                 }
             }
         }
+        if (bef instanceof List && bef.size() > 1 && aft instanceof List && aft.size() > 1 && !afters.equals(aft)) {
+            afters = afters.sortedBy(e -> {
+                int i = ((List) bef).firstIndexOf(e);
+                return i < 0 ? ((List) aft).firstIndexOf(e) + bef.size() : i;
+            }).toList();
+        }
         return !befores.equals(afters) ? rippleOut(object, observed, befores, afters) : afters;
     }
 
