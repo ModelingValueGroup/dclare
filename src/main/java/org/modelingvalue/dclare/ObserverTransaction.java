@@ -364,12 +364,12 @@ public class ObserverTransaction extends ActionTransaction {
         } else {
             Constructed constructed = observer().constructed();
             Construction cons = Construction.of(mutable(), observer(), reason);
-            O result = (O) actualize(get(mutable(), constructed)).get(reason);
+            O result = (O) actualize(current(mutable(), constructed)).get(reason);
             if (result == null) {
                 for (IState state : longHistory()) {
                     Newable found = actualize(state.get(mutable(), constructed)).get(reason);
-                    if (found != null && state().get(found, Mutable.D_PARENT_CONTAINING) == null && //
-                            state().get(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
+                    if (found != null && current(found, Mutable.D_PARENT_CONTAINING) == null && //
+                            current(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
                         result = (O) found;
                         break;
                     }
@@ -663,6 +663,9 @@ public class ObserverTransaction extends ActionTransaction {
     private void replace(MatchInfo replaced, MatchInfo replacing) {
         if (universeTransaction().getConfig().isTraceMatching()) {
             runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + replacing + "==" + replaced + ")"));
+        }
+        if (Newable.D_INITIAL_CONSTRUCTION.get(replacing.newable()).isDirect()) {
+            super.set(replaced.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), replacing.newable());
         }
         for (Construction cons : replaced.allDerivations()) {
             super.set(replacing.newable(), Newable.D_ALL_DERIVATIONS, QualifiedSet::put, cons);

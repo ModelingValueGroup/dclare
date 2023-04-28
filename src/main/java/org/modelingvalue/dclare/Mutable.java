@@ -127,6 +127,9 @@ public interface Mutable extends TransactionClass {
     default void dActivate() {
         D_OBSERVERS_RULE.trigger(this);
         D_PUSHING_CONSTANTS_RULE.trigger(this);
+        for (Mutable child : dChildren()) {
+            child.dActivate();
+        }
     }
 
     default void dDeactivate() {
