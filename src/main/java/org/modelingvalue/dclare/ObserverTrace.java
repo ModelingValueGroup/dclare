@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,10 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings("unused")
@@ -32,6 +35,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     private final Map<ObservedInstance, Object>             written;
     private final Set<ObserverTrace>                        done;
     private final Map<ObservedInstance, Set<ObserverTrace>> backTrace;
+    private final Instant                                   time;
 
     protected ObserverTrace(Mutable mutable, Observer<?> observer, ObserverTrace previous, int nrOfChanges, Map<ObservedInstance, Object> read, Map<ObservedInstance, Object> written) {
         this.mutable = mutable;
@@ -60,6 +64,11 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         }
         this.backTrace = backTrace;
         this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
+        this.time = Instant.now();
+    }
+
+    public Instant time() {
+        return time;
     }
 
     public Mutable mutable() {
@@ -101,7 +110,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
 
     @Override
     public int compareTo(ObserverTrace o) {
-        return Integer.compare(o.nrOfChanges, nrOfChanges);
+        return time.compareTo(o.time);
     }
 
     @SuppressWarnings("unchecked")

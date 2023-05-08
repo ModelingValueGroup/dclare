@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,6 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
+
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -27,17 +34,10 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.OutOfScopeException;
 import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
-import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
-
 public class Setable<O, T> extends Getable<O, T> {
-    private static final boolean DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
+    private static final boolean          DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
 
-    private static final Context<Boolean> MOVING = Context.of(false);
+    private static final Context<Boolean> MOVING                      = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
@@ -70,9 +70,9 @@ public class Setable<O, T> extends Getable<O, T> {
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
-    private final boolean                                equalSemantics;
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
+    private final boolean                                doNotClear;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
@@ -96,9 +96,9 @@ public class Setable<O, T> extends Getable<O, T> {
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
         this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
-        this.equalSemantics = SetableModifier.equalSemantics.in(modifiers);
-        this.orphansAllowed = DANGER_ALWAYS_ALLOW_ORPHANS || SetableModifier.orphansAllowed.in(modifiers);
+        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
         this.preserved = SetableModifier.preserved.in(modifiers);
+        this.doNotClear = SetableModifier.doNotClear.in(modifiers);
     }
 
     @SuppressWarnings("rawtypes")
@@ -128,8 +128,8 @@ public class Setable<O, T> extends Getable<O, T> {
         return doNotMerge;
     }
 
-    public boolean equalSemantics() {
-        return equalSemantics;
+    public boolean doNotClear() {
+        return doNotClear;
     }
 
     public boolean orphansAllowed() {
@@ -314,7 +314,12 @@ public class Setable<O, T> extends Getable<O, T> {
         if (checkForOrphans()) {
             for (Mutable m : mutables(post)) {
                 if (m.dIsOrphan(state)) {
-                    errors = errors.add(new ReferencedOrphanException(object, this, m));
+                    ReferencedOrphanException oe = new ReferencedOrphanException(object, this, m);
+                    if (DANGER_ALWAYS_ALLOW_ORPHANS) {
+                        System.err.println("DANGER: suppressed orphan exception: " + oe.getMessage());
+                    } else {
+                        errors = errors.add(oe);
+                    }
                 }
             }
         }

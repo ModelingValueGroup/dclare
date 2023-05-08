@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -24,6 +24,7 @@ import java.util.function.Predicate;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
@@ -31,6 +32,7 @@ import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.DebugTrace;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
@@ -63,7 +65,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
-    public final Traces                         traces;
+    private final Traces                        traces;
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
@@ -76,6 +78,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     private int                                 instances;
     private int                                 changes;
     private boolean                             stopped;
+    private boolean                             trace;
 
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -163,6 +166,14 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         }
     }
 
+    public void setTracing(boolean trace) {
+        this.trace = trace;
+    }
+
+    public boolean isTracing() {
+        return trace;
+    }
+
     protected final int countChangesPerInstance() {
         ++changes;
         return changesPerInstance();
@@ -194,14 +205,41 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         stopped = true;
     }
 
-    public static final class Traces extends Setable<Mutable, Set<ObserverTrace>> {
-        protected Traces(Object id) {
-            super(id, Set.of(), null, null, null);
+    @SuppressWarnings("rawtypes")
+    public static final class Traces extends Setable<Mutable, List<ObserverTrace>> {
+
+        protected Traces(Pair<Observer, String> id) {
+            super(id, List.of(), null, null, null);
         }
 
         @Override
-        protected boolean deduplicate(Set<ObserverTrace> value) {
+        protected boolean deduplicate(List<ObserverTrace> value) {
             return false;
+        }
+
+        @Override
+        public boolean checkConsistency() {
+            return true;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Set<ConsistencyError> checkConsistency(State state, Mutable object, List<ObserverTrace> post) {
+            Set<ConsistencyError> result = super.checkConsistency(state, object, post);
+            if (!post.isEmpty()) {
+                for (ObserverTrace trace : post) {
+                    result = result.add(new DebugTrace(object, observer(), trace));
+                }
+                if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
+                    set(object, getDefault());
+                }
+            }
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        private Observer observer() {
+            return ((Pair<Observer, String>) id()).a();
         }
 
     }
@@ -292,15 +330,15 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println(DclareTrace.getLineStart("MATCH", tx) + tx.mutable() + "." + tx.leaf() + " (" + reason + "<=" + before + ")");
+                                System.err.println(DclareTrace.getLineStart("DERIVE", tx) + o + "." + observer + " (" + reason + "<=" + before + ")");
                             }
-                            Newable.D_DERIVED_CONSTRUCTIONS.set(before, QualifiedSet::remove, cons);
+                            Newable.D_ALL_DERIVATIONS.set(before, QualifiedSet::remove, cons);
                         }
                         if (after != null) {
                             if (tx.leaf() instanceof Observer && tx.universeTransaction().getConfig().isTraceMatching()) {
-                                System.err.println(DclareTrace.getLineStart("MATCH", tx) + tx.mutable() + "." + tx.leaf() + " (" + reason + "=>" + after + ")");
+                                System.err.println(DclareTrace.getLineStart("DERIVE", tx) + o + "." + observer + " (" + reason + "=>" + after + ")");
                             }
-                            Newable.D_DERIVED_CONSTRUCTIONS.set(after, QualifiedSet::put, cons);
+                            Newable.D_ALL_DERIVATIONS.set(after, QualifiedSet::put, cons);
                         }
                     }
                 }
@@ -329,6 +367,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public boolean atomic() {
         return atomic;
+    }
+
+    public Traces traces() {
+        return traces;
     }
 
 }

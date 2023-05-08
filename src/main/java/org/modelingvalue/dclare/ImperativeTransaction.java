@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.dclare.Priority.Queued;
+
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -38,7 +38,6 @@ public class ImperativeTransaction extends LeafTransaction {
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
 
-    private final Action<Universe>                            commit    = Action.of(this);
     private final Consumer<Runnable>                          scheduler;
     @SuppressWarnings("rawtypes")
     private final StateDeltaHandler                           diffHandler;
@@ -105,13 +104,14 @@ public class ImperativeTransaction extends LeafTransaction {
         return state;
     }
 
-    public void commit(State dclare, boolean timeTraveling) {
+    public final boolean commit(State dclare, boolean timeTraveling) {
         commiting = true;
         boolean insync = setted.isEmpty() && dclare.get(this, CHANGE_NR).equals(state.get(this, CHANGE_NR));
         if (pre != dclare) {
             dclare2imper(dclare, timeTraveling, insync);
         }
         if (!setted.isEmpty()) {
+            insync = false;
             imper2dclare();
         } else if (insync && active) {
             active = false;
@@ -119,6 +119,7 @@ public class ImperativeTransaction extends LeafTransaction {
         }
         pre = state();
         commiting = false;
+        return insync;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -133,7 +134,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                 DefaultMap<Setable, Object> imperProps = imper.getProperties(object);
                 for (Setable setable : e.getValue()) {
-                    dclareProps = State.setProperties(dclareProps, setable, imperProps.get(setable));
+                    dclareProps = StateMap.setProperties(dclareProps, setable, imperProps.get(setable));
                 }
                 dclare = dclare.set(object, dclareProps);
             }
@@ -214,7 +215,7 @@ public class ImperativeTransaction extends LeafTransaction {
                         active = true;
                         universeTransaction().addActive(this);
                     }
-                    universeTransaction().put(commit);
+                    universeTransaction().commit();
                 }
             }
         }

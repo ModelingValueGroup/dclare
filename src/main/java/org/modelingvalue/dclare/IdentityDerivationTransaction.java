@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -18,29 +18,24 @@ package org.modelingvalue.dclare;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.modelingvalue.collections.util.Pair;
-
 public class IdentityDerivationTransaction extends AbstractDerivationTransaction {
 
     protected IdentityDerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
     }
 
-    private int                                depth;
-    private Newable                            child;
-    private Pair<Mutable, Setable<Mutable, ?>> parent;
+    private int     depth;
+    private Mutable contextMutable;
 
     @SuppressWarnings("rawtypes")
-    public <R> R derive(Supplier<R> action, State state, int depth, Newable child, Pair<Mutable, Setable<Mutable, ?>> parent, ConstantState constantState) {
+    public <R> R derive(Supplier<R> action, State state, int depth, Mutable contextMutable, ConstantState constantState) {
+        this.contextMutable = contextMutable;
         this.depth = depth;
-        this.child = child;
-        this.parent = parent;
         try {
             return derive(action, state, constantState);
         } finally {
             this.depth = 0;
-            this.child = null;
-            this.parent = null;
+            this.contextMutable = null;
         }
     }
 
@@ -54,8 +49,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (isOld(object)) {
             return universeTransaction().outerStartState().get(object, getable);
-        } else if (getable == Mutable.D_PARENT_CONTAINING && object.equals(child)) {
-            return (T) parent;
         } else {
             return super.getNonDerived(object, getable);
         }
@@ -71,9 +64,19 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return object instanceof Mutable && universeTransaction().outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
+    public Mutable getContextMutable() {
+        return contextMutable;
+    }
+
     @Override
     public int depth() {
         return depth + super.depth();
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Override
+    protected <O> boolean isTraceDerivation(O object, Setable setable) {
+        return super.isTraceDerivation(object, setable) && (universeTransaction().getConfig().isTraceMatching() || memoization(object) != memoization());
     }
 
     @Override

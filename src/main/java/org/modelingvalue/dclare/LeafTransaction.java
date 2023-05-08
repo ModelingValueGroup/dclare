@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -94,7 +94,7 @@ public abstract class LeafTransaction extends Transaction {
 
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
-        return state().getProperties(object).map(Entry::getKey);
+        return state().getProperties(object).map(Entry::getKey).exclude(Setable::doNotClear);
     }
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
@@ -132,6 +132,10 @@ public abstract class LeafTransaction extends Transaction {
         action.run();
     }
 
+    public <T> T getNonObserving(Supplier<T> action) {
+        return action.get();
+    }
+
     @Override
     public Mutable mutable() {
         return parent().mutable();
@@ -148,7 +152,7 @@ public abstract class LeafTransaction extends Transaction {
             result = constantState().get(this, reason, Construction.CONSTRUCTED);
         }
         if (result != null) {
-            constantState().set(this, result, Newable.D_DIRECT_CONSTRUCTION, Construction.of(reason), true);
+            constantState().set(this, result, Newable.D_INITIAL_CONSTRUCTION, Construction.of(reason), true);
         }
         return (O) result;
     }

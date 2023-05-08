@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -17,7 +17,6 @@ package org.modelingvalue.dclare;
 
 import java.util.Objects;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
@@ -26,78 +25,65 @@ import org.modelingvalue.dclare.Construction.Reason;
 public class MatchInfo {
 
     private final Newable                         newable;
-    private final ObserverTransaction             otx;
-    private final Mutable                         object;
-    @SuppressWarnings("rawtypes")
-    private final Observed                        observed;
+    private final Construction                    initialConstruction;
+    private final boolean                         removed;
+    private final Object                          identity;
 
-    private Object                                identity;
-    private Set<Construction>                     directConstructions;
-    private Newable                               replacing;
-    private Set<Direction>                        directions;
-    private QualifiedSet<Direction, Construction> derivedConstructions;
+    private QualifiedSet<Direction, Construction> allDerivations;
 
     @SuppressWarnings("rawtypes")
-    public static MatchInfo of(Newable newable, ObserverTransaction tx, Mutable object, Observed observed) {
-        return new MatchInfo(newable, tx, object, observed);
+    public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
+        return new MatchInfo(newable, otx, object, observed);
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
-        this.otx = otx;
-        this.object = object;
-        this.observed = observed;
+        ConstantState constants = otx.universeTransaction().tmpConstants();
+        removed = otx.midStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
+                otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
+        initialConstruction = newable.dInitialConstruction();
+        allDerivations = newable.dAllDerivations();
+        identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {
+            if (!removed && (isDirect() || isDerived())) {
+                State state = otx.current();
+                if (observed.containment()) {
+                    state = state.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
+                }
+                return state.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
+            } else {
+                return null;
+            }
+        });
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        if (!newable.equals(replaced.newable) && haveEqualType(replaced)) {
-            if (newable.equals(replaced.replacing())) {
-                return true;
-            } else if (replaced.replacing() != null || directions().anyMatch(replaced.directions()::contains)) {
-                return false;
-            } else if (Objects.equals(identity(), replaced.identity())) {
-                return true;
-            } else if (otx.universeTransaction().getConfig().isTraceMatching()) {
-                otx.runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", otx) + otx.mutable() + "." + otx.observer() + " (" + this + "|" + identity() + "!=" + replaced + "|" + replaced.identity() + ")"));
-            }
-        }
-        return false;
+        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && //
+                !replaced.allDerivations.anyMatch(c -> (isDerived() && initialConstruction.reason().equals(c.reason())) || c.hasSource(newable));
     }
 
-    public void replace(MatchInfo replaced) {
-        replaced.replacing = newable;
-        directions = directions().addAll(replaced.directions());
-        replaced.directions = directions.clear();
-        derivedConstructions = derivedConstructions().addAll(replaced.derivedConstructions());
-        replaced.derivedConstructions = derivedConstructions.clear();
+    protected void setAllDerivations(MatchInfo other) {
+        allDerivations = other.allDerivations;
     }
 
-    public boolean canBeReplacing() {
-        return replacing() == null;
+    private boolean canBeReplacing() {
+        return !removed && (isDirect() || isDerived());
     }
 
-    public boolean canBeReplaced() {
-        return !isDirect();
+    private boolean canBeReplaced() {
+        return !removed && isDerived();
     }
 
-    public boolean isDerived() {
-        return !derivedConstructions().isEmpty();
+    private boolean isDerived() {
+        return initialConstruction.isDerived();
     }
 
-    public boolean isDirect() {
-        return !directConstructions().isEmpty();
+    private boolean isDirect() {
+        return initialConstruction.isDirect();
     }
 
-    public QualifiedSet<Direction, Construction> derivedConstructions() {
-        if (derivedConstructions == null) {
-            derivedConstructions = newable.dDerivedConstructions();
-        }
-        return derivedConstructions;
-    }
-
-    public boolean haveEqualType(MatchInfo other) {
-        return newable.dNewableType().equals(other.newable.dNewableType());
+    public QualifiedSet<Direction, Construction> allDerivations() {
+        return allDerivations;
     }
 
     @SuppressWarnings("unchecked")
@@ -111,23 +97,7 @@ public class MatchInfo {
 
     @SuppressWarnings("unchecked")
     public Object identity() {
-        if (identity == null) {
-            identity = otx.current().deriveIdentity(() -> newable.dIdentity(), otx.depth(), //
-                    observed.containment() ? newable : null, observed.containment() ? Pair.of(object, observed) : null, //
-                    otx.universeTransaction().tmpConstants());
-            if (identity == null) {
-                identity = ConstantState.NULL;
-            }
-        }
-        return identity == ConstantState.NULL ? null : identity;
-    }
-
-    public Set<Construction> directConstructions() {
-        if (directConstructions == null) {
-            Construction cons = newable.dDirectConstruction();
-            directConstructions = cons != null ? Set.of(cons) : Set.of();
-        }
-        return directConstructions;
+        return identity;
     }
 
     @Override
@@ -142,22 +112,13 @@ public class MatchInfo {
 
     @Override
     public String toString() {
-        return newable.toString();
+        return newable.toString() + directions().toString().substring(3) + identity();
     }
 
-    public Newable replacing() {
-        if (replacing == null) {
-            replacing = Newable.D_REPLACING.current(newable);
-            replacing = replacing == null ? newable : replacing;
-        }
-        return replacing == newable ? null : replacing;
-    }
-
-    public Set<Direction> directions() {
-        if (directions == null) {
-            return Collection.concat(directConstructions(), derivedConstructions()).map(Construction::reason).map(Reason::direction).toSet();
-        }
-        return directions;
+    private Set<Direction> directions() {
+        Set<Direction> result = allDerivations.map(Construction::reason).map(Reason::direction).toSet();
+        result = result.add(initialConstruction.reason().direction());
+        return result;
     }
 
 }

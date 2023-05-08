@@ -13,36 +13,30 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.sync;
+package org.modelingvalue.dclare.ex;
 
-import java.util.function.Predicate;
+import org.modelingvalue.dclare.Feature;
+import org.modelingvalue.dclare.ObserverTrace;
 
-import org.modelingvalue.dclare.*;
+@SuppressWarnings("unused")
+public final class DebugTrace extends ConsistencyError {
 
-public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
-    /////////////////////////////////
+    private static final long   serialVersionUID = 8369169825319766128L;
 
-    Predicate<Mutable> mutableFilter();
+    private final ObserverTrace trace;
 
-    Predicate<Setable<M, ?>> setableFilter();
+    public DebugTrace(Object object, Feature feature, ObserverTrace trace) {
+        super(object, feature, Integer.MAX_VALUE, "Run of " + object + "." + feature + ", at " + trace.time());
+        this.trace = trace;
+    }
 
-    C getMutableClass(M s);
+    public ObserverTrace trace() {
+        return trace;
+    }
 
-    /////////////////////////////////
+    @Override
+    public int compareTo(ConsistencyError o) {
+        return o instanceof DebugTrace ? trace.time().compareTo(((DebugTrace) o).trace.time()) : super.compareTo(o);
+    }
 
-    String serializeSetable(S setable);
-
-    String serializeMutable(M mutable);
-
-    Object serializeValue(S setable, Object value);
-
-    /////////////////////////////////
-
-    S deserializeSetable(C clazz, String s);
-
-    M deserializeMutable(String s);
-
-    Object deserializeValue(S setable, Object s);
-
-    /////////////////////////////////
 }

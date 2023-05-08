@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -54,8 +54,8 @@ public class Construction extends IdentifiedByArray {
         return (Reason) (isDerived() ? super.get(2) : super.get(0));
     }
 
-    public Set<Mutable> sources() {
-        return isDerived() ? reason().sources(object()) : Set.of();
+    public boolean hasSource(Mutable source) {
+        return isDerived() ? reason().hasSource(object(), source) : false;
     }
 
     @Override
@@ -72,7 +72,7 @@ public class Construction extends IdentifiedByArray {
         return super.size() == 3;
     }
 
-    public boolean isNotDerived() {
+    public boolean isDirect() {
         return super.size() != 3;
     }
 
@@ -105,15 +105,19 @@ public class Construction extends IdentifiedByArray {
 
         public abstract Direction direction();
 
-        private Set<Mutable> sources(Mutable thiz) {
-            Set<Mutable> result = Set.of(thiz);
+        private boolean hasSource(Mutable thiz, Mutable source) {
+            if (thiz.equals(source)) {
+                return true;
+            }
             for (int i = 0; i < size(); i++) {
                 Object v = get(thiz, i);
                 if (v instanceof Mutable) {
-                    result = result.add((Mutable) v);
+                    if (((Mutable) v).equals(source)) {
+                        return true;
+                    }
                 }
             }
-            return result;
+            return false;
         }
 
         protected abstract Reason clone(Mutable thiz, Object[] identity);

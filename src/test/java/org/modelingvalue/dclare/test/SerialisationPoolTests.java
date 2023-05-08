@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,13 +15,6 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.function.Predicate;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.Entry;
@@ -33,6 +26,13 @@ import org.modelingvalue.dclare.MutableClass;
 import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.sync.Converters;
 import org.modelingvalue.dclare.sync.SerializationHelperWithPool;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.function.Predicate;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SerialisationPoolTests {
     private static final String BIG_INTEGER_VALUE = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
@@ -62,14 +62,14 @@ public class SerialisationPoolTests {
 
     @Test
     public void bigIntegerTests() {
-        assertEquals("II:" + BIG_INTEGER_VALUE, h.serializeValue(null, new BigInteger(BIG_INTEGER_VALUE)));
-        assertEquals(new BigInteger(BIG_INTEGER_VALUE), h.deserializeValue(null, "II:" + BIG_INTEGER_VALUE));
+        assertEquals("BI:" + BIG_INTEGER_VALUE, h.serializeValue(null, new BigInteger(BIG_INTEGER_VALUE)));
+        assertEquals(new BigInteger(BIG_INTEGER_VALUE), h.deserializeValue(null, "BI:" + BIG_INTEGER_VALUE));
     }
 
     @Test
     public void bigDecimalTests() {
-        assertEquals("DD:" + BIG_DECIMAL_VALUE, h.serializeValue(null, new BigDecimal(BIG_DECIMAL_VALUE)));
-        assertEquals(new BigDecimal(BIG_DECIMAL_VALUE), h.deserializeValue(null, "DD:" + BIG_DECIMAL_VALUE));
+        assertEquals("BD:" + BIG_DECIMAL_VALUE, h.serializeValue(null, new BigDecimal(BIG_DECIMAL_VALUE)));
+        assertEquals(new BigDecimal(BIG_DECIMAL_VALUE), h.deserializeValue(null, "BD:" + BIG_DECIMAL_VALUE));
     }
 
     @Test

@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -53,7 +53,7 @@ public class TestUniverse extends TestMutable implements Universe {
             pre.diff(post, o -> o instanceof TestNewable, s -> s == Mutable.D_PARENT_CONTAINING).forEach(e -> {
                 if (e.getValue().get(Mutable.D_PARENT_CONTAINING).b() != null) {
                     TestNewable n = (TestNewable) e.getKey();
-                    if (n.dDirectConstruction() == null) {
+                    if (n.dInitialConstruction().isDerived()) {
                         TestNewable.construct(n, "init" + uniqueInt());
                     }
                 }

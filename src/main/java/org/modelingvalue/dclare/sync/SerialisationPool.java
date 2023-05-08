@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -15,13 +15,13 @@
 
 package org.modelingvalue.dclare.sync;
 
-import java.util.Comparator;
-import java.util.stream.Collectors;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
+
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class SerialisationPool {
     public static final boolean TRACE_SERIALIZATION = Boolean.getBoolean("TRACE_SERIALIZATION");
@@ -112,6 +112,7 @@ public class SerialisationPool {
         serializeMap = conv.toMap(c -> Entry.of(c.getClazz(), c));
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private void sanityCheck(List<Converter<?>> conv) {
         if (TRACE_SERIALIZATION) {
             System.err.println("serialisation-pool vacabulary:");
@@ -128,6 +129,11 @@ public class SerialisationPool {
         if (!doubleClazzes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes.map(l -> l.get(0)).collect(Collectors.toList()));
         }
+    }
+
+    @SuppressWarnings("unused")
+    public <T> boolean canConvert(Class<T> cls) {
+        return getConverterFor(cls)!=null;
     }
 
     private <T> Converter<T> getConverterFor(Class<T> cls) {
@@ -179,6 +185,11 @@ public class SerialisationPool {
         return value;
     }
 
+    @SuppressWarnings({"unused", "unchecked"})
+    public <T> boolean canSerialize(T o) {
+        return o == null || getConverterFor((Class<T>) o.getClass()) != null;
+    }
+
     public <T> String serialize(T o) {
         return serialize(o, null);
     }
@@ -186,7 +197,7 @@ public class SerialisationPool {
     public <T> String serialize(T o, Object context) {
         if (o == null) {
             if (TRACE_SERIALIZATION) {
-                System.err.printf("[  SERIALIZE] %-25s: %-25s -> <null>\n", context, o);
+                System.err.printf("[  SERIALIZE] %-25s: <null> -> <null>\n", context);
             }
             return null;
         }

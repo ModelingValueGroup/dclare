@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -236,6 +236,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return universeTransaction().innerStartState();
     }
 
+    protected IState preMidStartState() {
+        return universeTransaction().preMidStartState();
+    }
+
     protected IState midStartState() {
         return universeTransaction().midStartState();
     }
@@ -248,8 +252,8 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return universeTransaction().preOuterStartState();
     }
 
-    protected Collection<IState> detailedHistory() {
-        return universeTransaction().detailedHistory();
+    protected Collection<IState> longHistory() {
+        return universeTransaction().longHistory();
     }
 
     @Override

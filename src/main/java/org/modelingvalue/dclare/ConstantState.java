@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -128,16 +128,18 @@ public class ConstantState {
         private final int                           hash;
         private Ref<O>                              ref;
 
-        public Constants(O object, Boolean weak, ReferenceQueue<? super O> queue) {
-            ref = weak == null ? new DurableRef(object) : weak ? new WeakRef(object, queue) : new SoftRef(object, queue);
+        public Constants(O object, ReferenceType referenceType, ReferenceQueue<? super O> queue) {
+            ref = referenceType == ReferenceType.weak ? new WeakRef(object, queue) : referenceType == ReferenceType.soft ? new SoftRef(object, queue) : new DurableRef(object);
             UPDATOR.lazySet(this, Map.of());
             hash = object.hashCode();
         }
 
-        protected void makeDurable(O object) {
-            if (!(ref instanceof Constants.DurableRef)) {
-                ref = new DurableRef(object);
-            }
+        protected void upgradeStrongness(ReferenceType referenceType, O object) {
+            ref = referenceType == ReferenceType.soft ? new SoftRef(object, queue) : new DurableRef(object);
+        }
+
+        public ReferenceType referenceType() {
+            return ref instanceof ConstantState.Constants.WeakRef ? ReferenceType.weak : ref instanceof ConstantState.Constants.SoftRef ? ReferenceType.soft : ReferenceType.durable;
         }
 
         @SuppressWarnings("unchecked")
@@ -285,36 +287,40 @@ public class ConstantState {
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object, constant.isDurable()).get(leafTransaction, object, constant, constant.deriver());
+        return getConstants(leafTransaction, object, referenceType(constant)).get(leafTransaction, object, constant, constant.deriver());
     }
 
     public <O, V> O object(LeafTransaction leafTransaction, O object) {
-        return getConstants(leafTransaction, object, false).object();
+        return getConstants(leafTransaction, object, ReferenceType.weak).object();
     }
 
     public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
-        return getConstants(leafTransaction, object, constant.isDurable()).get(leafTransaction, object, constant, deriver);
+        return getConstants(leafTransaction, object, referenceType(constant)).get(leafTransaction, object, constant, deriver);
     }
 
     public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object, constant.isDurable()).isSet(constant);
+        return getConstants(leafTransaction, object, referenceType(constant)).isSet(constant);
     }
 
     public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
-        return getConstants(leafTransaction, object, constant.isDurable()).set(leafTransaction, object, constant, value, forced);
+        return getConstants(leafTransaction, object, referenceType(constant)).set(leafTransaction, object, constant, value, forced);
     }
 
     public <O, V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
-        return getConstants(leafTransaction, object, constant.isDurable()).set(leafTransaction, object, constant, deriver, element);
+        return getConstants(leafTransaction, object, referenceType(constant)).set(leafTransaction, object, constant, deriver, element);
+    }
+
+    private <O, V> ReferenceType referenceType(Constant<O, V> constant) {
+        return constant.isDurable() ? ReferenceType.durable : WEAK.get() ? ReferenceType.weak : ReferenceType.soft;
     }
 
     @SuppressWarnings("unchecked")
-    private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object, boolean durable) {
+    private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object, ReferenceType referenceType) {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {
             object = leafTransaction.state().canonical(object);
-            constants = new Constants<>(object, durable ? null : WEAK.get(), queue);
+            constants = new Constants<>(object, referenceType, queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {
@@ -322,15 +328,15 @@ public class ConstantState {
                 now = prev.get(object);
                 if (now != null) {
                     constants.ref.clear();
-                    if (durable) {
-                        now.makeDurable(object);
+                    if (referenceType.strongness > constants.referenceType().strongness) {
+                        now.upgradeStrongness(referenceType, object);
                     }
                     return now;
                 }
                 next = prev.add(constants);
             }
-        } else if (durable) {
-            constants.makeDurable(object);
+        } else if (referenceType.strongness > constants.referenceType().strongness) {
+            constants.upgradeStrongness(referenceType, object);
         }
         return constants;
     }
@@ -348,6 +354,18 @@ public class ConstantState {
                 }
                 next = prev.removeKey(object);
             }
+        }
+    }
+
+    private static enum ReferenceType {
+        durable(2),
+        soft(1),
+        weak(0);
+
+        int strongness;
+
+        ReferenceType(int strongness) {
+            this.strongness = strongness;
         }
     }
 

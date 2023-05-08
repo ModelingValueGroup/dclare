@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2022 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
+// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
 //                                                                                                                     ~
 // Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
 // compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
@@ -20,6 +20,7 @@ import org.modelingvalue.collections.util.SerializableConsumer;
 import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializablePredicate;
 import org.modelingvalue.collections.util.SerializableUnaryOperator;
+import org.modelingvalue.collections.util.SerializableUnaryOperator.SerializableUnaryOperatorImpl;
 import org.modelingvalue.dclare.*;
 import org.modelingvalue.dclare.Construction.Reason;
 
@@ -30,17 +31,23 @@ public class TestNewable extends TestMutable implements Newable {
 
     public static TestNewable create(TestNewableClass clazz, Object reason) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}));
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}, null));
     }
 
     public static TestNewable create(TestNewableClass clazz, Object reason1, Object reason2) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason1, reason2}));
+        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), reason1, reason2}, null));
     }
 
     public static TestNewable create(TestNewableClass clazz, SerializableUnaryOperator<TestNewableClass> init) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return create(tx, clazz, new TestReason(tx.mutable(), new Object[]{tx.direction(), init.of()}));
+        SerializableUnaryOperatorImpl<TestNewableClass> lambda = init.of();
+        Object[] args = lambda.capturedArgs();
+        Object[] id = new Object[args.length + 2];
+        id[0] = tx.direction();
+        id[1] = lambda.getImplMethodName();
+        System.arraycopy(args, 0, id, 2, args.length);
+        return create(tx, clazz, new TestReason(tx.mutable(), id, lambda));
     }
 
     private static TestNewable create(LeafTransaction tx, TestNewableClass clazz, TestReason reason) {
@@ -50,7 +57,7 @@ public class TestNewable extends TestMutable implements Newable {
     @SuppressWarnings("unchecked")
     public static void construct(TestNewable newable, Object reason) {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        tx.construct(new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}), () -> newable);
+        tx.construct(new TestReason(tx.mutable(), new Object[]{tx.direction(), reason}, null), () -> newable);
     }
 
     private TestNewable(Comparable id, TestMutableClass clazz) {
@@ -83,7 +90,7 @@ public class TestNewable extends TestMutable implements Newable {
     }
 
     private Collection<AnonymousClass> anonymous() {
-        return dConstructions().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
+        return dAllDerivations().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
     }
 
     @Override
@@ -100,22 +107,26 @@ public class TestNewable extends TestMutable implements Newable {
     @Override
     public String toString() {
         Object id = n.get(this);
-        return (id != null ? super.toString() + ":" + id : super.toString()) + dDirections().toSet().toString().substring(3);
+        return id != null ? super.toString() + ":" + id : super.toString();
     }
 
     private static class TestReason extends Construction.Reason {
-        @SuppressWarnings("unchecked")
-        private final static Constant<TestReason, AnonymousClass> ANONYMOUS = Constant.of("ANONYMOUS", null, r -> {
-            AnonymousClass anon = new AnonymousClass(r);
-            if (r.get(null, 1) instanceof SerializableUnaryOperator) {
-                ((SerializableUnaryOperator<TestNewableClass>) r.get(null, 1)).apply(anon);
-            }
-            return anon;
-        });
+
+        private final SerializableUnaryOperator<TestNewableClass> init;
 
         @SuppressWarnings("unchecked")
-        private TestReason(Mutable thiz, Object[] id) {
-            super(thiz, id);
+        private final static Constant<TestReason, AnonymousClass> ANONYMOUS = Constant.of("ANONYMOUS", null, r -> {
+                                                                                AnonymousClass anon = new AnonymousClass(r);
+                                                                                if (r.init != null) {
+                                                                                    r.init.apply(anon);
+                                                                                }
+                                                                                return anon;
+                                                                            });
+
+        @SuppressWarnings("unchecked")
+        private TestReason(Mutable thiz, Object[] id, SerializableUnaryOperator<TestNewableClass> init) {
+            super(null, id);
+            this.init = init;
         }
 
         public AnonymousClass anonymous() {
@@ -134,7 +145,7 @@ public class TestNewable extends TestMutable implements Newable {
 
         @Override
         protected Reason clone(Mutable thiz, Object[] identity) {
-            return new TestReason(thiz, identity);
+            return new TestReason(thiz, identity, init);
         }
     }
 

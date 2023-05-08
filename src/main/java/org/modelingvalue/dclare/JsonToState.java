@@ -13,36 +13,12 @@
 //     Arjan Kok, Carel Bast                                                                                           ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.sync;
+package org.modelingvalue.dclare;
 
-import java.util.function.Predicate;
+import org.modelingvalue.dclare.sync.JsonIC.FromJsonIC;
 
-import org.modelingvalue.dclare.*;
-
-public interface SerializationHelper<C extends MutableClass, M extends Mutable, S extends Setable<M, ?>> {
-    /////////////////////////////////
-
-    Predicate<Mutable> mutableFilter();
-
-    Predicate<Setable<M, ?>> setableFilter();
-
-    C getMutableClass(M s);
-
-    /////////////////////////////////
-
-    String serializeSetable(S setable);
-
-    String serializeMutable(M mutable);
-
-    Object serializeValue(S setable, Object value);
-
-    /////////////////////////////////
-
-    S deserializeSetable(C clazz, String s);
-
-    M deserializeMutable(String s);
-
-    Object deserializeValue(S setable, Object s);
-
-    /////////////////////////////////
+public class JsonToState extends FromJsonIC {
+    public <U extends Universe> JsonToState(@SuppressWarnings("unused") U universe, String json) {
+        super(json);
+    }
 }
