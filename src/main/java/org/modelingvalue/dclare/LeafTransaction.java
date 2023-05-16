@@ -15,17 +15,17 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
-
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Context;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+
+import java.util.Map;
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.*;
+
+import static org.modelingvalue.dclare.Priority.*;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -40,9 +40,35 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
+    public static int sizeForConsistency(DefaultMap<?, Set<Mutable>> map) {
+        return map.reduce(0, (a, e) -> a + (ignoreForConsistency(e.getKey()) ? 0 : e.getValue().size()), Integer::sum);
+    }
+
     @SuppressWarnings("rawtypes")
-    public static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + (!(e.getKey() instanceof Observed) || ((Observed) e.getKey()).checkConsistency() ? e.getValue().size() : 0), Integer::sum);
+    private static boolean ignoreForConsistency(Object o) {
+        return o instanceof Observed && !((Observed) o).checkConsistency();
+    }
+
+    public static String condenseForConsistencyTrace(DefaultMap<?, Set<Mutable>> map) {
+        boolean noSignulars = map //
+                                  .filter(e -> !ignoreForConsistency(e.getKey())) //
+                                  .filter(e -> 1 == e.getValue().size()) //
+                                  .isEmpty();
+        return map //
+                   .filter(e -> !ignoreForConsistency(e.getKey())) //
+                   .filter(e -> 1 < e.getValue().size()) //
+                   .sortedByDesc(e -> e.getValue().size()) //
+                   .map(e -> { //
+                       java.util.Map<String, Long> counts = e.getValue() //
+                                                             .map(m -> m.toString().replaceAll("[^a-zA-Z0-9]+.*", "")) //
+                                                             .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
+                       String condensedRepresentation = counts.entrySet().stream() //
+                                                              .sorted(Comparator.comparingLong(Map.Entry::getValue)) //
+                                                              .map(ee -> String.format("%d x %s", ee.getValue(), ee.getKey())) //
+                                                              .collect(Collectors.joining(", ", "[", "]"));
+                       return String.format("%s=%s", e.getKey(), condensedRepresentation);
+                   }) //
+                   .collect(Collectors.joining(", ", "[", noSignulars ? "]" : ",...]"));
     }
 
     public static LeafTransaction getCurrent() {
@@ -111,7 +137,7 @@ public abstract class LeafTransaction extends Transaction {
                     set(container, NON_SCHEDULED[i].children, Set::remove, object);
                 }
             }
-            object = container;
+            object    = container;
             container = dParent(object);
         }
     }
@@ -166,5 +192,4 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     public abstract Direction direction();
-
 }

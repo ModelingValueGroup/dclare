@@ -15,11 +15,9 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
+import org.modelingvalue.collections.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
+import java.util.function.*;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
@@ -63,7 +61,7 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> observeds) {
+        protected void checkTooManyObserved(Mutable mutable, DefaultMap<Observed, Set<Mutable>> observeds) {
         }
 
         @SuppressWarnings("rawtypes")

@@ -15,11 +15,10 @@
 
 package org.modelingvalue.dclare.ex;
 
-import java.util.stream.Collectors;
-
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.*;
 import org.modelingvalue.dclare.*;
+
+import java.util.stream.*;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public final class TooManyObserversException extends ConsistencyError {
@@ -30,7 +29,7 @@ public final class TooManyObserversException extends ConsistencyError {
     private final UniverseTransaction                universeTransaction;
 
     public TooManyObserversException(Object object, Observed observed, DefaultMap<Observer, Set<Mutable>> observers, UniverseTransaction universeTransaction) {
-        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.size(observers) + ") of " + object + "." + observed));
+        super(object, observed, 1, universeTransaction.preState().get(() -> "Too many observers (" + LeafTransaction.sizeForConsistency(observers) + ") of " + object + "." + observed));
         this.observers = observers;
         this.universeTransaction = universeTransaction;
     }
@@ -46,7 +45,7 @@ public final class TooManyObserversException extends ConsistencyError {
     }
 
     public int getNrOfObservers() {
-        return LeafTransaction.size(observers);
+        return LeafTransaction.sizeForConsistency(observers);
     }
 
     public DefaultMap<Observer, Set<Mutable>> getObservers() {

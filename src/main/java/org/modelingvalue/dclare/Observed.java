@@ -15,16 +15,11 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Supplier;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.dclare.ex.*;
 
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.EmptyMandatoryException;
-import org.modelingvalue.dclare.ex.TooManyObserversException;
+import java.util.function.*;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -67,7 +62,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected void checkTooManyObservers(UniverseTransaction utx, Object object, DefaultMap<Observer, Set<Mutable>> observers) {
-        if (!isPlumbing() && utx.stats().maxNrOfObservers() < LeafTransaction.size(observers)) {
+        if (!isPlumbing() && utx.stats().tooManyObservers(this, object, observers)) {
             throw new TooManyObserversException(object, this, observers, utx);
         }
     }
@@ -118,7 +113,6 @@ public class Observed<O, T> extends Setable<O, T> {
         public String toString() {
             return getClass().getSimpleName() + ":" + super.toString();
         }
-
     }
 
     @SuppressWarnings("rawtypes")
@@ -144,5 +138,4 @@ public class Observed<O, T> extends Setable<O, T> {
     public boolean preserved() {
         return super.preserved() || !isPlumbing();
     }
-
 }

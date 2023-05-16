@@ -16,34 +16,22 @@
 package org.modelingvalue.dclare;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.StatusProvider;
-import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
-import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.TooManyChangesException;
+import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.util.*;
+import org.modelingvalue.collections.util.ContextThread.*;
+import org.modelingvalue.collections.util.StatusProvider.*;
+import org.modelingvalue.dclare.NonCheckingObserver.*;
+import org.modelingvalue.dclare.ex.*;
 
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
-import static org.modelingvalue.dclare.State.ALL_SETTABLES;
+import static org.modelingvalue.dclare.State.*;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
@@ -146,10 +134,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public enum Mood {
-        starting(),
-        busy(),
-        idle(),
-        stopped()
+        starting(), busy(), idle(), stopped()
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool) {
@@ -323,15 +308,15 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     private void setBusyMood(Action<Universe> action) {
-        statusProvider.setNext(p -> new Status(Mood.busy, action, p.state, stats().clone(), p.active));
+        statusProvider.setNext(p -> new Status(Mood.busy, action, p.state, new UniverseStatistics(stats()), p.active));
     }
 
     private void setIdleMood(State state) {
-        statusProvider.setNext(p -> new Status(Mood.idle, p.action, state, stats().clone(), p.active));
+        statusProvider.setNext(p -> new Status(Mood.idle, p.action, state, new UniverseStatistics(stats()), p.active));
     }
 
     private void setStoppedMood(State state) {
-        statusProvider.setNext(p -> new Status(Mood.stopped, p.action, state, stats().clone(), p.active));
+        statusProvider.setNext(p -> new Status(Mood.stopped, p.action, state, new UniverseStatistics(stats()), p.active));
     }
 
     public Action<Universe> waitForBusy() {
@@ -379,7 +364,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void timerTask() {
         statusProvider.setNext(p -> {
             if (p.mood == Mood.busy) {
-                UniverseStatistics stats = stats().clone();
+                UniverseStatistics stats = new UniverseStatistics(stats());
                 if (!Objects.equals(p.stats, stats)) {
                     return new Status(p.mood, p.action, p.state, stats, p.active);
                 }
@@ -437,7 +422,7 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                     }
                 } while (again);
-                universeStatistics.completeForward();
+                universeStatistics.bumpForwardCount();
                 tmpConstants.stop();
                 tmpConstants = null;
             } while (!killed && hasOuterQueued(state));
@@ -593,10 +578,10 @@ public class UniverseTransaction extends MutableTransaction {
     private void handleTooManyChanges(State state) {
         if (!killed && stats().debugging()) {
             ObserverTrace trace = state//
-                    .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
-                    .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
-                    .min((a, b) -> Integer.compare(b.done().size(), a.done().size())) //
-                    .orElseThrow();
+                                       .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
+                                       .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
+                                       .min((a, b) -> Integer.compare(b.done().size(), a.done().size())) //
+                                       .orElseThrow();
             throw new TooManyChangesException(state, trace, trace.done().size());
         }
     }
@@ -619,14 +604,14 @@ public class UniverseTransaction extends MutableTransaction {
         LeafTransaction tx        = LeafTransaction.getCurrent();
         State           postState = tx.state();
         Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preOrphansState//
-                .diff(postState, o -> {
-                    if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
-                        return !tx.toBeCleared((Mutable) o).isEmpty();
-                    } else {
-                        return false;
-                    }
-                }, ALL_SETTABLES)//
-                .toMap(Function.identity());
+                                                                                 .diff(postState, o -> {
+                                                                                     if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
+                                                                                         return !tx.toBeCleared((Mutable) o).isEmpty();
+                                                                                     } else {
+                                                                                         return false;
+                                                                                     }
+                                                                                 }, ALL_SETTABLES)//
+                                                                                 .toMap(Function.identity());
         orphansDetected.set(!orphans.isEmpty());
         orphans.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
     }
@@ -831,5 +816,4 @@ public class UniverseTransaction extends MutableTransaction {
         outerStartState.set(object, property, post, txid);
         return txid;
     }
-
 }
