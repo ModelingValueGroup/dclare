@@ -15,6 +15,11 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Mutable.D_PARENT_CONTAINING;
+import static org.modelingvalue.dclare.Priority.*;
+
+import java.util.Objects;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -28,13 +33,6 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.Observed.Observers;
 import org.modelingvalue.dclare.Priority.Queued;
 import org.modelingvalue.dclare.ex.TransactionException;
-
-import java.util.Objects;
-
-import static org.modelingvalue.dclare.Mutable.D_PARENT_CONTAINING;
-import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
-import static org.modelingvalue.dclare.Priority.immediate;
-import static org.modelingvalue.dclare.Priority.scheduled;
 
 public class MutableTransaction extends Transaction implements StateMergeHandler {
 
@@ -103,7 +101,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     run(actions[0], children[0]);
                 } else {
                     if (parent() != null) {
-                        for (int i = 1; i < NON_SCHEDULED.length; i++) {
+                        for (int i = 0; i < NON_SCHEDULED.length; i++) {
                             if (hasQueued(state[0], mutable(), NON_SCHEDULED[i])) {
                                 state[0] = state[0].set(parent().mutable(), NON_SCHEDULED[i].children, Set::add, mutable());
                             }
@@ -131,17 +129,24 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         if (random.size() <= 2 || universeTransaction().getConfig().isRunSequential()) {
             runSequential(random);
+            if (!universeTransaction().isKilled() && (parent() == null || !hasQueued(state[0], parent().mutable(), immediate))) {
+                move(mutable(), immediate, scheduled);
+            }
         } else {
             List<? extends TransactionClass> begin = random.sublist(0, random.size() >> 1);
             runParallel(begin);
             if (!universeTransaction().isKilled()) {
-                state[0] = state[0].set(mutable(), scheduled.actions, Set::addAll, actions.removeAll(begin));
-                state[0] = state[0].set(mutable(), scheduled.children, Set::addAll, children.removeAll(begin));
+                if (parent() == null || !hasQueued(state[0], parent().mutable(), immediate)) {
+                    state[0] = state[0].set(mutable(), scheduled.actions, Set::addAll, actions.removeAll(begin));
+                    state[0] = state[0].set(mutable(), scheduled.children, Set::addAll, children.removeAll(begin));
+                    move(mutable(), immediate, scheduled);
+                } else {
+                    state[0] = state[0].set(mutable(), immediate.actions, Set::addAll, actions.removeAll(begin));
+                    state[0] = state[0].set(mutable(), immediate.children, Set::addAll, children.removeAll(begin));
+                }
             }
         }
-        if (!universeTransaction().isKilled()) {
-            move(mutable(), immediate, scheduled);
-        }
+
     }
 
     private <T extends TransactionClass> void runParallel(List<T> todo) {
