@@ -519,7 +519,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T> boolean changed(O object, Observed<O, T> observed, IState preState, IState postState, T pre, T post, boolean forward) {
-        return isChangedBack(object, observed, post, preState, forward) || //
+        return isChangedBack(object, observed, pre, post, preState, postState, forward) || //
                 isChildChanged(observed, pre, preState, postState) || isChildChanged(observed, post, preState, postState);
     }
 
@@ -551,8 +551,9 @@ public class ObserverTransaction extends ActionTransaction {
         return observed.collection(preState.get(object, observed)).contains(element) && (!forward || !observed.collection(postState.get(object, observed)).contains(element));
     }
 
-    private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T post, IState preState, boolean forward) {
-        return !forward && Objects.equals(preState.get(object, observed), post);
+    private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState, boolean forward) {
+        T before = preState.get(object, observed);
+        return Objects.equals(before, post) && (!forward || (!postState.equals(state()) && !Objects.equals(before, postState.get(object, observed))));
     }
 
     private <T, O> void traceRippleOut(O object, Feature feature, Object post, Object result, boolean forward) {
