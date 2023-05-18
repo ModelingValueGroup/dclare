@@ -544,16 +544,18 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean isAdded(O object, Observed<O, T> observed, E element, IState preState, IState postState, boolean forward) {
-        return !observed.collection(preState.get(object, observed)).contains(element) && (!forward || observed.collection(postState.get(object, observed)).contains(element));
+        return !observed.collection(preState.get(object, observed)).contains(element) && //
+                (!forward || postState == state() || observed.collection(postState.get(object, observed)).contains(element));
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean isRemoved(O object, Observed<O, T> observed, E element, IState preState, IState postState, boolean forward) {
-        return observed.collection(preState.get(object, observed)).contains(element) && (!forward || !observed.collection(postState.get(object, observed)).contains(element));
+        return observed.collection(preState.get(object, observed)).contains(element) && //
+                (!forward || postState == state() || !observed.collection(postState.get(object, observed)).contains(element));
     }
 
     private <O, T> boolean isChangedBack(O object, Observed<O, T> observed, T pre, T post, IState preState, IState postState, boolean forward) {
         T before = preState.get(object, observed);
-        return Objects.equals(before, post) && (!forward || (!postState.equals(state()) && !Objects.equals(before, postState.get(object, observed))));
+        return Objects.equals(before, post) && (!forward || (postState != state() && !Objects.equals(before, postState.get(object, observed))));
     }
 
     private <T, O> void traceRippleOut(O object, Feature feature, Object post, Object result, boolean forward) {
