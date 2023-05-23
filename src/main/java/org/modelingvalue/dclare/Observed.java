@@ -15,11 +15,17 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
-import org.modelingvalue.dclare.ex.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-import java.util.function.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadConsumer;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.EmptyMandatoryException;
+import org.modelingvalue.dclare.ex.TooManyObserversException;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -27,22 +33,42 @@ public class Observed<O, T> extends Setable<O, T> {
     protected static final DefaultMap<Observed, Set<Mutable>> OBSERVED_MAP = DefaultMap.of(k -> Set.of());
 
     public static <C, V> Observed<C, V> of(Object id, V def, SetableModifier... modifiers) {
-        return new Observed<>(id, def, null, null, null, modifiers);
+        return new Observed<>(id, c -> def, null, null, null, modifiers);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
-        return new Observed<>(id, def, null, null, changed, modifiers);
+        return new Observed<>(id, c -> def, null, null, changed, modifiers);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
-        return new Observed<>(id, def, opposite, null, null, modifiers);
+        return new Observed<>(id, c -> def, opposite, null, null, modifiers);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
-        return new Observed<>(id, def, null, scope, changed, modifiers);
+        return new Observed<>(id, c -> def, null, scope, changed, modifiers);
     }
 
     public static <C, V> Observed<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Observed<>(id, c -> def, opposite, scope, null, modifiers);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, Function<C, V> def, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, null, null, modifiers);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, null, changed, modifiers);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new Observed<>(id, def, opposite, null, null, modifiers);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Observed<>(id, def, null, scope, changed, modifiers);
+    }
+
+    public static <C, V> Observed<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
         return new Observed<>(id, def, opposite, scope, null, modifiers);
     }
 
@@ -54,7 +80,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected Observed(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+    protected Observed(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.mandatory = SetableModifier.mandatory.in(modifiers);
         this.observers = new Observers<>(this);
@@ -99,7 +125,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
         @SuppressWarnings("unchecked")
         private Observers(Observed observed) {
-            super(observed, Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
+            super(observed, o -> Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
                 observed.checkTooManyObservers(tx.universeTransaction(), o, a);
             }, SetableModifier.plumbing);
         }

@@ -33,7 +33,7 @@ public interface Mutable extends TransactionClass {
     Set<Mutable>                                 THIS_SINGLETON           = Set.of(THIS);
 
     @SuppressWarnings("rawtypes")
-    ParentContaining                             D_PARENT_CONTAINING      = new ParentContaining("D_PARENT_CONTAINING", null, plumbing, preserved);
+    ParentContaining                             D_PARENT_CONTAINING      = new ParentContaining("D_PARENT_CONTAINING", plumbing, preserved);
 
     Setable<Mutable, TransactionId>              D_CHANGE_ID              = Setable.of("D_CHANGE_ID", null, plumbing);
 
@@ -209,8 +209,8 @@ public interface Mutable extends TransactionClass {
 
     static final class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
 
-        private ParentContaining(Object id, Pair<Mutable, Setable<Mutable, ?>> def, SetableModifier... modifiers) {
-            super(id, def, null, null, (tx, m, b, a) -> m.dChangedParentContaining(b, a), modifiers);
+        private ParentContaining(Object id, SetableModifier... modifiers) {
+            super(id, null, null, null, (tx, m, b, a) -> m.dChangedParentContaining(b, a), modifiers);
         }
 
         @Override

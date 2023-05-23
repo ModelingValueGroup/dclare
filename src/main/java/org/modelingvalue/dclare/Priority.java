@@ -50,7 +50,7 @@ public enum Priority implements LeafModifier, Internable {
         private final boolean actions;
 
         private Queued(boolean actions) {
-            super(Pair.of(Priority.this, actions), Set.of(), null, null, null, SetableModifier.plumbing);
+            super(Pair.of(Priority.this, actions), m -> Set.of(), null, null, null, SetableModifier.plumbing);
             this.actions = actions;
         }
 

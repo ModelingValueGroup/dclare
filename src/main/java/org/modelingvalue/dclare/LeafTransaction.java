@@ -15,17 +15,20 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
-import org.modelingvalue.collections.util.*;
+import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
 
+import java.util.Comparator;
 import java.util.Map;
-import java.util.*;
-import java.util.function.*;
-import java.util.stream.*;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
-import static org.modelingvalue.dclare.Priority.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
 public abstract class LeafTransaction extends Transaction {
@@ -51,24 +54,24 @@ public abstract class LeafTransaction extends Transaction {
 
     public static String condenseForConsistencyTrace(DefaultMap<?, Set<Mutable>> map) {
         boolean noSignulars = map //
-                                  .filter(e -> !ignoreForConsistency(e.getKey())) //
-                                  .filter(e -> 1 == e.getValue().size()) //
-                                  .isEmpty();
+                .filter(e -> !ignoreForConsistency(e.getKey())) //
+                .filter(e -> 1 == e.getValue().size()) //
+                .isEmpty();
         return map //
-                   .filter(e -> !ignoreForConsistency(e.getKey())) //
-                   .filter(e -> 1 < e.getValue().size()) //
-                   .sortedByDesc(e -> e.getValue().size()) //
-                   .map(e -> { //
-                       java.util.Map<String, Long> counts = e.getValue() //
-                                                             .map(m -> m.toString().replaceAll("[^a-zA-Z0-9]+.*", "")) //
-                                                             .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
-                       String condensedRepresentation = counts.entrySet().stream() //
-                                                              .sorted(Comparator.comparingLong(Map.Entry::getValue)) //
-                                                              .map(ee -> String.format("%d x %s", ee.getValue(), ee.getKey())) //
-                                                              .collect(Collectors.joining(", ", "[", "]"));
-                       return String.format("%s=%s", e.getKey(), condensedRepresentation);
-                   }) //
-                   .collect(Collectors.joining(", ", "[", noSignulars ? "]" : ",...]"));
+                .filter(e -> !ignoreForConsistency(e.getKey())) //
+                .filter(e -> 1 < e.getValue().size()) //
+                .sortedByDesc(e -> e.getValue().size()) //
+                .map(e -> { //
+                    java.util.Map<String, Long> counts = e.getValue() //
+                            .map(m -> m.toString().replaceAll("[^a-zA-Z0-9]+.*", "")) //
+                            .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
+                    String condensedRepresentation = counts.entrySet().stream() //
+                            .sorted(Comparator.comparingLong(Map.Entry::getValue)) //
+                            .map(ee -> String.format("%d x %s", ee.getValue(), ee.getKey())) //
+                            .collect(Collectors.joining(", ", "[", "]"));
+                    return String.format("%s=%s", e.getKey(), condensedRepresentation);
+                }) //
+                .collect(Collectors.joining(", ", "[", noSignulars ? "]" : ",...]"));
     }
 
     public static LeafTransaction getCurrent() {
@@ -92,7 +95,7 @@ public abstract class LeafTransaction extends Transaction {
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T setDefault(O object, Setable<O, T> property) {
-        return set(object, property, property.getDefault());
+        return set(object, property, property.getDefault(object));
     }
 
     public <O, T> T get(O object, Getable<O, T> property) {
@@ -114,7 +117,7 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void clear(Mutable object) {
         for (Setable setable : toBeCleared(object)) {
-            set(object, setable, setable.getDefault());
+            set(object, setable, setable.getDefault(object));
         }
     }
 
@@ -137,7 +140,7 @@ public abstract class LeafTransaction extends Transaction {
                     set(container, NON_SCHEDULED[i].children, Set::remove, object);
                 }
             }
-            object    = container;
+            object = container;
             container = dParent(object);
         }
     }

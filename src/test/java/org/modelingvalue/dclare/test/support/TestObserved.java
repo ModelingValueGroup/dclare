@@ -15,31 +15,34 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.QuadConsumer;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.collections.util.TriFunction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.SetableModifier;
 
 public class TestObserved<O, T> extends Observed<O, T> {
-    private static Map<Object, TestObserved<?, ?>>          staticObservedMap = Map.of();
+    private static Map<Object, TestObserved<?, ?>>              staticObservedMap = Map.of();
 
-    private final BiFunction<TestObserved<O, T>, T, Object> serializeValue;
-    private final BiFunction<TestObserved<O, T>, Object, T> deserializeValue;
+    private final TriFunction<O, TestObserved<O, T>, T, Object> serializeValue;
+    private final TriFunction<O, TestObserved<O, T>, Object, T> deserializeValue;
 
     @SuppressWarnings("unchecked")
     public static <C, V> TestObserved<C, V> existing(Object id, SetableModifier... modifiers) {
         return (TestObserved<C, V>) staticObservedMap.get(id);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, BiFunction<TestObserved<C, V>, V, Object> serializeValue, BiFunction<TestObserved<C, V>, Object, V> deserializeValue, V def, SetableModifier... modifiers) {
+    public static <C, V> Observed<C, V> of(Object id, TriFunction<C, TestObserved<C, V>, V, Object> serializeValue, TriFunction<C, TestObserved<C, V>, Object, V> deserializeValue, V def, SetableModifier... modifiers) {
         return new TestObserved<>(id, serializeValue, deserializeValue, def, null, null, null, modifiers);
     }
 
-    protected TestObserved(Object id, BiFunction<TestObserved<O, T>, T, Object> serializeValue, BiFunction<TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
-        super(id, def, opposite, scope, changed, modifiers);
+    protected TestObserved(Object id, TriFunction<O, TestObserved<O, T>, T, Object> serializeValue, TriFunction<O, TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+        super(id, o -> def, opposite, scope, changed, modifiers);
         this.serializeValue = serializeValue;
         this.deserializeValue = deserializeValue;
         synchronized (TestObserved.class) {
@@ -47,11 +50,11 @@ public class TestObserved<O, T> extends Observed<O, T> {
         }
     }
 
-    public BiFunction<TestObserved<O, T>, T, Object> getSerializeValue() {
+    public TriFunction<O, TestObserved<O, T>, T, Object> getSerializeValue() {
         return serializeValue;
     }
 
-    public BiFunction<TestObserved<O, T>, Object, T> getDeserializeValue() {
+    public TriFunction<O, TestObserved<O, T>, Object, T> getDeserializeValue() {
         return deserializeValue;
     }
 }

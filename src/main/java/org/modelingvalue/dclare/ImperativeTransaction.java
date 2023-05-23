@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.dclare.Priority.Queued;
-
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -134,7 +134,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                 DefaultMap<Setable, Object> imperProps = imper.getProperties(object);
                 for (Setable setable : e.getValue()) {
-                    dclareProps = StateMap.setProperties(dclareProps, setable, imperProps.get(setable));
+                    dclareProps = StateMap.setProperties(object, dclareProps, setable, imperProps.get(setable));
                 }
                 dclare = dclare.set(object, dclareProps);
             }

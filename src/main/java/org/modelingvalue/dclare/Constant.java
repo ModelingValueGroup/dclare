@@ -32,11 +32,11 @@ public class Constant<O, T> extends Setable<O, T> {
     public static final Context<Pair<Object, Constant<?, ?>>> DERIVED = Context.of(null);
 
     public static <C, V> Constant<C, V> of(Object id, V def, SetableModifier... modifiers) {
-        return new Constant<>(id, def, null, null, null, null, modifiers);
+        return new Constant<>(id, o -> def, null, null, null, null, modifiers);
     }
 
     public static <C, V> Constant<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
-        return new Constant<>(id, def, null, null, null, changed, modifiers);
+        return new Constant<>(id, o -> def, null, null, null, changed, modifiers);
     }
 
     public static <C, V> Constant<C, V> of(Object id, Function<C, V> deriver, SetableModifier... modifiers) {
@@ -44,7 +44,7 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     public static <C, V> Constant<C, V> of(Object id, V def, Function<C, V> deriver, SetableModifier... modifiers) {
-        return new Constant<>(id, def, null, null, deriver, null, modifiers);
+        return new Constant<>(id, o -> def, null, null, deriver, null, modifiers);
     }
 
     public static <C, V> Constant<C, V> of(Object id, Function<C, V> deriver, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
@@ -52,17 +52,17 @@ public class Constant<O, T> extends Setable<O, T> {
     }
 
     public static <C, V> Constant<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Function<C, V> deriver, SetableModifier... modifiers) {
-        return new Constant<>(id, def, opposite, null, deriver, null, modifiers);
+        return new Constant<>(id, o -> def, opposite, null, deriver, null, modifiers);
     }
 
     public static <C, V> Constant<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, Function<C, V> deriver, SetableModifier... modifiers) {
-        return new Constant<>(id, def, opposite, scope, deriver, null, modifiers);
+        return new Constant<>(id, o -> def, opposite, scope, deriver, null, modifiers);
     }
 
     private final Function<O, T> deriver;
     private final boolean        durable;
 
-    protected Constant(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+    protected Constant(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.deriver = deriver;
         this.durable = SetableModifier.durable.in(modifiers);

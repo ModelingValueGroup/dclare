@@ -675,7 +675,7 @@ public class ObserverTransaction extends ActionTransaction {
             runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable + "." + observer + " (" + replacing + "==" + replaced + ")"));
         }
         if (Newable.D_INITIAL_CONSTRUCTION.get(replacing.newable()).isDirect()) {
-            super.set(replaced.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(), replacing.newable());
+            super.set(replaced.newable(), Newable.D_REPLACING, Newable.D_REPLACING.getDefault(replaced.newable()), replacing.newable());
         }
         for (Construction cons : replaced.allDerivations()) {
             super.set(replacing.newable(), Newable.D_ALL_DERIVATIONS, QualifiedSet::put, cons);

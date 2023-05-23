@@ -15,6 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.QualifiedSet;
@@ -23,18 +30,11 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.sync.Util;
 import org.modelingvalue.json.ToJson;
 
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.function.Predicate;
-
 @SuppressWarnings({"rawtypes", "unused"})
 public class StateToJson extends ToJson {
-    public static final  String                            ID_FIELD_NAME     = "@id";
-    public static final  String                            ID_REF_FIELD_NAME = "@idref";
-    public static final  String                            NAME_FIELD_NAME   = "name";
+    public static final String                             ID_FIELD_NAME     = "@id";
+    public static final String                             ID_REF_FIELD_NAME = "@idref";
+    public static final String                             NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
@@ -85,7 +85,7 @@ public class StateToJson extends ToJson {
             Collection<Entry<Object, Object>> stream = mutable.dClass().dSetables() //
                     .filter(getSetableFilter()) //
                     .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))) //
-                    .filter(pair -> !Objects.equals(pair.b(), pair.a().getDefault())) //
+                    .filter(pair -> !Objects.equals(pair.b(), ((Setable) pair.a()).getDefault(mutable))) //
                     .map(p -> (Entry<Object, Object>) new SimpleEntry<>((Object) renderTag(p.a()), renderValue(o, p.a(), p.b()))) //
                     .sorted(FIELD_SORTER);
             if (renderIdFor(mutable)) {

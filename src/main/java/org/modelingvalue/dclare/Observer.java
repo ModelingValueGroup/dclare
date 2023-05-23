@@ -209,7 +209,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     public static final class Traces extends Setable<Mutable, List<ObserverTrace>> {
 
         protected Traces(Pair<Observer, String> id) {
-            super(id, List.of(), null, null, null);
+            super(id, m -> List.of(), null, null, null);
         }
 
         @Override
@@ -231,7 +231,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                     result = result.add(new DebugTrace(object, observer(), trace));
                 }
                 if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
-                    set(object, getDefault());
+                    set(object, getDefault(object));
                 }
             }
             return result;
@@ -249,7 +249,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @SuppressWarnings("unchecked")
         private Observerds(Observer observer) {
-            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
+            super(observer, m -> Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
@@ -322,7 +322,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @SuppressWarnings("unchecked")
         private Constructed(Observer observer) {
-            super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
+            super(observer, m -> Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Newable before = pre.get(reason);
                     Newable after = post.get(reason);

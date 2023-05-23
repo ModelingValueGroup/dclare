@@ -19,6 +19,7 @@ import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -40,22 +41,42 @@ public class Setable<O, T> extends Getable<O, T> {
     private static final Context<Boolean> MOVING                      = Context.of(false);
 
     public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
-        return new Setable<>(id, def, null, null, null, modifiers);
+        return new Setable<>(id, c -> def, null, null, null, modifiers);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
-        return new Setable<>(id, def, null, null, changed, modifiers);
+        return new Setable<>(id, c -> def, null, null, changed, modifiers);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
-        return new Setable<>(id, def, opposite, null, null, modifiers);
+        return new Setable<>(id, c -> def, opposite, null, null, modifiers);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
-        return new Setable<>(id, def, null, scope, changed, modifiers);
+        return new Setable<>(id, c -> def, null, scope, changed, modifiers);
     }
 
     public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, c -> def, opposite, scope, null, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, null, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, null, changed, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+        return new Setable<>(id, def, opposite, null, null, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+        return new Setable<>(id, def, null, scope, changed, modifiers);
+    }
+
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
         return new Setable<>(id, def, opposite, scope, null, modifiers);
     }
 
@@ -77,7 +98,7 @@ public class Setable<O, T> extends Getable<O, T> {
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
 
-    protected Setable(Object id, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+    protected Setable(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def);
         this.plumbing = SetableModifier.plumbing.in(modifiers);
         this.containment = SetableModifier.containment.in(modifiers);
@@ -142,7 +163,7 @@ public class Setable<O, T> extends Getable<O, T> {
 
     public Constant<O, T> constant() {
         if (constant == null) {
-            constant = Constant.of(this, def);
+            constant = new Constant<O, T>(this, defaultFunction(), null, null, null, null);
         }
         return constant;
     }
@@ -220,7 +241,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public T setDefault(O object) {
-        return set(object, getDefault());
+        return set(object, getDefault(object));
     }
 
     public T set(O object, T value) {
