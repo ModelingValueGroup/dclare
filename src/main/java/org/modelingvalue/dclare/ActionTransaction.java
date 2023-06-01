@@ -252,6 +252,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return universeTransaction().preOuterStartState();
     }
 
+    protected State startState() {
+        return universeTransaction().startState();
+    }
+
     protected Collection<IState> longHistory() {
         return universeTransaction().longHistory();
     }
