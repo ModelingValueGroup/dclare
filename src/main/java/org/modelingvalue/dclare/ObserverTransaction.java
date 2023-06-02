@@ -15,11 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
@@ -30,6 +25,11 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE             = Set.of();
@@ -509,7 +509,7 @@ public class ObserverTransaction extends ActionTransaction {
     private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed, boolean forward, boolean isNew) {
         return removed(object, observed, innerStartState(), state(), removed, forward) ? deferInner : //
                 (isNew && removed(object, observed, startState(), insiteOuterStartState(), removed, forward)) ? deferInsiteOuter : //
-                        becameContained(observed, removed, outerStartState(), innerStartState()) ? deferInsiteOuter : //
+                        becameContained(observed, removed, insiteOuterStartState(), innerStartState()) ? deferInsiteOuter : //
                                 removed(object, observed, preOuterStartState(), outerStartState(), removed, forward) ? deferOuter : null;
     }
 
@@ -517,7 +517,7 @@ public class ObserverTransaction extends ActionTransaction {
         return changed(object, observed, innerStartState(), state(), pre, post, forward) ? deferInner : //
                 becameDerived(observed, post, outsiteInnerStartState(), current()) ? deferOutsiteInner : //
                         (isNew && changed(object, observed, startState(), insiteOuterStartState(), pre, post, forward)) ? deferInsiteOuter : //
-                                becameContained(observed, pre, outerStartState(), innerStartState()) ? deferInsiteOuter : //
+                                becameContained(observed, pre, insiteOuterStartState(), innerStartState()) ? deferInsiteOuter : //
                                         changed(object, observed, preOuterStartState(), outerStartState(), pre, post, forward) ? deferOuter : null;
     }
 
