@@ -27,7 +27,9 @@ public enum Priority implements LeafModifier, Internable {
 
     inner,
 
-    mid,
+    outsiteInner,
+
+    insiteOuter,
 
     outer,
 

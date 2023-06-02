@@ -40,7 +40,7 @@ public class MatchInfo {
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
         this.newable = newable;
         ConstantState constants = otx.universeTransaction().tmpConstants();
-        removed = otx.midStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
+        removed = otx.outsiteInnerStartState().get(newable, Mutable.D_PARENT_CONTAINING) == null && //
                 otx.preOuterStartState().get(newable, Mutable.D_PARENT_CONTAINING) != null;
         initialConstruction = newable.dInitialConstruction();
         allDerivations = newable.dAllDerivations();
