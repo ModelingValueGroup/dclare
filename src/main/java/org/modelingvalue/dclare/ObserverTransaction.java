@@ -15,41 +15,40 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 import org.modelingvalue.collections.*;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.Observer.Constructed;
+import org.modelingvalue.dclare.Priority.Concurrents;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.NonDeterministicException;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
 import org.modelingvalue.dclare.ex.TooManyObservedException;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 public class ObserverTransaction extends ActionTransaction {
-    private static final Set<Boolean>                            FALSE             = Set.of();
-    private static final Set<Boolean>                            TRUE              = Set.of(true);
-    public static final Context<Boolean>                         OBSERVE           = Context.of(true);
-    public static final Context<Boolean>                         RIPPLE_OUT        = Context.of(false);
+    private static final Set<Boolean>                            FALSE          = Set.of();
+    private static final Set<Boolean>                            TRUE           = Set.of(true);
+    public static final Context<Boolean>                         OBSERVE        = Context.of(true);
+    public static final Context<Boolean>                         RIPPLE_OUT     = Context.of(false);
 
     @SuppressWarnings("rawtypes")
-    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds         = Concurrent.of();
+    private final Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds      = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private final Concurrent<Map<Construction.Reason, Newable>>  constructions     = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       emptyMandatory    = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       changed           = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       deferInner        = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       deferOutsiteInner = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       deferInsiteOuter  = Concurrent.of();
-    private final Concurrent<Set<Boolean>>                       deferOuter        = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
+    private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
+    private final Concurrents<Set<Boolean>>                      defer          = new Concurrents<>(Priority.two);
 
     private Pair<Instant, Throwable>                             throwable;
 
+    @SuppressWarnings("unchecked")
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
     }
@@ -68,10 +67,7 @@ public class ObserverTransaction extends ActionTransaction {
         observeds.merge();
         emptyMandatory.merge();
         changed.merge();
-        deferInner.merge();
-        deferOutsiteInner.merge();
-        deferInsiteOuter.merge();
-        deferOuter.merge();
+        defer.merge();
         Map<Reason, Newable> cons = constructions.merge();
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
@@ -102,10 +98,7 @@ public class ObserverTransaction extends ActionTransaction {
             constructions.init(Map.of());
             emptyMandatory.init(FALSE);
             changed.init(FALSE);
-            deferInner.init(FALSE);
-            deferOutsiteInner.init(FALSE);
-            deferInsiteOuter.init(FALSE);
-            deferOuter.init(FALSE);
+            defer.init(FALSE);
             try {
                 doRun(pre, universeTransaction);
             } catch (Throwable t) {
@@ -126,10 +119,7 @@ public class ObserverTransaction extends ActionTransaction {
                 merge();
                 finish(pre, observer);
                 changed.clear();
-                deferInner.clear();
-                deferOutsiteInner.clear();
-                deferInsiteOuter.clear();
-                deferOuter.clear();
+                defer.clear();
                 observeds.clear();
                 constructions.clear();
                 emptyMandatory.clear();
@@ -151,22 +141,16 @@ public class ObserverTransaction extends ActionTransaction {
         boolean traced = false;
         if (!observer.atomic() && changed.get().equals(TRUE)) {
             traced = checkTooManyChanges(pre, observeds);
-            trigger(mutable, (Observer<Mutable>) observer, Priority.immediate);
-        } else if (deferInner.get().equals(TRUE)) {
-            rollback(observer.atomic());
-            trigger(mutable, (Observer<Mutable>) observer, Priority.inner);
-        } else if (deferOutsiteInner.get().equals(TRUE)) {
-            rollback(observer.atomic());
-            trigger(mutable, (Observer<Mutable>) observer, Priority.outsiteInner);
-        } else if (deferInsiteOuter.get().equals(TRUE)) {
-            rollback(observer.atomic());
-            trigger(mutable, (Observer<Mutable>) observer, Priority.insiteOuter);
-        } else if (deferOuter.get().equals(TRUE)) {
-            rollback(observer.atomic());
-            trigger(mutable, (Observer<Mutable>) observer, Priority.outer);
-        } else if (observer.atomic() && changed.get().equals(TRUE)) {
-            traced = checkTooManyChanges(pre, observeds);
-            trigger(mutable, (Observer<Mutable>) observer, Priority.immediate);
+            trigger(mutable, (Observer<Mutable>) observer, Priority.one);
+        } else {
+            Priority def = defer.first(TRUE::equals);
+            if (def != null) {
+                rollback(observer.atomic());
+                trigger(mutable, (Observer<Mutable>) observer, def);
+            } else if (changed.get().equals(TRUE)) {
+                traced = checkTooManyChanges(pre, observeds);
+                trigger(mutable, (Observer<Mutable>) observer, Priority.one);
+            }
         }
         if (!traced && (observer().isTracing() || (universeTransaction().stats().debugging() && changed.get().equals(TRUE)))) {
             trace(pre, observeds);
@@ -389,12 +373,12 @@ public class ObserverTransaction extends ActionTransaction {
                     Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
                 }
             } else {
-                O pre = (O) actualize(preOutsiteInnerStartState().get(mutable, constructed)).get(reason);
-                O post = (O) actualize(outsiteInnerStartState().get(mutable, constructed)).get(reason);
+                O pre = (O) actualize(preStartState(Priority.three).get(mutable, constructed)).get(reason);
+                O post = (O) actualize(startState(Priority.three).get(mutable, constructed)).get(reason);
                 if (pre == null && post != null && !post.equals(result)) {
                     setConstructed(reason, cons, result);
-                    deferOutsiteInner.set(TRUE);
-                    traceRippleOut(mutable, observer(), result, post, false);
+                    defer.set(Priority.three, TRUE);
+                    traceRippleOut(mutable, observer(), result, post);
                     return post;
                 }
             }
@@ -416,20 +400,20 @@ public class ObserverTransaction extends ActionTransaction {
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
         return RIPPLE_OUT.get(true, () -> {
             boolean forward = isForward(object, observed, pre, post);
-            boolean isNew = !insiteOuterStartState().get(mutable(), Mutable.D_OBSERVERS).contains(observer());
+            boolean isNew = !startState(Priority.four).get(mutable(), Mutable.D_OBSERVERS).contains(observer());
             if (isNonMapCollection(pre) && isNonMapCollection(post)) {
                 ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
                 Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
                 Setable.<T, E> diff(pre, post, added -> {
-                    Concurrent<Set<Boolean>> delay = added(object, many, added, forward, isNew);
+                    Priority delay = added(object, many, added, forward, isNew);
                     if (delay != null) {
-                        delay.set(TRUE);
+                        defer.set(delay, TRUE);
                         result[0] = result[0].remove(added);
                     }
                 }, removed -> {
-                    Concurrent<Set<Boolean>> delay = removed(object, many, removed, forward, isNew);
+                    Priority delay = removed(object, many, removed, forward, isNew);
                     if (delay != null) {
-                        delay.set(TRUE);
+                        defer.set(delay, TRUE);
                         if (pre instanceof List && post instanceof List) {
                             int i = Math.min(((List<E>) pre).firstIndexOf(removed), result[0].size());
                             result[0] = ((List<E>) result[0]).insert(i, removed);
@@ -439,14 +423,14 @@ public class ObserverTransaction extends ActionTransaction {
                     }
                 });
                 if (!Objects.equals(post, result[0])) {
-                    traceRippleOut(object, observed, post, result[0], forward);
+                    traceRippleOut(object, observed, post, result[0]);
                 }
                 return (T) result[0];
             } else {
-                Concurrent<Set<Boolean>> delay = changed(object, observed, pre, post, forward, isNew);
+                Priority delay = changed(object, observed, pre, post, forward, isNew);
                 if (delay != null) {
-                    delay.set(TRUE);
-                    traceRippleOut(object, observed, post, pre, forward);
+                    defer.set(delay, TRUE);
+                    traceRippleOut(object, observed, post, pre);
                     return pre;
                 } else {
                     return post;
@@ -462,8 +446,8 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post) {
         Mutable mutable = mutable();
-        Pair<Mutable, Setable<Mutable, ?>> intermediatePair = innerStartState().get(mutable, Mutable.D_PARENT_CONTAINING);
-        if (!Objects.equals(preInnerStartState().get(mutable, Mutable.D_PARENT_CONTAINING), intermediatePair) || !Objects.equals(intermediatePair, state().get(mutable, Mutable.D_PARENT_CONTAINING))) {
+        Pair<Mutable, Setable<Mutable, ?>> intermediatePair = startState(Priority.INNER).get(mutable, Mutable.D_PARENT_CONTAINING);
+        if (!Objects.equals(preStartState(Priority.INNER).get(mutable, Mutable.D_PARENT_CONTAINING), intermediatePair) || !Objects.equals(intermediatePair, state().get(mutable, Mutable.D_PARENT_CONTAINING))) {
             return true;
         } else {
             boolean handlingContainingCollections = pre instanceof ContainingCollection && post instanceof ContainingCollection;
@@ -474,12 +458,12 @@ public class ObserverTransaction extends ActionTransaction {
                 if (!inObserved.isPlumbing()) {
                     Mutable inObject = o.dResolve(mutable);
                     if (!inObject.equals(outObject) || !inObserved.equals(outObserved)) {
-                        Object intermediateObject = innerStartState().get(inObject, inObserved);
-                        return !Objects.equals(preInnerStartState().get(inObject, inObserved), intermediateObject) || !Objects.equals(intermediateObject, state().get(inObject, inObserved));
+                        Object intermediateObject = startState(Priority.INNER).get(inObject, inObserved);
+                        return !Objects.equals(preStartState(Priority.INNER).get(inObject, inObserved), intermediateObject) || !Objects.equals(intermediateObject, state().get(inObject, inObserved));
                     } else if (handlingContainingCollections) {
                         if (match[0] == null) {
-                            match[0] = isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preInnerStartState(), innerStartState()) //
-                                    || isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, innerStartState(), state());
+                            match[0] = isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preStartState(Priority.INNER), startState(Priority.INNER)) //
+                                    || isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, startState(Priority.INNER), state());
                         }
                         return match[0];
                     }
@@ -499,26 +483,26 @@ public class ObserverTransaction extends ActionTransaction {
         return result[0];
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> added(O object, Observed<O, T> observed, E added, boolean forward, boolean isNew) {
-        return added(object, observed, innerStartState(), state(), added, forward) ? deferInner : //
-                becameDerived(observed, added, outsiteInnerStartState(), current()) ? deferOutsiteInner : //
-                        (isNew && added(object, observed, startState(), insiteOuterStartState(), added, forward)) ? deferInsiteOuter : //
-                                added(object, observed, preOuterStartState(), outerStartState(), added, forward) ? deferOuter : null;
+    private <O, T extends ContainingCollection<E>, E> Priority added(O object, Observed<O, T> observed, E added, boolean forward, boolean isNew) {
+        return added(object, observed, startState(Priority.two), state(), added, forward) ? Priority.two : //
+                becameDerived(observed, added, startState(Priority.three), current()) ? Priority.three : //
+                        (isNew && added(object, observed, startState(), startState(Priority.four), added, forward)) ? Priority.four : //
+                                added(object, observed, preStartState(Priority.five), startState(Priority.five), added, forward) ? Priority.five : null;
     }
 
-    private <O, T extends ContainingCollection<E>, E> Concurrent<Set<Boolean>> removed(O object, Observed<O, T> observed, E removed, boolean forward, boolean isNew) {
-        return removed(object, observed, innerStartState(), state(), removed, forward) ? deferInner : //
-                (isNew && removed(object, observed, startState(), insiteOuterStartState(), removed, forward)) ? deferInsiteOuter : //
-                        becameContained(observed, removed, insiteOuterStartState(), innerStartState()) ? deferInsiteOuter : //
-                                removed(object, observed, preOuterStartState(), outerStartState(), removed, forward) ? deferOuter : null;
+    private <O, T extends ContainingCollection<E>, E> Priority removed(O object, Observed<O, T> observed, E removed, boolean forward, boolean isNew) {
+        return removed(object, observed, startState(Priority.two), state(), removed, forward) ? Priority.two : //
+                (isNew && removed(object, observed, startState(), startState(Priority.four), removed, forward)) ? Priority.four : //
+                        becameContained(observed, removed, startState(Priority.four), startState(Priority.two)) ? Priority.four : //
+                                removed(object, observed, preStartState(Priority.five), startState(Priority.five), removed, forward) ? Priority.five : null;
     }
 
-    private <O, T> Concurrent<Set<Boolean>> changed(O object, Observed<O, T> observed, T pre, T post, boolean forward, boolean isNew) {
-        return changed(object, observed, innerStartState(), state(), pre, post, forward) ? deferInner : //
-                becameDerived(observed, post, outsiteInnerStartState(), current()) ? deferOutsiteInner : //
-                        (isNew && changed(object, observed, startState(), insiteOuterStartState(), pre, post, forward)) ? deferInsiteOuter : //
-                                becameContained(observed, pre, insiteOuterStartState(), innerStartState()) ? deferInsiteOuter : //
-                                        changed(object, observed, preOuterStartState(), outerStartState(), pre, post, forward) ? deferOuter : null;
+    private <O, T> Priority changed(O object, Observed<O, T> observed, T pre, T post, boolean forward, boolean isNew) {
+        return changed(object, observed, startState(Priority.two), state(), pre, post, forward) ? Priority.two : //
+                becameDerived(observed, post, startState(Priority.three), current()) ? Priority.three : //
+                        (isNew && changed(object, observed, startState(), startState(Priority.four), pre, post, forward)) ? Priority.four : //
+                                becameContained(observed, pre, startState(Priority.four), startState(Priority.two)) ? Priority.four : //
+                                        changed(object, observed, preStartState(Priority.five), startState(Priority.five), pre, post, forward) ? Priority.five : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added, boolean forward) {
@@ -569,11 +553,15 @@ public class ObserverTransaction extends ActionTransaction {
         return Objects.equals(before, post) && (!forward || (postState != state() && !Objects.equals(before, postState.get(object, observed))));
     }
 
-    private <T, O> void traceRippleOut(O object, Feature feature, Object post, Object result, boolean forward) {
+    private <T, O> void traceRippleOut(O object, Feature feature, Object post, Object result) {
         if (universeTransaction().getConfig().isTraceRippleOut()) {
-            String level = deferInner.get().equals(TRUE) ? "INNER" : deferOutsiteInner.get().equals(TRUE) ? "OUTSITE_INNER" : deferInsiteOuter.get().equals(TRUE) ? "INSITE_OUTER" : forward ? "OUTER" : "BACKWARD";
-            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER", this) + mutable() + "." + observer() + " " + level + " (" + object + "." + feature + "=" + result + "<-" + post + ")"));
+            runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DEFER", this) + mutable() + "." + observer() + //
+                    " " + deferPriorityName() + " (" + object + "." + feature + "=" + result + "<-" + post + ")"));
         }
+    }
+
+    private String deferPriorityName() {
+        return defer.first(TRUE::equals).name().toUpperCase();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

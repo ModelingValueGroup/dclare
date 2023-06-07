@@ -48,20 +48,20 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     @Override
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
         if (isOld(object)) {
-            return universeTransaction().outerStartState().get(object, getable);
+            return universeTransaction().startState(Priority.OUTER).get(object, getable);
         } else {
             return super.getNonDerived(object, getable);
         }
     }
 
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
-        T pre = universeTransaction().preOuterStartState().get(object, getable);
-        T post = universeTransaction().outerStartState().get(object, getable);
+        T pre = universeTransaction().preStartState(Priority.OUTER).get(object, getable);
+        T post = universeTransaction().startState(Priority.OUTER).get(object, getable);
         return !Objects.equals(pre, post);
     }
 
     private <O> boolean isOld(O object) {
-        return object instanceof Mutable && universeTransaction().outerStartState().get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
+        return object instanceof Mutable && universeTransaction().startState(Priority.OUTER).get((Mutable) object, Mutable.D_PARENT_CONTAINING) != null;
     }
 
     public Mutable getContextMutable() {

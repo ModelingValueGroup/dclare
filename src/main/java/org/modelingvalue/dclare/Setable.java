@@ -208,7 +208,7 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    tx.set((Mutable) object, Priority.immediate.children, Set::add, added);
+                    tx.set((Mutable) object, Priority.one.children, Set::add, added);
                 }
             }, removed -> {
                 for (Priority dir : Priority.ALL) {

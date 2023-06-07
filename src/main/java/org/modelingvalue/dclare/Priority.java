@@ -15,29 +15,33 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.Arrays;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 
 public enum Priority implements LeafModifier, Internable {
 
-    immediate,
+    zero, // Running
 
-    inner,
+    one, // Scheduled immediate as possible
 
-    outsiteInner,
+    two, // Deferred scheduled inner
 
-    insiteOuter,
+    three,
 
-    outer,
+    four,
 
-    scheduled;
+    five; // Deferred scheduled outer
 
     // To prevent Array allocations each time Priority.values() is called.
-    public static final Priority[] ALL           = Priority.values();
-    public static final Priority[] NON_SCHEDULED = Arrays.copyOf(Priority.ALL, Priority.ALL.length - 1);
+    public static final Priority[] ALL   = Priority.values();
+    public static final Priority   INNER = two;
+    public static final Priority   OUTER = five;
 
     public final Queued<Action<?>> actions;
     public final Queued<Mutable>   children;
@@ -78,6 +82,113 @@ public enum Priority implements LeafModifier, Internable {
             return getClass().getSimpleName() + super.toString();
         }
 
+    }
+
+    public static class Concurrents<T> {
+
+        private final Concurrent<T>[] priorities;
+        private final Priority        start;
+
+        @SuppressWarnings("unchecked")
+        public Concurrents(Priority start) {
+            this.start = start;
+            priorities = new Concurrent[ALL.length - start.ordinal()];
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i] = Concurrent.of();
+            }
+        }
+
+        public void init(T init) {
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i].init(init);
+            }
+        }
+
+        public void merge() {
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i].merge();
+            }
+        }
+
+        public void clear() {
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i].clear();
+            }
+        }
+
+        public boolean set(Priority priority, T value) {
+            return priorities[priority.ordinal() - start.ordinal()].set(value);
+        }
+
+        public boolean change(Priority priority, UnaryOperator<T> oper) {
+            return priorities[priority.ordinal() - start.ordinal()].change(oper);
+        }
+
+        public T get(Priority priority) {
+            return priorities[priority.ordinal() - start.ordinal()].get();
+        }
+
+        public T result(Priority priority) {
+            return priorities[priority.ordinal() - start.ordinal()].result();
+        }
+
+        public Priority start() {
+            return start;
+        }
+
+        public Priority priority(int i) {
+            return ALL[i + start.ordinal()];
+        }
+
+        public Priority first(Function<T, Boolean> test) {
+            for (int i = 0; i < priorities.length; i++) {
+                if (test.apply(priorities[i].get())) {
+                    return priority(i);
+                }
+            }
+            return null;
+        }
+
+        public int length() {
+            return priorities.length;
+        }
+    }
+
+    public static class MutableStates {
+
+        private final MutableState[] priorities;
+        private final Priority       start;
+
+        @SuppressWarnings("unchecked")
+        public MutableStates(Priority start, Supplier<MutableState> init) {
+            this.start = start;
+            priorities = new MutableState[ALL.length - start.ordinal()];
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i] = init.get();
+            }
+        }
+
+        public MutableState get(Priority priority) {
+            return priorities[priority.ordinal() - start.ordinal()];
+        }
+
+        public void setState(State state) {
+            for (int i = 0; i < priorities.length; i++) {
+                priorities[i].setState(state);
+            }
+        }
+
+        public Priority start() {
+            return start;
+        }
+
+        public Priority priority(int i) {
+            return ALL[i + start.ordinal()];
+        }
+
+        public int length() {
+            return priorities.length;
+        }
     }
 
 }

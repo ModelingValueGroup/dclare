@@ -228,36 +228,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return action().direction();
     }
 
-    protected IState preInnerStartState() {
-        return universeTransaction().preInnerStartState();
+    public MutableState preStartState(Priority priority) {
+        return universeTransaction().preStartState(priority);
     }
 
-    protected IState innerStartState() {
-        return universeTransaction().innerStartState();
-    }
-
-    public IState outsiteInnerStartState() {
-        return universeTransaction().outsiteInnerStartState();
-    }
-
-    public IState preOutsiteInnerStartState() {
-        return universeTransaction().preOutsiteInnerStartState();
-    }
-
-    public IState insiteOuterStartState() {
-        return universeTransaction().insiteOuterStartState();
-    }
-
-    public IState preInsiteOuterStartState() {
-        return universeTransaction().preInsiteOuterStartState();
-    }
-
-    protected IState outerStartState() {
-        return universeTransaction().outerStartState();
-    }
-
-    protected State preOuterStartState() {
-        return universeTransaction().preOuterStartState();
+    public MutableState startState(Priority priority) {
+        return universeTransaction().startState(priority);
     }
 
     protected State startState() {

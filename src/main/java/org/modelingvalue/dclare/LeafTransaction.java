@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
+import static org.modelingvalue.dclare.Priority.ALL;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -129,15 +129,15 @@ public abstract class LeafTransaction extends Transaction {
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, priority.actions, Set::add, action);
-        for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
-            set(object, NON_SCHEDULED[i].actions, Set::remove, action);
+        for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
+            set(object, ALL[i].actions, Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
             set(container, priority.children, Set::add, object);
-            for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
-                if (current(object, NON_SCHEDULED[i].actions).isEmpty() && current(object, NON_SCHEDULED[i].children).isEmpty()) {
-                    set(container, NON_SCHEDULED[i].children, Set::remove, object);
+            for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
+                if (current(object, ALL[i].actions).isEmpty() && current(object, ALL[i].children).isEmpty()) {
+                    set(container, ALL[i].children, Set::remove, object);
                 }
             }
             object = container;

@@ -21,7 +21,7 @@ public class Action<O extends Mutable> extends Leaf {
 
     public static <M extends Mutable> Action<M> of(Object id) {
         return new Action<>(id, o -> {
-        }, Priority.immediate);
+        }, Priority.one);
     }
 
     public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
