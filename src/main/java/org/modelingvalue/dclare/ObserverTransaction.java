@@ -104,7 +104,9 @@ public class ObserverTransaction extends ActionTransaction {
             } catch (Throwable t) {
                 do {
                     if (t instanceof ConsistencyError) {
-                        throw (ConsistencyError) t;
+                        observer().stop();
+                        throwable = Pair.of(Instant.now(), t);
+                        return;
                     } else if (t instanceof NullPointerException) {
                         throwable = Pair.of(Instant.now(), t);
                         return;
@@ -217,8 +219,8 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings("rawtypes")
     private void handleTooManyChanges(ObserverTrace last, int changes) {
         if (last.done().size() >= (changes > universeTransaction().stats().maxTotalNrOfChanges() ? 1 : universeTransaction().stats().maxNrOfChanges())) {
+            throwable = Pair.of(Instant.now(), new TooManyChangesException(current(), last, changes));
             observer().stop();
-            throw new TooManyChangesException(current(), last, changes);
         }
     }
 

@@ -309,7 +309,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @Override
         public Set<ConsistencyError> checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
-            return p != null ? Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
+            return p != null ? p.b() instanceof ConsistencyError ? Set.of((ConsistencyError) p.b()) : Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
         }
     }
 
