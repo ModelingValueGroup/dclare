@@ -66,6 +66,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     private final Traces                        traces;
+    private final Debugs                        debugs;
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
@@ -113,6 +114,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     protected Observer(Object id, Consumer<O> action, Set<Setable<O, ?>> targets, LeafModifier... modifiers) {
         super(id, action, modifiers);
         traces = new Traces(Pair.of(this, "TRACES"));
+        debugs = new Debugs(Pair.of(this, "DEBUGS"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
@@ -245,6 +247,31 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
+    public static final class Debugs extends Setable<Mutable, List<ObserverTrace>> {
+
+        protected Debugs(Pair<Observer, String> id) {
+            super(id, m -> List.of(), null, null, null);
+        }
+
+        @Override
+        protected boolean deduplicate(List<ObserverTrace> value) {
+            return false;
+        }
+
+        @Override
+        public boolean checkConsistency() {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Set<ConsistencyError> checkConsistency(State state, Mutable object, List<ObserverTrace> post) {
+            return Set.of();
+        }
+
+    }
+
+    @SuppressWarnings("rawtypes")
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
         @SuppressWarnings("unchecked")
@@ -371,6 +398,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Traces traces() {
         return traces;
+    }
+
+    public Debugs debugs() {
+        return debugs;
     }
 
 }

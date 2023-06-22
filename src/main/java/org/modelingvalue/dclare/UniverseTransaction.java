@@ -23,18 +23,15 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StatusProvider;
 import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
@@ -575,7 +572,7 @@ public class UniverseTransaction extends MutableTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private void handleTooManyChanges(State state) {
-        if (!killed && stats().debugging()) {
+        if (!killed && stats().debugging() && !errors.get().anyMatch(e -> e instanceof TooManyChangesException)) {
             ObserverTrace trace = state//
                     .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
                     .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
@@ -602,25 +599,11 @@ public class UniverseTransaction extends MutableTransaction {
     protected void clearOrphans(Universe universe) {
         LeafTransaction tx = LeafTransaction.getCurrent();
         State postState = tx.state();
-        Map<Object, Map<Setable, Pair<Object, Object>>> orphans = preOrphansState//
-                .diff(postState, o -> {
-                    if (o instanceof Mutable && ((Mutable) o).dIsOrphan(postState)) {
-                        return !tx.toBeCleared((Mutable) o).isEmpty();
-                    } else {
-                        return false;
-                    }
-                }, StateMap.ALL_SETTABLES)//
-                .toMap(Function.identity());
+        Set<Mutable> orphans = preOrphansState.diff(postState, o -> {
+            return o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty();
+        }).map(e -> (Mutable) e.getKey()).toSet();
         orphansDetected.set(!orphans.isEmpty());
-        orphans.forEachOrdered(e0 -> clear(tx, (Mutable) e0.getKey()));
-    }
-
-    private void clear(LeafTransaction tx, Mutable orphan) {
-        orphan.dDeactivate();
-        tx.clear(orphan);
-        for (Mutable child : orphan.dChildren()) {
-            clear(tx, child);
-        }
+        orphans.forEach(tx::clearOrphan);
     }
 
     public boolean isStopped(State state) {

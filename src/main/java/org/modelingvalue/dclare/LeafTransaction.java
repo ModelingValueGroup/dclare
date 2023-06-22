@@ -121,6 +121,12 @@ public abstract class LeafTransaction extends Transaction {
         }
     }
 
+    protected final void clearOrphan(Mutable orphan) {
+        orphan.dDeactivate();
+        clear(orphan);
+        orphan.dChildren().forEach(this::clearOrphan);
+    }
+
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
         return state().getProperties(object).map(Entry::getKey).exclude(Setable::doNotClear);

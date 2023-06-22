@@ -137,31 +137,34 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void finish(State pre, Observer<?> observer) {
-        DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
         Mutable mutable = mutable();
-        checkTooManyObserved(mutable, observeds);
-        boolean traced = false;
-        if (!observer.atomic() && changed.get().equals(TRUE)) {
-            traced = checkTooManyChanges(pre, observeds);
-            trigger(mutable, (Observer<Mutable>) observer, Priority.one);
-        } else {
-            Priority def = defer.first(TRUE::equals);
-            if (def != null) {
-                rollback(observer.atomic());
-                trigger(mutable, (Observer<Mutable>) observer, def);
-            } else if (changed.get().equals(TRUE)) {
-                traced = checkTooManyChanges(pre, observeds);
+        try {
+            DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
+            checkTooManyObserved(mutable, observeds);
+            int nrOfChanges = 0;
+            if (!observer.atomic() && changed.get().equals(TRUE)) {
+                nrOfChanges = checkTooManyChanges(pre, observeds);
                 trigger(mutable, (Observer<Mutable>) observer, Priority.one);
+            } else {
+                Priority def = defer.first(TRUE::equals);
+                if (def != null) {
+                    rollback(observer.atomic());
+                    trigger(mutable, (Observer<Mutable>) observer, def);
+                } else if (changed.get().equals(TRUE)) {
+                    nrOfChanges = checkTooManyChanges(pre, observeds);
+                    trigger(mutable, (Observer<Mutable>) observer, Priority.one);
+                }
             }
-        }
-        if (!traced && (observer().isTracing() || (universeTransaction().stats().debugging() && changed.get().equals(TRUE)))) {
-            trace(pre, observeds);
-        }
-        DefaultMap preSources = super.set(mutable, observer.observeds(), observeds);
-        if (preSources.isEmpty() && !observeds.isEmpty()) {
-            observer.addInstance();
-        } else if (!preSources.isEmpty() && observeds.isEmpty()) {
-            observer.removeInstance();
+            trace(pre, observeds, nrOfChanges);
+            DefaultMap preSources = super.set(mutable, observer.observeds(), observeds);
+            if (preSources.isEmpty() && !observeds.isEmpty()) {
+                observer.addInstance();
+            } else if (!preSources.isEmpty() && observeds.isEmpty()) {
+                observer.removeInstance();
+            }
+        } catch (ConsistencyError ce) {
+            observer().stop();
+            throwable = Pair.of(Instant.now(), ce);
         }
         if (throwable != null) {
             if (universeTransaction().getConfig().isTraceActions()) {
@@ -182,45 +185,39 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected boolean checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+    protected int checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
         UniverseStatistics stats = universeTransaction().stats();
         int totalChanges = stats.bumpAndGetTotalChanges();
         int changesPerInstance = observer().countChangesPerInstance();
-        boolean tooManyChangesPerInstance = stats.tooManyChangesPerInstance(changesPerInstance, observer(), mutable());
-        boolean tooManyChangesInTotal = stats.maxTotalNrOfChanges() < totalChanges;
-        boolean tooMany = tooManyChangesPerInstance || tooManyChangesInTotal;
-        if (tooMany) {
+        if (stats.maxTotalNrOfChanges() < totalChanges) {
             stats.setDebugging(true);
-            if (stats.maxNrOfChanges() * 2 < changesPerInstance) {
-                handleTooManyChanges(trace(pre, observeds), changesPerInstance);
-            } else if (stats.maxTotalNrOfChanges() + stats.maxNrOfChanges() < totalChanges) {
-                handleTooManyChanges(trace(pre, observeds), totalChanges);
-            }
+            return totalChanges;
         }
-        return tooMany;
+        if (stats.tooManyChangesPerInstance(changesPerInstance, observer(), mutable())) {
+            stats.setDebugging(true);
+            return changesPerInstance;
+        }
+        return 0;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
-        Mutable mutable = mutable();
-        List<ObserverTrace> traces = observer().traces().get(mutable);
-        ObserverTrace trace = new ObserverTrace(mutable, observer(), traces.last(), observer().changesPerInstance(), //
-                observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
-                    m = m.dResolve(mutable);
-                    return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
-                })).toMap(e -> e), //
-                pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
-                    return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
-                }).toMap(e -> e));
-        observer().traces().set(mutable, traces.append(trace));
-        return trace;
-    }
-
-    @SuppressWarnings("rawtypes")
-    private void handleTooManyChanges(ObserverTrace last, int changes) {
-        if (last.done().size() >= (changes > universeTransaction().stats().maxTotalNrOfChanges() ? 1 : universeTransaction().stats().maxNrOfChanges())) {
-            throwable = Pair.of(Instant.now(), new TooManyChangesException(current(), last, changes));
-            observer().stop();
+    protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes) {
+        UniverseStatistics stats = universeTransaction().stats();
+        if (observer().isTracing() || (stats.debugging() && changed.get().equals(TRUE))) {
+            Setable<Mutable, List<ObserverTrace>> setable = observer().isTracing() ? observer().traces() : observer().debugs();
+            List<ObserverTrace> traces = setable.get(mutable());
+            ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), changes, //
+                    observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
+                        m = m.dResolve(mutable());
+                        return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
+                    })).toMap(e -> e), //
+                    pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
+                        return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
+                    }).toMap(e -> e));
+            setable.set(mutable(), traces.append(trace));
+            if (stats.debugging() && (trace.done().size() > stats.maxNrOfChanges() || changes > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges() * 2)) {
+                throw new TooManyChangesException(current(), trace, changes);
+            }
         }
     }
 
