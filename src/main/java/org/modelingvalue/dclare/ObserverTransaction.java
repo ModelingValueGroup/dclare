@@ -202,23 +202,31 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes) {
+        if (observer().isTracing()) {
+            trace(pre, observeds, changes, observer().traces());
+        }
         UniverseStatistics stats = universeTransaction().stats();
-        if (observer().isTracing() || (stats.debugging() && changed.get().equals(TRUE))) {
-            Setable<Mutable, List<ObserverTrace>> setable = observer().isTracing() ? observer().traces() : observer().debugs();
-            List<ObserverTrace> traces = setable.get(mutable());
-            ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), changes, //
-                    observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
-                        m = m.dResolve(mutable());
-                        return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
-                    })).toMap(e -> e), //
-                    pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
-                        return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
-                    }).toMap(e -> e));
-            setable.set(mutable(), traces.append(trace));
-            if (stats.debugging() && (trace.done().size() > stats.maxNrOfChanges() || changes > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges() * 2)) {
+        if (stats.debugging() && changed.get().equals(TRUE)) {
+            ObserverTrace trace = trace(pre, observeds, changes, observer().debugs());
+            if (trace.done().size() > stats.maxNrOfChanges() || changes > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges() * 2) {
                 throw new TooManyChangesException(current(), trace, changes);
             }
         }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes, Setable<Mutable, List<ObserverTrace>> setable) {
+        List<ObserverTrace> traces = setable.get(mutable());
+        ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), changes, //
+                observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
+                    m = m.dResolve(mutable());
+                    return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
+                })).toMap(e -> e), //
+                pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
+                    return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
+                }).toMap(e -> e));
+        setable.set(mutable(), traces.append(trace));
+        return trace;
     }
 
     @SuppressWarnings("rawtypes")
