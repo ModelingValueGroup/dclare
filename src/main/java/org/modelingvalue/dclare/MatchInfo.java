@@ -86,11 +86,6 @@ public class MatchInfo {
         return allDerivations;
     }
 
-    @SuppressWarnings("unchecked")
-    public <S> Comparable<S> sortKey() {
-        return newable.dSortKey();
-    }
-
     public Newable newable() {
         return newable;
     }

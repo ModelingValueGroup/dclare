@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -226,22 +225,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public Direction direction() {
         return action().direction();
-    }
-
-    public MutableState preStartState(Priority priority) {
-        return universeTransaction().preStartState(priority);
-    }
-
-    public MutableState startState(Priority priority) {
-        return universeTransaction().startState(priority);
-    }
-
-    protected State startState() {
-        return universeTransaction().startState();
-    }
-
-    protected Collection<IState> longHistory() {
-        return universeTransaction().longHistory();
     }
 
     @Override

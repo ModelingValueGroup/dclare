@@ -1028,8 +1028,8 @@ public class NewableTests {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void compareStates(State as, State bs) {
-        List<Newable> al = as.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
-        List<Newable> bl = bs.getObjects(Newable.class).sortedBy(Newable::dSortKey).toList();
+        List<Newable> al = as.getObjects(Newable.class).toList();
+        List<Newable> bl = bs.getObjects(Newable.class).toList();
         assertEquals(al.size(), bl.size());
         AtomicReference<Map<Pair<Newable, Newable>, Boolean>> done = new AtomicReference<>(Map.of());
         for (Newable an : al) {

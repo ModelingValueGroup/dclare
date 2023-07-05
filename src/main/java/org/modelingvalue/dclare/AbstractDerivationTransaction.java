@@ -235,7 +235,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+    public <O extends Mutable> O construct(Reason reason, Supplier<O> supplier) {
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);

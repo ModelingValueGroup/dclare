@@ -84,11 +84,6 @@ public class TestNewable extends TestMutable implements Newable {
         return dClass();
     }
 
-    @Override
-    public Comparable dSortKey() {
-        return id();
-    }
-
     private Collection<AnonymousClass> anonymous() {
         return dAllDerivations().map(Construction::reason).filter(TestReason.class).map(TestReason::anonymous);
     }

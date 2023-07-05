@@ -341,7 +341,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    public static class Constructed extends Observed<Mutable, Map<Reason, Newable>> {
+    public static class Constructed extends Observed<Mutable, Map<Reason, Mutable>> {
 
         public static Constructed of(Observer observer) {
             return new Constructed(observer);
@@ -351,8 +351,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private Constructed(Observer observer) {
             super(observer, m -> Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Newable before = pre.get(reason);
-                    Newable after = post.get(reason);
+                    Mutable before = pre.get(reason);
+                    Mutable after = post.get(reason);
                     if (!Objects.equals(before, after)) {
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {

@@ -179,8 +179,8 @@ public abstract class LeafTransaction extends Transaction {
     public abstract ActionInstance actionInstance();
 
     @SuppressWarnings("unchecked")
-    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        Newable result = null;
+    public <O extends Mutable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+        Mutable result = null;
         if (supplier != null) {
             result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
         } else if (constantState().isSet(this, reason, Construction.CONSTRUCTED)) {
@@ -201,4 +201,21 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     public abstract Direction direction();
+
+    public MutableState preStartState(Priority priority) {
+        return universeTransaction().preStartState(priority);
+    }
+
+    public MutableState startState(Priority priority) {
+        return universeTransaction().startState(priority);
+    }
+
+    protected State startState() {
+        return universeTransaction().startState();
+    }
+
+    protected Collection<IState> longHistory() {
+        return universeTransaction().longHistory();
+    }
+
 }

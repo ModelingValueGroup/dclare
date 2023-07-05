@@ -15,51 +15,18 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.*;
-
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedSet;
-import org.modelingvalue.dclare.Observer.Constructed;
+import static org.modelingvalue.dclare.SetableModifier.durable;
+import static org.modelingvalue.dclare.SetableModifier.plumbing;
 
 public interface Newable extends Mutable {
 
-    Constant<Newable, Construction>                          D_INITIAL_CONSTRUCTION = Constant.of("D_INITIAL_CONSTRUCTION", null, plumbing, durable);
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    Observed<Newable, QualifiedSet<Direction, Construction>> D_ALL_DERIVATIONS      = Observed.of("D_ALL_DERIVATIONS", QualifiedSet.of(c -> c.reason().direction()), (tx, o, b, a) -> {
-                                                                                        Setable.<QualifiedSet<Direction, Construction>, Construction> diff(b, a,                       //
-                                                                                                add -> {
-                                                                                                    Constructed cons = add.observer().constructed();
-                                                                                                    cons.set(add.object(), Map::put, Entry.of(add.reason(), o));
-                                                                                                },                                                                                     //
-                                                                                                rem -> {
-                                                                                                    Constructed cons = rem.observer().constructed();
-                                                                                                    if (o.equals(cons.current(rem.object()).get(rem.reason()))) {
-                                                                                                        cons.set(rem.object(), Map::removeKey, rem.reason());
-                                                                                                    }
-                                                                                                });
-                                                                                    }, plumbing, doNotMerge);
-
-    Constant<Newable, Object>                                D_IDENTITY             = Constant.of("D_IDENTITY", null, plumbing, durable);
-    Setable<Newable, Newable>                                D_REPLACING            = Setable.of("D_REPLACING", null, plumbing);
+    Constant<Newable, Object> D_IDENTITY  = Constant.of("D_IDENTITY", null, plumbing, durable);
+    Setable<Newable, Newable> D_REPLACING = Setable.of("D_REPLACING", null, plumbing);
 
     @SuppressWarnings("rawtypes")
     Object dIdentity();
 
     Object dNewableType();
-
-    @SuppressWarnings("rawtypes")
-    Comparable dSortKey();
-
-    default Construction dInitialConstruction() {
-        return D_INITIAL_CONSTRUCTION.get(this);
-    }
-
-    default QualifiedSet<Direction, Construction> dAllDerivations() {
-        QualifiedSet<Direction, Construction> derivations = D_ALL_DERIVATIONS.current(this);
-        Construction initial = dInitialConstruction();
-        return initial.isDerived() && derivations.get(initial.reason().direction()) == null ? derivations.add(initial) : derivations;
-    }
 
     @Override
     default void dActivate() {

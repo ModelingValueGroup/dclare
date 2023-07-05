@@ -41,7 +41,7 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings("rawtypes")
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds      = Concurrent.of();
     @SuppressWarnings({"rawtypes", "RedundantSuppression"})
-    private final Concurrent<Map<Construction.Reason, Newable>>  constructions  = Concurrent.of();
+    private final Concurrent<Map<Construction.Reason, Mutable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
     private final Concurrents<Set<Boolean>>                      defer          = new Concurrents<>(Priority.two);
@@ -68,7 +68,7 @@ public class ObserverTransaction extends ActionTransaction {
         emptyMandatory.merge();
         changed.merge();
         defer.merge();
-        Map<Reason, Newable> cons = constructions.merge();
+        Map<Reason, Mutable> cons = constructions.merge();
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
             observer().constructed().set(mutable(), cons);
@@ -358,7 +358,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @Override
     @SuppressWarnings({"unchecked"})
-    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+    public <O extends Mutable> O construct(Construction.Reason reason, Supplier<O> supplier) {
         if (Constant.DERIVED.get() != null) {
             return super.construct(reason, supplier);
         } else {
@@ -368,7 +368,7 @@ public class ObserverTransaction extends ActionTransaction {
             O result = (O) actualize(current(mutable, constructed)).get(reason);
             if (result == null) {
                 for (IState state : longHistory()) {
-                    Newable found = actualize(state.get(mutable, constructed)).get(reason);
+                    Mutable found = actualize(state.get(mutable, constructed)).get(reason);
                     if (found != null && current(found, Mutable.D_PARENT_CONTAINING) == null && //
                             current(found, Newable.D_ALL_DERIVATIONS).get(reason.direction()) == null) {
                         result = (O) found;
@@ -394,12 +394,12 @@ public class ObserverTransaction extends ActionTransaction {
         }
     }
 
-    private void setConstructed(Construction.Reason reason, Construction cons, Newable result) {
+    private void setConstructed(Construction.Reason reason, Construction cons, Mutable result) {
         Newable.D_ALL_DERIVATIONS.set(result, QualifiedSet::put, cons);
         constructions.set((m, e) -> m.put(reason, e), result);
     }
 
-    private Map<Reason, Newable> actualize(Map<Reason, Newable> map) {
+    private Map<Reason, Mutable> actualize(Map<Reason, Mutable> map) {
         return map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
     }
 
