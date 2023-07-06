@@ -27,7 +27,7 @@ public class Imperative extends Leaf {
 
     @Override
     public String id() {
-        return (String) id();
+        return (String) super.id();
     }
 
     @Override
