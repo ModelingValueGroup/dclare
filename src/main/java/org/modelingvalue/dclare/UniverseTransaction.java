@@ -686,6 +686,19 @@ public class UniverseTransaction extends MutableTransaction {
         return n;
     }
 
+    public List<ImperativeTransaction> getImperativeTransactions() {
+        return imperativeTransactions;
+    }
+
+    public ImperativeTransaction getImperativeTransaction(String id) {
+        for (ImperativeTransaction it : imperativeTransactions) {
+            if (it.imperative().id().equals(id)) {
+                return it;
+            }
+        }
+        return null;
+    }
+
     private void commit(State state, boolean timeTraveling, Iterator<ImperativeTransaction> it) {
         if (!killed && it.hasNext()) {
             ImperativeTransaction itx = it.next();

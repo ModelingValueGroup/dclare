@@ -65,17 +65,21 @@ public class ImperativeTransaction extends LeafTransaction {
         this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
-            LeafTransaction.getContext().setOnThread(this);
-            try {
-                r.run();
-            } catch (Throwable t) {
-                universeTransaction.handleException(t);
+            if (isOpen()) {
+                LeafTransaction.getContext().setOnThread(this);
+                try {
+                    r.run();
+                } catch (Throwable t) {
+                    universeTransaction.handleException(t);
+                }
             }
         }) : r -> scheduler.accept(() -> {
-            try {
-                LeafTransaction.getContext().run(this, r);
-            } catch (Throwable t) {
-                universeTransaction.handleException(t);
+            if (isOpen()) {
+                try {
+                    LeafTransaction.getContext().run(this, r);
+                } catch (Throwable t) {
+                    universeTransaction.handleException(t);
+                }
             }
         });
     }
