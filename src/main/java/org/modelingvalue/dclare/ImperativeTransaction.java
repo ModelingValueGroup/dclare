@@ -157,9 +157,10 @@ public class ImperativeTransaction extends LeafTransaction {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
-                        if (p instanceof Queued && !((Queued) p).children()) {
+                        if (p instanceof Queued && ((Queued) p).actions()) {
+                            Priority prio = imper.priority((Queued) p);
                             for (Action action : (Set<Action>) props.get(p)) {
-                                action.trigger((Mutable) e.getKey(), ((Queued) p).priority());
+                                action.trigger((Mutable) e.getKey(), prio);
                             }
                         } else {
                             p.set(e.getKey(), props.get(p));
@@ -175,7 +176,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        set(target, priority.actions, Set::add, action);
+        set(target, state.actions(priority), Set::add, action);
     }
 
     @SuppressWarnings("unchecked")

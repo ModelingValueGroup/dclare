@@ -34,8 +34,8 @@ public interface Newable extends Mutable {
     }
 
     @Override
-    default void dDeactivate() {
-        Mutable.super.dDeactivate();
+    default void dDeactivate(LeafTransaction tx) {
+        Mutable.super.dDeactivate(tx);
     }
 
     @Override

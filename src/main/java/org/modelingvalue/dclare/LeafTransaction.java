@@ -122,7 +122,7 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     protected final void clearOrphan(Mutable orphan) {
-        orphan.dDeactivate();
+        orphan.dDeactivate(this);
         clear(orphan);
         orphan.dChildren().forEach(this::clearOrphan);
     }
@@ -134,16 +134,16 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
-        set(object, priority.actions, Set::add, action);
+        set(object, state().actions(priority), Set::add, action);
         for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
-            set(object, ALL[i].actions, Set::remove, action);
+            set(object, state().actions(ALL[i]), Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
-            set(container, priority.children, Set::add, object);
+            set(container, state().children(priority), Set::add, object);
             for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
-                if (current(object, ALL[i].actions).isEmpty() && current(object, ALL[i].children).isEmpty()) {
-                    set(container, ALL[i].children, Set::remove, object);
+                if (current(object, state().actions(ALL[i])).isEmpty() && current(object, state().children(ALL[i])).isEmpty()) {
+                    set(container, state().children(ALL[i]), Set::remove, object);
                 }
             }
             object = container;

@@ -43,25 +43,13 @@ public enum Priority implements LeafModifier, Internable {
     public static final Priority   INNER = two;
     public static final Priority   OUTER = five;
 
-    public final Queued<Action<?>> actions;
-    public final Queued<Mutable>   children;
-
-    Priority() {
-        actions = new Queued<>(true);
-        children = new Queued<>(false);
-    }
-
-    public final class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
+    public final static class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
 
         private final boolean actions;
 
-        private Queued(boolean actions) {
-            super(Pair.of(Priority.this, actions), m -> Set.of(), null, null, null, SetableModifier.plumbing);
+        Queued(int i, boolean actions) {
+            super(Pair.of(i, actions), m -> Set.of(), null, null, null, SetableModifier.plumbing);
             this.actions = actions;
-        }
-
-        public Priority priority() {
-            return Priority.this;
         }
 
         public boolean actions() {
@@ -77,14 +65,15 @@ public enum Priority implements LeafModifier, Internable {
             return false;
         }
 
+        @SuppressWarnings("rawtypes")
         @Override
         public String toString() {
-            return getClass().getSimpleName() + super.toString();
+            return "Queued" + ((Pair) id()).a() + (actions ? "actions" : "children");
         }
 
     }
 
-    public static class Concurrents<T> {
+    public final static class Concurrents<T> {
 
         private final Concurrent<T>[] priorities;
         private final Priority        start;
@@ -154,7 +143,7 @@ public enum Priority implements LeafModifier, Internable {
         }
     }
 
-    public static class MutableStates {
+    public final static class MutableStates {
 
         private final MutableState[] priorities;
         private final Priority       start;

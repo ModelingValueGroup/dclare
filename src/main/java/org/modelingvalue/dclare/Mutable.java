@@ -167,9 +167,9 @@ public interface Mutable extends TransactionClass {
         }
     }
 
-    default void dDeactivate() {
-        D_OBSERVERS_RULE.deObserve(this);
-        D_PUSHING_CONSTANTS_RULE.deObserve(this);
+    default void dDeactivate(LeafTransaction tx) {
+        D_OBSERVERS_RULE.deObserve(tx, this);
+        D_PUSHING_CONSTANTS_RULE.deObserve(tx, this);
         D_OBSERVERS.setDefault(this);
     }
 

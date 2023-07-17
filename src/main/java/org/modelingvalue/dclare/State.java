@@ -34,6 +34,7 @@ import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.Priority.Queued;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State extends StateMap implements IState, Serializable {
@@ -44,24 +45,78 @@ public class State extends StateMap implements IState, Serializable {
     private static final long                  serialVersionUID = -3468784705870374732L;
 
     private final UniverseTransaction          universeTransaction;
+    private final Queued<Action<?>>[]          actions;
+    private final Queued<Mutable>[]            children;
 
+    @SuppressWarnings("unchecked")
     protected State(UniverseTransaction universeTransaction, StateMap stateMap) {
         super(stateMap);
         this.universeTransaction = universeTransaction;
+        actions = new Queued[Priority.ALL.length];
+        children = new Queued[Priority.ALL.length];
+        for (int i = 0; i < Priority.ALL.length; i++) {
+            actions[i] = new Priority.Queued(i, true);
+            children[i] = new Priority.Queued(i, false);
+        }
     }
 
-    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
         super(map);
         this.universeTransaction = universeTransaction;
+        this.actions = actions;
+        this.children = children;
     }
 
     private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
-        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap);
+        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap, actions, children);
     }
 
     @Override
     public State state() {
         return this;
+    }
+
+    @Override
+    public Priority priority(Queued queued) {
+        if (queued.actions()) {
+            for (int i = 0; i < actions.length; i++) {
+                if (actions[i].equals(queued)) {
+                    return Priority.ALL[i];
+                }
+            }
+        } else {
+            for (int i = 0; i < children.length; i++) {
+                if (children[i].equals(queued)) {
+                    return Priority.ALL[i];
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Queued<Action<?>> actions(Priority prio) {
+        return actions[prio.ordinal()];
+    }
+
+    @Override
+    public Queued<Mutable> children(Priority prio) {
+        return children[prio.ordinal()];
+    }
+
+    @SuppressWarnings("unchecked")
+    public State exchange(Priority prio1, Priority prio2) {
+        Queued<Action<?>> a1 = this.actions[prio1.ordinal()];
+        Queued<Mutable> c1 = this.children[prio1.ordinal()];
+        Queued<Action<?>> a2 = this.actions[prio2.ordinal()];
+        Queued<Mutable> c2 = this.children[prio2.ordinal()];
+        Queued<Action<?>>[] actions = this.actions.clone();
+        Queued<Mutable>[] children = this.children.clone();
+        actions[prio1.ordinal()] = a2;
+        children[prio1.ordinal()] = c2;
+        actions[prio2.ordinal()] = a1;
+        children[prio2.ordinal()] = c1;
+        return new State(universeTransaction, map(), actions, children);
     }
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {
@@ -141,7 +196,7 @@ public class State extends StateMap implements IState, Serializable {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
                         deduplicate(p);
-                        changeHandler.handleChange(o, p.getKey(), ps, pss, props);
+                        changeHandler.handleChange(o, p.getKey(), ps, pss, props, this);
                     }
                 }
             }

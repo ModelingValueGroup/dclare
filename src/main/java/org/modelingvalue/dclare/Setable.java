@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.Priority.one;
 import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 
 import java.util.function.BiFunction;
@@ -208,11 +209,11 @@ public class Setable<O, T> extends Getable<O, T> {
                 if (prePair == null) {
                     added.dActivate();
                 } else {
-                    tx.set((Mutable) object, Priority.one.children, Set::add, added);
+                    tx.set((Mutable) object, tx.state().children(one), Set::add, added);
                 }
             }, removed -> {
-                for (Priority dir : Priority.ALL) {
-                    tx.set((Mutable) object, dir.children, Set::remove, removed);
+                for (Priority prio : Priority.ALL) {
+                    tx.set((Mutable) object, tx.state().children(prio), Set::remove, removed);
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);

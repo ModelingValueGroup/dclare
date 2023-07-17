@@ -20,6 +20,8 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.dclare.Priority.Queued;
+
 public class MutableState implements IState {
 
     private State                        preState;
@@ -144,6 +146,21 @@ public class MutableState implements IState {
     @Override
     public void run(Runnable action) {
         state().run(action);
+    }
+
+    @Override
+    public Queued<Action<?>> actions(Priority prio) {
+        return state().actions(prio);
+    }
+
+    @Override
+    public Queued<Mutable> children(Priority prio) {
+        return state().children(prio);
+    }
+
+    @Override
+    public Priority priority(Queued<?> queued) {
+        return state().priority(queued);
     }
 
 }

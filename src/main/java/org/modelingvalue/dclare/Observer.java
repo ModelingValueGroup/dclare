@@ -150,12 +150,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new ObserverTransaction(universeTransaction);
     }
 
-    public void deObserve(O mutable) {
+    public void deObserve(LeafTransaction tx, O mutable) {
         observeds.setDefault(mutable);
         constructed.setDefault(mutable);
-        for (Priority dir : Priority.ALL) {
-            dir.actions.setDefault(mutable);
-            dir.children.setDefault(mutable);
+        for (Priority prio : Priority.ALL) {
+            tx.state().actions(prio).setDefault(mutable);
+            tx.state().children(prio).setDefault(mutable);
         }
     }
 
