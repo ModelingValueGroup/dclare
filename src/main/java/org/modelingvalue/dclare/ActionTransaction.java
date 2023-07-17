@@ -73,6 +73,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 } else {
                     postState = currentState.result();
                 }
+                if (postState != preState) {
+                    bumpTotalChanges();
+                }
             });
             return postState;
         } catch (Throwable t) {
@@ -84,6 +87,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             postState = null;
             TraceTimer.traceEnd(traceId());
         }
+    }
+
+    protected void bumpTotalChanges() {
+        universeTransaction().stats().bumpAndGetTotalChanges();
     }
 
     protected String traceId() {

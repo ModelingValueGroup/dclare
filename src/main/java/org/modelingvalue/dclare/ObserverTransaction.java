@@ -200,6 +200,11 @@ public class ObserverTransaction extends ActionTransaction {
         return 0;
     }
 
+    @Override
+    protected void bumpTotalChanges() {
+        // Do nothing, already done by checkTooManyChanges
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes) {
         if (observer().isTracing()) {
