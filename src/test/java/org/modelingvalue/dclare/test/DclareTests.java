@@ -306,16 +306,16 @@ public class DclareTests {
         TestMutable                              two      = TestMutable.of(2, clazz);
         TestMutableClass universeClass = TestMutableClass.of("Universe", children, begin, end).observe(u -> {
             List<TestMutable> list   = children.get(u);
-            List<TestMutable> before = list.exclude(property::get).toList();
+            List<TestMutable> before = list.exclude(property::get).asList();
             begin.set(u, before);
         }).observe(u -> {
             List<TestMutable> list  = children.get(u);
-            List<TestMutable> after = list.filter(property::get).toList();
+            List<TestMutable> after = list.filter(property::get).asList();
             end.set(u, after);
         }).observe(u -> {
             List<TestMutable> before = begin.get(u);
             List<TestMutable> after  = end.get(u);
-            children.set(u, Collection.concat(before, after).distinct().toList());
+            children.set(u, Collection.concat(before, after).distinct().asList());
         }).observe(u -> {
             List<TestMutable> list = children.get(u);
             if (list.isEmpty()) {

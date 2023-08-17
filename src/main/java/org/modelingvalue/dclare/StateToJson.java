@@ -70,7 +70,7 @@ public class StateToJson extends ToJson {
     @Override
     protected Iterator<Object> getArrayIterator(Object o) {
         if (o instanceof Set) {
-            return (Iterator<Object>) ((Set) o).sorted(setSorter).toList().iterator();
+            return (Iterator<Object>) ((Set) o).sorted(setSorter).asList().iterator();
         } else {
             return super.getArrayIterator(o);
         }
@@ -92,13 +92,13 @@ public class StateToJson extends ToJson {
                 Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
                 stream = Collection.concat(idEntry, stream);
             }
-            entries = stream.toList();
+            entries = stream.asList();
         } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
             entries = q.toKeys() //
                     .map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))) //
                     .sortedBy(e -> e.getKey().toString()) //
-                    .toList();
+                    .asList();
         } else {
             throw new RuntimeException("this should not be reachable");
         }
@@ -130,9 +130,9 @@ public class StateToJson extends ToJson {
         if (value instanceof Mutable) {
             value = makeRef((Mutable) value);
         } else if (value instanceof List) {
-            value = ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).toList();
+            value = ((List) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).asList();
         } else if (value instanceof Set) {
-            value = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(setSorter).toList();
+            value = ((Set) value).map(v -> v instanceof Mutable ? makeRef((Mutable) v) : v).sorted(setSorter).asList();
         } else if (!Util.PREFIX_MAP.containsKey(value.getClass())) {
             value = "@@ERROR@REF_TO_UNKNOWN_TYPE@" + value.getClass().getSimpleName() + "@" + value + "@@";
         }

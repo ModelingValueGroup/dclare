@@ -141,7 +141,7 @@ public class ModelMaker {
 
     private static Set<TestMutable> desTestObjectSet(TestMutable mutable, TestObserved<TestMutable, Set<TestMutable>> obs, Object a) {
         List<String> oo = (List<String>) a;
-        return oo.map(SERIALIZATION_HELPER::deserializeMutable).toSet();
+        return oo.map(SERIALIZATION_HELPER::deserializeMutable).asSet();
     }
 
     private static String desString(TestMutable mutable, TestObserved<TestMutable, String> obs, Object a) {
@@ -154,7 +154,7 @@ public class ModelMaker {
 
     private static Set<String> desSet(TestMutable mutable, TestObserved<TestMutable, Set<String>> obs, Object a) {
         List<String> oo = (List<String>) a;
-        return oo.toSet();
+        return oo.asSet();
     }
 
     private static Map<String, String> desMap(TestMutable mutable, TestObserved<TestMutable, Map<String, String>> obs, Object a) {
@@ -163,7 +163,7 @@ public class ModelMaker {
 
     private static DefaultMap<String, String> desDefMap(TestMutable mutable, TestObserved<TestMutable, DefaultMap<String, String>> obs, Object a) {
         List<List<String>> oo = (List<List<String>>) a;
-        return obs.getDefault(mutable).addAll(oo.map(l -> Entry.of(l.get(0), l.get(1))).toList());
+        return obs.getDefault(mutable).addAll(oo.map(l -> Entry.of(l.get(0), l.get(1))).asList());
     }
 
     private static QualifiedSet<String, String> desQuaSet(TestMutable mutable, TestObserved<TestMutable, QualifiedSet<String, String>> obs, Object a) {
@@ -186,11 +186,11 @@ public class ModelMaker {
                     o -> target2.set(o, source.get(o))).observe(                                                                                                                                                                     //
                             o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                 //
                                     o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass))).observe(                                                                                                                      //
-                                            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet())).observe(                                            //
+                                            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).asSet())).observe(                                            //
                                                     o -> target.set(extra.get(o), target.get(o))).observe(                                                                                                                           //
-                                                            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList())).observe(                                                                               //
-                                                                    o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet())).observe(                                         //
-                                                                            o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                            //
+                                                            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).asList())).observe(                                                                               //
+                                                                    o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).asSet())).observe(                                         //
+                                                                            o -> aMap.set(o, Collection.range(0, source.get(o)).asMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                            //
                                                                                     o -> aDefMap.set(o, aDefMap.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
                                                                                             o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
                                                                                                     o -> aQuaDefSet.set(o, aQuaDefSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));

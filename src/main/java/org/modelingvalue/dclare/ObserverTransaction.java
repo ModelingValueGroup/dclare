@@ -226,10 +226,10 @@ public class ObserverTransaction extends ActionTransaction {
                 observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
                     m = m.dResolve(mutable());
                     return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
-                })).toMap(e -> e), //
+                })).asMap(e -> e), //
                 pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> {
                     return e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()));
-                }).toMap(e -> e));
+                }).asMap(e -> e));
         setable.set(mutable(), traces.append(trace));
         return trace;
     }
@@ -405,7 +405,7 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private Map<Reason, Mutable> actualize(Map<Reason, Mutable> map) {
-        return map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).toMap(Function.identity());
+        return map.flatMap(e -> e.getKey().actualize().map(r -> Entry.of(r, e.getValue()))).asMap(Function.identity());
     }
 
     @SuppressWarnings("unchecked")
@@ -636,7 +636,7 @@ public class ObserverTransaction extends ActionTransaction {
                             }
                         }
                         if (infos == null) {
-                            infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).toQualifiedSet(MatchInfo::newable);
+                            infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).asQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
                         }
                         MatchInfo preInfo = infos.get((Newable) before);
@@ -673,7 +673,7 @@ public class ObserverTransaction extends ActionTransaction {
             afters = afters.sortedBy(e -> {
                 int i = ((List) bef).firstIndexOf(e);
                 return i < 0 ? ((List) aft).firstIndexOf(e) + bef.size() : i;
-            }).toList();
+            }).asList();
         }
         return !befores.equals(afters) ? rippleOut(object, observed, befores, afters) : afters;
     }

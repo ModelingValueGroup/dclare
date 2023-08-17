@@ -105,11 +105,11 @@ public class SerialisationPool {
     }
 
     public SerialisationPool(Collection<Converter<?>> converters) {
-        List<Converter<?>> conv = converters.toList();
+        List<Converter<?>> conv = converters.asList();
         sanityCheck(conv);
         conv.forEach(c -> c.setPool(this));
-        deserialiseMap = conv.toMap(c -> Entry.of(c.getPrefix(), c));
-        serializeMap = conv.toMap(c -> Entry.of(c.getClazz(), c));
+        deserialiseMap = conv.asMap(c -> Entry.of(c.getPrefix(), c));
+        serializeMap = conv.asMap(c -> Entry.of(c.getClazz(), c));
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -119,13 +119,13 @@ public class SerialisationPool {
             int maxLength = conv.mapToInt(c -> c.getClazz().getName().length()).max().orElse(0);
             conv.sequential().sorted(Comparator.comparing(a -> a.getClazz().getName())).forEach(c -> System.err.printf("  - %-" + maxLength + "s '%s%s'\n", c.getClazz().getName(), c.getPrefix(), Converter.DELIMITER));
         }
-        List<List<String>> doublePrefixes = Collection.of(conv.map(Converter::getPrefix).collect(Collectors.groupingBy(x -> x)).values().stream().filter(l -> l.size() != 1).map(List::of)).toList();
+        List<List<String>> doublePrefixes = Collection.of(conv.map(Converter::getPrefix).collect(Collectors.groupingBy(x -> x)).values().stream().filter(l -> l.size() != 1).map(List::of)).asList();
         if (!doublePrefixes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same prefix: " + doublePrefixes.map(l -> l.get(0)).collect(Collectors.toList()));
         }
         // NB: keep this next var separate to avoid java compiler error:
         Collection<List<? extends Class<?>>> avoidCompilerError = Collection.of(conv.map(Converter::getClazz).collect(Collectors.groupingBy(x -> x)).values().stream().filter(l -> l.size() != 1).map(List::of));
-        List<List<? extends Class<?>>> doubleClazzes = avoidCompilerError.toList();
+        List<List<? extends Class<?>>> doubleClazzes = avoidCompilerError.asList();
         if (!doubleClazzes.isEmpty()) {
             throw problem("a SerialisationPool can not hold Converters with the same class: " + doubleClazzes.map(l -> l.get(0)).collect(Collectors.toList()));
         }
