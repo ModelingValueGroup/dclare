@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.dclare.Priority.Queued;
-
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 
 public class ImperativeTransaction extends LeafTransaction {
 
@@ -65,17 +65,21 @@ public class ImperativeTransaction extends LeafTransaction {
         this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
         this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
-            LeafTransaction.getContext().setOnThread(this);
-            try {
-                r.run();
-            } catch (Throwable t) {
-                universeTransaction.handleException(t);
+            if (isOpen()) {
+                LeafTransaction.getContext().setOnThread(this);
+                try {
+                    r.run();
+                } catch (Throwable t) {
+                    universeTransaction.handleException(t);
+                }
             }
         }) : r -> scheduler.accept(() -> {
-            try {
-                LeafTransaction.getContext().run(this, r);
-            } catch (Throwable t) {
-                universeTransaction.handleException(t);
+            if (isOpen()) {
+                try {
+                    LeafTransaction.getContext().run(this, r);
+                } catch (Throwable t) {
+                    universeTransaction.handleException(t);
+                }
             }
         });
     }
@@ -134,7 +138,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 DefaultMap<Setable, Object> dclareProps = dclare.getProperties(object);
                 DefaultMap<Setable, Object> imperProps = imper.getProperties(object);
                 for (Setable setable : e.getValue()) {
-                    dclareProps = StateMap.setProperties(dclareProps, setable, imperProps.get(setable));
+                    dclareProps = StateMap.setProperties(object, dclareProps, setable, imperProps.get(setable));
                 }
                 dclare = dclare.set(object, dclareProps);
             }
@@ -153,9 +157,10 @@ public class ImperativeTransaction extends LeafTransaction {
                 finalSetted.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
-                        if (p instanceof Queued && !((Queued) p).children()) {
+                        if (p instanceof Queued && ((Queued) p).actions()) {
+                            Priority prio = imper.priority((Queued) p);
                             for (Action action : (Set<Action>) props.get(p)) {
-                                action.trigger((Mutable) e.getKey(), ((Queued) p).priority());
+                                action.trigger((Mutable) e.getKey(), prio);
                             }
                         } else {
                             p.set(e.getKey(), props.get(p));
@@ -171,7 +176,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     @Override
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
-        set(target, priority.actions, Set::add, action);
+        set(target, state.actions(priority), Set::add, action);
     }
 
     @SuppressWarnings("unchecked")

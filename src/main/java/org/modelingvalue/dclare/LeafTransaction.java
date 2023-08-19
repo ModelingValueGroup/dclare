@@ -15,11 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.Priority.NON_SCHEDULED;
+import static org.modelingvalue.dclare.Priority.ALL;
 
+import java.util.Comparator;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
@@ -40,9 +43,35 @@ public abstract class LeafTransaction extends Transaction {
         return (Leaf) cls();
     }
 
+    public static int sizeForConsistency(DefaultMap<?, Set<Mutable>> map) {
+        return map.reduce(0, (a, e) -> a + (ignoreForConsistency(e.getKey()) ? 0 : e.getValue().size()), Integer::sum);
+    }
+
     @SuppressWarnings("rawtypes")
-    public static int size(DefaultMap<?, Set<Mutable>> map) {
-        return map.reduce(0, (a, e) -> a + (!(e.getKey() instanceof Observed) || ((Observed) e.getKey()).checkConsistency() ? e.getValue().size() : 0), Integer::sum);
+    private static boolean ignoreForConsistency(Object o) {
+        return o instanceof Observed && !((Observed) o).checkConsistency();
+    }
+
+    public static String condenseForConsistencyTrace(DefaultMap<?, Set<Mutable>> map) {
+        boolean noSignulars = map //
+                .filter(e -> !ignoreForConsistency(e.getKey())) //
+                .filter(e -> 1 == e.getValue().size()) //
+                .isEmpty();
+        return map //
+                .filter(e -> !ignoreForConsistency(e.getKey())) //
+                .filter(e -> 1 < e.getValue().size()) //
+                .sortedByDesc(e -> e.getValue().size()) //
+                .map(e -> { //
+                    java.util.Map<String, Long> counts = e.getValue() //
+                            .map(m -> m.toString().replaceAll("[^a-zA-Z0-9]+.*", "")) //
+                            .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
+                    String condensedRepresentation = counts.entrySet().stream() //
+                            .sorted(Comparator.comparingLong(Map.Entry::getValue)) //
+                            .map(ee -> String.format("%d x %s", ee.getValue(), ee.getKey())) //
+                            .collect(Collectors.joining(", ", "[", "]"));
+                    return String.format("%s=%s", e.getKey(), condensedRepresentation);
+                }) //
+                .collect(Collectors.joining(", ", "[", noSignulars ? "]" : ",...]"));
     }
 
     public static LeafTransaction getCurrent() {
@@ -66,7 +95,7 @@ public abstract class LeafTransaction extends Transaction {
     public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T setDefault(O object, Setable<O, T> property) {
-        return set(object, property, property.getDefault());
+        return set(object, property, property.getDefault(object));
     }
 
     public <O, T> T get(O object, Getable<O, T> property) {
@@ -88,8 +117,14 @@ public abstract class LeafTransaction extends Transaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void clear(Mutable object) {
         for (Setable setable : toBeCleared(object)) {
-            set(object, setable, setable.getDefault());
+            set(object, setable, setable.getDefault(object));
         }
+    }
+
+    protected final void clearOrphan(Mutable orphan) {
+        orphan.dDeactivate(this);
+        clear(orphan);
+        orphan.dChildren().forEach(this::clearOrphan);
     }
 
     @SuppressWarnings("rawtypes")
@@ -99,16 +134,16 @@ public abstract class LeafTransaction extends Transaction {
 
     protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
-        set(object, priority.actions, Set::add, action);
-        for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
-            set(object, NON_SCHEDULED[i].actions, Set::remove, action);
+        set(object, state().actions(priority), Set::add, action);
+        for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
+            set(object, state().actions(ALL[i]), Set::remove, action);
         }
         Mutable container = dParent(object);
         while (container != null && !ancestorEqualsMutable(object)) {
-            set(container, priority.children, Set::add, object);
-            for (int i = priority.ordinal() + 1; i < NON_SCHEDULED.length; i++) {
-                if (current(object, NON_SCHEDULED[i].actions).isEmpty() && current(object, NON_SCHEDULED[i].children).isEmpty()) {
-                    set(container, NON_SCHEDULED[i].children, Set::remove, object);
+            set(container, state().children(priority), Set::add, object);
+            for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
+                if (current(object, state().actions(ALL[i])).isEmpty() && current(object, state().children(ALL[i])).isEmpty()) {
+                    set(container, state().children(ALL[i]), Set::remove, object);
                 }
             }
             object = container;
@@ -144,8 +179,8 @@ public abstract class LeafTransaction extends Transaction {
     public abstract ActionInstance actionInstance();
 
     @SuppressWarnings("unchecked")
-    public <O extends Newable> O construct(Construction.Reason reason, Supplier<O> supplier) {
-        Newable result = null;
+    public <O extends Mutable> O construct(Construction.Reason reason, Supplier<O> supplier) {
+        Mutable result = null;
         if (supplier != null) {
             result = constantState().get(this, reason, Construction.CONSTRUCTED, c -> supplier.get());
         } else if (constantState().isSet(this, reason, Construction.CONSTRUCTED)) {
@@ -166,5 +201,21 @@ public abstract class LeafTransaction extends Transaction {
     }
 
     public abstract Direction direction();
+
+    public MutableState preStartState(Priority priority) {
+        return universeTransaction().preStartState(priority);
+    }
+
+    public MutableState startState(Priority priority) {
+        return universeTransaction().startState(priority);
+    }
+
+    protected State startState() {
+        return universeTransaction().startState();
+    }
+
+    protected Collection<IState> longHistory() {
+        return universeTransaction().longHistory();
+    }
 
 }

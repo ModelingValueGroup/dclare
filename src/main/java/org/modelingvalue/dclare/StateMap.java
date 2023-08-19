@@ -31,21 +31,22 @@ import org.modelingvalue.collections.util.TriConsumer;
 
 @SuppressWarnings("rawtypes")
 public class StateMap implements Serializable {
-    private static final long                                     serialVersionUID   = -7537530409013376084L;
-    public static final DefaultMap<Setable, Object>               EMPTY_SETABLES_MAP = DefaultMap.of(Getable::getDefault);
-    public static final StateMap                                  EMPTY_STATE_MAP    = new StateMap(DefaultMap.of(o -> EMPTY_SETABLES_MAP));
-    public static final Predicate<Object>                         ALL_OBJECTS        = __ -> true;
-    public static final Predicate<Setable>                        ALL_SETTABLES      = __ -> true;
-    private static final Constant<Object, Object>                 INTERNAL           = Constant.of("$INTERNAL", v -> {
-                                                                                         if (v instanceof DefaultMap) {
-                                                                                             ((DefaultMap<?, ?>) v).forEach(StateMap::deduplicate);
-                                                                                         } else if (v instanceof Map) {
-                                                                                             ((Map<?, ?>) v).forEach(StateMap::deduplicate);
-                                                                                         }
-                                                                                         return v;
-                                                                                     });
+    private static final long                                            serialVersionUID = -7537530409013376084L;
+    @SuppressWarnings("unchecked")
+    private static final DefaultMap<Object, DefaultMap<Setable, Object>> EMPTY_MAP_MAP    = DefaultMap.of(o -> DefaultMap.of(s -> s.getDefault(o)));
+    public static final StateMap                                         EMPTY_STATE_MAP  = new StateMap(EMPTY_MAP_MAP);
+    public static final Predicate<Object>                                ALL_OBJECTS      = __ -> true;
+    public static final Predicate<Setable>                               ALL_SETTABLES    = __ -> true;
+    private static final Constant<Object, Object>                        INTERNAL         = Constant.of("$INTERNAL", v -> {
+                                                                                              if (v instanceof DefaultMap) {
+                                                                                                  ((DefaultMap<?, ?>) v).forEach(StateMap::deduplicate);
+                                                                                              } else if (v instanceof Map) {
+                                                                                                  ((Map<?, ?>) v).forEach(StateMap::deduplicate);
+                                                                                              }
+                                                                                              return v;
+                                                                                          });
 
-    private final DefaultMap<Object, DefaultMap<Setable, Object>> map;
+    private final DefaultMap<Object, DefaultMap<Setable, Object>>        map;
 
     public StateMap(StateMap stateMap) {
         this(stateMap.map);
@@ -97,8 +98,8 @@ public class StateMap implements Serializable {
         return pair != null ? pair.b() : null;
     }
 
-    protected static <O, T> DefaultMap<Setable, Object> setProperties(DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
-        return Objects.equals(property.getDefault(), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
+    protected static <O, T> DefaultMap<Setable, Object> setProperties(O object, DefaultMap<Setable, Object> props, Setable<O, T> property, T newValue) {
+        return Objects.equals(property.getDefault(object), newValue) ? props.removeKey(property) : props.put(property.entry(newValue, props));
     }
 
     @SuppressWarnings("unchecked")

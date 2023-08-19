@@ -47,9 +47,11 @@ public abstract class OneShot<U extends Universe> {
     private static final boolean                                     TRACE_ONE_SHOT    = Boolean.getBoolean("TRACE_ONE_SHOT");
     private static final MutationWrapper<Map<Class<?>, StateMap>>    STATE_MAP_CACHE   = new MutationWrapper<>(Map.of());
     private static final MutationWrapper<Map<Class<?>, Set<Method>>> ALL_METHODS_CACHE = new MutationWrapper<>(Map.of());
-    private final        Class<?>                                    cacheKey          = getClass();
-    private final        U                                           universe;
-    private              State                                       endState;
+    private static       ContextPool                                 CONTEXT_POOL;
+
+    private final Class<?> cacheKey = getClass();
+    private final U        universe;
+    private       State    endState;
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
@@ -92,7 +94,18 @@ public abstract class OneShot<U extends Universe> {
      * @return the ContextPool that was created
      */
     public ContextPool getContextPool() {
-        return ContextThread.createPool();
+        synchronized (OneShot.class) {
+            if (CONTEXT_POOL == null) {
+                CONTEXT_POOL = ContextThread.createPool();
+            }
+        }
+        return CONTEXT_POOL;
+    }
+
+    public void shutdownContextPool(ContextPool contextPool) {
+        if (contextPool != CONTEXT_POOL) {
+            contextPool.shutdownNow();
+        }
     }
 
     public StateMap getEndStateMap() {
@@ -129,7 +142,7 @@ public abstract class OneShot<U extends Universe> {
                     endState = universeTransaction.waitForEnd();
                     trace("TRACE_ONE_SHOT: %-6s %-40s duration=%5d ms\n", "DONE", cacheKey.getSimpleName(), System.currentTimeMillis() - t0);
                 } finally {
-                    contextPool.shutdownNow();
+                    shutdownContextPool(contextPool);
                 }
             }
             return endState;
@@ -141,7 +154,9 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the list of actions to perform
      */
-    private List<MyAction> getAllActions(boolean runningFromCache) {
+    private List<MyAction> getAllActions
+    (
+            boolean runningFromCache) {
         return getAllMethodsOf(cacheKey).map(method -> new MyAction(method, runningFromCache)).sorted(Comparator.comparing(a -> a.id().toString())).toList();
     }
 
@@ -175,14 +190,15 @@ public abstract class OneShot<U extends Universe> {
             }
             trace("TRACE_ONE_SHOT: %-6s %-40s     %-40s (%5d ms)%s%s\n", "ACTION", cacheKey.getSimpleName(), id(), System.currentTimeMillis() - t00, writeResultToCache ? " CACHE-WRITE" : "", skip ? " CACHE-SKIP" : "");
         }
-
     }
 
-    private static Set<Method> getAllMethodsOf(Class<?> clazz) {
+    private static Set<Method> getAllMethodsOf
+            (Class<?> clazz) {
         return ALL_METHODS_CACHE.updateAndGet(a -> a.computeIfAbsent(clazz, __ -> computeAllMethodsOf(clazz))).get(clazz);
     }
 
-    private static Set<Method> computeAllMethodsOf(Class<?> clazz) {
+    private static Set<Method> computeAllMethodsOf
+            (Class<?> clazz) {
         Map<String, Method> map = Map.of();
         for (Class<?> c = clazz; c != Object.class; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
@@ -198,7 +214,10 @@ public abstract class OneShot<U extends Universe> {
         return map.toValues().toSet();
     }
 
-    private static void trace(String format, Object... args) {
+    private static void trace
+            (String
+                     format, Object...
+                                     args) {
         if (TRACE_ONE_SHOT) {
             System.err.printf(format, args);
         }

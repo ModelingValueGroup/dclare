@@ -15,6 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Function;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.List;
@@ -25,17 +27,21 @@ import org.modelingvalue.collections.util.StringUtil;
 @SuppressWarnings("unused")
 public abstract class Getable<O, T> implements Feature, Internable {
 
-    protected final Object id;
-    protected final T      def;
-    private final int      hashCode;
+    protected final Object       id;
+    private final Function<O, T> def;
+    private final int            hashCode;
 
-    protected Getable(Object id, T def) {
+    protected Getable(Object id, Function<O, T> def) {
         this.id = id;
         this.def = def;
         this.hashCode = id.hashCode() ^ getClass().hashCode();
     }
 
-    public T getDefault() {
+    public T getDefault(O object) {
+        return def != null ? def.apply(object) : null;
+    }
+
+    public Function<O, T> defaultFunction() {
         return def;
     }
 

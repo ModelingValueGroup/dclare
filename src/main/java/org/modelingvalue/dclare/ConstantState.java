@@ -153,7 +153,7 @@ public class ConstantState {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
-                V soll = deriver == null ? constant.def : derive(leafTransaction, object, constant, deriver);
+                V soll = deriver == null ? constant.getDefault(object) : derive(leafTransaction, object, constant, deriver);
                 ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
             return ist == NULL ? null : ist;
@@ -173,7 +173,7 @@ public class ConstantState {
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {
                 throw new NonDeterministicException(object, constant, "Constant is not consistent " + StringUtil.toString(object) + "." + constant + "=" + StringUtil.toString(ist) + "!=" + StringUtil.toString(soll));
             }
-            return constant.getDefault();
+            return constant.getDefault(object);
         }
 
         @SuppressWarnings("unchecked")
@@ -218,8 +218,8 @@ public class ConstantState {
                 }
                 next = prev.put(constant, soll);
             }
-            if (!forced && !Objects.equals(constant.getDefault(), soll == NULL ? null : soll)) {
-                tx.changed(object, constant, constant.getDefault(), soll == NULL ? null : soll);
+            if (!forced && !Objects.equals(constant.getDefault(object), soll == NULL ? null : soll)) {
+                tx.changed(object, constant, constant.getDefault(object), soll == NULL ? null : soll);
             }
             return soll;
         }

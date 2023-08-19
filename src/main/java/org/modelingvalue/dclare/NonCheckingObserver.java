@@ -63,19 +63,18 @@ public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected void checkTooManyObserved(DefaultMap<Observed, Set<Mutable>> observeds) {
+        protected void checkTooManyObserved(Mutable mutable, DefaultMap<Observed, Set<Mutable>> observeds) {
         }
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected boolean checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
-            return false;
+        protected int checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+            return 0;
         }
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
-            return null;
+        protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes) {
         }
 
     }

@@ -16,7 +16,9 @@
 package org.modelingvalue.dclare.sync;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.Mutable;
+import org.modelingvalue.dclare.MutableClass;
+import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.sync.SerialisationPool.Converter;
 
 @SuppressWarnings("unused")
@@ -43,7 +45,7 @@ public abstract class SerializationHelperWithPool<C extends MutableClass, M exte
     }
 
     @Override
-    public Object serializeValue(S setable, Object value) {
+    public Object serializeValue(M mutable, S setable, Object value) {
         return serialisationPool.serialize(value, setable);
     }
 
@@ -61,7 +63,7 @@ public abstract class SerializationHelperWithPool<C extends MutableClass, M exte
     }
 
     @Override
-    public Object deserializeValue(S setable, Object value) {
+    public Object deserializeValue(M mutable, S setable, Object value) {
         return serialisationPool.deserialize((String) value, setable);
     }
 }

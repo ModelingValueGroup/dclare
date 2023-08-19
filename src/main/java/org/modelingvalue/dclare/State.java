@@ -15,6 +15,15 @@
 
 package org.modelingvalue.dclare;
 
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -25,38 +34,41 @@ import org.modelingvalue.collections.util.Mergeable;
 import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
-
-import java.io.Serializable;
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import org.modelingvalue.dclare.Priority.Queued;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class State extends StateMap implements IState, Serializable {
-    public static final  BinaryOperator<String> CONCAT       = (a, b) -> a + b;
-    public static final  BinaryOperator<String> CONCAT_COMMA = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
-    private static final Comparator<Entry>      COMPARATOR   = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
+    public static final BinaryOperator<String> CONCAT           = (a, b) -> a + b;
+    public static final BinaryOperator<String> CONCAT_COMMA     = (a, b) -> a.isEmpty() || b.isEmpty() ? a + b : a + "," + b;
+    private static final Comparator<Entry>     COMPARATOR       = Comparator.comparing(a -> StringUtil.toString(a.getKey()));
 
-    private static final long serialVersionUID = -3468784705870374732L;
+    private static final long                  serialVersionUID = -3468784705870374732L;
 
-    private final UniverseTransaction universeTransaction;
+    private final UniverseTransaction          universeTransaction;
+    private final Queued<Action<?>>[]          actions;
+    private final Queued<Mutable>[]            children;
 
+    @SuppressWarnings("unchecked")
     protected State(UniverseTransaction universeTransaction, StateMap stateMap) {
         super(stateMap);
         this.universeTransaction = universeTransaction;
+        actions = new Queued[Priority.ALL.length];
+        children = new Queued[Priority.ALL.length];
+        for (int i = 0; i < Priority.ALL.length; i++) {
+            actions[i] = new Priority.Queued(i, true);
+            children[i] = new Priority.Queued(i, false);
+        }
     }
 
-    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map) {
+    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
         super(map);
         this.universeTransaction = universeTransaction;
+        this.actions = actions;
+        this.children = children;
     }
 
     private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
-        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap);
+        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap, actions, children);
     }
 
     @Override
@@ -64,9 +76,52 @@ public class State extends StateMap implements IState, Serializable {
         return this;
     }
 
+    @Override
+    public Priority priority(Queued queued) {
+        if (queued.actions()) {
+            for (int i = 0; i < actions.length; i++) {
+                if (actions[i].equals(queued)) {
+                    return Priority.ALL[i];
+                }
+            }
+        } else {
+            for (int i = 0; i < children.length; i++) {
+                if (children[i].equals(queued)) {
+                    return Priority.ALL[i];
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Queued<Action<?>> actions(Priority prio) {
+        return actions[prio.ordinal()];
+    }
+
+    @Override
+    public Queued<Mutable> children(Priority prio) {
+        return children[prio.ordinal()];
+    }
+
+    @SuppressWarnings("unchecked")
+    public State exchange(Priority prio1, Priority prio2) {
+        Queued<Action<?>> a1 = this.actions[prio1.ordinal()];
+        Queued<Mutable> c1 = this.children[prio1.ordinal()];
+        Queued<Action<?>> a2 = this.actions[prio2.ordinal()];
+        Queued<Mutable> c2 = this.children[prio2.ordinal()];
+        Queued<Action<?>>[] actions = this.actions.clone();
+        Queued<Mutable>[] children = this.children.clone();
+        actions[prio1.ordinal()] = a2;
+        children[prio1.ordinal()] = c2;
+        actions[prio2.ordinal()] = a1;
+        children[prio2.ordinal()] = c1;
+        return new State(universeTransaction, map(), actions, children);
+    }
+
     public <O, T> State set(O object, Setable<O, T> property, T value) {
         DefaultMap<Setable, Object> props = getProperties(object);
-        DefaultMap<Setable, Object> set   = setProperties(props, property, value);
+        DefaultMap<Setable, Object> set = setProperties(object, props, property, value);
         return set != props ? set(object, set) : this;
     }
 
@@ -81,28 +136,28 @@ public class State extends StateMap implements IState, Serializable {
         DefaultMap<Setable, Object> props = getProperties(object);
         oldNew[0] = get(props, property);
         oldNew[1] = function.apply(oldNew[0], element);
-        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(object, props, property, oldNew[1])) : this;
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> oper, T[] oldNew) {
         DefaultMap<Setable, Object> props = getProperties(object);
         oldNew[0] = get(props, property);
         oldNew[1] = oper.apply(oldNew[0]);
-        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(props, property, oldNew[1])) : this;
+        return !Objects.equals(oldNew[0], oldNew[1]) ? set(object, setProperties(object, props, property, oldNew[1])) : this;
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        DefaultMap<Setable, Object> props   = getProperties(object);
-        T                           preVal  = get(props, property);
-        T                           postVal = function.apply(preVal, element);
-        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal, element);
+        return !Objects.equals(preVal, postVal) ? set(object, setProperties(object, props, property, postVal)) : this;
     }
 
     public <O, T, E> State set(O object, Setable<O, T> property, UnaryOperator<T> function) {
-        DefaultMap<Setable, Object> props   = getProperties(object);
-        T                           preVal  = get(props, property);
-        T                           postVal = function.apply(preVal);
-        return !Objects.equals(preVal, postVal) ? set(object, setProperties(props, property, postVal)) : this;
+        DefaultMap<Setable, Object> props = getProperties(object);
+        T preVal = get(props, property);
+        T postVal = function.apply(preVal);
+        return !Objects.equals(preVal, postVal) ? set(object, setProperties(object, props, property, postVal)) : this;
     }
 
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
@@ -141,7 +196,7 @@ public class State extends StateMap implements IState, Serializable {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
                         deduplicate(p);
-                        changeHandler.handleChange(o, p.getKey(), ps, pss, props);
+                        changeHandler.handleChange(o, p.getKey(), ps, pss, props, this);
                     }
                 }
             }
@@ -161,14 +216,14 @@ public class State extends StateMap implements IState, Serializable {
     public String asString(Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return get(() -> {
             String stateRender = filter(objectFilter, setableFilter).sorted(COMPARATOR).reduce("", (s1, e1) -> {
-                        String keyRender = StringUtil.toString(e1.getKey());
-                        String valueRender = e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> {
-                            String subKeyRender   = StringUtil.toString(e2.getKey());
-                            String subValueRender = e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue());
-                            return String.format("%s\n        %-60s = %s", s2, subKeyRender, subValueRender);
-                        }, CONCAT);
-                        return s1 + "\n" + "    " + keyRender + " {" + valueRender + "\n" + "    }";
-                    }, //
+                String keyRender = StringUtil.toString(e1.getKey());
+                String valueRender = e1.getValue().sorted(COMPARATOR).reduce("", (s2, e2) -> {
+                    String subKeyRender = StringUtil.toString(e2.getKey());
+                    String subValueRender = e2.getValue() instanceof State ? "State{...}" : StringUtil.toString(e2.getValue());
+                    return String.format("%s\n        %-60s = %s", s2, subKeyRender, subValueRender);
+                }, CONCAT);
+                return s1 + "\n" + "    " + keyRender + " {" + valueRender + "\n" + "    }";
+            }, //
                     CONCAT);
             return "State{" + stateRender + "\n" + "}";
         });
@@ -231,18 +286,18 @@ public class State extends StateMap implements IState, Serializable {
         return get(() -> diff.reduce("", (s1, e1) -> {
             String sub = e1.getValue().reduce("", (s2, e2) -> {
                 String r = valueDiffString(e2.getValue().a(), e2.getValue().b());
-                return s2 + "\n" +//
-                       "      " + StringUtil.toString(e2.getKey()) + " =" + r;
+                return s2 + "\n" + //
+                        "      " + StringUtil.toString(e2.getKey()) + " =" + r;
             }, CONCAT);
             return s1 + "\n" + //
-                   "  " + StringUtil.toString(e1.getKey()) + " {" + sub + "}";
+                    "  " + StringUtil.toString(e1.getKey()) + " {" + sub + "}";
         }, CONCAT));
     }
 
     public String shortDiffString(Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff, Object self) {
         return get(() -> diff.reduce("", (s1, e1) -> (s1.isEmpty() ? "" : s1 + ",") + (self.equals(e1.getKey()) ? "" : StringUtil.toString(e1.getKey()) + "{") + //
-                                                     e1.getValue().reduce("", (s2, e2) -> (s2.isEmpty() ? "" : s2 + ",") + StringUtil.toString(e2.getKey()) + "=" + //
-                                                                                          shortValueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT_COMMA) + (self.equals(e1.getKey()) ? "" : "}"), CONCAT_COMMA));
+                e1.getValue().reduce("", (s2, e2) -> (s2.isEmpty() ? "" : s2 + ",") + StringUtil.toString(e2.getKey()) + "=" + //
+                        shortValueDiffString(e2.getValue().a(), e2.getValue().b()), CONCAT_COMMA) + (self.equals(e1.getKey()) ? "" : "}"), CONCAT_COMMA));
     }
 
     @SuppressWarnings("unchecked")
@@ -269,10 +324,10 @@ public class State extends StateMap implements IState, Serializable {
     @SuppressWarnings("unchecked")
     public static String shortValueDiffString(Object a, Object b) {
         if (a instanceof Set && b instanceof Set) {
-            Set sa      = (Set) a;
-            Set sb      = (Set) b;
+            Set sa = (Set) a;
+            Set sb = (Set) b;
             Set removed = sa.removeAll(sb);
-            Set added   = sb.removeAll(sa);
+            Set added = sb.removeAll(sa);
             return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
         } else if (a instanceof List && b instanceof List) {
             List la = (List) a;
@@ -280,7 +335,7 @@ public class State extends StateMap implements IState, Serializable {
             if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
                 // same order
                 List removed = la.removeAll(lb);
-                List added   = lb.removeAll(la);
+                List added = lb.removeAll(la);
                 return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : "+" + added);
             } else {
                 // reordered
@@ -305,7 +360,7 @@ public class State extends StateMap implements IState, Serializable {
         } else {
             State other = (State) obj;
             return Objects.equals(universeTransaction.universe(), other.universeTransaction.universe()) //
-                   && Objects.equals(map(), other.map());
+                    && Objects.equals(map(), other.map());
         }
     }
 

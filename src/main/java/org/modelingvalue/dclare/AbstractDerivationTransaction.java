@@ -16,11 +16,11 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
@@ -163,17 +163,18 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     public <O, T> T set(O object, Setable<O, T> setable, T post) {
         if (doDerive(object, setable)) {
             ConstantState mem = memoization(object);
-            mem.set(this, object, setable.constant(), post, true);
-            T pre = getNonDerived(object, setable);
-            match(mem, setable, pre, post);
+            Constant<O, T> constant = setable.constant();
+            T pre = mem.isSet(this, object, constant) ? mem.get(this, object, constant) : getNonDerived(object, setable);
+            T result = match(mem, setable, pre, post);
+            mem.set(this, object, constant, result, true);
             if (isTraceDerivation(object, setable)) {
                 runNonDeriving(() -> {
                     Pair<Mutable, Observer> deriver = DERIVER.get();
-                    System.err.println(tracePre(object) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + setable + "=" + pre + "->" + post + ")");
+                    System.err.println(tracePre(object) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + setable + "=" + pre + "->" + result + ")");
                 });
             }
             if (setable.containment()) {
-                Setable.<T, Mutable> diff(pre, post, added -> {
+                Setable.<T, Mutable> diff(pre, result, added -> {
                     mem.set(this, added, Mutable.D_PARENT_CONTAINING.constant(), Pair.of((Mutable) object, (Setable<Mutable, ?>) setable), true);
                 }, removed -> {
                 });
@@ -186,17 +187,45 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
-    private <T, O> void match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
-        List<Newable> pres = setable.collection(pre).filter(Newable.class).filter(n -> Newable.D_INITIAL_CONSTRUCTION.get(n).isDirect()).distinct().toList();
-        if (!pres.isEmpty()) {
-            for (Newable po : setable.collection(post).filter(Newable.class).filter(n -> mem.isSet(this, n, Newable.D_ALL_DERIVATIONS.constant()) && Newable.D_INITIAL_CONSTRUCTION.get(n).isDerived())) {
-                Optional<Newable> match = pres.sequential().filter(pr -> po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())).findFirst();
-                if (match.isPresent()) {
-                    pres = pres.remove(match.get());
-                    Newable.D_INITIAL_CONSTRUCTION.force(po, Newable.D_INITIAL_CONSTRUCTION.get(match.get()));
+    private <T, O> T match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
+        List<Newable> posts = setable.collection(post).filter(Newable.class).distinct().toList();
+        if (!posts.isEmpty()) {
+            List<Newable> pres = setable.collection(pre).filter(Newable.class).exclude(posts::contains).distinct().toList();
+            if (!pres.isEmpty()) {
+                for (Newable po : posts) {
+                    Construction poInit = Newable.D_INITIAL_CONSTRUCTION.get(po);
+                    if (poInit.isDerived() && mem.isSet(this, po, Newable.D_ALL_DERIVATIONS.constant())) {
+                        for (Newable pr : pres) {
+                            Construction preInit = Newable.D_INITIAL_CONSTRUCTION.get(pr);
+                            if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                                pres = pres.remove(pr);
+                                post = replace(post, po, pr);
+                                mem.set(this, pr, Newable.D_ALL_DERIVATIONS.constant(), mem.get(this, po, Newable.D_ALL_DERIVATIONS.constant()), true);
+                            }
+                        }
+                    } else if (poInit.isDirect()) {
+                        for (Newable pr : pres) {
+                            Construction preInit = Newable.D_INITIAL_CONSTRUCTION.get(pr);
+                            if (preInit.isDerived() && mem.isSet(this, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                                pres = pres.remove(pr);
+                                mem.set(this, po, Newable.D_ALL_DERIVATIONS.constant(), mem.get(this, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
+                            }
+                        }
+                    }
                 }
             }
         }
+        return post;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T replace(T post, Newable po, Newable pr) {
+        if (post instanceof ContainingCollection) {
+            post = (T) ((ContainingCollection<Newable>) post).replace(po, pr);
+        } else if (post.equals(po)) {
+            post = (T) pr;
+        }
+        return post;
     }
 
     @Override
@@ -206,11 +235,11 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public <O extends Newable> O construct(Reason reason, Supplier<O> supplier) {
+    public <O extends Mutable> O construct(Reason reason, Supplier<O> supplier) {
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        memoization(deriver.a()).set(this, result, Newable.D_ALL_DERIVATIONS.constant(), Newable.D_ALL_DERIVATIONS.getDefault().add(cons), false);
+        memoization(deriver.a()).set(this, result, Newable.D_ALL_DERIVATIONS.constant(), Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons), false);
         Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
         return result;
     }

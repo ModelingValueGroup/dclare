@@ -91,8 +91,8 @@ public class ModelMaker {
                                                                                                                                                            }
 
                                                                                                                                                            @Override
-                                                                                                                                                           public Object serializeValue(TestObserved setable, Object value) {
-                                                                                                                                                               return setable.getSerializeValue().apply(setable, value);
+                                                                                                                                                           public Object serializeValue(TestMutable mutable, TestObserved setable, Object value) {
+                                                                                                                                                               return setable.getSerializeValue().apply(mutable, setable, value);
                                                                                                                                                            }
 
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,88 +112,88 @@ public class ModelMaker {
                                                                                                                                                            }
 
                                                                                                                                                            @Override
-                                                                                                                                                           public Object deserializeValue(TestObserved setable, Object value) {
-                                                                                                                                                               return setable.getDeserializeValue().apply(setable, value);
+                                                                                                                                                           public Object deserializeValue(TestMutable mutable, TestObserved setable, Object value) {
+                                                                                                                                                               return setable.getDeserializeValue().apply(mutable, setable, value);
                                                                                                                                                            }
 
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
                                                                                                                                                        };
 
-    private static <S, T> T id(S s, T a) {
+    private static <O, S, T> T id(O o, S s, T a) {
         return a;
     }
 
-    private static Object serTestObject(TestObserved<TestMutable, TestMutable> s, TestMutable a) {
+    private static Object serTestObject(TestMutable mutable, TestObserved<TestMutable, TestMutable> s, TestMutable a) {
         return SERIALIZATION_HELPER.serializeMutable(a);
     }
 
-    private static Object serTestObjectSet(TestObserved<TestMutable, Set<TestMutable>> s, Set<TestMutable> a) {
+    private static Object serTestObjectSet(TestMutable mutable, TestObserved<TestMutable, Set<TestMutable>> s, Set<TestMutable> a) {
         return a.map(SERIALIZATION_HELPER::serializeMutable);
     }
 
-    private static Integer desInt(TestObserved<TestMutable, Integer> obs, Object a) {
+    private static Integer desInt(TestMutable mutable, TestObserved<TestMutable, Integer> obs, Object a) {
         return ((Number) a).intValue();
     }
 
-    private static TestMutable desTestObject(TestObserved<TestMutable, TestMutable> obs, Object a) {
+    private static TestMutable desTestObject(TestMutable mutable, TestObserved<TestMutable, TestMutable> obs, Object a) {
         return SERIALIZATION_HELPER.deserializeMutable((String) a);
     }
 
-    private static Set<TestMutable> desTestObjectSet(TestObserved<TestMutable, Set<TestMutable>> obs, Object a) {
+    private static Set<TestMutable> desTestObjectSet(TestMutable mutable, TestObserved<TestMutable, Set<TestMutable>> obs, Object a) {
         List<String> oo = (List<String>) a;
         return oo.map(SERIALIZATION_HELPER::deserializeMutable).toSet();
     }
 
-    private static String desString(TestObserved<TestMutable, String> obs, Object a) {
+    private static String desString(TestMutable mutable, TestObserved<TestMutable, String> obs, Object a) {
         return (String) a;
     }
 
-    private static List<String> desList(TestObserved<TestMutable, List<String>> obs, Object a) {
+    private static List<String> desList(TestMutable mutable, TestObserved<TestMutable, List<String>> obs, Object a) {
         return (List<String>) a;
     }
 
-    private static Set<String> desSet(TestObserved<TestMutable, Set<String>> obs, Object a) {
+    private static Set<String> desSet(TestMutable mutable, TestObserved<TestMutable, Set<String>> obs, Object a) {
         List<String> oo = (List<String>) a;
         return oo.toSet();
     }
 
-    private static Map<String, String> desMap(TestObserved<TestMutable, Map<String, String>> obs, Object a) {
+    private static Map<String, String> desMap(TestMutable mutable, TestObserved<TestMutable, Map<String, String>> obs, Object a) {
         return (Map<String, String>) a;
     }
 
-    private static DefaultMap<String, String> desDefMap(TestObserved<TestMutable, DefaultMap<String, String>> obs, Object a) {
+    private static DefaultMap<String, String> desDefMap(TestMutable mutable, TestObserved<TestMutable, DefaultMap<String, String>> obs, Object a) {
         List<List<String>> oo = (List<List<String>>) a;
-        return obs.getDefault().addAll(oo.map(l -> Entry.of(l.get(0), l.get(1))).toList());
+        return obs.getDefault(mutable).addAll(oo.map(l -> Entry.of(l.get(0), l.get(1))).toList());
     }
 
-    private static QualifiedSet<String, String> desQuaSet(TestObserved<TestMutable, QualifiedSet<String, String>> obs, Object a) {
+    private static QualifiedSet<String, String> desQuaSet(TestMutable mutable, TestObserved<TestMutable, QualifiedSet<String, String>> obs, Object a) {
         List<String> oo = (List<String>) a;
-        return obs.getDefault().addAll(oo);
+        return obs.getDefault(mutable).addAll(oo);
     }
 
-    private static QualifiedDefaultSet<String, String> desQuaDefSet(TestObserved<TestMutable, QualifiedDefaultSet<String, String>> obs, Object o) {
+    private static QualifiedDefaultSet<String, String> desQuaDefSet(TestMutable mutable, TestObserved<TestMutable, QualifiedDefaultSet<String, String>> obs, Object o) {
         List<String> oo = (List<String>) o;
-        return obs.getDefault().addAll(oo);
+        return obs.getDefault(mutable).addAll(oo);
     }
 
     private static final TestMutableClass            extraClass      = TestMutableClass.of("ExtraClass");
-    private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                                                                                                   //
-            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                             //
-                    o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                        //
+    private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                                                                                                    //
+            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                              //
+                    o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                         //
                             o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass)));
-    private static final TestMutableClass            plughClassRobot = TestMutableClass.of("PlughClass").observe(                                                                                                                   //
-            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                             //
-                    o -> target2.set(o, source.get(o))).observe(                                                                                                                                                                    //
-                            o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                //
-                                    o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass))).observe(                                                                                                                     //
-                                            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet())).observe(                                           //
-                                                    o -> target.set(extra.get(o), target.get(o))).observe(                                                                                                                          //
-                                                            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList())).observe(                                                                              //
-                                                                    o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet())).observe(                                        //
-                                                                            o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                           //
-                                                                                    o -> aDefMap.set(o, aDefMap.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
-                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
-                                                                                                    o -> aQuaDefSet.set(o, aQuaDefSet.getDefault().addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
+    private static final TestMutableClass            plughClassRobot = TestMutableClass.of("PlughClass").observe(                                                                                                                    //
+            o -> target.set(o, source.get(o))).observe(                                                                                                                                                                              //
+                    o -> target2.set(o, source.get(o))).observe(                                                                                                                                                                     //
+                            o -> extraString.set(o, "@@@@\n\"@@@" + source.get(o) + "@@@")).observe(                                                                                                                                 //
+                                    o -> extra.set(o, TestMutable.of("" + source.get(o), extraClass))).observe(                                                                                                                      //
+                                            o -> extraSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of(TestMutable.of("TO-" + i, extraClass))).toSet())).observe(                                            //
+                                                    o -> target.set(extra.get(o), target.get(o))).observe(                                                                                                                           //
+                                                            o -> aList.set(o, Collection.range(0, source.get(o)).map(i -> "~" + i).toList())).observe(                                                                               //
+                                                                    o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).toSet())).observe(                                         //
+                                                                            o -> aMap.set(o, Collection.range(0, source.get(o)).toMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                            //
+                                                                                    o -> aDefMap.set(o, aDefMap.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
+                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
+                                                                                                    o -> aQuaDefSet.set(o, aQuaDefSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
     private final String                             name;
     private final TestMutable                        xyzzy;
     private final Constant<TestMutable, TestMutable> plugConst;

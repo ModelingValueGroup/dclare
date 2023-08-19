@@ -38,7 +38,7 @@ import org.modelingvalue.dclare.ex.ThrowableError;
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
     public static final Observer<Mutable>                     DUMMY        = new Observer<>("<dummy>", o -> {
-                                                                           }, Priority.immediate);
+                                                                           }, Priority.one);
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
@@ -66,6 +66,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     private final Traces                        traces;
+    private final Debugs                        debugs;
     private final ExceptionSetable              exception;
     private final Observerds                    observeds;
     private final Constructed                   constructed;
@@ -113,6 +114,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     protected Observer(Object id, Consumer<O> action, Set<Setable<O, ?>> targets, LeafModifier... modifiers) {
         super(id, action, modifiers);
         traces = new Traces(Pair.of(this, "TRACES"));
+        debugs = new Debugs(Pair.of(this, "DEBUGS"));
         observeds = new Observerds(this);
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
@@ -148,12 +150,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new ObserverTransaction(universeTransaction);
     }
 
-    public void deObserve(O mutable) {
+    public void deObserve(LeafTransaction tx, O mutable) {
         observeds.setDefault(mutable);
         constructed.setDefault(mutable);
-        for (Priority dir : Priority.ALL) {
-            dir.actions.setDefault(mutable);
-            dir.children.setDefault(mutable);
+        for (Priority prio : Priority.ALL) {
+            tx.state().actions(prio).setDefault(mutable);
+            tx.state().children(prio).setDefault(mutable);
         }
     }
 
@@ -209,7 +211,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     public static final class Traces extends Setable<Mutable, List<ObserverTrace>> {
 
         protected Traces(Pair<Observer, String> id) {
-            super(id, List.of(), null, null, null);
+            super(id, m -> List.of(), null, null, null);
         }
 
         @Override
@@ -231,7 +233,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                     result = result.add(new DebugTrace(object, observer(), trace));
                 }
                 if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
-                    set(object, getDefault());
+                    set(object, getDefault(object));
                 }
             }
             return result;
@@ -245,11 +247,36 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
+    public static final class Debugs extends Setable<Mutable, List<ObserverTrace>> {
+
+        protected Debugs(Pair<Observer, String> id) {
+            super(id, m -> List.of(), null, null, null);
+        }
+
+        @Override
+        protected boolean deduplicate(List<ObserverTrace> value) {
+            return false;
+        }
+
+        @Override
+        public boolean checkConsistency() {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Set<ConsistencyError> checkConsistency(State state, Mutable object, List<ObserverTrace> post) {
+            return Set.of();
+        }
+
+    }
+
+    @SuppressWarnings("rawtypes")
     public static final class Observerds extends Setable<Mutable, DefaultMap<Observed, Set<Mutable>>> {
 
         @SuppressWarnings("unchecked")
         private Observerds(Observer observer) {
-            super(observer, Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
+            super(observer, m -> Observed.OBSERVED_MAP, null, null, (tx, mutable, pre, post) -> {
                 for (Observed observed : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
                     Setable<Mutable, DefaultMap<Observer, Set<Mutable>>> obs = observed.observers();
                     Setable.<Set<Mutable>, Mutable> diff(pre.get(observed), post.get(observed), a -> {
@@ -309,12 +336,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @Override
         public Set<ConsistencyError> checkConsistency(State state, Mutable o, Pair<Instant, Throwable> p) {
-            return p != null ? Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
+            return p != null ? p.b() instanceof ConsistencyError ? Set.of((ConsistencyError) p.b()) : Set.of(new ThrowableError(o, observer, p.a(), p.b())) : Set.of();
         }
     }
 
     @SuppressWarnings("rawtypes")
-    public static class Constructed extends Observed<Mutable, Map<Reason, Newable>> {
+    public static class Constructed extends Observed<Mutable, Map<Reason, Mutable>> {
 
         public static Constructed of(Observer observer) {
             return new Constructed(observer);
@@ -322,10 +349,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
         @SuppressWarnings("unchecked")
         private Constructed(Observer observer) {
-            super(observer, Map.of(), null, null, (tx, o, pre, post) -> {
+            super(observer, m -> Map.of(), null, null, (tx, o, pre, post) -> {
                 for (Reason reason : Collection.concat(pre.toKeys(), post.toKeys()).distinct()) {
-                    Newable before = pre.get(reason);
-                    Newable after = post.get(reason);
+                    Mutable before = pre.get(reason);
+                    Mutable after = post.get(reason);
                     if (!Objects.equals(before, after)) {
                         Construction cons = Construction.of(o, observer, reason);
                         if (before != null) {
@@ -371,6 +398,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Traces traces() {
         return traces;
+    }
+
+    public Debugs debugs() {
+        return debugs;
     }
 
 }

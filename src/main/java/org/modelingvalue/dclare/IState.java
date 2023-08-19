@@ -17,6 +17,8 @@ package org.modelingvalue.dclare;
 
 import java.util.function.Supplier;
 
+import org.modelingvalue.dclare.Priority.Queued;
+
 public interface IState {
 
     <O, T> T get(O object, Getable<O, T> property);
@@ -28,5 +30,11 @@ public interface IState {
     void run(Runnable action);
 
     State state();
+
+    Queued<Action<?>> actions(Priority prio);
+
+    Queued<Mutable> children(Priority prio);
+
+    Priority priority(Queued<?> queued);
 
 }

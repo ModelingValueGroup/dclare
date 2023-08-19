@@ -23,7 +23,7 @@ import org.modelingvalue.collections.util.IdentifiedByArray;
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
 
-    protected static final Constant<Construction.Reason, Newable> CONSTRUCTED = //
+    protected static final Constant<Construction.Reason, Mutable> CONSTRUCTED = //
             Constant.of("D_CONSTRUCTED", (Newable) null, durable);
 
     public static Construction of(Reason reason) {

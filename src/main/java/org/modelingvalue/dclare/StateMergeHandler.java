@@ -20,7 +20,7 @@ import org.modelingvalue.collections.DefaultMap;
 public interface StateMergeHandler {
 
     @SuppressWarnings("rawtypes")
-    void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] bracnhesValues, DefaultMap<Setable, Object> resultValues);
+    void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] bracnhesValues, DefaultMap<Setable, Object> resultValues, State base);
 
     @SuppressWarnings("rawtypes")
     void handleMergeConflict(Object object, Setable property, Object pre, Object... branches);

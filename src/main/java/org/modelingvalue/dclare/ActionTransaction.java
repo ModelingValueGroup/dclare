@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
@@ -74,6 +73,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 } else {
                     postState = currentState.result();
                 }
+                if (postState != preState) {
+                    bumpTotalChanges();
+                }
             });
             return postState;
         } catch (Throwable t) {
@@ -85,6 +87,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             postState = null;
             TraceTimer.traceEnd(traceId());
         }
+    }
+
+    protected void bumpTotalChanges() {
+        universeTransaction().stats().bumpAndGetTotalChanges();
     }
 
     protected String traceId() {
@@ -210,7 +216,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("rawtypes")
     @Override
-    public void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] bracnhesValues, DefaultMap<Setable, Object> resultValues) {
+    public void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] bracnhesValues, DefaultMap<Setable, Object> resultValues, State base) {
     }
 
     @Override
@@ -226,34 +232,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     @Override
     public Direction direction() {
         return action().direction();
-    }
-
-    protected IState preInnerStartState() {
-        return universeTransaction().preInnerStartState();
-    }
-
-    protected IState innerStartState() {
-        return universeTransaction().innerStartState();
-    }
-
-    protected IState preMidStartState() {
-        return universeTransaction().preMidStartState();
-    }
-
-    protected IState midStartState() {
-        return universeTransaction().midStartState();
-    }
-
-    protected IState outerStartState() {
-        return universeTransaction().outerStartState();
-    }
-
-    protected State preOuterStartState() {
-        return universeTransaction().preOuterStartState();
-    }
-
-    protected Collection<IState> longHistory() {
-        return universeTransaction().longHistory();
     }
 
     @Override

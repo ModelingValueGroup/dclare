@@ -231,7 +231,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
             }
             if (getIndex() == 1) {
                 currentNewValue = o;
-                return helper.serializeValue(currentSetable, currentNewValue);
+                return helper.serializeValue(currentMutable, currentSetable, currentNewValue);
             }
             throw new Error("bad delta format");
         }
@@ -311,7 +311,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
                 //currentOldValue = helper.deserializeValue(currentSetable, o);
                 break;
             case 1:
-                currentNewValue = helper.deserializeValue(currentSetable, o);
+                currentNewValue = helper.deserializeValue(currentMutable, currentSetable, o);
                 break;
             }
             return null;
