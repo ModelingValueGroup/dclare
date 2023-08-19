@@ -493,7 +493,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void handleExceptions(Set<Throwable> exceptions) {
         errors.updateAndGet(exceptions::addAll);
         if (config.isTraceUniverse()) {
-            List<Throwable> list = errors.get().sorted(this::compareThrowable).toList();
+            List<Throwable> list = errors.get().sorted(this::compareThrowable).asList();
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
             list.first().printStackTrace();
         }
@@ -507,7 +507,7 @@ public class UniverseTransaction extends MutableTransaction {
     public void throwIfError() {
         Set<Throwable> es = errors.get();
         if (!es.isEmpty()) {
-            List<Throwable> list = es.sorted(this::compareThrowable).toList();
+            List<Throwable> list = es.sorted(this::compareThrowable).asList();
             throw new Error("Error in engine " + state.get(() -> list.first().getMessage()), list.first());
         }
     }
@@ -601,7 +601,7 @@ public class UniverseTransaction extends MutableTransaction {
         State postState = tx.state();
         Set<Mutable> orphans = preOrphansState.diff(postState, o -> {
             return o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty();
-        }).map(e -> (Mutable) e.getKey()).toSet();
+        }).map(e -> (Mutable) e.getKey()).asSet();
         orphansDetected.set(!orphans.isEmpty());
         orphans.forEach(tx::clearOrphan);
     }

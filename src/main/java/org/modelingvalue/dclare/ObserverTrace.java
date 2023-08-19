@@ -51,16 +51,16 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
             e.getKey().observed().writers().set(e.getKey().mutable(), Set::add, this);
         }
         Set<ObserverTrace> done = previous != null ? previous.done : Set.of();
-        Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.toMap(e -> {
+        Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.asMap(e -> {
             ObservedInstance observedInstance = e.getKey();
             Set<ObserverTrace> writers = observedInstance.observed().writers().get(observedInstance.mutable());
             return Entry.of(observedInstance, writers.removeAll(done).remove(this));
         });
-        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).toSet();
-        Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
-        backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
+        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).asSet();
+        Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).asSet();
+        backTrace = backTrace.asMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
         if (backTrace.anyMatch(e -> e.getValue().anyMatch(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)))) {
-            backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).toSet()));
+            backTrace = backTrace.asMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).asSet()));
         }
         this.backTrace = backTrace;
         this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());

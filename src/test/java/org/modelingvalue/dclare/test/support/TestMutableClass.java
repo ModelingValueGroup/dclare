@@ -55,7 +55,7 @@ public class TestMutableClass implements MutableClass {
     @SuppressWarnings("unchecked")
     protected TestMutableClass(Object id, Setable[] setables) {
         this.id = id;
-        this.setables = Collection.of(setables).toSet();
+        this.setables = Collection.of(setables).asSet();
         this.observers = new MutationWrapper(Set.of());
     }
 

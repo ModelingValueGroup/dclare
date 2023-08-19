@@ -111,7 +111,7 @@ public class MatchInfo {
     }
 
     private Set<Direction> directions() {
-        Set<Direction> result = allDerivations.map(Construction::reason).map(Reason::direction).toSet();
+        Set<Direction> result = allDerivations.map(Construction::reason).map(Reason::direction).asSet();
         result = result.add(initialConstruction.reason().direction());
         return result;
     }

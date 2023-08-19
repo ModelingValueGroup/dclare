@@ -281,7 +281,7 @@ public class Converters {
         @Override
         public List<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(e -> getPool().deserialize(e.toString())).toList();
+            return l.map(e -> getPool().deserialize(e.toString())).asList();
         }
     }
 
@@ -300,7 +300,7 @@ public class Converters {
         @Override
         public Set<?> deserialize(String string) {
             List<Object> l = (List<Object>) JsonIC.fromJson(string);
-            return l.map(e -> getPool().deserialize(e.toString())).toSet();
+            return l.map(e -> getPool().deserialize(e.toString())).asSet();
         }
     }
 
@@ -318,7 +318,7 @@ public class Converters {
         @Override
         public Map<?, ?> deserialize(String string) {
             Map<?, ?> m = (Map<?, ?>) JsonIC.fromJson(string);
-            return m.toMap(e -> Entry.of(getPool().deserialize(e.getKey().toString()), getPool().deserialize(e.getValue().toString())));
+            return m.asMap(e -> Entry.of(getPool().deserialize(e.getKey().toString()), getPool().deserialize(e.getValue().toString())));
         }
     }
 }

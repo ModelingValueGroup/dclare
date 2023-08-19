@@ -64,7 +64,7 @@ public abstract class OneShot<U extends Universe> {
     public OneShot(U universe) {
         this.universe = universe;
 
-        List<String> cachingMethods = getAllMethodsOf(cacheKey).filter(m -> m.getAnnotation(OneShotAction.class).caching()).map(Method::getName).toList();
+        List<String> cachingMethods = getAllMethodsOf(cacheKey).filter(m -> m.getAnnotation(OneShotAction.class).caching()).map(Method::getName).asList();
         if (1 < cachingMethods.count()) {
             throw new IllegalStateException("the oneshot " + cacheKey.getSimpleName() + " has too many caching actions: " + cachingMethods.collect(Collectors.joining(", ")));
         }
@@ -157,7 +157,7 @@ public abstract class OneShot<U extends Universe> {
     private List<MyAction> getAllActions
     (
             boolean runningFromCache) {
-        return getAllMethodsOf(cacheKey).map(method -> new MyAction(method, runningFromCache)).sorted(Comparator.comparing(a -> a.id().toString())).toList();
+        return getAllMethodsOf(cacheKey).map(method -> new MyAction(method, runningFromCache)).sorted(Comparator.comparing(a -> a.id().toString())).asList();
     }
 
     private class MyAction extends Action<Universe> {
@@ -211,7 +211,7 @@ public abstract class OneShot<U extends Universe> {
                 }
             }
         }
-        return map.toValues().toSet();
+        return map.toValues().asSet();
     }
 
     private static void trace

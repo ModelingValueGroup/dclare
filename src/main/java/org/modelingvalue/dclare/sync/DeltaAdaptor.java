@@ -118,7 +118,7 @@ public class DeltaAdaptor<C extends MutableClass, M extends Mutable, S extends S
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void queueDelta(State pre, State post, Boolean last, DefaultMap<Object, Set<Setable>> setted) {
-        Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).toMap(e1 -> e1);
+        Map<Object, Map<Setable, Pair<Object, Object>>> deltaMap = pre.diff(post, getObjectFilter(), (Predicate<Setable>) (Object) helper.setableFilter()).asMap(e1 -> e1);
         if (!deltaMap.isEmpty()) {
             try {
                 deltaQueue.put(new ToJsonDeltas(deltaMap).render());

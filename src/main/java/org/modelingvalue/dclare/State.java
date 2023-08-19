@@ -309,7 +309,7 @@ public class State extends StateMap implements IState, Serializable {
         } else if (a instanceof List && b instanceof List) {
             List la = (List) a;
             List lb = (List) b;
-            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+            if (la.filter(lb::contains).asList().equals(lb.filter(la::contains).asList())) {
                 // same order
                 return "\n          <+ " + la.removeAll(lb) + "\n          +> " + lb.removeAll(la);
             } else {
@@ -332,7 +332,7 @@ public class State extends StateMap implements IState, Serializable {
         } else if (a instanceof List && b instanceof List) {
             List la = (List) a;
             List lb = (List) b;
-            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+            if (la.filter(lb::contains).asList().equals(lb.filter(la::contains).asList())) {
                 // same order
                 List removed = la.removeAll(lb);
                 List added = lb.removeAll(la);

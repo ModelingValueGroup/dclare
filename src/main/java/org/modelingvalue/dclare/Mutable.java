@@ -46,7 +46,7 @@ public interface Mutable extends TransactionClass {
             removed -> {
             }));
 
-    Observer<Mutable>                                        D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
+    Observer<Mutable>                                        D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().asSet()));
 
     @SuppressWarnings("unchecked")
     Observer<Mutable>                                        D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));

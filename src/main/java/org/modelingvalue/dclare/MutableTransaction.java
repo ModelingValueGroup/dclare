@@ -125,7 +125,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     private void run(Set<Action<?>> actions, Set<Mutable> children) {
-        List<? extends TransactionClass> random = Collection.concat(actions, children).random().toList();
+        List<? extends TransactionClass> random = Collection.concat(actions, children).random().asList();
         if (universeTransaction().getConfig().isTraceMutable()) {
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + " " + random.toString().substring(4));
         }
@@ -237,7 +237,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
                     if (!Objects.equals(branchValue, baseValue)) {
                         DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
                         Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
-                                toMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).toSet()));
+                                asMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).asSet()));
                         triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
                     }
                 }

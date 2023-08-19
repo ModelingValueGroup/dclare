@@ -53,7 +53,7 @@ public interface Direction extends LeafModifier, Internable {
         private Set<Direction>                 opposites = null;
 
         private DirectionImpl(Object id, Direction... opposites) {
-            this(id, () -> Collection.of(opposites).toSet());
+            this(id, () -> Collection.of(opposites).asSet());
         }
 
         private DirectionImpl(Object id, Supplier<Set<Direction>> oppositeSupplier) {

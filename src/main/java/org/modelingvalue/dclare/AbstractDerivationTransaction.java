@@ -103,7 +103,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                         }
                         INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
                             int i = 0;
-                            Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).toSet();
+                            Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).asSet();
                             for (Observer observer : observers.filter(Observer::anonymous)) {
                                 runDeriver((Mutable) object, observed, observer, ++i);
                             }
@@ -188,9 +188,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private <T, O> T match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
-        List<Newable> posts = setable.collection(post).filter(Newable.class).distinct().toList();
+        List<Newable> posts = setable.collection(post).filter(Newable.class).distinct().asList();
         if (!posts.isEmpty()) {
-            List<Newable> pres = setable.collection(pre).filter(Newable.class).exclude(posts::contains).distinct().toList();
+            List<Newable> pres = setable.collection(pre).filter(Newable.class).exclude(posts::contains).distinct().asList();
             if (!pres.isEmpty()) {
                 for (Newable po : posts) {
                     Construction poInit = Newable.D_INITIAL_CONSTRUCTION.get(po);
