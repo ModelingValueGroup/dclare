@@ -29,8 +29,10 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * This class will enable you to build a model in a dclare universe and then finish.
@@ -47,7 +49,7 @@ public abstract class OneShot<U extends Universe> {
     private static final boolean                                     TRACE_ONE_SHOT    = Boolean.getBoolean("TRACE_ONE_SHOT");
     private static final MutationWrapper<Map<Class<?>, StateMap>>    STATE_MAP_CACHE   = new MutationWrapper<>(Map.of());
     private static final MutationWrapper<Map<Class<?>, Set<Method>>> ALL_METHODS_CACHE = new MutationWrapper<>(Map.of());
-    private static       ContextPool                                 CONTEXT_POOL;
+    private static final ContextPoolPool                             CONTEXT_POOL_POOL = new ContextPoolPool();
 
     private final Class<?> cacheKey = getClass();
     private final U        universe;
@@ -93,17 +95,12 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the ContextPool that was created
      */
-    public ContextPool getContextPool() {
-        synchronized (OneShot.class) {
-            if (CONTEXT_POOL == null) {
-                CONTEXT_POOL = ContextThread.createPool();
-            }
-        }
-        return CONTEXT_POOL;
+    public ContextPool allocateContextPool() {
+        return CONTEXT_POOL_POOL.allocateContextPool();
     }
 
-    public void shutdownContextPool(ContextPool contextPool) {
-        if (contextPool != CONTEXT_POOL) {
+    public void doneWithContextPool(ContextPool contextPool) {
+        if (!CONTEXT_POOL_POOL.doneWithContextPool(contextPool)) {
             contextPool.shutdownNow();
         }
     }
@@ -129,7 +126,7 @@ public abstract class OneShot<U extends Universe> {
         }
         synchronized (this) {
             if (endState == null) {
-                ContextPool contextPool = getContextPool();
+                ContextPool contextPool = allocateContextPool();
                 try {
                     StateMap            cachedStateMap      = STATE_MAP_CACHE.get().get(cacheKey);
                     boolean             runningFromCache    = cachedStateMap != null;
@@ -142,7 +139,7 @@ public abstract class OneShot<U extends Universe> {
                     endState = universeTransaction.waitForEnd();
                     trace("TRACE_ONE_SHOT: %-6s %-40s duration=%5d ms\n", "DONE", cacheKey.getSimpleName(), System.currentTimeMillis() - t0);
                 } finally {
-                    shutdownContextPool(contextPool);
+                    doneWithContextPool(contextPool);
                 }
             }
             return endState;
@@ -154,9 +151,7 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the list of actions to perform
      */
-    private List<MyAction> getAllActions
-    (
-            boolean runningFromCache) {
+    private List<MyAction> getAllActions(boolean runningFromCache) {
         return getAllMethodsOf(cacheKey).map(method -> new MyAction(method, runningFromCache)).sorted(Comparator.comparing(a -> a.id().toString())).asList();
     }
 
@@ -192,13 +187,11 @@ public abstract class OneShot<U extends Universe> {
         }
     }
 
-    private static Set<Method> getAllMethodsOf
-            (Class<?> clazz) {
+    private static Set<Method> getAllMethodsOf(Class<?> clazz) {
         return ALL_METHODS_CACHE.updateAndGet(a -> a.computeIfAbsent(clazz, __ -> computeAllMethodsOf(clazz))).get(clazz);
     }
 
-    private static Set<Method> computeAllMethodsOf
-            (Class<?> clazz) {
+    private static Set<Method> computeAllMethodsOf(Class<?> clazz) {
         Map<String, Method> map = Map.of();
         for (Class<?> c = clazz; c != Object.class; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
@@ -214,12 +207,55 @@ public abstract class OneShot<U extends Universe> {
         return map.toValues().asSet();
     }
 
-    private static void trace
-            (String
-                     format, Object...
-                                     args) {
+    private static void trace(String format, Object... args) {
         if (TRACE_ONE_SHOT) {
             System.err.printf(format, args);
+        }
+    }
+
+    private static class ContextPoolPool {
+        private static final boolean                     NO_VERBOSE_POOL_POOL      = Boolean.getBoolean("NO_VERBOSE_POOL_POOL");
+        private static final int                         INITIAL_POOL_POOL_SIZE    = Integer.getInteger("INITIAL_POOL_POOL_SIZE", 2);
+        private static final int                         MAINTAINED_POOL_POOL_SIZE = Integer.getInteger("MAINTAINED_POOL_POOL_SIZE", 5);
+        //
+        private final        java.util.List<ContextPool> idlePools                 = makeInitialIdlePools();
+        private final        java.util.List<ContextPool> busyPools                 = new ArrayList<>();
+
+        public ContextPoolPool() {
+            debug_report("INIT");
+        }
+
+        private static java.util.List<ContextPool> makeInitialIdlePools() {
+            return IntStream.range(0, INITIAL_POOL_POOL_SIZE).mapToObj(i -> ContextThread.createPool()).collect(Collectors.toList());
+        }
+
+        public synchronized ContextPool allocateContextPool() {
+            if (idlePools.isEmpty()) {
+                idlePools.add(ContextThread.createPool());
+                debug_report("additional pool created");
+            }
+            ContextPool contextPool = idlePools.remove(idlePools.size() - 1);
+            busyPools.add(contextPool);
+            return contextPool;
+        }
+
+        public synchronized boolean doneWithContextPool(ContextPool contextPool) {
+            boolean isMyPool = busyPools.remove(contextPool);
+            if (isMyPool) {
+                if (idlePools.size() < MAINTAINED_POOL_POOL_SIZE) {
+                    idlePools.add(contextPool);
+                } else {
+                    contextPool.shutdownNow();
+                    debug_report("superfluous pool removed");
+                }
+            }
+            return isMyPool;
+        }
+
+        private void debug_report(String msg) {
+            if (!NO_VERBOSE_POOL_POOL) {
+                System.err.printf("DEBUG: ContextPoolPool: %-25s: %3d idle %3d busy\n", msg, idlePools.size(), busyPools.size());
+            }
         }
     }
 }
