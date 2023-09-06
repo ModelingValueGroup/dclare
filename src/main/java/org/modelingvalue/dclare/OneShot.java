@@ -15,6 +15,7 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -29,8 +30,12 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -95,8 +100,8 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the ContextPool that was created
      */
-    public ContextPool allocateContextPool() {
-        return CONTEXT_POOL_POOL.allocateContextPool();
+    public ContextPool getContextPool() {
+        return CONTEXT_POOL_POOL.getContextPool();
     }
 
     public void doneWithContextPool(ContextPool contextPool) {
@@ -126,7 +131,7 @@ public abstract class OneShot<U extends Universe> {
         }
         synchronized (this) {
             if (endState == null) {
-                ContextPool contextPool = allocateContextPool();
+                ContextPool contextPool = getContextPool();
                 try {
                     StateMap            cachedStateMap      = STATE_MAP_CACHE.get().get(cacheKey);
                     boolean             runningFromCache    = cachedStateMap != null;
@@ -214,47 +219,197 @@ public abstract class OneShot<U extends Universe> {
     }
 
     private static class ContextPoolPool {
-        private static final boolean                     NO_VERBOSE_POOL_POOL      = Boolean.getBoolean("NO_VERBOSE_POOL_POOL");
-        private static final int                         INITIAL_POOL_POOL_SIZE    = Integer.getInteger("INITIAL_POOL_POOL_SIZE", 2);
-        private static final int                         MAINTAINED_POOL_POOL_SIZE = Integer.getInteger("MAINTAINED_POOL_POOL_SIZE", 5);
+        private static final boolean                              NO_POOL_POOL_TRACE             = Boolean.getBoolean("NO_POOL_POOL_TRACE");
+        private static final int                                  POOL_POOL_SIZE                 = Integer.getInteger("POOL_POOL_SIZE", Collection.PARALLELISM);
+        private static final int                                  POOL_POOL_ALARM_THRESHOLD_SEC  = Integer.getInteger("POOL_POOL_ALARM_THRESHOLD_SEC", 30);
+        private static final int                                  POOL_POOL_AQUIRE_TIMEOUT_SEC   = Integer.getInteger("POOL_POOL_AQUIRE_TIMEOUT_SEC", 30);
+        private static final int                                  POOL_POOL_MONITOR_INTERVAL_SEC = Integer.getInteger("POOL_POOL_MONITOR_INTERVAL_SEC", 60);
         //
-        private final        java.util.List<ContextPool> idlePools                 = makeInitialIdlePools();
-        private final        java.util.List<ContextPool> busyPools                 = new ArrayList<>();
+        private final        BlockingQueue<PoolInfo>              idleQueue                      = new LinkedBlockingQueue<>(makePools());
+        private final        BlockingQueue<PoolInfo>              busyQueue                      = new LinkedBlockingQueue<>();
+        private final        AtomicReference<PoolPoolInfo>        poolPoolInfo                   = new AtomicReference<>(new PoolPoolInfo());
+        private final        java.util.Map<ContextPool, PoolInfo> poolInfoMap;
+
+        private static java.util.Collection<PoolInfo> makePools() {
+            return IntStream.range(0, POOL_POOL_SIZE)
+                            .mapToObj(i -> new PoolInfo())
+                            .toList();
+        }
 
         public ContextPoolPool() {
-            debug_report("INIT");
+            trace("INIT");
+            poolInfoMap = makePoolInfoMap();
+            new PoolPoolMonitor(this).start();
         }
 
-        private static java.util.List<ContextPool> makeInitialIdlePools() {
-            return IntStream.range(0, INITIAL_POOL_POOL_SIZE).mapToObj(i -> ContextThread.createPool()).collect(Collectors.toList());
+        private java.util.Map<ContextPool, PoolInfo> makePoolInfoMap() {
+            return idleQueue.stream().collect(Collectors.toMap(info -> info.pool, info -> info));
         }
 
-        public synchronized ContextPool allocateContextPool() {
-            if (idlePools.isEmpty()) {
-                idlePools.add(ContextThread.createPool());
-                debug_report("additional pool created");
+        public ContextPool getContextPool() {
+            try {
+                PoolPoolInfo.preUpdate(poolPoolInfo);
+                trace("get");
+                long     t0   = System.nanoTime();
+                PoolInfo info = idleQueue.poll(POOL_POOL_AQUIRE_TIMEOUT_SEC, TimeUnit.SECONDS);
+                long     dt   = (System.nanoTime() - t0) / 1_000_000;
+                if (info == null) {
+                    trace("timeout");
+                    throw new RuntimeException("timeout after " + dt + " ms while waiting for ContextPool");
+                }
+                PoolPoolInfo.postUpdate(poolPoolInfo, dt);
+                info.start();
+                busyQueue.add(info);
+                trace(String.format("waited %6d ms", dt));
+                return info.pool;
+            } catch (InterruptedException e) {
+                throw new RuntimeException("interrupted while waiting for ContextPool", e);
             }
-            ContextPool contextPool = idlePools.remove(idlePools.size() - 1);
-            busyPools.add(contextPool);
-            return contextPool;
         }
 
-        public synchronized boolean doneWithContextPool(ContextPool contextPool) {
-            boolean isMyPool = busyPools.remove(contextPool);
-            if (isMyPool) {
-                if (idlePools.size() < MAINTAINED_POOL_POOL_SIZE) {
-                    idlePools.add(contextPool);
-                } else {
-                    contextPool.shutdownNow();
-                    debug_report("superfluous pool removed");
+        public boolean doneWithContextPool(ContextPool pool) {
+            PoolInfo info = poolInfoMap.get(pool);
+            if (info == null) {
+                return false;
+            }
+            if (!busyQueue.remove(info)) {
+                trace("pool not busy");
+                throw new IllegalStateException("pool not busy");
+            }
+            info.stop();
+            idleQueue.add(info);
+            trace("done");
+            return true;
+        }
+
+        private void trace(String msg) {
+            if (!NO_POOL_POOL_TRACE) {
+                System.err.printf("TRACE: ContextPoolPool: [%-25s] %-25s: idle/busy=%3d/%3d: %s\n",
+                                  Thread.currentThread().getName(),
+                                  msg,
+                                  idleQueue.size(),
+                                  busyQueue.size(),
+                                  poolPoolInfo.get());
+            }
+        }
+
+        private void check() {
+            for (PoolInfo info : poolInfoMap.values()) {
+                if (info.busy) {
+                    long duration = info.duration();
+                    if (POOL_POOL_ALARM_THRESHOLD_SEC * 1000L < duration) {
+                        System.err.printf("ALARM: ContextPool probably stuck (busy for %-8d ms): %s\n", duration, info.pool);
+                    }
                 }
             }
-            return isMyPool;
         }
 
-        private void debug_report(String msg) {
-            if (!NO_VERBOSE_POOL_POOL) {
-                System.err.printf("DEBUG: ContextPoolPool: %-25s: %3d idle %3d busy\n", msg, idlePools.size(), busyPools.size());
+        private static class PoolPoolMonitor extends Thread {
+            private final ContextPoolPool contextPoolPool;
+
+            private PoolPoolMonitor(ContextPoolPool contextPoolPool) {
+                super("PoolPoolMonitor");
+                setDaemon(true);
+                this.contextPoolPool = contextPoolPool;
+            }
+
+            @SuppressWarnings("BusyWait")
+            @Override
+            public void run() {
+                for (; ; ) {
+                    try {
+                        Thread.sleep(POOL_POOL_MONITOR_INTERVAL_SEC * 1000L);
+                        contextPoolPool.check();
+                    } catch (InterruptedException e) {
+                        System.err.println("WARNING PoolPoolMonitor interrupted!");
+                        return;
+                    }
+                }
+            }
+        }
+
+        private static class PoolInfo {
+            private final ContextPool pool;
+            private       boolean     busy;
+            private       long        startTick;
+            private       long        lastDuration;
+
+            public PoolInfo() {
+                pool = ContextThread.createPool();
+                // No-op tasks, just to get all Threads started
+                for (int i = 0; i < pool.getParallelism(); i++) {
+                    pool.execute(() -> {
+                    });
+                }
+            }
+
+            public void start() {
+                busy         = true;
+                lastDuration = 0;
+                startTick    = System.currentTimeMillis();
+            }
+
+            public void stop() {
+                busy         = false;
+                lastDuration = duration();
+                startTick    = 0;
+            }
+
+            public long duration() {
+                long t = startTick;
+                return t == 0 ? 0 : System.currentTimeMillis() - t;
+            }
+        }
+
+        private static class PoolPoolInfo {
+            private final long gets;
+            private final long immediates;
+            private final long waits;
+            private final long totalWaitTime;
+            private final long maxWaitTime;
+
+            public PoolPoolInfo() {
+                this.gets          = 0;
+                this.immediates    = 0;
+                this.waits         = 0;
+                this.totalWaitTime = 0;
+                this.maxWaitTime   = 0;
+            }
+
+            public static void preUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo) {
+                update(poolPoolInfo, info -> new PoolPoolInfo(info.gets + 1, info.immediates, info.waits, info.totalWaitTime, info.maxWaitTime));
+            }
+
+            public static void postUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo, long dt) {
+                update(poolPoolInfo, info -> new PoolPoolInfo(info.gets, info.immediates + (0 == dt ? 1 : 0), info.waits + (0 == dt ? 0 : 1), info.totalWaitTime + dt, Math.max(info.maxWaitTime, dt)));
+            }
+
+            private static void update(AtomicReference<PoolPoolInfo> poolPoolInfo, Function<PoolPoolInfo, PoolPoolInfo> f) {
+                for (; ; ) {
+                    PoolPoolInfo oldInfo = poolPoolInfo.get();
+                    PoolPoolInfo newInfo = f.apply(oldInfo);
+                    if (poolPoolInfo.compareAndSet(oldInfo, newInfo)) {
+                        break;
+                    }
+                }
+            }
+
+            private PoolPoolInfo(long gets, long immediates, long waits, long totalWaitTime, long maxWaitTime) {
+                this.gets          = gets;
+                this.immediates    = immediates;
+                this.waits         = waits;
+                this.totalWaitTime = totalWaitTime;
+                this.maxWaitTime   = maxWaitTime;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("%4d gets (%4d immediates %4d waits %8d ms totalWait, %8d ms max-wait)",
+                                     gets,
+                                     immediates,
+                                     waits,
+                                     totalWaitTime,
+                                     maxWaitTime);
             }
         }
     }
