@@ -18,8 +18,7 @@ package org.modelingvalue.dclare;
 import org.modelingvalue.collections.util.Internable;
 
 public class TransactionId implements Internable {
-
-    public static final TransactionId of(long number) {
+    public static TransactionId of(long number) {
         return new TransactionId(number);
     }
 
@@ -35,7 +34,7 @@ public class TransactionId implements Internable {
 
     @Override
     public String toString() {
-        return "TX" + Long.toString(number);
+        return "TX" + number;
     }
 
     @Override
@@ -50,8 +49,7 @@ public class TransactionId implements Internable {
         } else if (!(obj instanceof TransactionId)) {
             return false;
         } else {
-            TransactionId other = (TransactionId) obj;
-            return number == other.number;
+            return number == ((TransactionId) obj).number;
         }
     }
 
