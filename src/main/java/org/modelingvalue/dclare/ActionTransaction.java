@@ -15,9 +15,13 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.ConcurrentModificationException;
+import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
@@ -26,21 +30,12 @@ import org.modelingvalue.collections.util.NotMergeableException;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.ex.CycleInParentChainException;
 import org.modelingvalue.dclare.ex.TransactionException;
 
-import java.util.ConcurrentModificationException;
-import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.UnaryOperator;
-
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private static final int                                                     MAX_COMPOSITION_DEPTH = Integer.getInteger("MAX_COMPOSITION_DEPTH", 10_000);
-    private static final BiFunction<TransactionId, TransactionId, TransactionId> HIGHEST               = (b, a) -> b == null || b.number() < a.number() ? a : b;
-
     private final CurrentState currentState = new CurrentState();
-    private       State        preState;
-    private       State        postState;
+    private State              preState;
+    private State              postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -66,7 +61,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 run(pre, universeTransaction());
                 if (universeTransaction().getConfig().isTraceActions()) {
                     postState = currentState.merge();
-                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed /*&& !s.isPlumbing()*/).asMap(e -> e);
+                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed /* && !s.isPlumbing() */).asMap(e -> e);
                     if (!diff.isEmpty()) {
                         runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")"));
                     }
@@ -83,7 +78,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             return pre;
         } finally {
             currentState.clear();
-            preState  = null;
+            preState = null;
             postState = null;
             TraceTimer.traceEnd(traceId());
         }
@@ -186,35 +181,15 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
     }
 
     private <O, T> void setChanged(O object, Setable<O, T> setable, T postValue) {
-        TransactionId txid           = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue, action()) : current().transactionId();
-        long          txidNumber     = txid.number();
-        Mutable       mutable        = (Mutable) object;
-        int           cycleInsurance = 0;
-        for (Mutable changed = mutable; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
-            TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
-            if (old != null && txidNumber <= old.number()) {
+        TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue, action()) : current().transactionId();
+        for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
+            TransactionId old = current(changed, Mutable.D_CHANGE_ID);
+            if (old != null && txid.number() <= old.number()) {
                 break;
-            }
-            if (MAX_COMPOSITION_DEPTH < cycleInsurance++) {
-                //throwCycleException(mutable, setable);
-                System.err.println("FALL THROUGH AFTER CYCLE DETECTION....");
-                break;
+            } else {
+                set(changed, Mutable.D_CHANGE_ID, txid);
             }
         }
-    }
-
-    private <O, T> void throwCycleException(Mutable mutable, Setable<O, T> setable) {
-        List<Mutable> chain = List.of();
-        for (Mutable m = mutable; ; m = dParent(m)) {
-            chain = chain.add(m);
-            Mutable m_ = m;
-            if (1 < chain.filter(mm -> mm == m_).count()) {
-                break;
-            }
-        }
-        System.err.println("FATAL: cycle (#" + (chain.size() - 1) + ") detected in parent chain: ");
-        chain.forEachOrdered(m -> System.err.println("   • " + m));
-        throw new CycleInParentChainException(mutable, setable, chain);
     }
 
     private final class CurrentState extends Concurrent<State> {
