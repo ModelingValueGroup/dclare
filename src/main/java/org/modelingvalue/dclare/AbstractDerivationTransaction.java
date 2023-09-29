@@ -193,22 +193,22 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             List<Newable> pres = setable.collection(pre).filter(Newable.class).exclude(posts::contains).distinct().asList();
             if (!pres.isEmpty()) {
                 for (Newable po : posts) {
-                    Construction poInit = Newable.D_INITIAL_CONSTRUCTION.get(po);
+                    Construction poInit = Mutable.D_INITIAL_CONSTRUCTION.get(po);
                     if (poInit.isDerived() && mem.isSet(this, po, Newable.D_ALL_DERIVATIONS.constant())) {
                         for (Newable pr : pres) {
-                            Construction preInit = Newable.D_INITIAL_CONSTRUCTION.get(pr);
+                            Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
                             if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
                                 post = replace(post, po, pr);
-                                mem.set(this, pr, Newable.D_ALL_DERIVATIONS.constant(), mem.get(this, po, Newable.D_ALL_DERIVATIONS.constant()), true);
+                                mem.set(this, pr, Mutable.D_ALL_DERIVATIONS.constant(), mem.get(this, po, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     } else if (poInit.isDirect()) {
                         for (Newable pr : pres) {
-                            Construction preInit = Newable.D_INITIAL_CONSTRUCTION.get(pr);
+                            Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
                             if (preInit.isDerived() && mem.isSet(this, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
-                                mem.set(this, po, Newable.D_ALL_DERIVATIONS.constant(), mem.get(this, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
+                                mem.set(this, po, Mutable.D_ALL_DERIVATIONS.constant(), mem.get(this, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     }
@@ -240,7 +240,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
         memoization(deriver.a()).set(this, result, Newable.D_ALL_DERIVATIONS.constant(), Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons), false);
-        Newable.D_INITIAL_CONSTRUCTION.force(result, cons);
+        Mutable.D_INITIAL_CONSTRUCTION.force(result, cons);
         return result;
     }
 

@@ -187,7 +187,7 @@ public abstract class LeafTransaction extends Transaction {
             result = constantState().get(this, reason, Construction.CONSTRUCTED);
         }
         if (result != null) {
-            constantState().set(this, result, Newable.D_INITIAL_CONSTRUCTION, Construction.of(reason), true);
+            constantState().set(this, result, Mutable.D_INITIAL_CONSTRUCTION, Construction.of(reason), true);
         }
         return (O) result;
     }
