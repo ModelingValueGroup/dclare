@@ -15,35 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.durable;
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
-
-public interface Newable extends Mutable {
-
-    Constant<Newable, Object> D_IDENTITY  = Constant.of("D_IDENTITY", null, plumbing, durable);
-    Setable<Newable, Newable> D_REPLACING = Setable.of("D_REPLACING", null, plumbing);
-
-    Object dIdentity();
-
-    Object dNewableType();
-
-    @Override
-    default void dActivate() {
-        Mutable.super.dActivate();
-    }
-
-    @Override
-    default void dDeactivate(LeafTransaction tx) {
-        Mutable.super.dDeactivate(tx);
-    }
-
-    @Override
-    default void dHandleRemoved(Mutable parent) {
-        Mutable.super.dHandleRemoved(parent);
-    }
-
-    default Newable dReplacing() {
-        return D_REPLACING.current(this);
-    }
-
+public enum CoreSetableModifier implements SetableModifier {
+    symmetricOpposite,
+    containment,
+    mandatory,
+    synthetic,
+    plumbing,
+    durable,
+    doNotMerge,
+    orphansAllowed,
+    preserved,
+    doNotClear;
 }

@@ -15,14 +15,14 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-import static org.modelingvalue.dclare.SetableModifier.containment;
-
-import java.util.function.Predicate;
-
-import org.modelingvalue.collections.*;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.QualifiedDefaultSet;
+import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextThread.ContextPool;
@@ -35,6 +35,13 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
+
+import java.util.function.Predicate;
+
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 
 @SuppressWarnings({"FieldCanBeLocal", "unchecked", "rawtypes"})
 public class ModelMaker {

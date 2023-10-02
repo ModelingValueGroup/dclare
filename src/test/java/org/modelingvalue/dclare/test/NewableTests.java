@@ -15,17 +15,6 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.modelingvalue.dclare.SetableModifier.*;
-import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
-import static org.modelingvalue.dclare.test.support.TestNewable.create;
-import static org.modelingvalue.dclare.test.support.TestNewable.n;
-
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
@@ -39,13 +28,37 @@ import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.dclare.*;
+import org.modelingvalue.dclare.DclareConfig;
+import org.modelingvalue.dclare.Direction;
+import org.modelingvalue.dclare.LeafTransaction;
+import org.modelingvalue.dclare.Newable;
+import org.modelingvalue.dclare.Observed;
+import org.modelingvalue.dclare.Setable;
+import org.modelingvalue.dclare.State;
+import org.modelingvalue.dclare.Universe;
+import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.UniverseTransaction.Status;
 import org.modelingvalue.dclare.test.support.TestMutable;
 import org.modelingvalue.dclare.test.support.TestMutableClass;
 import org.modelingvalue.dclare.test.support.TestNewable;
 import org.modelingvalue.dclare.test.support.TestNewableClass;
 import org.modelingvalue.dclare.test.support.TestUniverse;
+
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.modelingvalue.dclare.CoreSetableModifier.containment;
+import static org.modelingvalue.dclare.CoreSetableModifier.mandatory;
+import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
+import static org.modelingvalue.dclare.CoreSetableModifier.synthetic;
+import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
+import static org.modelingvalue.dclare.test.support.TestNewable.create;
+import static org.modelingvalue.dclare.test.support.TestNewable.n;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class NewableTests {
@@ -154,11 +167,11 @@ public class NewableTests {
 
         Concurrent<Set<TestNewable>> created = run(utx, "init", c -> {
 
+            TestNewable a0 = c.create(A);
+            TestNewable b0 = c.create(B);
+            TestNewable a1 = c.create(A);
+            TestNewable b1 = c.create(B);
             if (FULL) {
-                TestNewable a0 = c.create(A);
-                TestNewable b0 = c.create(B);
-                TestNewable a1 = c.create(A);
-                TestNewable b1 = c.create(B);
                 TestNewable a2 = c.create(A);
                 TestNewable b2 = c.create(B);
                 TestNewable a3 = c.create(A);
@@ -207,10 +220,6 @@ public class NewableTests {
                 n.set(ac5, "t");
                 n.set(bc5, "t");
             } else {
-                TestNewable a0 = c.create(A);
-                TestNewable b0 = c.create(B);
-                TestNewable a1 = c.create(A);
-                TestNewable b1 = c.create(B);
                 cs.set(universe, List.of(a0, b0, a1, b1));
                 n.set(a0, "x");
                 n.set(b0, "x");
@@ -1051,9 +1060,7 @@ public class NewableTests {
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     private static boolean equals(State as, Object a, State bs, Object b, AtomicReference<Map<Pair<Newable, Newable>, Boolean>> done) {
         boolean result = false;
-        if (a instanceof Newable && b instanceof Newable) {
-            Newable an = (Newable) a;
-            Newable bn = (Newable) b;
+        if (a instanceof Newable an && b instanceof Newable bn) {
             Pair<Newable, Newable> key = Pair.of(an, bn);
             if (done.get().containsKey(key)) {
                 result = done.get().get(key);
@@ -1066,9 +1073,7 @@ public class NewableTests {
                 }
                 done.set(done.get().put(key, result));
             }
-        } else if (a instanceof Struct && b instanceof Struct) {
-            Struct structa = (Struct) a;
-            Struct structb = (Struct) b;
+        } else if (a instanceof Struct structa && b instanceof Struct structb) {
             if (structa.length() == structb.length()) {
                 result = true;
                 for (int i = 0; i < structa.length(); i++) {

@@ -15,12 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -34,6 +28,12 @@ import org.modelingvalue.dclare.Construction.Reason;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.DebugTrace;
 import org.modelingvalue.dclare.ex.ThrowableError;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
@@ -209,8 +209,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     @SuppressWarnings("rawtypes")
     public static final class Traces extends Setable<Mutable, List<ObserverTrace>> {
-
-        protected Traces(Pair<Observer, String> id) {
+        private Traces(Pair<Observer, String> id) {
             super(id, m -> List.of(), null, null, null);
         }
 
@@ -248,8 +247,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     @SuppressWarnings("rawtypes")
     public static final class Debugs extends Setable<Mutable, List<ObserverTrace>> {
-
-        protected Debugs(Pair<Observer, String> id) {
+        private Debugs(Pair<Observer, String> id) {
             super(id, m -> List.of(), null, null, null);
         }
 
@@ -287,7 +285,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         tx.set(o, obs, (m, e) -> m.remove(e, Set::removeAll), observer.entry(mutable, o));
                     });
                 }
-            }, SetableModifier.plumbing);
+            }, CoreSetableModifier.plumbing);
         }
 
         public Observer observer() {
@@ -311,7 +309,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         private final Observer observer;
 
         private ExceptionSetable(Observer observer) {
-            super(Pair.of(observer, "exception"), null, null, null, null, SetableModifier.plumbing);
+            super(Pair.of(observer, "exception"), null, null, null, null, CoreSetableModifier.plumbing);
             this.observer = observer;
         }
 
@@ -369,7 +367,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                         }
                     }
                 }
-            }, SetableModifier.plumbing, SetableModifier.doNotMerge);
+            }, CoreSetableModifier.plumbing, CoreSetableModifier.doNotMerge);
         }
 
         @Override

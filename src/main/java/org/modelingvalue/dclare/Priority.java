@@ -15,14 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 public enum Priority implements LeafModifier, Internable {
 
@@ -48,7 +48,7 @@ public enum Priority implements LeafModifier, Internable {
         private final boolean actions;
 
         Queued(int i, boolean actions) {
-            super(Pair.of(i, actions), m -> Set.of(), null, null, null, SetableModifier.plumbing);
+            super(Pair.of(i, actions), m -> Set.of(), null, null, null, CoreSetableModifier.plumbing);
             this.actions = actions;
         }
 
@@ -88,20 +88,20 @@ public enum Priority implements LeafModifier, Internable {
         }
 
         public void init(T init) {
-            for (int i = 0; i < priorities.length; i++) {
-                priorities[i].init(init);
+            for (Concurrent<T> priority : priorities) {
+                priority.init(init);
             }
         }
 
         public void merge() {
-            for (int i = 0; i < priorities.length; i++) {
-                priorities[i].merge();
+            for (Concurrent<T> priority : priorities) {
+                priority.merge();
             }
         }
 
         public void clear() {
-            for (int i = 0; i < priorities.length; i++) {
-                priorities[i].clear();
+            for (Concurrent<T> priority : priorities) {
+                priority.clear();
             }
         }
 
@@ -162,8 +162,8 @@ public enum Priority implements LeafModifier, Internable {
         }
 
         public void setState(State state) {
-            for (int i = 0; i < priorities.length; i++) {
-                priorities[i].setState(state);
+            for (MutableState priority : priorities) {
+                priority.setState(state);
             }
         }
 

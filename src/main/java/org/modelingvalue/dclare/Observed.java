@@ -15,9 +15,6 @@
 
 package org.modelingvalue.dclare;
 
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Set;
@@ -26,6 +23,9 @@ import org.modelingvalue.collections.util.QuadConsumer;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.EmptyMandatoryException;
 import org.modelingvalue.dclare.ex.TooManyObserversException;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Observed<O, T> extends Setable<O, T> {
 
@@ -82,7 +82,7 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory = SetableModifier.mandatory.in(modifiers);
+        this.mandatory = CoreSetableModifier.mandatory.in(modifiers);
         this.observers = new Observers<>(this);
     }
 
@@ -125,9 +125,9 @@ public class Observed<O, T> extends Setable<O, T> {
 
         @SuppressWarnings("unchecked")
         private Observers(Observed observed) {
-            super(observed, o -> Observer.OBSERVER_MAP, null, null, (tx, o, b, a) -> {
-                observed.checkTooManyObservers(tx.universeTransaction(), o, a);
-            }, SetableModifier.plumbing);
+            super(observed, o -> Observer.OBSERVER_MAP, null, null, //
+                  (tx, o, b, a) -> observed.checkTooManyObservers(tx.universeTransaction(), o, a),//
+                  CoreSetableModifier.plumbing);
         }
 
         @SuppressWarnings("unchecked")
