@@ -40,8 +40,8 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     @Override
-    protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
-        return super.doDerive(object, getable) && !isChanged(object, getable);
+    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable) {
+        return super.doDeriveGet(object, getable) && !isChanged(object, getable);
     }
 
     @SuppressWarnings("unchecked")

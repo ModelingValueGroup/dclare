@@ -59,7 +59,12 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings("rawtypes")
-    protected <O, T> boolean doDerive(O object, Getable<O, T> getable) {
+    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable) {
+        return doDeriveSet(object, getable);
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected <O, T> boolean doDeriveSet(O object, Getable<O, T> getable) {
         return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
     }
 
@@ -81,7 +86,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings("rawtypes")
     private <O, T> T derive(O object, Getable<O, T> getable, T nonDerived) {
-        if (doDerive(object, getable)) {
+        if (doDeriveGet(object, getable)) {
             Observed<O, T> observed = (Observed<O, T>) getable;
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
@@ -161,7 +166,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, T post) {
-        if (doDerive(object, setable)) {
+        if (doDeriveSet(object, setable)) {
             ConstantState mem = memoization(object);
             Constant<O, T> constant = setable.constant();
             T pre = mem.isSet(this, object, constant) ? mem.get(this, object, constant) : getNonDerived(object, setable);
