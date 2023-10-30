@@ -88,6 +88,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                history                 = List.of();
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
+    private State                                                                                      postState;
     private State                                                                                      preOrphansState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
@@ -409,6 +410,9 @@ public class UniverseTransaction extends MutableTransaction {
                 }
                 state = incrementChangeId(universe(), state);
                 state = super.run(state);
+                if (postState == null) {
+                    postState = state;
+                }
                 if (!killed && orphansDetected.get() == Boolean.TRUE) {
                     preOrphansState = startState(Priority.INNER).preState();
                     state = trigger(state, universe(), clearOrphans, Priority.INNER);
@@ -436,6 +440,7 @@ public class UniverseTransaction extends MutableTransaction {
             } while (priority != null);
             return state;
         } finally {
+            postState = null;
             preStartStates.setState(emptyState);
             startStates.setState(emptyState);
             preOrphansState = null;
@@ -729,6 +734,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State preState() {
         return preState;
+    }
+
+    public State postState() {
+        return postState;
     }
 
     public State currentState() {
