@@ -142,7 +142,7 @@ public class StateToJson extends ToJson {
 
     protected QualifiedSet<String, String> makeRef(Mutable mutableValue) {
         if (!renderIdFor(mutableValue)) {
-            throw new IllegalArgumentException("json serialisation can not proceed: need to " + ID_REF_FIELD_NAME + " to mutable " + getId(mutableValue) + " that does not render its " + ID_FIELD_NAME);
+            throw new IllegalArgumentException("json serialisation can not proceed: need to " + ID_REF_FIELD_NAME + " to mutable " + getId(mutableValue) + " of class " + mutableValue.dClass() + " that does not render its " + ID_FIELD_NAME);
         }
         return QualifiedSet.of(__ -> ID_REF_FIELD_NAME, getId(mutableValue));
     }
