@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -103,7 +104,7 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected Setable(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, def);
-        this.modifierSet = Set.of(modifiers);
+        this.modifierSet = Collection.of(modifiers).notNull().asSet();
         this.plumbing = hasModifier(CoreSetableModifier.plumbing);
         this.containment = hasModifier(CoreSetableModifier.containment);
         this.synthetic = hasModifier(CoreSetableModifier.synthetic);
@@ -119,7 +120,7 @@ public class Setable<O, T> extends Getable<O, T> {
         this.orphansAllowed = hasModifier(CoreSetableModifier.orphansAllowed);
         this.preserved = hasModifier(CoreSetableModifier.preserved);
         this.doNotClear = hasModifier(CoreSetableModifier.doNotClear);
-        Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
+        Direction dir = getModifier(Direction.class);
         this.direction = dir == null ? Direction.DEFAULT : dir;
     }
 

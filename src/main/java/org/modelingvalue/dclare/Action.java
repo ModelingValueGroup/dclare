@@ -36,10 +36,10 @@ public class Action<O extends Mutable> extends Leaf {
     protected Action(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         super(id, modifiers);
         this.action = action;
-        Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
+        Direction dir = getModifier(Direction.class);
         this.direction = dir == null ? Direction.DEFAULT : dir;
-        this.preserved = LeafModifier.preserved.in(modifiers);
-        this.read = LeafModifier.read.in(modifiers);
+        this.preserved = hasModifier(LeafModifier.preserved);
+        this.read = hasModifier(LeafModifier.read);
     }
 
     @Override

@@ -82,7 +82,7 @@ public class Observed<O, T> extends Setable<O, T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
-        this.mandatory = CoreSetableModifier.mandatory.in(modifiers);
+        this.mandatory = hasModifier(CoreSetableModifier.mandatory);
         this.observers = new Observers<>(this);
     }
 

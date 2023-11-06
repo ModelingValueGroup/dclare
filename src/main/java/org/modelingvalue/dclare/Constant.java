@@ -65,7 +65,7 @@ public class Constant<O, T> extends Setable<O, T> {
     protected Constant(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, Function<O, T> deriver, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.deriver = deriver;
-        this.durable = CoreSetableModifier.durable.in(modifiers);
+        this.durable = hasModifier(CoreSetableModifier.durable);
     }
 
     public Function<O, T> deriver() {
