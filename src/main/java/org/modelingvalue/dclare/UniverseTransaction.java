@@ -52,6 +52,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                       mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                     readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<Derivation, DerivationTransaction>>                 derivations             = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<LazyDerivation, LazyDerivationTransaction>>         lazyDerivations         = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<IdentityDerivation, IdentityDerivationTransaction>> identityDerivations     = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>>    nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
@@ -70,6 +71,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.one);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.one);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.one);
+    protected final LazyDerivation                                                                     lazyDerivation          = new LazyDerivation(this, Priority.one);
     private final UniverseStatistics                                                                   universeStatistics;
     protected final AtomicReference<Set<Throwable>>                                                    errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Set<Throwable>>                                                      inconsistencies         = new AtomicReference<>(Set.of());

@@ -274,6 +274,17 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
+    public State deriveLazy() {
+        ConstantState derivationState = new ConstantState("LAZY", universeTransaction::handleException);
+        LazyDerivationTransaction tx = universeTransaction.lazyDerivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(tx::derive, this, derivationState);
+        } finally {
+            derivationState.stop();
+            universeTransaction.lazyDerivation.closeTransaction(tx);
+        }
+    }
+
     public String diffString(StateMap other) {
         return diffString(diff(other));
     }
