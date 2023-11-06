@@ -19,10 +19,11 @@ import org.modelingvalue.collections.Collection;
 
 public class LazyDerivationTransaction extends AbstractDerivationTransaction {
 
-    private MutableState state;
+    private final MutableState state;
 
     protected LazyDerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
+        state = new MutableState(universeTransaction.emptyState());
     }
 
     @Override
@@ -30,10 +31,16 @@ public class LazyDerivationTransaction extends AbstractDerivationTransaction {
         return "LZ";
     }
 
-    public State derive() {
-        state = new MutableState(state());
-        deriveMutable(universeTransaction().universe());
-        return state.state();
+    public State derive(StateDeltaHandler diffHandler) {
+        state.setState(state());
+        try {
+            deriveMutable(universeTransaction().universe());
+            State result = state.state();
+            diffHandler.handleDelta(state(), result, true, ImperativeTransaction.SETTED_MAP);
+            return result;
+        } finally {
+            state.setState(universeTransaction().emptyState());
+        }
     }
 
     private void deriveMutable(Mutable mutable) {
