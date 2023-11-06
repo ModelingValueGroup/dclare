@@ -130,7 +130,7 @@ public class Setable<O, T> extends Getable<O, T> {
 
     @SuppressWarnings({"unused", "unchecked"})
     public <SM extends SetableModifier<?>> SM getModifier(Class<SM> modifierClass) {
-        return (SM) FeatureModifier.ofClass(Direction.class, modifierSet);
+        return (SM) FeatureModifier.ofClass(modifierClass, modifierSet);
     }
 
     @SuppressWarnings("rawtypes")

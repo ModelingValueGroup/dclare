@@ -38,7 +38,7 @@ public abstract class Leaf implements TransactionClass, Feature {
 
     @SuppressWarnings({"unused", "unchecked"})
     public <SM extends LeafModifier<?>> SM getModifier(Class<SM> modifierClass) {
-        return (SM) FeatureModifier.ofClass(Direction.class, modifierSet);
+        return (SM) FeatureModifier.ofClass(modifierClass, modifierSet);
     }
 
     @Override
