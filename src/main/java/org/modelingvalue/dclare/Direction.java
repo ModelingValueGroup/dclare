@@ -24,11 +24,19 @@ import org.modelingvalue.collections.util.Internable;
 public interface Direction extends LeafModifier<Direction>, SetableModifier<Direction>, Internable {
 
     static Direction of(Object id, Direction... opposites) {
-        return new DirectionImpl(id, opposites);
+        return new DirectionImpl(id, false, opposites);
     }
 
     static Direction of(Object id, Supplier<Set<Direction>> oppositeSupplier) {
-        return new DirectionImpl(id, oppositeSupplier);
+        return new DirectionImpl(id, false, oppositeSupplier);
+    }
+
+    static Direction of(Object id, boolean lazy, Direction... opposites) {
+        return new DirectionImpl(id, lazy, opposites);
+    }
+
+    static Direction of(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, lazy, oppositeSupplier);
     }
 
     Direction DEFAULT = new Direction() {
@@ -41,24 +49,38 @@ public interface Direction extends LeafModifier<Direction>, SetableModifier<Dire
         public Set<Direction> opposites() {
             return Set.of();
         }
+
+        @Override
+        public boolean isLazy() {
+            return false;
+        }
     };
 
     Set<Direction> opposites();
 
+    boolean isLazy();
+
     static final class DirectionImpl implements Direction {
 
         private final Object                   id;
+        private final boolean                  lazy;
         private final Supplier<Set<Direction>> oppositeSupplier;
 
         private Set<Direction>                 opposites = null;
 
-        private DirectionImpl(Object id, Direction... opposites) {
-            this(id, () -> Collection.of(opposites).asSet());
+        private DirectionImpl(Object id, boolean lazy, Direction... opposites) {
+            this(id, lazy, () -> Collection.of(opposites).asSet());
         }
 
-        private DirectionImpl(Object id, Supplier<Set<Direction>> oppositeSupplier) {
+        private DirectionImpl(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
             this.id = id;
+            this.lazy = lazy;
             this.oppositeSupplier = oppositeSupplier;
+        }
+
+        @Override
+        public boolean isLazy() {
+            return lazy;
         }
 
         @Override
