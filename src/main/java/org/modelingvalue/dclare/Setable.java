@@ -329,7 +329,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return !plumbing && (scope != null || checkForOrphans());
+        return !plumbing && !direction().isLazy() && (scope != null || checkForOrphans());
     }
 
     private boolean checkForOrphans() {

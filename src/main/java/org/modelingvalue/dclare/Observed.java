@@ -148,7 +148,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @Override
     public boolean checkConsistency() {
-        return !isPlumbing() && (mandatory || super.checkConsistency());
+        return !isPlumbing() && !direction().isLazy() && (mandatory || super.checkConsistency());
     }
 
     @Override
