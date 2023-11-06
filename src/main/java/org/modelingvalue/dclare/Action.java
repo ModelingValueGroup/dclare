@@ -24,7 +24,7 @@ public class Action<O extends Mutable> extends Leaf {
         }, Priority.one);
     }
 
-    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+    public static <M extends Mutable> Action<M> of(Object id, Consumer<M> action, LeafModifier<?>... modifiers) {
         return new Action<>(id, action, modifiers);
     }
 
@@ -33,7 +33,7 @@ public class Action<O extends Mutable> extends Leaf {
     private final boolean     preserved;
     private final boolean     read;
 
-    protected Action(Object id, Consumer<O> action, LeafModifier... modifiers) {
+    protected Action(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         super(id, modifiers);
         this.action = action;
         Direction dir = FeatureModifier.ofClass(Direction.class, modifiers);
@@ -69,7 +69,7 @@ public class Action<O extends Mutable> extends Leaf {
         return new ActionTransaction(universeTransaction);
     }
 
-    protected Direction direction() {
+    public Direction direction() {
         return direction;
     }
 

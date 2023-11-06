@@ -33,15 +33,15 @@ public class TestObserved<O, T> extends Observed<O, T> {
     private final TriFunction<O, TestObserved<O, T>, Object, T> deserializeValue;
 
     @SuppressWarnings("unchecked")
-    public static <C, V> TestObserved<C, V> existing(Object id, SetableModifier... modifiers) {
+    public static <C, V> TestObserved<C, V> existing(Object id, SetableModifier<?>... modifiers) {
         return (TestObserved<C, V>) staticObservedMap.get(id);
     }
 
-    public static <C, V> Observed<C, V> of(Object id, TriFunction<C, TestObserved<C, V>, V, Object> serializeValue, TriFunction<C, TestObserved<C, V>, Object, V> deserializeValue, V def, SetableModifier... modifiers) {
+    public static <C, V> Observed<C, V> of(Object id, TriFunction<C, TestObserved<C, V>, V, Object> serializeValue, TriFunction<C, TestObserved<C, V>, Object, V> deserializeValue, V def, SetableModifier<?>... modifiers) {
         return new TestObserved<>(id, serializeValue, deserializeValue, def, null, null, null, modifiers);
     }
 
-    protected TestObserved(Object id, TriFunction<O, TestObserved<O, T>, T, Object> serializeValue, TriFunction<O, TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+    protected TestObserved(Object id, TriFunction<O, TestObserved<O, T>, T, Object> serializeValue, TriFunction<O, TestObserved<O, T>, Object, T> deserializeValue, T def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, o -> def, opposite, scope, changed, modifiers);
         this.serializeValue = serializeValue;
         this.deserializeValue = deserializeValue;

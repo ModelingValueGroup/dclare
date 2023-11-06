@@ -15,5 +15,5 @@
 
 package org.modelingvalue.dclare;
 
-public interface SetableModifier extends FeatureModifier<SetableModifier> {
+public interface SetableModifier<M extends SetableModifier<?>> extends FeatureModifier<M> {
 }

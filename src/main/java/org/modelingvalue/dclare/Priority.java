@@ -15,16 +15,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.Pair;
 
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
-public enum Priority implements LeafModifier, Internable {
+public enum Priority implements LeafModifier<Priority>, Internable {
 
     zero, // Running
 

@@ -17,7 +17,7 @@ package org.modelingvalue.dclare;
 
 public class Derivation extends ReadOnly {
 
-    protected Derivation(Object id, LeafModifier... modifiers) {
+    protected Derivation(Object id, LeafModifier<?>... modifiers) {
         super(id, modifiers);
     }
 

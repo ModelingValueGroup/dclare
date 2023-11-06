@@ -21,7 +21,7 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
-public interface Direction extends LeafModifier, Internable {
+public interface Direction extends LeafModifier<Direction>, SetableModifier<Direction>, Internable {
 
     static Direction of(Object id, Direction... opposites) {
         return new DirectionImpl(id, opposites);

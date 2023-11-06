@@ -17,6 +17,8 @@ package org.modelingvalue.dclare;
 
 import java.util.Arrays;
 
+import org.modelingvalue.collections.Collection;
+
 /**
  * this is a marker interface
  */
@@ -44,6 +46,16 @@ public interface FeatureModifier<M extends FeatureModifier> {
 
     @SuppressWarnings("unchecked")
     static <C extends M, M extends FeatureModifier> C ofClass(Class<C> cls, M[] modifiers) {
+        for (M m : modifiers) {
+            if (cls.isInstance(m)) {
+                return (C) m;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    static <C extends M, M extends FeatureModifier> C ofClass(Class<C> cls, Collection<M> modifiers) {
         for (M m : modifiers) {
             if (cls.isInstance(m)) {
                 return (C) m;

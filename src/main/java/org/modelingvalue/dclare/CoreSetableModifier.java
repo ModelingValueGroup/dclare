@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-public enum CoreSetableModifier implements SetableModifier {
+public enum CoreSetableModifier implements SetableModifier<SetableModifier<?>> {
     symmetricOpposite,
     containment,
     mandatory,

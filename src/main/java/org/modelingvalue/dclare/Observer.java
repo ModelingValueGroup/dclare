@@ -15,6 +15,12 @@
 
 package org.modelingvalue.dclare;
 
+import java.time.Instant;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -29,12 +35,6 @@ import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.DebugTrace;
 import org.modelingvalue.dclare.ex.ThrowableError;
 
-import java.time.Instant;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 public class Observer<O extends Mutable> extends Action<O> implements Internable {
 
     public static final Observer<Mutable>                     DUMMY        = new Observer<>("<dummy>", o -> {
@@ -43,25 +43,25 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Observer, Set<Mutable>> OBSERVER_MAP = DefaultMap.of(k -> Set.of());
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Set<Setable<M, ?>> targets, LeafModifier... modifiers) {
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, Set<Setable<M, ?>> targets, LeafModifier<?>... modifiers) {
         return new Observer<M>(id, action, targets, modifiers);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+    public static <M extends Mutable> Observer<M> of(Object id, Consumer<M> action, LeafModifier<?>... modifiers) {
         return new Observer<M>(id, action, modifiers);
     }
 
-    public static <M extends Mutable> Observer<M> of(Object id, Predicate<M> predicate, Consumer<M> action, LeafModifier... modifiers) {
+    public static <M extends Mutable> Observer<M> of(Object id, Predicate<M> predicate, Consumer<M> action, LeafModifier<?>... modifiers) {
         return new Observer<M>(id, predicate, action, modifiers);
     }
 
     @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value, LeafModifier... modifiers) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Function<M, V> value, LeafModifier<?>... modifiers) {
         return new Observer<M>(id, setable, value, modifiers);
     }
 
     @SuppressWarnings("unchecked")
-    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Predicate<M> predicate, Function<M, V> value, LeafModifier... modifiers) {
+    public static <M extends Mutable, V> Observer<M> of(Object id, Setable<M, V> setable, Predicate<M> predicate, Function<M, V> value, LeafModifier<?>... modifiers) {
         return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
@@ -84,11 +84,11 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     @SuppressWarnings("rawtypes")
     private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
 
-    protected Observer(Object id, Consumer<O> action, LeafModifier... modifiers) {
+    protected Observer(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         this(id, action, Set.of(), modifiers);
     }
 
-    protected Observer(Object id, Predicate<O> predicate, Consumer<O> action, LeafModifier... modifiers) {
+    protected Observer(Object id, Predicate<O> predicate, Consumer<O> action, LeafModifier<?>... modifiers) {
         this(id, o -> {
             if (predicate.test(o)) {
                 action.accept(o);
@@ -97,12 +97,12 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable<O, T> setable, Function<O, T> value, LeafModifier... modifiers) {
+    protected <T> Observer(Object id, Setable<O, T> setable, Function<O, T> value, LeafModifier<?>... modifiers) {
         this(id, o -> setable.set(o, value.apply(o)), Set.of(setable), modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> Observer(Object id, Setable<O, T> setable, Predicate<O> predicate, Function<O, T> value, LeafModifier... modifiers) {
+    protected <T> Observer(Object id, Setable<O, T> setable, Predicate<O> predicate, Function<O, T> value, LeafModifier<?>... modifiers) {
         this(id, o -> {
             if (predicate.test(o)) {
                 setable.set(o, value.apply(o));
@@ -111,7 +111,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
     }
 
     @SuppressWarnings("rawtypes")
-    protected Observer(Object id, Consumer<O> action, Set<Setable<O, ?>> targets, LeafModifier... modifiers) {
+    protected Observer(Object id, Consumer<O> action, Set<Setable<O, ?>> targets, LeafModifier<?>... modifiers) {
         super(id, action, modifiers);
         traces = new Traces(Pair.of(this, "TRACES"));
         debugs = new Debugs(Pair.of(this, "DEBUGS"));
