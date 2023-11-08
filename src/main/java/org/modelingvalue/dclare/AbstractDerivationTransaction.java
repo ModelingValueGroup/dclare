@@ -59,7 +59,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings("rawtypes")
-    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable) {
+    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable, T nonDerived) {
         return doDeriveSet(object, getable);
     }
 
@@ -86,7 +86,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings("rawtypes")
     private <O, T> T derive(O object, Getable<O, T> getable, T nonDerived) {
-        if (doDeriveGet(object, getable)) {
+        if (doDeriveGet(object, getable, nonDerived)) {
             Observed<O, T> observed = (Observed<O, T>) getable;
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();

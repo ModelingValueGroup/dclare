@@ -129,13 +129,17 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         runHandler.accept(context, this);
         if (done[0].size() < length && !done[0].contains(this)) {
             done[0] = done[0].add(this);
-            for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
-                if (!e.getValue().isEmpty()) {
-                    readHandler.accept(context, this, e.getKey());
-                    for (ObserverTrace writer : e.getValue()) {
-                        writeHandler.accept(context, writer, e.getKey());
-                        writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
-                    }
+            traceBack(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
+        }
+    }
+
+    private <C> void traceBack(C context, BiConsumer<C, ObserverTrace> runHandler, TriConsumer<C, ObserverTrace, ObservedInstance> readHandler, TriConsumer<C, ObserverTrace, ObservedInstance> writeHandler, Function<C, C> traceHandler, Set<ObserverTrace>[] done, int length) {
+        for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
+            if (!e.getValue().isEmpty()) {
+                writeHandler.accept(context, this, e.getKey());
+                readHandler.accept(context, this, e.getKey());
+                for (ObserverTrace writer : e.getValue()) {
+                    writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
                 }
             }
         }

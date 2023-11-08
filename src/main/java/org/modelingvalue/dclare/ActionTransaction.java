@@ -151,6 +151,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
+    protected void setState(State state) {
+        currentState.set(state);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {

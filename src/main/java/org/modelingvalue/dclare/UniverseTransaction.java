@@ -63,6 +63,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     commit                  = Action.of("$commit");
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
+    private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
@@ -715,6 +716,18 @@ public class UniverseTransaction extends MutableTransaction {
                 }
             });
         }
+    }
+
+    public void deriveLazy() {
+        put(deriveLazy);
+
+    }
+
+    protected void deriveLazy(Universe universe) {
+        ActionTransaction current = (ActionTransaction) LeafTransaction.getCurrent();
+        State pre = current.state();
+        State post = pre.deriveLazy();
+        current.setState(post);
     }
 
     public void commit() {

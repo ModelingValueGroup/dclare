@@ -15,11 +15,18 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
+import java.util.Objects;
+import java.util.concurrent.RecursiveAction;
+
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Pair;
 
 public class LazyDerivationTransaction extends AbstractDerivationTransaction {
 
-    private final MutableState state;
+    private static final Constant<Pair<LazyDerivationTransaction, Mutable>, RecursiveAction> LAZY_ACTION =     //
+            Constant.of("LAZY_ACTION", null, p -> new DeriveAction(p.a(), p.b()), CoreSetableModifier.durable);
+
+    private final MutableState                                                               state;
 
     protected LazyDerivationTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -31,30 +38,50 @@ public class LazyDerivationTransaction extends AbstractDerivationTransaction {
         return "LZ";
     }
 
-    public State derive(StateDeltaHandler diffHandler) {
+    public State derive() {
         state.setState(state());
         try {
             deriveMutable(universeTransaction().universe());
-            State result = state.state();
-            diffHandler.handleDelta(state(), result, true, ImperativeTransaction.SETTED_MAP);
-            return result;
+            return state.state();
         } finally {
             state.setState(universeTransaction().emptyState());
         }
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void doDeriveMutable(Mutable mutable) {
+        try {
+            MutableClass dClass = mutable.dClass();
+            Set<Setable> containments = MutableClass.D_CONTAINMENTS.get(dClass);
+            Set<Mutable> children = containments.flatMap(s -> s.<Mutable> getCollection(mutable)).asSet();
+            children.forEach(m -> deriveMutable((Mutable) m));
+            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).filter(d -> d.direction().isLazy()).asSet();
+            nonDerivers.forEach(o -> runDeriver(mutable, null, o, 0));
+            Set<Observed> observeds = MutableClass.D_OBSERVEDS.get(dClass);
+            observeds.forEach(o -> o.get(mutable));
+        } catch (Throwable t) {
+            universeTransaction().handleException(t);
+        }
+    }
+
     private void deriveMutable(Mutable mutable) {
-        MutableClass dClass = mutable.dClass();
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        Collection<Setable<Mutable, ?>> containments = (Collection) dClass.dSetables().filter(Setable::containment);
-        containments.flatMap(s -> s.<Mutable> getCollection(mutable)).forEach(m -> deriveMutable(m));
-        dClass.dObservers().filter(o -> o.targets().isEmpty()).forEach(o -> runDeriver(mutable, null, o, 0));
+        getAction(mutable).invoke();
+    }
+
+    private RecursiveAction getAction(Mutable mutable) {
+        return memoization().get(this, Pair.of(this, mutable), LAZY_ACTION);
     }
 
     @Override
-    protected <O, T> boolean doDeriveSet(O object, Getable<O, T> getable) {
-        return super.doDeriveSet(object, getable) && //
-                (((Setable<O, T>) getable).direction().isLazy() || ((Mutable) object).dAllDerivers((Setable<O, T>) getable).anyMatch(o -> o.direction().isLazy()));
+    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable, T nonDerived) {
+        return super.doDeriveSet(object, getable) && Objects.equals(nonDerived, getable.getDefault(object)) && ifReady(object, (Setable<O, T>) getable, nonDerived);
+    }
+
+    private <O, T> boolean ifReady(O object, Setable<O, T> setable, T nonDerived) {
+        //        if (setable == Mutable.D_PARENT_CONTAINING && nonDerived == null && !memoization().isSet(this, object, setable.constant())) {
+        //            getAction((Mutable) object).join();
+        //        }
+        return true;
     }
 
     @Override
@@ -64,4 +91,22 @@ public class LazyDerivationTransaction extends AbstractDerivationTransaction {
             state.set(object, setable, result);
         }
     }
+
+    private static final class DeriveAction extends RecursiveAction {
+        private static final long               serialVersionUID = -3996933680861103499L;
+
+        private final LazyDerivationTransaction tx;
+        private final Mutable                   mutable;
+
+        private DeriveAction(LazyDerivationTransaction tx, Mutable mutable) {
+            this.tx = tx;
+            this.mutable = mutable;
+        }
+
+        @Override
+        protected void compute() {
+            tx.doDeriveMutable(mutable);
+        }
+    }
+
 }

@@ -42,6 +42,10 @@ public interface MutableClass extends Internable {
                 return setables.asDefaultMap(k -> Set.of(), s -> Entry.<Setable, Set<Observer>> of(s, c.dObservers().map(o -> (Observer) o).filter(o -> o.targets().contains(s)).asSet()));
             });
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    Constant<MutableClass, Set<Observer>>                      D_NON_DERIVERS      = Constant.of("D_NON_DERIVERS",                                                                         //
+            c -> c.dObservers().filter(o -> o.targets().isEmpty()).map(s -> (Observer) s).asSet());
+
     Collection<? extends Observer<?>> dObservers();
 
     Collection<? extends Setable<? extends Mutable, ?>> dSetables();
