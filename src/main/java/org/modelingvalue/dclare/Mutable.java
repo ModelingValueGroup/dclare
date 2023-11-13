@@ -140,17 +140,14 @@ public interface Mutable extends TransactionClass {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    default <C> C dAncestor(Class<C> cls, Predicate<Setable> containing) {
-        Mutable result = this;
+    default <C> C dAncestor(State state, Class<C> cls, Predicate<Setable> containing) {
+        Mutable parent = this;
         Pair<Mutable, Setable<Mutable, ?>> pair;
-        while ((pair = result.dParentContaining()) != null) {
-            if (cls.isInstance(result) && containing.test(pair.b())) {
-                return (C) result;
-            } else {
-                result = pair.a();
-            }
+        while (parent != null && !cls.isInstance(parent)) {
+            pair = state.get(parent, Mutable.D_PARENT_CONTAINING);
+            parent = pair != null && containing.test(pair.b()) ? pair.a() : null;
         }
-        return null;
+        return (C) parent;
     }
 
     @SuppressWarnings("unchecked")

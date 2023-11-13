@@ -29,7 +29,7 @@ import org.modelingvalue.dclare.Priority.Queued;
 public class ImperativeTransaction extends LeafTransaction {
 
     @SuppressWarnings("rawtypes")
-    protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
+    public static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
     @SuppressWarnings("rawtypes")
     public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {

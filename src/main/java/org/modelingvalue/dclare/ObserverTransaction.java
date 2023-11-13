@@ -36,7 +36,6 @@ public class ObserverTransaction extends ActionTransaction {
     private static final Set<Boolean>                            FALSE          = Set.of();
     private static final Set<Boolean>                            TRUE           = Set.of(true);
     public static final Context<Boolean>                         OBSERVE        = Context.of(true);
-    public static final Context<Boolean>                         RIPPLE_OUT     = Context.of(false);
 
     @SuppressWarnings("rawtypes")
     private final Concurrent<DefaultMap<Observed, Set<Mutable>>> observeds      = Concurrent.of();
@@ -401,45 +400,43 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        return RIPPLE_OUT.get(true, () -> {
-            boolean forward = isForward(object, observed, pre, post);
-            boolean isNew = !startState(Priority.four).get(mutable(), Mutable.D_OBSERVERS).contains(observer());
-            if (isNonMapCollection(pre) && isNonMapCollection(post)) {
-                ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
-                Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
-                Setable.<T, E> diff(pre, post, added -> {
-                    Priority delay = added(object, many, added, forward, isNew);
-                    if (delay != null) {
-                        defer.set(delay, TRUE);
-                        result[0] = result[0].remove(added);
-                    }
-                }, removed -> {
-                    Priority delay = removed(object, many, removed, forward, isNew);
-                    if (delay != null) {
-                        defer.set(delay, TRUE);
-                        if (pre instanceof List && post instanceof List) {
-                            int i = Math.min(((List<E>) pre).firstIndexOf(removed), result[0].size());
-                            result[0] = ((List<E>) result[0]).insert(i, removed);
-                        } else {
-                            result[0] = result[0].add(removed);
-                        }
-                    }
-                });
-                if (!Objects.equals(post, result[0])) {
-                    traceRippleOut(object, observed, post, result[0]);
-                }
-                return (T) result[0];
-            } else {
-                Priority delay = changed(object, observed, pre, post, forward, isNew);
+        boolean forward = isForward(object, observed, pre, post);
+        boolean isNew = !startState(Priority.four).get(mutable(), Mutable.D_OBSERVERS).contains(observer());
+        if (isNonMapCollection(pre) && isNonMapCollection(post)) {
+            ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
+            Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
+            Setable.<T, E> diff(pre, post, added -> {
+                Priority delay = added(object, many, added, forward, isNew);
                 if (delay != null) {
                     defer.set(delay, TRUE);
-                    traceRippleOut(object, observed, post, pre);
-                    return pre;
-                } else {
-                    return post;
+                    result[0] = result[0].remove(added);
                 }
+            }, removed -> {
+                Priority delay = removed(object, many, removed, forward, isNew);
+                if (delay != null) {
+                    defer.set(delay, TRUE);
+                    if (pre instanceof List && post instanceof List) {
+                        int i = Math.min(((List<E>) pre).firstIndexOf(removed), result[0].size());
+                        result[0] = ((List<E>) result[0]).insert(i, removed);
+                    } else {
+                        result[0] = result[0].add(removed);
+                    }
+                }
+            });
+            if (!Objects.equals(post, result[0])) {
+                traceRippleOut(object, observed, post, result[0]);
             }
-        });
+            return (T) result[0];
+        } else {
+            Priority delay = changed(object, observed, pre, post, forward, isNew);
+            if (delay != null) {
+                defer.set(delay, TRUE);
+                traceRippleOut(object, observed, post, pre);
+                return pre;
+            } else {
+                return post;
+            }
+        }
     }
 
     private <T> boolean isNonMapCollection(T t) {

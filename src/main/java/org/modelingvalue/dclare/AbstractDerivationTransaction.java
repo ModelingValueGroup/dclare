@@ -20,8 +20,10 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
@@ -108,7 +110,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                         }
                         INDENT.run(INDENT.get() + 1, () -> DERIVED.run(newDerived, () -> {
                             int i = 0;
-                            Set<Observer> observers = ((Mutable) object).dAllDerivers(observed).asSet();
+                            Set<Observer> observers = getDerivers(object, observed).asSet();
                             for (Observer observer : observers.filter(Observer::anonymous)) {
                                 runDeriver((Mutable) object, observed, observer, ++i);
                             }
@@ -131,6 +133,11 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         }
     }
 
+    @SuppressWarnings("rawtypes")
+    protected <O, T> Collection<Observer> getDerivers(O object, Observed<O, T> observed) {
+        return ((Mutable) object).dAllDerivers(observed);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void runDeriver(Mutable mutable, Observed observed, Observer observer, int i) {
         if (isTraceDerivation(mutable, observed)) {
@@ -151,16 +158,20 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> setable, BiFunction<T, E, T> function, E element) {
-        return set(object, setable, function.apply(getNonDerived(object, setable), element));
+        return set(object, setable, function.apply(get(object, setable), element));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, UnaryOperator<T> oper) {
-        return set(object, setable, oper.apply(getNonDerived(object, setable)));
+        return set(object, setable, oper.apply(get(object, setable)));
     }
 
     public void runNonDeriving(Runnable action) {
         DERIVE.run(false, action);
+    }
+
+    public <T> T getNonDeriving(Supplier<T> supplier) {
+        return DERIVE.get(false, supplier);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -175,13 +186,13 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             if (isTraceDerivation(object, setable)) {
                 runNonDeriving(() -> {
                     Pair<Mutable, Observer> deriver = DERIVER.get();
-                    System.err.println(tracePre(object) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + setable + "=" + pre + "->" + result + ")");
+                    System.err.println(tracePre(object) + "SET  " + (deriver == null ? "" : deriver.a() + "." + deriver.b()) + "(" + object + "." + setable + "=" + pre + "->" + result + ")");
                 });
             }
             if (setable.containment()) {
-                Setable.<T, Mutable> diff(pre, result, added -> {
-                    setInMemoization(mem, added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) setable));
-                }, removed -> {
+                Pair<Mutable, Setable<Mutable, ?>> pc = Pair.of((Mutable) object, (Setable<Mutable, ?>) setable);
+                setable.<Mutable> collection(result).forEachOrdered(m -> {
+                    setInMemoization(mem, m, Mutable.D_PARENT_CONTAINING, pc);
                 });
             }
             return pre;
@@ -193,27 +204,27 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private <T, O> T match(ConstantState mem, Setable<O, T> setable, T pre, T post) {
-        List<Newable> posts = setable.collection(post).filter(Newable.class).distinct().asList();
-        if (!posts.isEmpty()) {
-            List<Newable> pres = setable.collection(pre).filter(Newable.class).exclude(posts::contains).distinct().asList();
-            if (!pres.isEmpty()) {
+        List<Newable> pres = setable.collection(pre).filter(Newable.class).distinct().asList();
+        if (!pres.isEmpty()) {
+            List<Newable> posts = setable.collection(post).filter(Newable.class).exclude(pres::contains).distinct().asList();
+            if (!posts.isEmpty()) {
                 for (Newable po : posts) {
                     Construction poInit = Mutable.D_INITIAL_CONSTRUCTION.get(po);
                     if (poInit.isDerived() && mem.isSet(this, po, Newable.D_ALL_DERIVATIONS.constant())) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
-                            if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                            if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(getIdentity(po), getIdentity(pr))) {
                                 pres = pres.remove(pr);
                                 post = replace(post, po, pr);
-                                setInMemoization(mem, pr, Mutable.D_ALL_DERIVATIONS, mem.get(this, po, Newable.D_ALL_DERIVATIONS.constant()));
+                                addDerivations(mem, po, pr);
                             }
                         }
                     } else if (poInit.isDirect()) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
-                            if (preInit.isDerived() && mem.isSet(this, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                            if (preInit.isDerived() && mem.isSet(this, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(getIdentity(po), getIdentity(pr))) {
                                 pres = pres.remove(pr);
-                                setInMemoization(mem, po, Mutable.D_ALL_DERIVATIONS, mem.get(this, pr, Newable.D_ALL_DERIVATIONS.constant()));
+                                addDerivations(mem, pr, po);
                             }
                         }
                     }
@@ -221,6 +232,19 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             }
         }
         return post;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T, O> void addDerivations(ConstantState mem, Newable from, Newable to) {
+        QualifiedSet<Direction, Construction> fromDer = mem.get(this, from, Newable.D_ALL_DERIVATIONS.constant());
+        QualifiedSet<Direction, Construction> toDer = getNonDerived(to, Newable.D_ALL_DERIVATIONS);
+        mem.clear(this, to);
+        setInMemoization(mem, from, Mutable.D_ALL_DERIVATIONS, fromDer.putAll(toDer));
+        setInMemoization(mem, to, Mutable.D_ALL_DERIVATIONS, toDer.putAll(fromDer));
+    }
+
+    protected Object getIdentity(Newable po) {
+        return po.dIdentity();
     }
 
     @SuppressWarnings("unchecked")
@@ -244,7 +268,8 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        setInMemoization(memoization(deriver.a()), result, Newable.D_ALL_DERIVATIONS, Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons));
+        ConstantState mem = memoization(deriver.a());
+        setInMemoization(mem, result, Newable.D_ALL_DERIVATIONS, Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons));
         Mutable.D_INITIAL_CONSTRUCTION.force(result, cons);
         return result;
     }

@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
-
-import static org.modelingvalue.dclare.CoreSetableModifier.durable;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
@@ -85,6 +85,9 @@ public class Construction extends IdentifiedByArray {
         private static Object[] thiz(Mutable thiz, Object[] identity) {
             if (thiz != null) {
                 for (int i = 0; i < identity.length; i++) {
+                    if (identity[i] == null) {
+                        System.err.println("!!!!!!!!!!!!");
+                    }
                     if (thiz.equals(identity[i])) {
                         identity[i] = Mutable.THIS;
                     }

@@ -310,6 +310,10 @@ public class ConstantState {
         return getConstants(leafTransaction, object, referenceType(constant)).set(leafTransaction, object, constant, deriver, element);
     }
 
+    public <O> void clear(LeafTransaction leafTransaction, O object) {
+        state.updateAndGet(s -> s.removeKey(object));
+    }
+
     private <O, V> ReferenceType referenceType(Constant<O, V> constant) {
         return constant.isDurable() ? ReferenceType.durable : WEAK.get() ? ReferenceType.weak : ReferenceType.soft;
     }

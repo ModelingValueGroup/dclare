@@ -60,7 +60,7 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
         super(map);
         this.universeTransaction = universeTransaction;
         this.actions = actions;
@@ -68,7 +68,11 @@ public class State extends StateMap implements IState, Serializable {
     }
 
     private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
-        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap, actions, children);
+        return newMap.isEmpty() ? universeTransaction.emptyState() : createState(newMap, actions, children);
+    }
+
+    protected State createState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+        return new State(universeTransaction, newMap, actions, children);
     }
 
     @Override
@@ -116,7 +120,7 @@ public class State extends StateMap implements IState, Serializable {
         children[prio1.ordinal()] = c2;
         actions[prio2.ordinal()] = a1;
         children[prio2.ordinal()] = c1;
-        return new State(universeTransaction, map(), actions, children);
+        return createState(map(), actions, children);
     }
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {

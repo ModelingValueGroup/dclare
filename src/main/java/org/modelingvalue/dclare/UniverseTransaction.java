@@ -723,11 +723,11 @@ public class UniverseTransaction extends MutableTransaction {
 
     }
 
-    protected void deriveLazy(Universe universe) {
+    protected State deriveLazy(Universe universe) {
         ActionTransaction current = (ActionTransaction) LeafTransaction.getCurrent();
         State pre = current.state();
         State post = pre.deriveLazy();
-        current.setState(post);
+        return post;
     }
 
     public void commit() {
