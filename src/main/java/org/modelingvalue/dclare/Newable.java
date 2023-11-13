@@ -15,15 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.durable;
-import static org.modelingvalue.dclare.SetableModifier.plumbing;
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
 
 public interface Newable extends Mutable {
 
     Constant<Newable, Object> D_IDENTITY  = Constant.of("D_IDENTITY", null, plumbing, durable);
     Setable<Newable, Newable> D_REPLACING = Setable.of("D_REPLACING", null, plumbing);
 
-    @SuppressWarnings("rawtypes")
     Object dIdentity();
 
     Object dNewableType();

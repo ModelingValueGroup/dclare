@@ -51,16 +51,16 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
             e.getKey().observed().writers().set(e.getKey().mutable(), Set::add, this);
         }
         Set<ObserverTrace> done = previous != null ? previous.done : Set.of();
-        Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.toMap(e -> {
+        Map<ObservedInstance, Set<ObserverTrace>> backTrace = read.asMap(e -> {
             ObservedInstance observedInstance = e.getKey();
             Set<ObserverTrace> writers = observedInstance.observed().writers().get(observedInstance.mutable());
             return Entry.of(observedInstance, writers.removeAll(done).remove(this));
         });
-        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).toSet();
-        Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).toSet();
-        backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
+        Set<ObserverTrace> back = backTrace.flatMap(Entry::getValue).asSet();
+        Set<ObserverTrace> backDone = back.flatMap(ObserverTrace::done).asSet();
+        backTrace = backTrace.asMap(e -> Entry.of(e.getKey(), e.getValue().removeAll(backDone)));
         if (backTrace.anyMatch(e -> e.getValue().anyMatch(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)))) {
-            backTrace = backTrace.toMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).toSet()));
+            backTrace = backTrace.asMap(e -> Entry.of(e.getKey(), e.getValue().filter(w -> !w.mutable.equals(mutable) || !w.observer.equals(observer)).asSet()));
         }
         this.backTrace = backTrace;
         this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
@@ -129,13 +129,17 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         runHandler.accept(context, this);
         if (done[0].size() < length && !done[0].contains(this)) {
             done[0] = done[0].add(this);
-            for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
-                if (!e.getValue().isEmpty()) {
-                    readHandler.accept(context, this, e.getKey());
-                    for (ObserverTrace writer : e.getValue()) {
-                        writeHandler.accept(context, writer, e.getKey());
-                        writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
-                    }
+            traceBack(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
+        }
+    }
+
+    private <C> void traceBack(C context, BiConsumer<C, ObserverTrace> runHandler, TriConsumer<C, ObserverTrace, ObservedInstance> readHandler, TriConsumer<C, ObserverTrace, ObservedInstance> writeHandler, Function<C, C> traceHandler, Set<ObserverTrace>[] done, int length) {
+        for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
+            if (!e.getValue().isEmpty()) {
+                writeHandler.accept(context, this, e.getKey());
+                readHandler.accept(context, this, e.getKey());
+                for (ObserverTrace writer : e.getValue()) {
+                    writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
                 }
             }
         }

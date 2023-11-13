@@ -23,20 +23,20 @@ import org.modelingvalue.collections.Set;
 
 public class NonCheckingObserver<O extends Mutable> extends Observer<O> {
 
-    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, LeafModifier... modifiers) {
+    public static <M extends Mutable> NonCheckingObserver<M> of(Object id, Consumer<M> action, LeafModifier<?>... modifiers) {
         return new NonCheckingObserver<>(id, action, modifiers);
     }
 
-    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<M, V> setable, Function<M, V> value, LeafModifier... modifiers) {
+    public static <M extends Mutable, V> NonCheckingObserver<M> of(Setable<M, V> setable, Function<M, V> value, LeafModifier<?>... modifiers) {
         return new NonCheckingObserver<>(setable, value, modifiers);
     }
 
-    protected NonCheckingObserver(Object id, Consumer<O> action, LeafModifier... modifiers) {
+    protected NonCheckingObserver(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         super(id, action, Set.of(), modifiers);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected <T> NonCheckingObserver(Setable<O, T> setable, Function<O, T> value, LeafModifier... modifiers) {
+    protected <T> NonCheckingObserver(Setable<O, T> setable, Function<O, T> value, LeafModifier<?>... modifiers) {
         super(setable, setable, value, modifiers);
     }
 

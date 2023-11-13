@@ -15,7 +15,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.*;
+import static org.modelingvalue.dclare.CoreSetableModifier.*;
 
 import java.util.function.Predicate;
 
@@ -46,7 +46,7 @@ public interface Mutable extends TransactionClass {
             removed -> {
             }));
 
-    Observer<Mutable>                                        D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().toSet()));
+    Observer<Mutable>                                        D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().exclude(o -> o.direction().isLazy()).asSet()));
 
     @SuppressWarnings("unchecked")
     Observer<Mutable>                                        D_PUSHING_CONSTANTS_RULE = NonCheckingObserver.of("D_PUSHING_CONSTANTS_RULE", m -> MutableClass.D_PUSHING_CONSTANTS.get(m.dClass()).forEachOrdered(c -> c.get(m)));
@@ -242,9 +242,8 @@ public interface Mutable extends TransactionClass {
         return tx.memoization();
     }
 
-    static final class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
-
-        private ParentContaining(Object id, SetableModifier... modifiers) {
+    final class ParentContaining extends Observed<Mutable, Pair<Mutable, Setable<Mutable, ?>>> {
+        private ParentContaining(Object id, SetableModifier<?>... modifiers) {
             super(id, null, null, null, (tx, m, b, a) -> m.dChangedParentContaining(b, a), modifiers);
         }
 
@@ -256,7 +255,5 @@ public interface Mutable extends TransactionClass {
         private Pair<Mutable, Setable<Mutable, ?>> superGet(Mutable object) {
             return super.get(object);
         }
-
     }
-
 }

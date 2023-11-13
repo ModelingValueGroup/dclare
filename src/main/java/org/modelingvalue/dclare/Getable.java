@@ -107,7 +107,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
 
     @SuppressWarnings("unchecked")
     public <E> List<E> list(T v) {
-        return v instanceof Collection ? ((Collection<E>) v).toList() : v == null ? List.of() : List.of((E) v);
+        return v instanceof Collection ? ((Collection<E>) v).asList() : v == null ? List.of() : List.of((E) v);
     }
 
     public boolean containment() {

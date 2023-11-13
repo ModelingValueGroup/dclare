@@ -15,8 +15,8 @@
 
 package org.modelingvalue.dclare;
 
+import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
 import static org.modelingvalue.dclare.Priority.one;
-import static org.modelingvalue.dclare.SetableModifier.symmetricOpposite;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -24,6 +24,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.ContainingCollection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -41,43 +42,43 @@ public class Setable<O, T> extends Getable<O, T> {
 
     private static final Context<Boolean> MOVING                      = Context.of(false);
 
-    public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, V def, SetableModifier<?>... modifiers) {
         return new Setable<>(id, c -> def, null, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
         return new Setable<>(id, c -> def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, SetableModifier<?>... modifiers) {
         return new Setable<>(id, c -> def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, V def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier<?>... modifiers) {
         return new Setable<>(id, c -> def, null, scope, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, V def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier<?>... modifiers) {
         return new Setable<>(id, c -> def, opposite, scope, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, SetableModifier<?>... modifiers) {
         return new Setable<>(id, def, null, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
         return new Setable<>(id, def, null, null, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, SetableModifier<?>... modifiers) {
         return new Setable<>(id, def, opposite, null, null, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, QuadConsumer<LeafTransaction, C, V, V> changed, Supplier<Setable<C, Set<?>>> scope, SetableModifier<?>... modifiers) {
         return new Setable<>(id, def, null, scope, changed, modifiers);
     }
 
-    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier... modifiers) {
+    public static <C, V> Setable<C, V> of(Object id, Function<C, V> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<C, Set<?>>> scope, SetableModifier<?>... modifiers) {
         return new Setable<>(id, def, opposite, scope, null, modifiers);
     }
 
@@ -89,38 +90,47 @@ public class Setable<O, T> extends Getable<O, T> {
     private final Constant<T, Entry<Setable, Object>>    internal;
     @SuppressWarnings("rawtypes")
     private final Entry<Setable, Object>                 nullEntry;
+    private final Set<SetableModifier<?>>                modifierSet;
     private final boolean                                plumbing;
     private final boolean                                synthetic;
     private final boolean                                doNotMerge;
     private final boolean                                orphansAllowed;
     private final boolean                                preserved;
     private final boolean                                doNotClear;
+    private final Direction                              direction;
 
     private Boolean                                      isReference;
     private Constant<O, T>                               constant;
 
-    protected Setable(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier... modifiers) {
+    protected Setable(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, def);
-        this.plumbing = SetableModifier.plumbing.in(modifiers);
-        this.containment = SetableModifier.containment.in(modifiers);
-        this.synthetic = SetableModifier.synthetic.in(modifiers);
+        this.modifierSet = Collection.of(modifiers).notNull().asSet();
+        this.plumbing = hasModifier(CoreSetableModifier.plumbing);
+        this.containment = hasModifier(CoreSetableModifier.containment);
+        this.synthetic = hasModifier(CoreSetableModifier.synthetic);
         this.changed = changed;
-        if (symmetricOpposite.in(modifiers)) {
-            if (opposite != null) {
-                throw new Error("The setable " + this + " is already a symetric-opposite");
-            } else {
-                this.opposite = () -> this;
-            }
-        } else {
-            this.opposite = opposite;
+        if (hasModifier(symmetricOpposite) && opposite != null) {
+            throw new Error("The setable " + this + " is already a symmetric-opposite");
         }
+        this.opposite = hasModifier(symmetricOpposite) ? () -> this : opposite;
         this.scope = scope;
         this.nullEntry = Entry.of(this, null);
         this.internal = this instanceof Constant ? null : Constant.of(Pair.of(this, "internalEntry"), v -> Entry.of(this, v));
-        this.doNotMerge = SetableModifier.doNotMerge.in(modifiers);
-        this.orphansAllowed = SetableModifier.orphansAllowed.in(modifiers);
-        this.preserved = SetableModifier.preserved.in(modifiers);
-        this.doNotClear = SetableModifier.doNotClear.in(modifiers);
+        this.doNotMerge = hasModifier(CoreSetableModifier.doNotMerge);
+        this.orphansAllowed = hasModifier(CoreSetableModifier.orphansAllowed);
+        this.preserved = hasModifier(CoreSetableModifier.preserved);
+        this.doNotClear = hasModifier(CoreSetableModifier.doNotClear);
+        Direction dir = getModifier(Direction.class);
+        this.direction = dir == null ? Direction.DEFAULT : dir;
+    }
+
+    public boolean hasModifier(SetableModifier<?> modifier) {
+        return modifierSet.contains(modifier);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    public <SM extends SetableModifier<?>> SM getModifier(Class<SM> modifierClass) {
+        return (SM) FeatureModifier.ofClass(modifierClass, modifierSet);
     }
 
     @SuppressWarnings("rawtypes")
@@ -140,6 +150,10 @@ public class Setable<O, T> extends Getable<O, T> {
 
     protected boolean deduplicate(T value) {
         return value instanceof ContainingCollection;
+    }
+
+    public Direction direction() {
+        return direction;
     }
 
     public boolean preserved() {
@@ -315,7 +329,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     public boolean checkConsistency() {
-        return !plumbing && (scope != null || checkForOrphans());
+        return !plumbing && !direction().isLazy() && (scope != null || checkForOrphans());
     }
 
     private boolean checkForOrphans() {
@@ -359,5 +373,4 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         return errors;
     }
-
 }

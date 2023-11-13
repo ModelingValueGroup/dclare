@@ -17,11 +17,11 @@ package org.modelingvalue.dclare;
 
 public class Imperative extends Leaf {
 
-    public static Imperative of(String id, LeafModifier... modifiers) {
+    public static Imperative of(String id, LeafModifier<?>... modifiers) {
         return new Imperative(id, modifiers);
     }
 
-    protected Imperative(String id, LeafModifier... modifiers) {
+    protected Imperative(String id, LeafModifier<?>... modifiers) {
         super(id, modifiers);
     }
 

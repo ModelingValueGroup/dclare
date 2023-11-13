@@ -52,6 +52,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final Concurrent<ReusableTransaction<Mutable, MutableTransaction>>                       mutableTransactions     = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<ReadOnly, ReadOnlyTransaction>>                     readOnlys               = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<Derivation, DerivationTransaction>>                 derivations             = Concurrent.of(() -> new ReusableTransaction<>(this));
+    protected final Concurrent<ReusableTransaction<LazyDerivation, LazyDerivationTransaction>>         lazyDerivations         = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<IdentityDerivation, IdentityDerivationTransaction>> identityDerivations     = Concurrent.of(() -> new ReusableTransaction<>(this));
     protected final Concurrent<ReusableTransaction<NonCheckingObserver<?>, NonCheckingTransaction>>    nonCheckingTransactions = Concurrent.of(() -> new ReusableTransaction<>(this));
     //
@@ -62,6 +63,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     commit                  = Action.of("$commit");
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
+    private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
     //
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
@@ -70,6 +72,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected final ReadOnly                                                                           runOnState              = new ReadOnly(this, Priority.one);
     protected final Derivation                                                                         derivation              = new Derivation(this, Priority.one);
     protected final IdentityDerivation                                                                 identityDerivation      = new IdentityDerivation(this, Priority.one);
+    protected final LazyDerivation                                                                     lazyDerivation          = new LazyDerivation(this, Priority.one);
     private final UniverseStatistics                                                                   universeStatistics;
     protected final AtomicReference<Set<Throwable>>                                                    errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Set<Throwable>>                                                      inconsistencies         = new AtomicReference<>(Set.of());
@@ -88,6 +91,7 @@ public class UniverseTransaction extends MutableTransaction {
     private List<State>                                                                                history                 = List.of();
     private List<State>                                                                                future                  = List.of();
     private State                                                                                      preState;
+    private State                                                                                      postState;
     private State                                                                                      preOrphansState;
     private ConstantState                                                                              tmpConstants;
     private State                                                                                      state;
@@ -409,6 +413,9 @@ public class UniverseTransaction extends MutableTransaction {
                 }
                 state = incrementChangeId(universe(), state);
                 state = super.run(state);
+                if (postState == null) {
+                    postState = state;
+                }
                 if (!killed && orphansDetected.get() == Boolean.TRUE) {
                     preOrphansState = startState(Priority.INNER).preState();
                     state = trigger(state, universe(), clearOrphans, Priority.INNER);
@@ -436,6 +443,7 @@ public class UniverseTransaction extends MutableTransaction {
             } while (priority != null);
             return state;
         } finally {
+            postState = null;
             preStartStates.setState(emptyState);
             startStates.setState(emptyState);
             preOrphansState = null;
@@ -493,7 +501,7 @@ public class UniverseTransaction extends MutableTransaction {
     protected void handleExceptions(Set<Throwable> exceptions) {
         errors.updateAndGet(exceptions::addAll);
         if (config.isTraceUniverse()) {
-            List<Throwable> list = errors.get().sorted(this::compareThrowable).toList();
+            List<Throwable> list = errors.get().sorted(this::compareThrowable).asList();
             System.err.println(DclareTrace.getLineStart("DCLARE", this) + list.size() + " EXCEPTION(S) " + this);
             list.first().printStackTrace();
         }
@@ -507,7 +515,7 @@ public class UniverseTransaction extends MutableTransaction {
     public void throwIfError() {
         Set<Throwable> es = errors.get();
         if (!es.isEmpty()) {
-            List<Throwable> list = es.sorted(this::compareThrowable).toList();
+            List<Throwable> list = es.sorted(this::compareThrowable).asList();
             throw new Error("Error in engine " + state.get(() -> list.first().getMessage()), list.first());
         }
     }
@@ -601,7 +609,7 @@ public class UniverseTransaction extends MutableTransaction {
         State postState = tx.state();
         Set<Mutable> orphans = preOrphansState.diff(postState, o -> {
             return o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty();
-        }).map(e -> (Mutable) e.getKey()).toSet();
+        }).map(e -> (Mutable) e.getKey()).asSet();
         orphansDetected.set(!orphans.isEmpty());
         orphans.forEach(tx::clearOrphan);
     }
@@ -710,6 +718,18 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
+    public void deriveLazy() {
+        put(deriveLazy);
+
+    }
+
+    protected void deriveLazy(Universe universe) {
+        ActionTransaction current = (ActionTransaction) LeafTransaction.getCurrent();
+        State pre = current.state();
+        State post = pre.deriveLazy();
+        current.setState(post);
+    }
+
     public void commit() {
         put(commit);
     }
@@ -729,6 +749,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public State preState() {
         return preState;
+    }
+
+    public State postState() {
+        return postState;
     }
 
     public State currentState() {

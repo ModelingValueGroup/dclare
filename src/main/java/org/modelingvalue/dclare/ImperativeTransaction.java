@@ -45,7 +45,6 @@ public class ImperativeTransaction extends LeafTransaction {
     private final Direction                                   direction;
     private final MutableState                                state;
 
-    private State                                             pre;
     private boolean                                           active;
     private boolean                                           commiting;
     @SuppressWarnings("rawtypes")
@@ -56,7 +55,6 @@ public class ImperativeTransaction extends LeafTransaction {
     @SuppressWarnings("rawtypes")
     protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
         super(universeTransaction);
-        this.pre = init;
         this.state = universeTransaction.createMutableState(init);
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
@@ -104,6 +102,10 @@ public class ImperativeTransaction extends LeafTransaction {
         return state.state();
     }
 
+    public State preState() {
+        return state.preState();
+    }
+
     public MutableState mutableState() {
         return state;
     }
@@ -111,7 +113,7 @@ public class ImperativeTransaction extends LeafTransaction {
     public final boolean commit(State dclare, boolean timeTraveling) {
         commiting = true;
         boolean insync = setted.isEmpty() && dclare.get(this, CHANGE_NR).equals(state.get(this, CHANGE_NR));
-        if (pre != dclare) {
+        if (preState() != dclare) {
             dclare2imper(dclare, timeTraveling, insync);
         }
         if (!setted.isEmpty()) {
@@ -121,7 +123,6 @@ public class ImperativeTransaction extends LeafTransaction {
             active = false;
             universeTransaction().removeActive(this);
         }
-        pre = state();
         commiting = false;
         return insync;
     }

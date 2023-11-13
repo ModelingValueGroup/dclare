@@ -274,6 +274,17 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
+    public State deriveLazy() {
+        ConstantState derivationState = new ConstantState("LAZY", universeTransaction::handleException);
+        LazyDerivationTransaction tx = universeTransaction.lazyDerivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(() -> tx.derive(), this, derivationState);
+        } finally {
+            derivationState.stop();
+            universeTransaction.lazyDerivation.closeTransaction(tx);
+        }
+    }
+
     public String diffString(StateMap other) {
         return diffString(diff(other));
     }
@@ -309,7 +320,7 @@ public class State extends StateMap implements IState, Serializable {
         } else if (a instanceof List && b instanceof List) {
             List la = (List) a;
             List lb = (List) b;
-            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+            if (la.filter(lb::contains).asList().equals(lb.filter(la::contains).asList())) {
                 // same order
                 return "\n          <+ " + la.removeAll(lb) + "\n          +> " + lb.removeAll(la);
             } else {
@@ -332,7 +343,7 @@ public class State extends StateMap implements IState, Serializable {
         } else if (a instanceof List && b instanceof List) {
             List la = (List) a;
             List lb = (List) b;
-            if (la.filter(lb::contains).toList().equals(lb.filter(la::contains).toList())) {
+            if (la.filter(lb::contains).asList().equals(lb.filter(la::contains).asList())) {
                 // same order
                 List removed = la.removeAll(lb);
                 List added = lb.removeAll(la);

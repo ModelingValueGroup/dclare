@@ -169,7 +169,7 @@ public class StateMap implements Serializable {
     public Collection<Entry<Object, Map<Setable, Pair<Object, Object>>>> diff(StateMap other, Predicate<Object> objectFilter, Predicate<Setable> setableFilter) {
         return map.diff(other.map()).filter(d1 -> objectFilter.test(d1.getKey())).map(d2 -> {
             DefaultMap<Setable, Object> map2 = d2.getValue().a();
-            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).toMap(e -> e);
+            Map<Setable, Pair<Object, Object>> diff = map2.diff(d2.getValue().b()).filter(d3 -> setableFilter.test(d3.getKey())).asMap(e -> e);
             return diff.isEmpty() ? null : Entry.of(d2.getKey(), diff);
         }).notNull();
     }

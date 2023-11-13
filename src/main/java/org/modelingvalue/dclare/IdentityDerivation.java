@@ -17,7 +17,7 @@ package org.modelingvalue.dclare;
 
 public class IdentityDerivation extends ReadOnly {
 
-    protected IdentityDerivation(Object id, LeafModifier... modifiers) {
+    protected IdentityDerivation(Object id, LeafModifier<?>... modifiers) {
         super(id, modifiers);
     }
 

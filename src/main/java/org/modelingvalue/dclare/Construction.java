@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.SetableModifier.durable;
-
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.IdentifiedByArray;
+
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
 
 @SuppressWarnings("rawtypes")
 public class Construction extends IdentifiedByArray {
@@ -55,7 +55,7 @@ public class Construction extends IdentifiedByArray {
     }
 
     public boolean hasSource(Mutable source) {
-        return isDerived() ? reason().hasSource(object(), source) : false;
+        return isDerived() && reason().hasSource(object(), source);
     }
 
     @Override
@@ -112,7 +112,7 @@ public class Construction extends IdentifiedByArray {
             for (int i = 0; i < size(); i++) {
                 Object v = get(thiz, i);
                 if (v instanceof Mutable) {
-                    if (((Mutable) v).equals(source)) {
+                    if (v.equals(source)) {
                         return true;
                     }
                 }

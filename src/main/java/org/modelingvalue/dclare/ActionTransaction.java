@@ -33,12 +33,9 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-
-    private static final BiFunction<TransactionId, TransactionId, TransactionId> HIGHEST      = (b, a) -> b == null || b.number() < a.number() ? a : b;
-
-    private final CurrentState                                                   currentState = new CurrentState();
-    private State                                                                preState;
-    private State                                                                postState;
+    private final CurrentState currentState = new CurrentState();
+    private State              preState;
+    private State              postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -53,7 +50,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         ((Action<Mutable>) action()).run(mutable());
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings("rawtypes")
     @Override
     protected final State run(State pre) {
         TraceTimer.traceBegin(traceId());
@@ -64,11 +61,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 run(pre, universeTransaction());
                 if (universeTransaction().getConfig().isTraceActions()) {
                     postState = currentState.merge();
-                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).toMap(e -> e);
+                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed /* && !s.isPlumbing() */).asMap(e -> e);
                     if (!diff.isEmpty()) {
-                        runNonObserving(() -> {
-                            System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")");
-                        });
+                        runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")"));
                     }
                 } else {
                     postState = currentState.result();
@@ -156,6 +151,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         }
     }
 
+    protected void setState(State state) {
+        currentState.set(state);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
     protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
@@ -178,22 +177,21 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 if (!action().equals(observer) || !source.equals(target)) {
                     trigger(target, observer, observer.initPriority());
                     if (universeTransaction().getConfig().isTraceMutable()) {
-                        runNonObserving(() -> {
-                            System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (TRIGGER " + target + "." + observer + ")");
-                        });
+                        runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (TRIGGER " + target + "." + observer + ")"));
                     }
                 }
             }
         }
     }
 
-    @SuppressWarnings("rawtypes")
-    private final <O, T> void setChanged(O object, Setable<O, T> setable, T postValue) {
+    private <O, T> void setChanged(O object, Setable<O, T> setable, T postValue) {
         TransactionId txid = action().preserved() ? universeTransaction().setPreserved(object, setable, postValue, action()) : current().transactionId();
         for (Mutable changed = (Mutable) object; changed != null && !(changed instanceof Universe); changed = dParent(changed)) {
-            TransactionId old = set(changed, Mutable.D_CHANGE_ID, HIGHEST, txid);
-            if (old != null && old.number() >= txid.number()) {
+            TransactionId old = current(changed, Mutable.D_CHANGE_ID);
+            if (old != null && txid.number() <= old.number()) {
                 break;
+            } else {
+                set(changed, Mutable.D_CHANGE_ID, txid);
             }
         }
     }
@@ -203,7 +201,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         protected State merge(State base, State[] branches, int length) {
             return base.merge(ActionTransaction.this, branches, length);
         }
-
     }
 
     @SuppressWarnings("rawtypes")
@@ -239,9 +236,8 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         return "AC";
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "unused"})
     public void retrigger(Priority prio) {
         trigger(mutable(), (Action<Mutable>) action(), prio);
     }
-
 }

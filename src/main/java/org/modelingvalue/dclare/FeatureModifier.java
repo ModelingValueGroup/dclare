@@ -17,6 +17,8 @@ package org.modelingvalue.dclare;
 
 import java.util.Arrays;
 
+import org.modelingvalue.collections.Collection;
+
 /**
  * this is a marker interface
  */
@@ -33,17 +35,8 @@ public interface FeatureModifier<M extends FeatureModifier> {
         return b ? null : (M) this;
     }
 
-    default boolean in(M[] modifiers) {
-        for (M m : modifiers) {
-            if (this == m) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @SuppressWarnings("unchecked")
-    static <C extends M, M extends FeatureModifier> C ofClass(Class<C> cls, M[] modifiers) {
+    static <C extends M, M extends FeatureModifier> C ofClass(Class<C> cls, Collection<M> modifiers) {
         for (M m : modifiers) {
             if (cls.isInstance(m)) {
                 return (C) m;

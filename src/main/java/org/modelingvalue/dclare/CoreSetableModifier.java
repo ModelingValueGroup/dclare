@@ -15,5 +15,15 @@
 
 package org.modelingvalue.dclare;
 
-public interface SetableModifier<M extends SetableModifier<?>> extends FeatureModifier<M> {
+public enum CoreSetableModifier implements SetableModifier<SetableModifier<?>> {
+    symmetricOpposite,
+    containment,
+    mandatory,
+    synthetic,
+    plumbing,
+    durable,
+    doNotMerge,
+    orphansAllowed,
+    preserved,
+    doNotClear;
 }

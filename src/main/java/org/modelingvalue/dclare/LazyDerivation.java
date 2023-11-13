@@ -15,5 +15,25 @@
 
 package org.modelingvalue.dclare;
 
-public interface SetableModifier<M extends SetableModifier<?>> extends FeatureModifier<M> {
+public class LazyDerivation extends ReadOnly {
+
+    protected LazyDerivation(Object id, LeafModifier<?>... modifiers) {
+        super(id, modifiers);
+    }
+
+    @Override
+    public LazyDerivationTransaction openTransaction(MutableTransaction parent) {
+        return parent.universeTransaction().lazyDerivations.get().open(this, parent);
+    }
+
+    @Override
+    public void closeTransaction(Transaction tx) {
+        tx.universeTransaction().lazyDerivations.get().close((LazyDerivationTransaction) tx);
+    }
+
+    @Override
+    public LazyDerivationTransaction newTransaction(UniverseTransaction universeTransaction) {
+        return new LazyDerivationTransaction(universeTransaction);
+    }
+
 }

@@ -15,17 +15,30 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.StringUtil;
 
 public abstract class Leaf implements TransactionClass, Feature {
 
-    private final Object   id;
-    private final Priority initPriority;
+    private final Object               id;
+    private final Priority             initPriority;
+    private final Set<LeafModifier<?>> modifierSet;
 
-    protected Leaf(Object id, LeafModifier... modifiers) {
+    protected Leaf(Object id, LeafModifier<?>... modifiers) {
         this.id = id;
-        Priority prio = FeatureModifier.ofClass(Priority.class, modifiers);
+        this.modifierSet = Collection.of(modifiers).notNull().asSet();
+        Priority prio = getModifier(Priority.class);
         this.initPriority = prio == null ? Priority.one : prio;
+    }
+
+    public boolean hasModifier(LeafModifier<?> modifier) {
+        return modifierSet.contains(modifier);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    public <SM extends LeafModifier<?>> SM getModifier(Class<SM> modifierClass) {
+        return (SM) FeatureModifier.ofClass(modifierClass, modifierSet);
     }
 
     @Override
