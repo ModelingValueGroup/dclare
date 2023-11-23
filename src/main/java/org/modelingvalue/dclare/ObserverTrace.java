@@ -134,9 +134,11 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
     }
 
     private <C> void traceBack(C context, BiConsumer<C, ObserverTrace> runHandler, TriConsumer<C, ObserverTrace, ObservedInstance> readHandler, TriConsumer<C, ObserverTrace, ObservedInstance> writeHandler, Function<C, C> traceHandler, Set<ObserverTrace>[] done, int length) {
+        for (Entry<ObservedInstance, Object> w : written) {
+            writeHandler.accept(context, this, w.getKey());
+        }
         for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
             if (!e.getValue().isEmpty()) {
-                writeHandler.accept(context, this, e.getKey());
                 readHandler.accept(context, this, e.getKey());
                 for (ObserverTrace writer : e.getValue()) {
                     writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
