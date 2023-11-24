@@ -55,7 +55,7 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     }
 
     private <O, T> boolean isChanged(O object, Getable<O, T> getable) {
-        T pre = universeTransaction().preStartState(Priority.OUTER).get(object, getable);
+        T pre = universeTransaction().preStartState(Priority.OUTER).getRaw(object, getable);
         T post = universeTransaction().startState(Priority.OUTER).get(object, getable);
         return !Objects.equals(pre, post);
     }

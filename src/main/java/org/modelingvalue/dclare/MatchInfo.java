@@ -41,7 +41,7 @@ public class MatchInfo {
         this.newable = newable;
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.startState(Priority.three).get(newable, Mutable.D_PARENT_CONTAINING) == null && //
-                otx.preStartState(Priority.OUTER).get(newable, Mutable.D_PARENT_CONTAINING) != null;
+                otx.preStartState(Priority.OUTER).getRaw(newable, Mutable.D_PARENT_CONTAINING) != null;
         initialConstruction = newable.dInitialConstruction();
         allDerivations = newable.dAllDerivations();
         identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {

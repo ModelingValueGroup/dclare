@@ -83,7 +83,7 @@ public interface Mutable extends TransactionClass {
 
     default boolean dBecameOrphan() {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return tx.preStartState(Priority.OUTER).get(this, Mutable.D_PARENT_CONTAINING) != null && //
+        return tx.preStartState(Priority.OUTER).getRaw(this, Mutable.D_PARENT_CONTAINING) != null && //
                 tx.state().get(this, Mutable.D_PARENT_CONTAINING) == null;
     }
 

@@ -163,4 +163,14 @@ public class MutableState implements IState {
         return state().priority(queued);
     }
 
+    @Override
+    public <O, T> T getRaw(O object, Getable<O, T> property) {
+        return state().getRaw(object, property);
+    }
+
+    @Override
+    public IState raw() {
+        return state().raw();
+    }
+
 }

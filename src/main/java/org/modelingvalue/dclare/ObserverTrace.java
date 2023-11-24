@@ -138,11 +138,9 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
             writeHandler.accept(context, this, w.getKey());
         }
         for (Entry<ObservedInstance, Set<ObserverTrace>> e : backTrace()) {
-            if (!e.getValue().isEmpty()) {
-                readHandler.accept(context, this, e.getKey());
-                for (ObserverTrace writer : e.getValue()) {
-                    writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
-                }
+            readHandler.accept(context, this, e.getKey());
+            for (ObserverTrace writer : e.getValue()) {
+                writer.trace(traceHandler.apply(context), runHandler, readHandler, writeHandler, traceHandler, done, length);
             }
         }
     }

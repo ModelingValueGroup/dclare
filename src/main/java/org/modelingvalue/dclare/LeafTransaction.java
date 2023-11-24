@@ -102,6 +102,10 @@ public abstract class LeafTransaction extends Transaction {
         return state().get(object, property);
     }
 
+    public <O, T> T getRaw(O object, Getable<O, T> property) {
+        return state().getRaw(object, property);
+    }
+
     protected <O, T> T current(O object, Getable<O, T> property) {
         return current().get(object, property);
     }
@@ -202,11 +206,11 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract Direction direction();
 
-    public MutableState preStartState(Priority priority) {
+    public IState preStartState(Priority priority) {
         return universeTransaction().preStartState(priority);
     }
 
-    public MutableState startState(Priority priority) {
+    public IState startState(Priority priority) {
         return universeTransaction().startState(priority);
     }
 

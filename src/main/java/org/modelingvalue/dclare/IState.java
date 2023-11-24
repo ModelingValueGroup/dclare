@@ -37,4 +37,8 @@ public interface IState {
 
     Priority priority(Queued<?> queued);
 
+    <O, T> T getRaw(O object, Getable<O, T> property);
+
+    IState raw();
+
 }

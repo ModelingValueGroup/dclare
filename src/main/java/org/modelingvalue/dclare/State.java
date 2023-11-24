@@ -60,15 +60,15 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
         super(map);
         this.universeTransaction = universeTransaction;
         this.actions = actions;
         this.children = children;
     }
 
-    private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
-        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap, actions, children);
+    protected State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+        return new State(universeTransaction, newMap, actions, children);
     }
 
     @Override
@@ -116,7 +116,7 @@ public class State extends StateMap implements IState, Serializable {
         children[prio1.ordinal()] = c2;
         actions[prio2.ordinal()] = a1;
         children[prio2.ordinal()] = c1;
-        return new State(universeTransaction, map(), actions, children);
+        return newState(map(), actions, children);
     }
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {
@@ -161,7 +161,7 @@ public class State extends StateMap implements IState, Serializable {
     }
 
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
-        return newState(post.isEmpty() ? map().removeKey(object) : map().put(object, post));
+        return newState(post.isEmpty() ? map().removeKey(object) : map().put(object, post), actions, children);
     }
 
     @SuppressWarnings("unchecked")
@@ -201,7 +201,7 @@ public class State extends StateMap implements IState, Serializable {
                 }
             }
             return props;
-        }, maps, maps.length));
+        }, maps, maps.length), actions, children);
     }
 
     @Override
@@ -382,6 +382,16 @@ public class State extends StateMap implements IState, Serializable {
     @Override
     public TransactionId transactionId() {
         return get(universeTransaction.universe(), Mutable.D_CHANGE_ID);
+    }
+
+    @Override
+    public <O, T> T getRaw(O object, Getable<O, T> property) {
+        return get(object, property);
+    }
+
+    @Override
+    public IState raw() {
+        return getClass() == State.class ? this : new State(universeTransaction, map(), actions, children);
     }
 
 }

@@ -215,7 +215,7 @@ public class Setable<O, T> extends Getable<O, T> {
         }
         if (containment) {
             Setable.<T, Mutable> diff(preValue, postValue, added -> {
-                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.get(added, Mutable.D_PARENT_CONTAINING);
+                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.getRaw(added, Mutable.D_PARENT_CONTAINING);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
