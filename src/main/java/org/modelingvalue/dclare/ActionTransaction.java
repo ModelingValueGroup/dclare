@@ -147,7 +147,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             }
             return po;
         }, post, oldNew))) {
-            changed(object, property, oldNew[0], oldNew[1]);
+            changed(object, property, pre, oldNew[0], oldNew[1]);
         }
     }
 
@@ -157,12 +157,12 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
-        super.changed(object, setable, preValue, postValue);
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+        super.changed(object, setable, preValue, rawPreValue, postValue);
         if (setable.preserved()) {
             setChanged(object, setable, postValue);
         }
-        if (setable instanceof Observed) {
+        if (setable instanceof Observed && !Objects.equals(preValue, postValue)) {
             trigger(object, (Observed<O, T>) setable);
         }
     }

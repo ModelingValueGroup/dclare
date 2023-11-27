@@ -218,8 +218,9 @@ public class ConstantState {
                 }
                 next = prev.put(constant, soll);
             }
-            if (!forced && !Objects.equals(constant.getDefault(object), soll == NULL ? null : soll)) {
-                tx.changed(object, constant, constant.getDefault(object), soll == NULL ? null : soll);
+            V def = constant.getDefault(object);
+            if (!forced && !Objects.equals(def, soll == NULL ? null : soll)) {
+                tx.changed(object, constant, def, def, soll == NULL ? null : soll);
             }
             return soll;
         }

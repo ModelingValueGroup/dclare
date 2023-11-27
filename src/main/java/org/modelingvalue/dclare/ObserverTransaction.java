@@ -335,11 +335,11 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
         if (observing(object, setable)) {
             changed.set(TRUE);
         }
-        runNonObserving(() -> super.changed(object, setable, preValue, postValue));
+        runNonObserving(() -> super.changed(object, setable, preValue, rawPreValue, postValue));
     }
 
     private <O, T> boolean observing(O object, Getable<O, T> setable) {

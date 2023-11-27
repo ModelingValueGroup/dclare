@@ -114,8 +114,8 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
-        setable.changed(this, object, preValue, postValue);
+    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+        setable.changed(this, object, rawPreValue, postValue);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

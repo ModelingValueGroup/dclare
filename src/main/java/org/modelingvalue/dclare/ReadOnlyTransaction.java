@@ -61,10 +61,10 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T postValue) {
+    protected <O, T> void changed(O object, Setable<O, T> property, T preValue, T rawPreValue, T postValue) {
         if (property instanceof Constant) {
             if (property.isHandlingChange()) {
-                universeTransaction().put(new Object(), () -> super.changed(object, property, preValue, postValue));
+                universeTransaction().put(new Object(), () -> super.changed(object, property, preValue, rawPreValue, postValue));
             }
         } else {
             throw new UnsupportedOperationException();
