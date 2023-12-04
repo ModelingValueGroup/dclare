@@ -400,10 +400,10 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings("unchecked")
     private <O, T, E> T rippleOut(O object, Observed<O, T> observed, T pre, T post) {
-        boolean forward = isForward(object, observed, pre, post);
-        boolean isNew = !startState(Priority.four).get(mutable(), Mutable.D_OBSERVERS).contains(observer());
         boolean isColl = isNonMapCollection(pre) && isNonMapCollection(post);
         boolean isList = isColl && isList(pre) && isList(post);
+        boolean forward = isForward(object, observed, pre, post, isColl);
+        boolean isNew = !startState(Priority.four).get(mutable(), Mutable.D_OBSERVERS).contains(observer());
         if (isColl) {
             ContainingCollection<E>[] result = new ContainingCollection[]{(ContainingCollection<E>) post};
             Observed<O, ContainingCollection<E>> many = (Observed<O, ContainingCollection<E>>) observed;
@@ -417,7 +417,7 @@ public class ObserverTransaction extends ActionTransaction {
                 Priority delay = removed(object, many, removed, forward, isNew);
                 if (delay != null) {
                     defer.set(delay, TRUE);
-                    if (pre instanceof List && post instanceof List) {
+                    if (isList) {
                         int i = Math.min(((List<E>) pre).firstIndexOf(removed), result[0].size());
                         result[0] = ((List<E>) result[0]).insert(i, removed);
                     } else {
@@ -450,15 +450,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post) {
+    private <O, T, E> boolean isForward(O outObject, Observed<O, T> outObserved, T pre, T post, boolean isColl) {
         Mutable mutable = mutable();
         Pair<Mutable, Setable<Mutable, ?>> intermediatePair = startState(Priority.INNER).get(mutable, Mutable.D_PARENT_CONTAINING);
         if (!Objects.equals(preStartState(Priority.INNER).get(mutable, Mutable.D_PARENT_CONTAINING), intermediatePair) || !Objects.equals(intermediatePair, state().get(mutable, Mutable.D_PARENT_CONTAINING))) {
             return true;
         } else {
-            boolean handlingContainingCollections = pre instanceof ContainingCollection && post instanceof ContainingCollection;
             Boolean[] match = new Boolean[]{null};
-
             return observeds.get().anyMatch(e -> e.getValue().anyMatch(o -> {
                 Observed inObserved = e.getKey();
                 if (!inObserved.isPlumbing()) {
@@ -466,7 +464,7 @@ public class ObserverTransaction extends ActionTransaction {
                     if (!inObject.equals(outObject) || !inObserved.equals(outObserved)) {
                         Object intermediateObject = startState(Priority.INNER).get(inObject, inObserved);
                         return !Objects.equals(preStartState(Priority.INNER).get(inObject, inObserved), intermediateObject) || !Objects.equals(intermediateObject, state().get(inObject, inObserved));
-                    } else if (handlingContainingCollections) {
+                    } else if (isColl) {
                         if (match[0] == null) {
                             match[0] = isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, preStartState(Priority.INNER), startState(Priority.INNER)) //
                                     || isChanged(outObject, outObserved, (ContainingCollection<E>) pre, (ContainingCollection<E>) post, startState(Priority.INNER), state());
