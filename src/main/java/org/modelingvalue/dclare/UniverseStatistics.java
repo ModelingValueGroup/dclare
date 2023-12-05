@@ -15,14 +15,14 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.*;
+import java.util.Objects;
 
-import java.util.*;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Set;
 
 @SuppressWarnings({"unused", "rawtypes"})
 public class UniverseStatistics {
-    private final UniverseTransaction tx;
+    private final UniverseTransaction  tx;
 
     private boolean                    debugging;
     private long                       runCount;
@@ -46,8 +46,8 @@ public class UniverseStatistics {
         public final DefaultMap<Observer, Set<Mutable>> observers;
 
         public ChampionObserver(Observed observed, Mutable mutable, DefaultMap<Observer, Set<Mutable>> observers) {
-            this.observed  = observed;
-            this.mutable   = mutable;
+            this.observed = observed;
+            this.mutable = mutable;
             this.observers = observers;
         }
 
@@ -80,8 +80,8 @@ public class UniverseStatistics {
         public final DefaultMap<Observed, Set<Mutable>> observeds;
 
         public ChampionObserved(Observer<?> observer, Mutable mutable, DefaultMap<Observed, Set<Mutable>> observeds) {
-            this.observer  = observer;
-            this.mutable   = mutable;
+            this.observer = observer;
+            this.mutable = mutable;
             this.observeds = observeds;
         }
 
@@ -114,7 +114,7 @@ public class UniverseStatistics {
 
         public ChampionChangesPerInstance(Observer<?> observer, Mutable mutable) {
             this.observer = observer;
-            this.mutable  = mutable;
+            this.mutable = mutable;
         }
 
         @Override
@@ -146,19 +146,19 @@ public class UniverseStatistics {
 
     public UniverseStatistics(UniverseStatistics o) {
         this(o.tx);
-        this.debugging                  = o.debugging;
-        this.runCount                   = o.runCount;
-        this.forwardCount               = o.forwardCount;
-        this.totalChanges               = o.totalChanges;
-        this.totalChangesEver           = o.totalChangesEver;
-        this.mostTotalChangesEver       = o.mostTotalChangesEver;
-        this.mostObservers              = o.mostObservers;
-        this.mostObserversEver          = o.mostObserversEver;
-        this.championObservers          = o.championObservers;
-        this.mostObserved               = o.mostObserved;
-        this.mostObservedEver           = o.mostObservedEver;
-        this.championObserved           = o.championObserved;
-        this.mostChangesPerInstance     = o.mostChangesPerInstance;
+        this.debugging = o.debugging;
+        this.runCount = o.runCount;
+        this.forwardCount = o.forwardCount;
+        this.totalChanges = o.totalChanges;
+        this.totalChangesEver = o.totalChangesEver;
+        this.mostTotalChangesEver = o.mostTotalChangesEver;
+        this.mostObservers = o.mostObservers;
+        this.mostObserversEver = o.mostObserversEver;
+        this.championObservers = o.championObservers;
+        this.mostObserved = o.mostObserved;
+        this.mostObservedEver = o.mostObservedEver;
+        this.championObserved = o.championObserved;
+        this.mostChangesPerInstance = o.mostChangesPerInstance;
         this.mostChangesPerInstanceEver = o.mostChangesPerInstanceEver;
         this.championChangesPerInstance = o.championChangesPerInstance;
     }
@@ -189,9 +189,9 @@ public class UniverseStatistics {
         mostChangesPerInstance = 0;
 
         totalChangesEver += totChan;
-        mostTotalChangesEver       = Math.max(mostTotalChangesEver, totChan);
-        mostObserversEver          = Math.max(mostObserversEver, mostObs);
-        mostObservedEver           = Math.max(mostObservedEver, mostObd);
+        mostTotalChangesEver = Math.max(mostTotalChangesEver, totChan);
+        mostObserversEver = Math.max(mostObserversEver, mostObs);
+        mostObservedEver = Math.max(mostObservedEver, mostObd);
         mostChangesPerInstanceEver = Math.max(mostChangesPerInstanceEver, mostChpi);
     }
 
@@ -232,17 +232,14 @@ public class UniverseStatistics {
     }
 
     public int totalChanges() {
-        tx.throwIfError();
         return totalChanges;
     }
 
     public long totalChangesEver() {
-        tx.throwIfError();
         return totalChangesEver;
     }
 
     public long mostTotalChangesEver() {
-        tx.throwIfError();
         return mostTotalChangesEver;
     }
 
@@ -257,14 +254,14 @@ public class UniverseStatistics {
         }
         if (n <= maxNrOfChanges()) {
             if (mostChangesPerInstance < n) {
-                mostChangesPerInstance     = n;
+                mostChangesPerInstance = n;
                 championChangesPerInstance = new ChampionChangesPerInstance(observer, mutable);
             }
             return false;
         }
         synchronized (tx) {
             if (mostChangesPerInstance < n) {
-                mostChangesPerInstance     = n;
+                mostChangesPerInstance = n;
                 championChangesPerInstance = new ChampionChangesPerInstance(observer, mutable);
             }
         }
@@ -272,17 +269,14 @@ public class UniverseStatistics {
     }
 
     public int mostChangesPerInstance() {
-        tx.throwIfError();
         return mostChangesPerInstance;
     }
 
     public long mostChangesPerInstanceEver() {
-        tx.throwIfError();
         return mostChangesPerInstanceEver;
     }
 
     public ChampionChangesPerInstance championChangesPerInstance() {
-        tx.throwIfError();
         return championChangesPerInstance;
     }
 
@@ -291,21 +285,21 @@ public class UniverseStatistics {
         return tx.getConfig().getMaxNrOfObservers();
     }
 
-    public boolean tooManyObservers(Observed observed, Object /*always Mutable*/ o, DefaultMap<Observer, Set<Mutable>> observers) {
+    public boolean tooManyObservers(Observed observed, Object /* always Mutable */ o, DefaultMap<Observer, Set<Mutable>> observers) {
         if (!devMode()) {
             return false;
         }
         int n = LeafTransaction.sizeForConsistency(observers);
         if (n <= maxNrOfObservers()) {
             if (mostObservers < n) {
-                mostObservers     = n;
+                mostObservers = n;
                 championObservers = new ChampionObserver(observed, o instanceof Mutable ? (Mutable) o : null, observers);
             }
             return false;
         }
         synchronized (tx) {
             if (mostObservers < n) {
-                mostObservers     = n;
+                mostObservers = n;
                 championObservers = new ChampionObserver(observed, o instanceof Mutable ? (Mutable) o : null, observers);
             }
         }
@@ -313,17 +307,14 @@ public class UniverseStatistics {
     }
 
     public int mostObservers() {
-        tx.throwIfError();
         return mostObservers;
     }
 
     public long mostObserversEver() {
-        tx.throwIfError();
         return mostObserversEver;
     }
 
     public ChampionObserver championObservers() {
-        tx.throwIfError();
         return championObservers;
     }
 
@@ -339,14 +330,14 @@ public class UniverseStatistics {
         int n = LeafTransaction.sizeForConsistency(observeds);
         if (n <= maxNrOfObserved()) {
             if (mostObserved < n) {
-                mostObserved     = n;
+                mostObserved = n;
                 championObserved = new ChampionObserved(observer, mutable, observeds);
             }
             return false;
         }
         synchronized (tx) {
             if (mostObserved < n) {
-                mostObserved     = n;
+                mostObserved = n;
                 championObserved = new ChampionObserved(observer, mutable, observeds);
             }
         }
@@ -354,17 +345,14 @@ public class UniverseStatistics {
     }
 
     public int mostObserved() {
-        tx.throwIfError();
         return mostObserved;
     }
 
     public long mostObservedEver() {
-        tx.throwIfError();
         return mostObservedEver;
     }
 
     public ChampionObserved championObserved() {
-        tx.throwIfError();
         return championObserved;
     }
 
@@ -376,32 +364,32 @@ public class UniverseStatistics {
     @Override
     public String toString() {
         return "UniverseStats:\n" //
-                       + "    debugging                  = " + debugging + "\n" //
-                       + "    runCount                   = " + runCount + "\n" //
-                       + "    forwardCount               = " + forwardCount + "\n" //
-                       + "    totalChanges               = " + totalChanges + "\n" //
-                       + "    totalChangesEver           = " + totalChangesEver + "\n" //
-                       + "    mostTotalChangesEver       = " + mostTotalChangesEver + "\n" //
-                       + "    mostObservers              = " + mostObservers + "\n" //
-                       + "    mostObserversEver          = " + mostObserversEver + "\n" //
-                       + "    championObservers          = " + championObservers + "\n" //
-                       + "    mostObserved               = " + mostObserved + "\n" //
-                       + "    mostObservedEver           = " + mostObservedEver + "\n" //
-                       + "    championObserved           = " + championObserved + "\n" //
-                       + "    mostChangesPerInstance     = " + mostChangesPerInstance + "\n" //
-                       + "    mostChangesPerInstanceEver = " + mostChangesPerInstanceEver + "\n" //
-                       + "    championChangesPerInstance = " + championChangesPerInstance + "\n" //
-                ;
+                + "    debugging                  = " + debugging + "\n" //
+                + "    runCount                   = " + runCount + "\n" //
+                + "    forwardCount               = " + forwardCount + "\n" //
+                + "    totalChanges               = " + totalChanges + "\n" //
+                + "    totalChangesEver           = " + totalChangesEver + "\n" //
+                + "    mostTotalChangesEver       = " + mostTotalChangesEver + "\n" //
+                + "    mostObservers              = " + mostObservers + "\n" //
+                + "    mostObserversEver          = " + mostObserversEver + "\n" //
+                + "    championObservers          = " + championObservers + "\n" //
+                + "    mostObserved               = " + mostObserved + "\n" //
+                + "    mostObservedEver           = " + mostObservedEver + "\n" //
+                + "    championObserved           = " + championObserved + "\n" //
+                + "    mostChangesPerInstance     = " + mostChangesPerInstance + "\n" //
+                + "    mostChangesPerInstanceEver = " + mostChangesPerInstanceEver + "\n" //
+                + "    championChangesPerInstance = " + championChangesPerInstance + "\n" //
+        ;
     }
 
     public String shortString() {
         return String.format("[debug=%-5s run=%6d forward=%6d changes=%6d/%6d/%6d pInst=%6d/%6d/%s observers=%6d/%6d/%s observed=%6d/%6d/%s]", //
-                             debugging, runCount, forwardCount, //
-                             totalChanges, mostTotalChangesEver, totalChangesEver, //
-                             mostChangesPerInstance, mostChangesPerInstanceEver, championChangesPerInstance, //
-                             mostObservers, mostObserversEver, championObservers, //
-                             mostObserved, mostObservedEver, championObserved //
-                            );
+                debugging, runCount, forwardCount, //
+                totalChanges, mostTotalChangesEver, totalChangesEver, //
+                mostChangesPerInstance, mostChangesPerInstanceEver, championChangesPerInstance, //
+                mostObservers, mostObserversEver, championObservers, //
+                mostObserved, mostObservedEver, championObserved //
+        );
     }
 
     @Override
@@ -414,42 +402,42 @@ public class UniverseStatistics {
         }
         UniverseStatistics that = (UniverseStatistics) o;
         return tx == that.tx //
-                       && debugging == that.debugging //
-                       && runCount == that.runCount //
-                       && forwardCount == that.forwardCount //
-                       && totalChanges == that.totalChanges //
-                       && totalChangesEver == that.totalChangesEver //
-                       && mostTotalChangesEver == that.mostTotalChangesEver //
-                       && mostObservers == that.mostObservers //
-                       && mostObserversEver == that.mostObserversEver //
-                       && Objects.equals(championObservers, that.championObservers) //
-                       && mostObserved == that.mostObserved //
-                       && mostObservedEver == that.mostObservedEver //
-                       && Objects.equals(championObserved, that.championObserved) //
-                       && mostChangesPerInstance == that.mostChangesPerInstance //
-                       && mostChangesPerInstanceEver == that.mostChangesPerInstanceEver //
-                       && Objects.equals(championChangesPerInstance, that.championChangesPerInstance) //
-                ;
+                && debugging == that.debugging //
+                && runCount == that.runCount //
+                && forwardCount == that.forwardCount //
+                && totalChanges == that.totalChanges //
+                && totalChangesEver == that.totalChangesEver //
+                && mostTotalChangesEver == that.mostTotalChangesEver //
+                && mostObservers == that.mostObservers //
+                && mostObserversEver == that.mostObserversEver //
+                && Objects.equals(championObservers, that.championObservers) //
+                && mostObserved == that.mostObserved //
+                && mostObservedEver == that.mostObservedEver //
+                && Objects.equals(championObserved, that.championObserved) //
+                && mostChangesPerInstance == that.mostChangesPerInstance //
+                && mostChangesPerInstanceEver == that.mostChangesPerInstanceEver //
+                && Objects.equals(championChangesPerInstance, that.championChangesPerInstance) //
+        ;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(tx, //
-                            debugging, //
-                            runCount, //
-                            forwardCount, //
-                            totalChanges, //
-                            totalChangesEver, //
-                            mostTotalChangesEver, //
-                            mostObservers, //
-                            mostObserversEver, //
-                            championObservers, //
-                            mostObserved, //
-                            mostObservedEver, //
-                            championObserved, //
-                            mostChangesPerInstance, //
-                            mostChangesPerInstanceEver, //
-                            championChangesPerInstance //
-                           );
+                debugging, //
+                runCount, //
+                forwardCount, //
+                totalChanges, //
+                totalChangesEver, //
+                mostTotalChangesEver, //
+                mostObservers, //
+                mostObserversEver, //
+                championObservers, //
+                mostObserved, //
+                mostObservedEver, //
+                championObserved, //
+                mostChangesPerInstance, //
+                mostChangesPerInstanceEver, //
+                championChangesPerInstance //
+        );
     }
 }

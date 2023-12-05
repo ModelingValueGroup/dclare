@@ -582,11 +582,11 @@ public class UniverseTransaction extends MutableTransaction {
     private void handleTooManyChanges(State state) {
         if (!killed && stats().debugging() && !errors.get().anyMatch(e -> e instanceof TooManyChangesException)) {
             ObserverTrace trace = state//
-                    .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
-                    .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
+                    .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Debugs) //
+                    .flatMap(e1 -> e1.getValue().map(e2 -> ((List<ObserverTrace>) e2.getValue()).last())) //
                     .min((a, b) -> Integer.compare(b.done().size(), a.done().size())) //
                     .orElseThrow();
-            throw new TooManyChangesException(state, trace, trace.done().size());
+            throw new TooManyChangesException(state, trace, stats().totalChanges());
         }
     }
 

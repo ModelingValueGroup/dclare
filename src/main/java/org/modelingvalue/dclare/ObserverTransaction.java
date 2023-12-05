@@ -46,6 +46,8 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrents<Set<Boolean>>                      defer          = new Concurrents<>(Priority.two);
 
     private Pair<Instant, Throwable>                             throwable;
+    private int                                                  nrOfChanges;
+    private int                                                  totalNrOfChanges;
 
     protected ObserverTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -121,6 +123,8 @@ public class ObserverTransaction extends ActionTransaction {
                 constructions.clear();
                 emptyMandatory.clear();
                 throwable = null;
+                nrOfChanges = 0;
+                totalNrOfChanges = 0;
             }
         }
     }
@@ -136,9 +140,8 @@ public class ObserverTransaction extends ActionTransaction {
         try {
             DefaultMap<Observed, Set<Mutable>> observeds = this.observeds.get();
             checkTooManyObserved(mutable, observeds);
-            int nrOfChanges = 0;
             if (!observer.atomic() && changed.get().equals(TRUE)) {
-                nrOfChanges = checkTooManyChanges(pre, observeds);
+                checkTooManyChanges(pre, observeds);
                 trigger(mutable, (Observer<Mutable>) observer, Priority.one);
             } else {
                 Priority def = defer.first(TRUE::equals);
@@ -146,11 +149,11 @@ public class ObserverTransaction extends ActionTransaction {
                     rollback(observer.atomic());
                     trigger(mutable, (Observer<Mutable>) observer, def);
                 } else if (changed.get().equals(TRUE)) {
-                    nrOfChanges = checkTooManyChanges(pre, observeds);
+                    checkTooManyChanges(pre, observeds);
                     trigger(mutable, (Observer<Mutable>) observer, Priority.one);
                 }
             }
-            trace(pre, observeds, nrOfChanges);
+            trace(pre, observeds);
             DefaultMap preSources = super.set(mutable, observer.observeds(), observeds);
             if (preSources.isEmpty() && !observeds.isEmpty()) {
                 observer.addInstance();
@@ -180,19 +183,13 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes"})
-    protected int checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
+    protected void checkTooManyChanges(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
         UniverseStatistics stats = universeTransaction().stats();
-        int totalChanges = stats.bumpAndGetTotalChanges();
-        int changesPerInstance = observer().countChangesPerInstance();
-        if (stats.maxTotalNrOfChanges() < totalChanges) {
+        totalNrOfChanges = stats.bumpAndGetTotalChanges();
+        nrOfChanges = observer().countChangesPerInstance();
+        if (stats.tooManyChangesPerInstance(nrOfChanges, observer(), mutable()) || stats.maxTotalNrOfChanges() < totalNrOfChanges) {
             stats.setDebugging(true);
-            return totalChanges;
         }
-        if (stats.tooManyChangesPerInstance(changesPerInstance, observer(), mutable())) {
-            stats.setDebugging(true);
-            return changesPerInstance;
-        }
-        return 0;
     }
 
     @Override
@@ -201,21 +198,26 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     @SuppressWarnings({"rawtypes"})
-    protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes) {
+    protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
         if (observer().isTracing()) {
-            trace(pre, observeds, changes, observer().traces());
+            trace(pre, observeds, observer().traces(), nrOfChanges);
         }
         UniverseStatistics stats = universeTransaction().stats();
         if (stats.debugging() && changed.get().equals(TRUE)) {
-            ObserverTrace trace = trace(pre, observeds, changes, observer().debugs());
-            if (trace.done().size() > stats.maxNrOfChanges() || changes > stats.maxTotalNrOfChanges() + stats.maxNrOfChanges() * 2) {
-                throw new TooManyChangesException(current(), trace, changes);
+            int maxNrOfChanges = stats.maxNrOfChanges();
+            ObserverTrace trace = trace(pre, observeds, observer().debugs(), nrOfChanges > maxNrOfChanges ? nrOfChanges : totalNrOfChanges);
+            if (nrOfChanges > maxNrOfChanges + Math.min(maxNrOfChanges, 32)) {
+                throw new TooManyChangesException(current(), trace, nrOfChanges);
+            }
+            int maxTotalNrOfChanges = stats.maxTotalNrOfChanges();
+            if (totalNrOfChanges > maxTotalNrOfChanges + Math.min(maxTotalNrOfChanges, 128)) {
+                throw new TooManyChangesException(current(), trace, totalNrOfChanges);
             }
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, int changes, Setable<Mutable, List<ObserverTrace>> setable) {
+    private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, Setable<Mutable, List<ObserverTrace>> setable, int changes) {
         List<ObserverTrace> traces = setable.get(mutable());
         ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), changes, //
                 observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
