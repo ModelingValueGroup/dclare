@@ -206,11 +206,11 @@ public class ObserverTransaction extends ActionTransaction {
         if (stats.debugging() && changed.get().equals(TRUE)) {
             int maxNrOfChanges = stats.maxNrOfChanges();
             ObserverTrace trace = trace(pre, observeds, observer().debugs(), nrOfChanges > maxNrOfChanges ? nrOfChanges : totalNrOfChanges);
-            if (nrOfChanges > maxNrOfChanges + Math.min(maxNrOfChanges, 32)) {
+            if (trace.done().size() > Math.min(maxNrOfChanges, 32)) {
                 throw new TooManyChangesException(current(), trace, nrOfChanges);
             }
             int maxTotalNrOfChanges = stats.maxTotalNrOfChanges();
-            if (totalNrOfChanges > maxTotalNrOfChanges + Math.min(maxTotalNrOfChanges, 128)) {
+            if (totalNrOfChanges > maxTotalNrOfChanges + Math.min(maxTotalNrOfChanges, 256)) {
                 throw new TooManyChangesException(current(), trace, totalNrOfChanges);
             }
         }
