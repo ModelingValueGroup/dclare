@@ -16,27 +16,32 @@
 package org.modelingvalue.dclare;
 
 import java.io.Serializable;
+import java.util.Random;
 
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
 public final class This implements Mutable, Internable, Serializable {
-
     private static final long         serialVersionUID = 5000610308072466985L;
-
     private static final MutableClass THIS_CLASS       = new MutableClass() {
-                                                           @Override
-                                                           public Set<? extends Observer<?>> dObservers() {
-                                                               return Set.of();
-                                                           }
+        @Override
+        public Set<? extends Observer<?>> dObservers() {
+            return Set.of();
+        }
 
-                                                           @Override
-                                                           public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
-                                                               return Set.of();
-                                                           }
-                                                       };
+        @Override
+        public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
+            return Set.of();
+        }
+    };
+    private static final int          HASH             = new Random().nextInt();
+    private static final This         THIS             = new This();
 
-    public This() {
+    public static This singleton() {
+        return THIS;
+    }
+
+    private This() {
         super();
     }
 
@@ -55,4 +60,8 @@ public final class This implements Mutable, Internable, Serializable {
         return self;
     }
 
+    @Override
+    public int hashCode() {
+        return HASH;
+    }
 }
