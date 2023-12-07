@@ -17,7 +17,7 @@ package org.modelingvalue.dclare.test.support;
 
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.ContextPool;
 import org.modelingvalue.collections.util.MutationWrapper;
 import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.sync.DeltaAdaptor;
