@@ -68,7 +68,7 @@ public abstract class Leaf implements TransactionClass, Feature {
         return id;
     }
 
-    protected Priority initPriority() {
+    protected final Priority initPriority() {
         return initPriority;
     }
 

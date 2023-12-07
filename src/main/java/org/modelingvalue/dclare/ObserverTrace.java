@@ -65,6 +65,7 @@ public class ObserverTrace implements Comparable<ObserverTrace> {
         this.backTrace = backTrace;
         this.done = done.addAll(back).addAll(backDone).addAll(previous != null ? previous.done.add(previous) : Set.of());
         this.time = Instant.now();
+        System.err.println("!!!!!!!!!!! " + this.done.size());
     }
 
     public Instant time() {

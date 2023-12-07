@@ -24,19 +24,35 @@ import org.modelingvalue.collections.util.Internable;
 public interface Direction extends LeafModifier<Direction>, SetableModifier<Direction>, Internable {
 
     static Direction of(Object id, Direction... opposites) {
-        return new DirectionImpl(id, false, opposites);
+        return new DirectionImpl(id, false, FixpointGroup.DEFAULT, opposites);
     }
 
     static Direction of(Object id, Supplier<Set<Direction>> oppositeSupplier) {
-        return new DirectionImpl(id, false, oppositeSupplier);
+        return new DirectionImpl(id, false, FixpointGroup.DEFAULT, oppositeSupplier);
     }
 
     static Direction of(Object id, boolean lazy, Direction... opposites) {
-        return new DirectionImpl(id, lazy, opposites);
+        return new DirectionImpl(id, lazy, FixpointGroup.DEFAULT, opposites);
     }
 
     static Direction of(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
-        return new DirectionImpl(id, lazy, oppositeSupplier);
+        return new DirectionImpl(id, lazy, FixpointGroup.DEFAULT, oppositeSupplier);
+    }
+
+    static Direction of(Object id, FixpointGroup fixpointGroup, Direction... opposites) {
+        return new DirectionImpl(id, false, fixpointGroup, opposites);
+    }
+
+    static Direction of(Object id, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, false, fixpointGroup, oppositeSupplier);
+    }
+
+    static Direction of(Object id, boolean lazy, FixpointGroup fixpointGroup, Direction... opposites) {
+        return new DirectionImpl(id, lazy, fixpointGroup, opposites);
+    }
+
+    static Direction of(Object id, boolean lazy, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, lazy, fixpointGroup, oppositeSupplier);
     }
 
     Direction DEFAULT = new Direction() {
@@ -54,28 +70,37 @@ public interface Direction extends LeafModifier<Direction>, SetableModifier<Dire
         public boolean isLazy() {
             return false;
         }
+
+        @Override
+        public FixpointGroup fixpointGroup() {
+            return FixpointGroup.DEFAULT;
+        }
     };
 
     Set<Direction> opposites();
 
     boolean isLazy();
 
+    FixpointGroup fixpointGroup();
+
     static final class DirectionImpl implements Direction {
 
         private final Object                   id;
         private final boolean                  lazy;
         private final Supplier<Set<Direction>> oppositeSupplier;
+        private final FixpointGroup            fixpointGroup;
 
         private Set<Direction>                 opposites = null;
 
-        private DirectionImpl(Object id, boolean lazy, Direction... opposites) {
-            this(id, lazy, () -> Collection.of(opposites).asSet());
+        private DirectionImpl(Object id, boolean lazy, FixpointGroup fixpointGroup, Direction... opposites) {
+            this(id, lazy, fixpointGroup, () -> Collection.of(opposites).asSet());
         }
 
-        private DirectionImpl(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
+        private DirectionImpl(Object id, boolean lazy, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
             this.id = id;
             this.lazy = lazy;
             this.oppositeSupplier = oppositeSupplier;
+            this.fixpointGroup = fixpointGroup;
         }
 
         @Override
@@ -110,6 +135,11 @@ public interface Direction extends LeafModifier<Direction>, SetableModifier<Dire
                 }
             }
             return opposites;
+        }
+
+        @Override
+        public final FixpointGroup fixpointGroup() {
+            return fixpointGroup;
         }
 
     }

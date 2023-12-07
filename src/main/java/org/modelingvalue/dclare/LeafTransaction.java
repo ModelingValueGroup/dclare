@@ -206,6 +206,10 @@ public abstract class LeafTransaction extends Transaction {
 
     public abstract Direction direction();
 
+    public final FixpointGroup fixpointGroup() {
+        return direction().fixpointGroup();
+    }
+
     public IState preStartState(Priority priority) {
         return universeTransaction().preStartState(priority);
     }

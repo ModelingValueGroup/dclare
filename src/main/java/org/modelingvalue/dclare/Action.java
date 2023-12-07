@@ -69,8 +69,12 @@ public class Action<O extends Mutable> extends Leaf {
         return new ActionTransaction(universeTransaction);
     }
 
-    public Direction direction() {
+    public final Direction direction() {
         return direction;
+    }
+
+    public final FixpointGroup fixpointGroup() {
+        return direction().fixpointGroup();
     }
 
     @Override

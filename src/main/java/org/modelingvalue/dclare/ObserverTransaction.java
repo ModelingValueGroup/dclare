@@ -200,26 +200,26 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes"})
     protected void trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds) {
         if (observer().isTracing()) {
-            trace(pre, observeds, observer().traces(), nrOfChanges);
+            trace(pre, observeds, observer().traces());
         }
         UniverseStatistics stats = universeTransaction().stats();
         if (stats.debugging() && changed.get().equals(TRUE)) {
-            int maxNrOfChanges = stats.maxNrOfChanges();
-            ObserverTrace trace = trace(pre, observeds, observer().debugs(), nrOfChanges > maxNrOfChanges ? nrOfChanges : totalNrOfChanges);
-            if (trace.done().size() > Math.min(maxNrOfChanges, 32)) {
+            ObserverTrace trace = trace(pre, observeds, observer().debugs());
+            if (nrOfChanges > Math.min(stats.maxNrOfChanges(), 32) && trace.done().size() > 16) {
                 throw new TooManyChangesException(current(), trace, nrOfChanges);
             }
-            int maxTotalNrOfChanges = stats.maxTotalNrOfChanges();
-            if (totalNrOfChanges > maxTotalNrOfChanges + Math.min(maxTotalNrOfChanges, 256)) {
+            if (totalNrOfChanges > stats.maxTotalNrOfChanges() + Math.min(stats.maxTotalNrOfChanges(), 256) && trace.done().size() > 8) {
                 throw new TooManyChangesException(current(), trace, totalNrOfChanges);
             }
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, Setable<Mutable, List<ObserverTrace>> setable, int changes) {
+    private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, Setable<Mutable, List<ObserverTrace>> setable) {
         List<ObserverTrace> traces = setable.get(mutable());
-        ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), changes, //
+        Pair<Mutable, Setable<Mutable, ?>> p = Mutable.D_PARENT_CONTAINING.get(mutable());
+        observeds = observeds.put((Observed) p.b(), observeds.get((Observed) p.b()).add(p.a()));
+        ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), nrOfChanges, //
                 observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
                     m = m.dResolve(mutable());
                     return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
