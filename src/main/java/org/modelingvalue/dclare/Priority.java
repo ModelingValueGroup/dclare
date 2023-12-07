@@ -36,12 +36,14 @@ public enum Priority implements LeafModifier<Priority>, Internable {
 
     four,
 
-    five; // Deferred scheduled outer
+    five, // For Fixpoint Groups
+
+    six; // Deferred scheduled outer
 
     // To prevent Array allocations each time Priority.values() is called.
     public static final Priority[] ALL   = Priority.values();
     public static final Priority   INNER = two;
-    public static final Priority   OUTER = five;
+    public static final Priority   OUTER = six;
 
     public final static class Queued<T extends TransactionClass> extends Setable<Mutable, Set<T>> {
 

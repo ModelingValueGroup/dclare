@@ -175,8 +175,8 @@ public class UniverseTransaction extends MutableTransaction {
         universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = startState;
-        preStartStates = new MutableStates(Priority.two, () -> createMutableState(emptyState));
-        startStates = new MutableStates(Priority.two, () -> createMutableState(emptyState));
+        preStartStates = new MutableStates(Priority.INNER, () -> createMutableState(emptyState));
+        startStates = new MutableStates(Priority.INNER, () -> createMutableState(emptyState));
         List<IState> states = List.of();
         for (int i = 0; i < startStates.length(); i++) {
             Priority p = startStates.priority(i);
@@ -419,7 +419,7 @@ public class UniverseTransaction extends MutableTransaction {
                 if (!killed && orphansDetected.get() == Boolean.TRUE) {
                     preOrphansState = startState(Priority.INNER).preState();
                     state = trigger(state, universe(), clearOrphans, Priority.INNER);
-                    priority = Priority.two;
+                    priority = Priority.INNER;
                 } else {
                     priority = killed ? null : hasQueued(state);
                     if (!killed && (priority == null || priority == Priority.OUTER) && orphansDetected.get() == null) {

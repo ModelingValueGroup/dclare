@@ -43,7 +43,7 @@ public class ObserverTransaction extends ActionTransaction {
     private final Concurrent<Map<Construction.Reason, Mutable>>  constructions  = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       emptyMandatory = Concurrent.of();
     private final Concurrent<Set<Boolean>>                       changed        = Concurrent.of();
-    private final Concurrents<Set<Boolean>>                      defer          = new Concurrents<>(Priority.two);
+    private final Concurrents<Set<Boolean>>                      defer          = new Concurrents<>(Priority.INNER);
 
     private Pair<Instant, Throwable>                             throwable;
     private int                                                  nrOfChanges;
@@ -68,7 +68,7 @@ public class ObserverTransaction extends ActionTransaction {
         emptyMandatory.merge();
         changed.merge();
         defer.merge();
-        Map<Reason, Mutable> cons = constructions.merge(); //TODO @WIM: why is this not done in the 'if' below?
+        Map<Reason, Mutable> cons = constructions.merge(); // The merge must be done after merge. 
         if (throwable == null) {
             Set<Boolean> ch = changed.get();
             observer().constructed().set(mutable(), cons);
@@ -224,7 +224,8 @@ public class ObserverTransaction extends ActionTransaction {
                     m = m.dResolve(mutable());
                     return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
                 })).asMap(e -> e), //
-                pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).asMap(e -> e));
+                pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).//
+                        flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).asMap(e -> e));
         setable.set(mutable(), traces.append(trace));
         return trace;
     }
@@ -486,25 +487,25 @@ public class ObserverTransaction extends ActionTransaction {
     }
 
     private <O, T extends ContainingCollection<E>, E> Priority added(O object, Observed<O, T> observed, E added, boolean forward, boolean isNew) {
-        return added(object, observed, startState(Priority.two), state(), added, forward) ? Priority.two : //
+        return added(object, observed, startState(Priority.INNER), state(), added, forward) ? Priority.INNER : //
                 becameDerived(observed, added, startState(Priority.three), current()) ? Priority.three : //
                         (isNew && added(object, observed, startState(), startState(Priority.four), added, forward)) ? Priority.four : //
-                                added(object, observed, preStartState(Priority.five).raw(), startState(Priority.five), added, forward) ? Priority.five : null;
+                                added(object, observed, preStartState(Priority.OUTER).raw(), startState(Priority.OUTER), added, forward) ? Priority.OUTER : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> Priority removed(O object, Observed<O, T> observed, E removed, boolean forward, boolean isNew) {
-        return removed(object, observed, startState(Priority.two), state(), removed, forward) ? Priority.two : //
+        return removed(object, observed, startState(Priority.INNER), state(), removed, forward) ? Priority.INNER : //
                 (isNew && removed(object, observed, startState(), startState(Priority.four), removed, forward)) ? Priority.four : //
-                        becameContained(observed, removed, startState(Priority.four), startState(Priority.two)) ? Priority.four : //
-                                removed(object, observed, preStartState(Priority.five).raw(), startState(Priority.five), removed, forward) ? Priority.five : null;
+                        becameContained(observed, removed, startState(Priority.four), startState(Priority.INNER)) ? Priority.four : //
+                                removed(object, observed, preStartState(Priority.OUTER).raw(), startState(Priority.OUTER), removed, forward) ? Priority.OUTER : null;
     }
 
     private <O, T> Priority changed(O object, Observed<O, T> observed, T pre, T post, boolean forward, boolean isNew) {
-        return changed(object, observed, startState(Priority.two), state(), pre, post, forward) ? Priority.two : //
+        return changed(object, observed, startState(Priority.INNER), state(), pre, post, forward) ? Priority.INNER : //
                 becameDerived(observed, post, startState(Priority.three), current()) ? Priority.three : //
                         (isNew && changed(object, observed, startState(), startState(Priority.four), pre, post, forward)) ? Priority.four : //
-                                becameContained(observed, pre, startState(Priority.four), startState(Priority.two)) ? Priority.four : //
-                                        changed(object, observed, preStartState(Priority.five).raw(), startState(Priority.five), pre, post, forward) ? Priority.five : null;
+                                becameContained(observed, pre, startState(Priority.four), startState(Priority.INNER)) ? Priority.four : //
+                                        changed(object, observed, preStartState(Priority.OUTER).raw(), startState(Priority.OUTER), pre, post, forward) ? Priority.OUTER : null;
     }
 
     private <O, T extends ContainingCollection<E>, E> boolean added(O object, Observed<O, T> observed, IState preState, IState postState, E added, boolean forward) {
