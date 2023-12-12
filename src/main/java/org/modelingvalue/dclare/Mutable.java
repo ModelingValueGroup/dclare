@@ -42,7 +42,7 @@ public interface Mutable extends TransactionClass {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>             D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
-            added -> added.trigger(obj),                                                                                                                                                                                        //
+            added -> added.trigger(obj, added.fixpointGroup() == FixpointGroup.DEFAULT ? added.initPriority() : Priority.five),                                                                                                 //
             removed -> {
             }));
 
