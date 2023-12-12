@@ -15,7 +15,10 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.*;
+import static org.modelingvalue.dclare.CoreSetableModifier.doNotMerge;
+import static org.modelingvalue.dclare.CoreSetableModifier.durable;
+import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
+import static org.modelingvalue.dclare.CoreSetableModifier.preserved;
 
 import java.util.function.Predicate;
 
@@ -31,7 +34,7 @@ import org.modelingvalue.dclare.Observer.Constructed;
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
 
-    Mutable                                                  THIS                     = new This();
+    Mutable                                                  THIS                     = This.singleton();
 
     Set<Mutable>                                             THIS_SINGLETON           = Set.of(THIS);
 

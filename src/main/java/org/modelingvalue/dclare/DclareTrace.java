@@ -15,10 +15,10 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.util.ContextThread;
+
 import java.util.Arrays;
 import java.util.stream.IntStream;
-
-import org.modelingvalue.collections.util.ContextThread;
 
 public class DclareTrace {
 
@@ -34,7 +34,7 @@ public class DclareTrace {
     public static String getLineStart(String tag, Transaction current) {
         StringBuilder b = new StringBuilder(TRACE_BASE);
         superImpose(b, tag.length() <= TAG_LENGTH ? tag : tag.substring(0, TAG_LENGTH), 0);
-        superImpose(b, getThreadNum(ContextThread.getNr()), TAG_LENGTH + 1);
+        superImpose(b, getThreadNum(ContextThread.getCurrentNr()), TAG_LENGTH + 1);
         if (current != null) {
             superImpose(b, current.getCurrentTypeForTrace(), TAG_LENGTH + 1 + THREAD_NUM_LENGTH + 1);
         }

@@ -15,6 +15,22 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.DefaultMap;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.ContextPool;
+import org.modelingvalue.collections.util.StatusProvider;
+import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
+import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
+import org.modelingvalue.collections.util.TraceTimer;
+import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
+import org.modelingvalue.dclare.Priority.MutableStates;
+import org.modelingvalue.dclare.ex.ConsistencyError;
+import org.modelingvalue.dclare.ex.TooManyChangesException;
+
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Timer;
@@ -24,22 +40,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.DefaultMap;
-import org.modelingvalue.collections.Entry;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.StatusProvider;
-import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
-import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
-import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
-import org.modelingvalue.dclare.Priority.MutableStates;
-import org.modelingvalue.dclare.ex.ConsistencyError;
-import org.modelingvalue.dclare.ex.TooManyChangesException;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {

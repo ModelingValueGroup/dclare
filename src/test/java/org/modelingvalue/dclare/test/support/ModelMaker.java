@@ -25,7 +25,7 @@ import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
 import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.ContextPool;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.DclareConfig;
