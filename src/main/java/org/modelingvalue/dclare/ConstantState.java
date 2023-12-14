@@ -28,6 +28,8 @@ import java.util.function.Function;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.impl.HashCollectionImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
@@ -320,6 +322,18 @@ public class ConstantState {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {
+            Set<Constants> allWithEqualhash = prev.allWithEqualhash(object);
+            if (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 2) {
+                int i = 0;
+                for (Constants c : allWithEqualhash) {
+                    if (!(c.ref instanceof Constants.DurableRef)) {
+                        prev = removeConstants(c);
+                        if (++i >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL / 2) {
+                            break;
+                        }
+                    }
+                }
+            }
             object = leafTransaction.state().canonical(object);
             constants = new Constants<>(object, referenceType, queue);
             QualifiedSet<Object, Constants> next = prev.add(constants);
@@ -342,7 +356,7 @@ public class ConstantState {
         return constants;
     }
 
-    private void removeConstants(Constants constants) {
+    private QualifiedSet<Object, Constants> removeConstants(Constants constants) {
         QualifiedSet<Object, Constants> prev = state.get();
         Object object = constants.object();
         constants = prev.get(object);
@@ -351,11 +365,13 @@ public class ConstantState {
             while (!state.compareAndSet(prev, next)) {
                 prev = state.get();
                 if (prev.get(object) == null) {
-                    return;
+                    return prev;
                 }
                 next = prev.removeKey(object);
             }
+            return next;
         }
+        return prev;
     }
 
     private static enum ReferenceType {
