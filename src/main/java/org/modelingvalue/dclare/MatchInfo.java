@@ -28,17 +28,21 @@ public class MatchInfo {
     private final Construction                    initialConstruction;
     private final boolean                         removed;
     private final Object                          identity;
+    private final boolean                         containment;
+    private final boolean                         many;
 
     private QualifiedSet<Direction, Construction> allDerivations;
 
     @SuppressWarnings("rawtypes")
-    public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
-        return new MatchInfo(newable, otx, object, observed);
+    public static MatchInfo of(Newable newable, ObserverTransaction otx, Mutable object, Observed observed, boolean many) {
+        return new MatchInfo(newable, otx, object, observed, many);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed) {
+    private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed, boolean many) {
         this.newable = newable;
+        this.containment = observed.containment();
+        this.many = many;
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.startState(Priority.three).get(newable, Mutable.D_PARENT_CONTAINING) == null && //
                 otx.preStartState(Priority.OUTER).getRaw(newable, Mutable.D_PARENT_CONTAINING) != null;
@@ -47,7 +51,7 @@ public class MatchInfo {
         identity = constants.get(otx, newable, Newable.D_IDENTITY, n -> {
             if (!removed && (isDirect() || isDerived())) {
                 State state = otx.current();
-                if (observed.containment()) {
+                if (containment) {
                     state = state.set(newable, Mutable.D_PARENT_CONTAINING, Pair.of(object, observed));
                 }
                 return state.deriveIdentity(() -> n.dIdentity(), otx.depth(), otx.mutable(), constants);
@@ -58,8 +62,12 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && //
-                !replaced.allDerivations.anyMatch(c -> (isDerived() && initialConstruction.reason().equals(c.reason())) || c.hasSource(newable));
+        if (!many || containment) {
+            return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && //
+                    !replaced.allDerivations.anyMatch(c -> (isDerived() && initialConstruction.reason().equals(c.reason())) || c.hasSource(newable));
+        } else {
+            return newable.equals(replaced.newable().dReplacing());
+        }
     }
 
     protected void setAllDerivations(MatchInfo other) {

@@ -576,8 +576,8 @@ public class ObserverTransaction extends ActionTransaction {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private Object singleMatch(Mutable object, Observed observed, Object before, Object after) {
         if (after instanceof Newable && before instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) before).dNewableType())) {
-            MatchInfo preInfo = MatchInfo.of((Newable) before, this, object, observed);
-            MatchInfo postInfo = MatchInfo.of((Newable) after, this, object, observed);
+            MatchInfo preInfo = MatchInfo.of((Newable) before, this, object, observed, false);
+            MatchInfo postInfo = MatchInfo.of((Newable) after, this, object, observed, false);
             if (preInfo.mustReplace(postInfo)) {
                 replace(postInfo, preInfo);
                 after = preInfo.newable();
@@ -593,7 +593,7 @@ public class ObserverTransaction extends ActionTransaction {
                             found = true;
                             break;
                         }
-                        MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont);
+                        MatchInfo valInfo = MatchInfo.of((Newable) val, this, object, cont, false);
                         if (valInfo.identity() != null && valInfo.mustReplace(postInfo)) {
                             found = true;
                             replace(postInfo, valInfo);
@@ -633,7 +633,7 @@ public class ObserverTransaction extends ActionTransaction {
                             }
                         }
                         if (infos == null) {
-                            infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed)).asQualifiedSet(MatchInfo::newable);
+                            infos = Collection.concat(befores, afters).distinct().filter(Newable.class).map(n -> MatchInfo.of(n, this, object, observed, true)).asQualifiedSet(MatchInfo::newable);
                             postInfo = infos.get((Newable) after);
                         }
                         MatchInfo preInfo = infos.get((Newable) before);
@@ -658,7 +658,7 @@ public class ObserverTransaction extends ActionTransaction {
                             befores = befores.replaceFirst(before, after);
                             replace(preInfo, postInfo);
                             break;
-                        } else if (observed.containment() && universeTransaction().getConfig().isTraceMatching()) {
+                        } else if (universeTransaction().getConfig().isTraceMatching()) {
                             MatchInfo finalPostInfo = postInfo;
                             runNonObserving(() -> System.err.println(DclareTrace.getLineStart("MATCH", this) + mutable() + "." + observer() + " (" + preInfo + "!=" + finalPostInfo + ")"));
                         }
