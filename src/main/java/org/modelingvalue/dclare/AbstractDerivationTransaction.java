@@ -184,7 +184,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         if (doDeriveSet(object, setable)) {
             Observed<O, T> observed = (Observed<O, T>) setable;
             DerivedValue<O, T> derivedValue = DERIVED_VALUE.get();
-            boolean isDerived = derivedValue.isDerived(object, observed);
+            boolean isDerived = derivedValue != null && derivedValue.isDerived(object, observed);
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
             T pre = isDerived && derivedValue.isSet() ? derivedValue.get() : mem.isSet(this, object, constant) ? mem.get(this, object, constant) : getNonDerived(object, setable);
