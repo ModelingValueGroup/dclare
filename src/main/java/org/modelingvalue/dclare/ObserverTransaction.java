@@ -223,7 +223,7 @@ public class ObserverTransaction extends ActionTransaction {
     private ObserverTrace trace(State pre, DefaultMap<Observed, Set<Mutable>> observeds, Setable<Mutable, List<ObserverTrace>> setable) {
         List<ObserverTrace> traces = setable.get(mutable());
         Pair<Mutable, Setable<Mutable, ?>> p = Mutable.D_PARENT_CONTAINING.get(mutable());
-        if (p.b() instanceof Observed) {
+        if (p != null && p.b() instanceof Observed) {
             observeds = observeds.put((Observed) p.b(), observeds.get((Observed) p.b()).add(p.a()));
         }
         ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), nrOfChanges, //

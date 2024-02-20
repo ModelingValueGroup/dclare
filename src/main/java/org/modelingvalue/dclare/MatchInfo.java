@@ -35,6 +35,7 @@ public class MatchInfo {
     private final Object                          identity;
     private final boolean                         containment;
     private final boolean                         many;
+    private final boolean                         match;
 
     private QualifiedSet<Direction, Construction> allDerivations;
 
@@ -47,6 +48,7 @@ public class MatchInfo {
     private MatchInfo(Newable newable, ObserverTransaction otx, Mutable object, Observed observed, boolean many) {
         this.newable = newable;
         this.containment = observed.containment();
+        this.match = observed.match();
         this.many = many;
         ConstantState constants = otx.universeTransaction().tmpConstants();
         removed = otx.startState(Priority.three).get(newable, Mutable.D_PARENT_CONTAINING) == null && //
@@ -67,7 +69,7 @@ public class MatchInfo {
     }
 
     public boolean mustReplace(MatchInfo replaced) {
-        if (!many || containment) {
+        if (!many || containment || match) {
             return canBeReplacing() && replaced.canBeReplaced() && Objects.equals(identity(), replaced.identity()) && //
                     !replaced.allDerivations.anyMatch(c -> (isDerived() && initialConstruction.reason().equals(c.reason())) || c.hasSource(newable));
         } else {

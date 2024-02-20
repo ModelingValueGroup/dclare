@@ -30,5 +30,6 @@ public enum CoreSetableModifier implements SetableModifier<SetableModifier<?>> {
     doNotMerge,
     orphansAllowed,
     preserved,
-    doNotClear;
+    doNotClear,
+    match;
 }

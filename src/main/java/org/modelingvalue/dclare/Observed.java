@@ -80,6 +80,7 @@ public class Observed<O, T> extends Setable<O, T> {
     private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
     private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
     private final boolean                             mandatory;
+    private final boolean                             match;
     private final Observers<O, T>                     observers;
     @SuppressWarnings("rawtypes")
     private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
@@ -88,6 +89,7 @@ public class Observed<O, T> extends Setable<O, T> {
     protected Observed(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
         super(id, def, opposite, scope, changed, modifiers);
         this.mandatory = hasModifier(CoreSetableModifier.mandatory);
+        this.match = hasModifier(CoreSetableModifier.match);
         this.observers = new Observers<>(this);
     }
 
@@ -110,6 +112,10 @@ public class Observed<O, T> extends Setable<O, T> {
     @Override
     public boolean mandatory() {
         return mandatory;
+    }
+
+    public boolean match() {
+        return match;
     }
 
     public Setable<Object, Set<ObserverTrace>> readers() {
