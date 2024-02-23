@@ -20,14 +20,6 @@
 
 package org.modelingvalue.dclare;
 
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextPool;
-import org.modelingvalue.collections.util.MutationWrapper;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -45,6 +37,14 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.ContextPool;
+import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.MutationWrapper;
 
 /**
  * This class will enable you to build a model in a dclare universe and then finish.
@@ -74,7 +74,6 @@ public abstract class OneShot<U extends Universe> {
     public @interface OneShotAction {
         boolean caching() default false;
     }
-
 
     @SuppressWarnings("DataFlowIssue")
     public OneShot(U universe) {
@@ -133,7 +132,6 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the end state
      */
-    @SuppressWarnings("DataFlowIssue")
     public State getEndState() {
         if (endState != null) {
             return endState;
@@ -145,13 +143,13 @@ public abstract class OneShot<U extends Universe> {
                     StateMap            cachedStateMap      = STATE_MAP_CACHE.get().get(cacheKey);
                     boolean             runningFromCache    = cachedStateMap != null;
                     UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig(), null, cachedStateMap);
-                    long                t0                  = System.currentTimeMillis();
+                    long                t0                  = System.nanoTime();
                     List<MyAction>      allActions          = getAllActions(runningFromCache);
                     trace("START", "#actions=%d", allActions.size());
                     allActions.forEach(a -> a.putAndWaitForIdle(universeTransaction));
                     universeTransaction.stop();
                     endState = universeTransaction.waitForEnd();
-                    trace("DONE", "duration=%5d ms", System.currentTimeMillis() - t0);
+                    trace("DONE", "duration=%5d ms", nano2ms(System.nanoTime() - t0));
                 } finally {
                     doneWithContextPool(contextPool);
                 }
@@ -188,7 +186,7 @@ public abstract class OneShot<U extends Universe> {
         }
 
         protected void putAndWaitForIdle(UniverseTransaction universeTransaction) {
-            long    t00                = System.currentTimeMillis();
+            long    t0                 = System.nanoTime();
             boolean writeResultToCache = isCachingMethod && !runningFromCache;
             boolean skip               = isCachingMethod && runningFromCache;
             if (skip) {
@@ -197,11 +195,17 @@ public abstract class OneShot<U extends Universe> {
                 trace(" >>ACTION", "%s", id());
                 State intermediateState = universeTransaction.putAndWaitForIdle(this);
                 traceDiff(intermediateState);
-                trace(" <<ACTION", "%s duration=%5d ms\n", id(), System.currentTimeMillis() - t00);
                 if (writeResultToCache) {
+                    long t1 = System.nanoTime();
                     trace(" CACHE-WRITE", "%s", id());
                     STATE_MAP_CACHE.update(a -> a.computeIfAbsent(cacheKey, __ -> intermediateState.getStateMap()));
                 }
+                long overallNano = System.nanoTime() - t0;
+                long methodNano  = durationNano();
+                long dtOverall   = nano2ms(overallNano);
+                long dtMethod    = nano2ms(methodNano);
+                long dtRules     = nano2ms(overallNano - methodNano);
+                trace(" <<ACTION", "%-20s took %5d ms (m+r=%5d + %5d)", id(), dtOverall, dtMethod, dtRules);
             }
         }
 
@@ -240,6 +244,10 @@ public abstract class OneShot<U extends Universe> {
         if (TRACE_ONE_SHOT) {
             System.err.printf("TRACE_ONE_SHOT: %-14s %-40s  -  %s\n", what, cacheKey.getSimpleName(), String.format(format, args));
         }
+    }
+
+    private static long nano2ms(long nano) {
+        return nano / 1_000_000;
     }
 
     private static class ContextPoolPool {
