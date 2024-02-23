@@ -205,7 +205,7 @@ public abstract class OneShot<U extends Universe> {
                 long dtOverall   = nano2ms(overallNano);
                 long dtMethod    = nano2ms(methodNano);
                 long dtRules     = nano2ms(overallNano - methodNano);
-                trace(" <<ACTION", "%-20s took %5d ms (m+r=%5d + %5d)", id(), dtOverall, dtMethod, dtRules);
+                trace(" <<ACTION", "%-25s took %5d ms (m+r=%5d + %5d)", id(), dtOverall, dtMethod, dtRules);
             }
         }
 
