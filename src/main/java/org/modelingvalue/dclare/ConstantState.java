@@ -328,7 +328,7 @@ public class ConstantState {
         Constants constants = prev.get(object);
         if (constants == null) {
             Set<Constants> allWithEqualhash = prev.allWithEqualhash(object);
-            if (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 2) {
+            while (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 4) {
                 int i = 0;
                 for (Constants c : allWithEqualhash) {
                     if (!(c.ref instanceof Constants.DurableRef)) {
@@ -338,6 +338,7 @@ public class ConstantState {
                         }
                     }
                 }
+                allWithEqualhash = prev.allWithEqualhash(object);
             }
             object = leafTransaction.state().canonical(object);
             constants = new Constants<>(object, referenceType, queue);
