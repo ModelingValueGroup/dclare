@@ -200,7 +200,9 @@ public class State extends StateMap implements IState, Serializable {
             if (changeHandler != null) {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
-                        deduplicate(p);
+                        if (p.getKey().deduplicate(p.getValue())) {
+                            deduplicate(p);
+                        }
                         changeHandler.handleChange(o, p.getKey(), ps, pss, props, this);
                     }
                 }
