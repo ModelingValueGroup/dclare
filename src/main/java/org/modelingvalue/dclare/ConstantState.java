@@ -327,21 +327,9 @@ public class ConstantState {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {
-            Set<Constants> allWithEqualhash = prev.allWithEqualhash(object);
-            while (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 4) {
-                int i = 0;
-                for (Constants c : allWithEqualhash) {
-                    if (!(c.ref instanceof Constants.DurableRef)) {
-                        prev = removeConstants(c);
-                        if (++i >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL / 2) {
-                            break;
-                        }
-                    }
-                }
-                allWithEqualhash = prev.allWithEqualhash(object);
-            }
             object = leafTransaction.state().canonical(object);
             constants = new Constants<>(object, referenceType, queue);
+            prev = pruneEqualHashes(object, prev);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {
@@ -354,12 +342,30 @@ public class ConstantState {
                     }
                     return now;
                 }
+                prev = pruneEqualHashes(object, prev);
                 next = prev.add(constants);
             }
         } else if (referenceType.strongness > constants.referenceType().strongness) {
             constants.upgradeStrongness(referenceType, object);
         }
         return constants;
+    }
+
+    private <O> QualifiedSet<Object, Constants> pruneEqualHashes(O object, QualifiedSet<Object, Constants> prev) {
+        Set<Constants> allWithEqualhash = prev.allWithEqualhash(object);
+        while (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 4) {
+            int i = 0;
+            for (Constants c : allWithEqualhash) {
+                if (!(c.ref instanceof Constants.DurableRef)) {
+                    prev = removeConstants(c);
+                    if (++i >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL / 2) {
+                        break;
+                    }
+                }
+            }
+            allWithEqualhash = prev.allWithEqualhash(object);
+        }
+        return prev;
     }
 
     private QualifiedSet<Object, Constants> removeConstants(Constants constants) {
