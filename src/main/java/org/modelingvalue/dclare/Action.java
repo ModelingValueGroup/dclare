@@ -37,6 +37,7 @@ public class Action<O extends Mutable> extends Leaf {
     private final Direction   direction;
     private final boolean     preserved;
     private final boolean     read;
+    private       long        durationNano = -1;
 
     protected Action(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         super(id, modifiers);
@@ -44,7 +45,7 @@ public class Action<O extends Mutable> extends Leaf {
         Direction dir = getModifier(Direction.class);
         this.direction = dir == null ? Direction.DEFAULT : dir;
         this.preserved = hasModifier(LeafModifier.preserved);
-        this.read = hasModifier(LeafModifier.read);
+        this.read      = hasModifier(LeafModifier.read);
     }
 
     @Override
@@ -58,7 +59,9 @@ public class Action<O extends Mutable> extends Leaf {
     }
 
     public void run(O object) {
+        long t0 = System.nanoTime();
         action.accept(object);
+        durationNano = System.nanoTime() - t0;
     }
 
     public void trigger(O mutable) {
@@ -95,4 +98,7 @@ public class Action<O extends Mutable> extends Leaf {
         return read;
     }
 
+    public long durationNano() {
+        return durationNano;
+    }
 }
