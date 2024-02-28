@@ -70,24 +70,26 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
-    private final Traces                        traces;
-    private final Debugs                        debugs;
-    private final ExceptionSetable              exception;
-    private final Observerds                    observeds;
-    private final Constructed                   constructed;
+    private final Traces                                           traces;
+    private final Debugs                                           debugs;
+    private final ExceptionSetable                                 exception;
+    private final Observerds                                       observeds;
+    private final Constructed                                      constructed;
     @SuppressWarnings("rawtypes")
-    private final Set<Setable<O, ?>>            targets;
-    private final boolean                       anonymous;
-    private final boolean                       atomic;
+    private final Set<Setable<O, ?>>                               targets;
+    private final boolean                                          anonymous;
+    private final boolean                                          atomic;
 
-    private long                                runCount     = -1;
-    private int                                 instances;
-    private int                                 changes;
-    private boolean                             stopped;
-    private boolean                             trace;
+    private long                                                   runCount     = -1;
+    private int                                                    instances;
+    private int                                                    changes;
+    private boolean                                                stopped;
+    private boolean                                                trace;
 
     @SuppressWarnings("rawtypes")
-    private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observer, Set<Mutable>>                    thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    @SuppressWarnings("rawtypes")
+    private final Constant<Mutable, Entry<Observer, Set<Mutable>>> entry        = Constant.of(Pair.of(this, "entry"), m -> Entry.of(this, Mutable.SINGLETON.get(m)));
 
     protected Observer(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         this(id, action, Set.of(), modifiers);
@@ -383,7 +385,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     @SuppressWarnings("rawtypes")
     private Entry entry(Mutable object, Mutable self) {
-        return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
+        return object.equals(self) ? thisInstance : entry.get(object);
     }
 
     @SuppressWarnings("rawtypes")

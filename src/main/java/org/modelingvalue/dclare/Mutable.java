@@ -20,10 +20,7 @@
 
 package org.modelingvalue.dclare;
 
-import static org.modelingvalue.dclare.CoreSetableModifier.doNotMerge;
-import static org.modelingvalue.dclare.CoreSetableModifier.durable;
-import static org.modelingvalue.dclare.CoreSetableModifier.plumbing;
-import static org.modelingvalue.dclare.CoreSetableModifier.preserved;
+import static org.modelingvalue.dclare.CoreSetableModifier.*;
 
 import java.util.function.Predicate;
 
@@ -42,6 +39,8 @@ public interface Mutable extends TransactionClass {
     Mutable                                                  THIS                     = This.singleton();
 
     Set<Mutable>                                             THIS_SINGLETON           = Set.of(THIS);
+
+    Constant<Mutable, Set<Mutable>>                          SINGLETON                = Constant.of("$SINGLETON", Set::of);
 
     @SuppressWarnings("rawtypes")
     ParentContaining                                         D_PARENT_CONTAINING      = new ParentContaining("D_PARENT_CONTAINING", plumbing, preserved);

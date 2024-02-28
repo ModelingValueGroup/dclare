@@ -44,6 +44,7 @@ import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
     private static final boolean          DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
+    private static final boolean          NO_DEDUPLICATION            = Boolean.getBoolean("NO_DEDUPLICATION");
 
     private static final Context<Boolean> MOVING                      = Context.of(false);
 
@@ -154,7 +155,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     protected boolean deduplicate(T value) {
-        return value instanceof ContainingCollection;
+        return !NO_DEDUPLICATION && value instanceof ContainingCollection;
     }
 
     public Direction direction() {

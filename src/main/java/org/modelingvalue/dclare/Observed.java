@@ -77,13 +77,15 @@ public class Observed<O, T> extends Setable<O, T> {
         return new Observed<>(id, def, opposite, scope, null, modifiers);
     }
 
-    private final Setable<Object, Set<ObserverTrace>> readers      = Setable.of(Pair.of(this, "readers"), Set.of());
-    private final Setable<Object, Set<ObserverTrace>> writers      = Setable.of(Pair.of(this, "writers"), Set.of());
-    private final boolean                             mandatory;
-    private final boolean                             match;
-    private final Observers<O, T>                     observers;
+    private final Setable<Object, Set<ObserverTrace>>              readers      = Setable.of(Pair.of(this, "readers"), Set.of());
+    private final Setable<Object, Set<ObserverTrace>>              writers      = Setable.of(Pair.of(this, "writers"), Set.of());
+    private final boolean                                          mandatory;
+    private final boolean                                          match;
+    private final Observers<O, T>                                  observers;
     @SuppressWarnings("rawtypes")
-    private final Entry<Observed, Set<Mutable>>       thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observed, Set<Mutable>>                    thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    @SuppressWarnings("rawtypes")
+    private final Constant<Mutable, Entry<Observed, Set<Mutable>>> entry        = Constant.of(Pair.of(this, "entry"), m -> Entry.of(this, Mutable.SINGLETON.get(m)));
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Observed(Object id, Function<O, T> def, Supplier<Setable<?, ?>> opposite, Supplier<Setable<O, Set<?>>> scope, QuadConsumer<LeafTransaction, O, T, T> changed, SetableModifier<?>... modifiers) {
@@ -154,7 +156,7 @@ public class Observed<O, T> extends Setable<O, T> {
 
     @SuppressWarnings("rawtypes")
     protected Entry<Observed, Set<Mutable>> entry(Mutable object, Mutable self) {
-        return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
+        return object.equals(self) ? thisInstance : entry.get(object);
     }
 
     @Override
