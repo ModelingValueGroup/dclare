@@ -78,8 +78,8 @@ public class LazyDerivationTransaction extends AbstractDerivationTransaction {
     }
 
     @Override
-    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable, T nonDerived) {
-        return super.doDeriveSet(object, getable) && Objects.equals(nonDerived, getable.getDefault(object)) && ifReady(object, (Setable<O, T>) getable, nonDerived);
+    protected <O, T> boolean doDerive(O object, Getable<O, T> getable, T nonDerived) {
+        return super.doDerive(object, getable, nonDerived) && Objects.equals(nonDerived, getable.getDefault(object)) && ifReady(object, (Setable<O, T>) getable, nonDerived);
     }
 
     private <O, T> boolean ifReady(O object, Setable<O, T> setable, T nonDerived) {
@@ -90,9 +90,9 @@ public class LazyDerivationTransaction extends AbstractDerivationTransaction {
     }
 
     @Override
-    protected <T, O> void setInMemoization(ConstantState mem, O object, Setable<O, T> setable, T result) {
-        super.setInMemoization(mem, object, setable, result);
-        if (setable.preserved() && !setable.direction().isLazy()) {
+    protected <T, O> void setInMemoization(ConstantState mem, O object, Setable<O, T> setable, T result, boolean force) {
+        super.setInMemoization(mem, object, setable, result, force);
+        if (!force && setable.preserved() && !setable.direction().isLazy()) {
             state.set(object, setable, result);
         }
     }

@@ -205,10 +205,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             triggeredMutables.init(Set.of());
             try {
                 State state = base.merge(this, branches, branches.length);
-                state = trigger(state, triggeredActions.result(), one);
-                for (int i = 0; i < triggeredMutables.length(); i++) {
-                    Priority priority = triggeredMutables.priority(i);
-                    state = triggerMutables(state, triggeredMutables.result(priority), priority);
+                if (push()) {
+                    state = trigger(state, triggeredActions.result(), one);
+                    for (int i = 0; i < triggeredMutables.length(); i++) {
+                        Priority priority = triggeredMutables.priority(i);
+                        state = triggerMutables(state, triggeredMutables.result(priority), priority);
+                    }
                 }
                 return state;
             } finally {
@@ -228,46 +230,47 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     public void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] branchesValues, DefaultMap<Setable, Object> resultValues, State base) {
-        if (setable instanceof Observers) {
-            Observers<?, ?> os = (Observers) setable;
-            DefaultMap<Observer, Set<Mutable>> baseObservers = StateMap.get(baseValues, os);
-            DefaultMap<Observer, Set<Mutable>> resultObservers = StateMap.get(resultValues, os);
-            os.observed().checkTooManyObservers(universeTransaction(), object, resultObservers);
-            DefaultMap<Observer, Set<Mutable>> addedResultObservers = resultObservers.removeAll(baseObservers, Set::removeAll);
-            if (!addedResultObservers.isEmpty()) {
-                Observed<?, ?> observedProp = os.observed();
-                Object baseValue = StateMap.get(baseValues, observedProp);
-                for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                    Object branchValue = StateMap.get(branchValues, observedProp);
-                    if (!Objects.equals(branchValue, baseValue)) {
-                        DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
-                        Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
-                                asMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).asSet()));
-                        triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
+        if (push()) {
+            if (setable instanceof Observers) {
+                Observers<?, ?> os = (Observers) setable;
+                DefaultMap<Observer, Set<Mutable>> baseObservers = StateMap.get(baseValues, os);
+                DefaultMap<Observer, Set<Mutable>> resultObservers = StateMap.get(resultValues, os);
+                os.observed().checkTooManyObservers(universeTransaction(), object, resultObservers);
+                DefaultMap<Observer, Set<Mutable>> addedResultObservers = resultObservers.removeAll(baseObservers, Set::removeAll);
+                if (!addedResultObservers.isEmpty()) {
+                    Observed<?, ?> observedProp = os.observed();
+                    Object baseValue = StateMap.get(baseValues, observedProp);
+                    for (DefaultMap<Setable, Object> branchValues : branchesValues) {
+                        Object branchValue = StateMap.get(branchValues, observedProp);
+                        if (!Objects.equals(branchValue, baseValue)) {
+                            DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
+                            Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
+                                    asMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).asSet()));
+                            triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
+                        }
                     }
                 }
-            }
-        } else if (setable instanceof Queued) {
-            Queued<TransactionClass> q = (Queued) setable;
-            Priority prio = base.priority(q);
-            if (prio != zero) {
-                Set<TransactionClass> resultTriggered = StateMap.get(resultValues, q);
-                Set<TransactionClass> baseTriggered = StateMap.get(baseValues, q);
-                if (!resultTriggered.removeAll(baseTriggered).isEmpty()) {
-                    Mutable resultParent = StateMap.getA(resultValues, D_PARENT_CONTAINING);
-                    if (resultParent != null) {
-                        for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                            Mutable branchParent = StateMap.getA(branchValues, D_PARENT_CONTAINING);
-                            if (!resultParent.equals(branchParent)) {
-                                triggeredMutables.change(prio, ts -> ts.add(resultParent));
-                                break;
+            } else if (setable instanceof Queued) {
+                Queued<TransactionClass> q = (Queued) setable;
+                Priority prio = base.priority(q);
+                if (prio != zero) {
+                    Set<TransactionClass> resultTriggered = StateMap.get(resultValues, q);
+                    Set<TransactionClass> baseTriggered = StateMap.get(baseValues, q);
+                    if (!resultTriggered.removeAll(baseTriggered).isEmpty()) {
+                        Mutable resultParent = StateMap.getA(resultValues, D_PARENT_CONTAINING);
+                        if (resultParent != null) {
+                            for (DefaultMap<Setable, Object> branchValues : branchesValues) {
+                                Mutable branchParent = StateMap.getA(branchValues, D_PARENT_CONTAINING);
+                                if (!resultParent.equals(branchParent)) {
+                                    triggeredMutables.change(prio, ts -> ts.add(resultParent));
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
         }
-
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

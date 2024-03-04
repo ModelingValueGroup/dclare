@@ -40,7 +40,6 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     protected static final Context<Pair<Mutable, Observer>>      DERIVER       = Context.of(null);
     @SuppressWarnings("rawtypes")
     private static final Context<DerivedValue>                   DERIVED_VALUE = Context.of(null);
-    private static final Context<Boolean>                        DERIVE        = Context.of(true);
     private static final Context<Integer>                        INDENT        = Context.of(0);
 
     public static boolean isDeriving() {
@@ -51,10 +50,12 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         super(universeTransaction);
     }
 
-    private ConstantState memoization;
+    private ConstantState         memoization;
+    private ConstantChangeHandler changeHandler;
 
-    public <R> R derive(Supplier<R> action, State state, ConstantState memoization) {
+    public <R> R derive(Supplier<R> action, State state, ConstantState memoization, ConstantChangeHandler changeHandler) {
         this.memoization = memoization;
+        this.changeHandler = changeHandler;
         try {
             return get(action, state);
         } catch (Throwable t) {
@@ -62,17 +63,13 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             return null;
         } finally {
             this.memoization = null;
+            this.changeHandler = null;
         }
     }
 
     @SuppressWarnings("rawtypes")
-    protected <O, T> boolean doDeriveGet(O object, Getable<O, T> getable, T nonDerived) {
-        return doDeriveSet(object, getable);
-    }
-
-    @SuppressWarnings("rawtypes")
-    protected <O, T> boolean doDeriveSet(O object, Getable<O, T> getable) {
-        return object instanceof Mutable && getable instanceof Observed && DERIVE.get();
+    protected <O, T> boolean doDerive(O object, Getable<O, T> getable, T nonDerived) {
+        return object instanceof Mutable && getable instanceof Observed;
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
@@ -93,7 +90,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private <O, T> T derive(O object, Getable<O, T> getable, T nonDerived) {
-        if (doDeriveGet(object, getable, nonDerived)) {
+        if (doDerive(object, getable, nonDerived)) {
             Observed<O, T> observed = (Observed<O, T>) getable;
             DerivedValue<O, T> outerDerivedValue = DERIVED_VALUE.get();
             boolean isDerived = outerDerivedValue != null && outerDerivedValue.isDerived(object, observed);
@@ -101,7 +98,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             Constant<O, T> constant = observed.constant();
             if (isDerived && outerDerivedValue.isSet()) {
                 return outerDerivedValue.get();
-            } else if (!mem.isSet(this, object, constant)) {
+            } else if (!mem.isSet(changeHandler, object, constant)) {
                 if (Newable.D_ALL_DERIVATIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                     return nonDerived;
                 } else {
@@ -128,10 +125,10 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                                 runDeriver((Mutable) object, observed, observer, ++i);
                             }
                             if (innerDerivedValue.isSet()) {
-                                setInMemoization(mem, object, observed, innerDerivedValue.get());
+                                setInMemoization(mem, object, observed, innerDerivedValue.get(), false);
                             }
                         })));
-                        if (!mem.isSet(this, object, constant)) {
+                        if (!mem.isSet(changeHandler, object, constant)) {
                             if (isTraceDerivation(object, observed)) {
                                 INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + nonDerived)));
                             }
@@ -140,7 +137,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                     }
                 }
             }
-            return mem.get(this, object, constant);
+            return mem.get(changeHandler, object, constant);
         } else {
             return nonDerived;
         }
@@ -166,33 +163,40 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> setable, BiFunction<T, E, T> function, E element) {
-        return set(object, setable, function.apply(getNonDerived(object, setable), element));
+        T nonDerived = getNonDerived(object, setable);
+        return set(object, setable, function.apply(nonDerived, element), nonDerived);
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> setable, UnaryOperator<T> oper) {
-        return set(object, setable, oper.apply(getNonDerived(object, setable)));
+        T nonDerived = getNonDerived(object, setable);
+        return set(object, setable, oper.apply(nonDerived), nonDerived);
+    }
+
+    @Override
+    public <O, T> T set(O object, Setable<O, T> setable, T post) {
+        T nonDerived = getNonDerived(object, setable);
+        return set(object, setable, post, nonDerived);
     }
 
     public void runNonDeriving(Runnable action) {
-        DERIVE.run(false, action);
+        DERIVED.run(Set.of(), action);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    public <O, T> T set(O object, Setable<O, T> setable, T post) {
-        if (doDeriveSet(object, setable)) {
+    private <O, T> T set(O object, Setable<O, T> setable, T post, T nonDerived) {
+        if (doDerive(object, setable, nonDerived) && isDeriving()) {
             Observed<O, T> observed = (Observed<O, T>) setable;
             DerivedValue<O, T> derivedValue = DERIVED_VALUE.get();
             boolean isDerived = derivedValue != null && derivedValue.isDerived(object, observed);
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
-            T pre = isDerived && derivedValue.isSet() ? derivedValue.get() : mem.isSet(this, object, constant) ? mem.get(this, object, constant) : getNonDerived(object, setable);
+            T pre = isDerived && derivedValue.isSet() ? derivedValue.get() : mem.isSet(changeHandler, object, constant) ? mem.get(changeHandler, object, constant) : nonDerived;
             T result = match(mem, observed, pre, post);
             if (isDerived) {
                 derivedValue.set(result);
             } else {
-                setInMemoization(mem, object, observed, result);
+                setInMemoization(mem, object, observed, result, false);
             }
             if (isTraceDerivation(object, observed)) {
                 runNonDeriving(() -> {
@@ -202,13 +206,13 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             }
             if (observed.containment()) {
                 Setable.<T, Mutable> diff(pre, result, added -> {
-                    setInMemoization(mem, added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) observed));
+                    setInMemoization(mem, added, Mutable.D_PARENT_CONTAINING, Pair.of((Mutable) object, (Setable<Mutable, ?>) observed), true);
                 }, removed -> {
                 });
             }
             return pre;
-        } else if (!Objects.equals(getNonDerived(object, setable), post)) {
-            return super.set(object, setable, post);
+        } else if (!Objects.equals(nonDerived, post)) {
+            return changeHandler.set(object, setable, post);
         } else {
             return post;
         }
@@ -221,21 +225,21 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             if (!pres.isEmpty()) {
                 for (Newable po : posts) {
                     Construction poInit = Mutable.D_INITIAL_CONSTRUCTION.get(po);
-                    if (poInit.isDerived() && mem.isSet(this, po, Newable.D_ALL_DERIVATIONS.constant())) {
+                    if (poInit.isDerived() && mem.isSet(changeHandler, po, Newable.D_ALL_DERIVATIONS.constant())) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
                             if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
                                 post = replace(post, po, pr);
-                                setInMemoization(mem, pr, Mutable.D_ALL_DERIVATIONS, mem.get(this, po, Newable.D_ALL_DERIVATIONS.constant()));
+                                setInMemoization(mem, pr, Mutable.D_ALL_DERIVATIONS, mem.get(changeHandler, po, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     } else if (poInit.isDirect()) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
-                            if (preInit.isDerived() && mem.isSet(this, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                            if (preInit.isDerived() && mem.isSet(changeHandler, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
-                                setInMemoization(mem, po, Mutable.D_ALL_DERIVATIONS, mem.get(this, pr, Newable.D_ALL_DERIVATIONS.constant()));
+                                setInMemoization(mem, po, Mutable.D_ALL_DERIVATIONS, mem.get(changeHandler, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     }
@@ -266,13 +270,13 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         Pair<Mutable, Observer> deriver = DERIVER.get();
         O result = supplier.get();
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
-        setInMemoization(memoization(deriver.a()), result, Newable.D_ALL_DERIVATIONS, Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons));
+        setInMemoization(memoization(deriver.a()), result, Newable.D_ALL_DERIVATIONS, Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons), true);
         Mutable.D_INITIAL_CONSTRUCTION.force(result, cons);
         return result;
     }
 
-    protected <T, O> void setInMemoization(ConstantState mem, O object, Setable<O, T> setable, T result) {
-        mem.set(this, object, setable.constant(), result, true);
+    protected <T, O> void setInMemoization(ConstantState mem, O object, Setable<O, T> setable, T result, boolean force) {
+        mem.set(changeHandler, object, setable.constant(), result, force);
     }
 
     protected <O> ConstantState memoization(O object) {

@@ -20,24 +20,15 @@
 
 package org.modelingvalue.dclare.test.support;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.dclare.Mutable;
-import org.modelingvalue.dclare.MutableClass;
-import org.modelingvalue.dclare.Observed;
-import org.modelingvalue.dclare.Observer;
-import org.modelingvalue.dclare.OneShot;
-import org.modelingvalue.dclare.Setable;
-import org.modelingvalue.dclare.StateMap;
-import org.modelingvalue.dclare.Universe;
+import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.*;
 
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.BASE;
-import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.ELSE;
-import static org.modelingvalue.dclare.test.support.OneShotTests.TestUniverse.STAR;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.dclare.*;
 
 public class OneShotTests {
     static {
@@ -47,17 +38,20 @@ public class OneShotTests {
     private static final String MARKER = "xyzzy";
     private static final String SEP    = "-";
 
+    private Random              random = new Random();
+
     @Test
     public void reuseInOneTest() {
         AtomicInteger invokes1 = new AtomicInteger();
         AtomicInteger invokes2 = new AtomicInteger();
 
         for (int i = 0; i < 100; i++) {
-            boolean          starred  = new Random().nextBoolean();
-            TestOneShotInOne oneShot2 = new TestOneShotInOne(starred, i, invokes1, invokes2);
-            StateMap         map2     = oneShot2.getEndStateMap();
+            boolean starred = random.nextBoolean();
+            boolean pull = random.nextBoolean();
+            TestOneShotInOne oneShot2 = new TestOneShotInOne(pull, starred, i, invokes1, invokes2);
+            StateMap map2 = oneShot2.getEndStateMap();
 
-            Observed<TestUniverse, String> updated    = starred ? STAR : ELSE;
+            Observed<TestUniverse, String> updated = starred ? STAR : ELSE;
             Observed<TestUniverse, String> notUpdated = starred ? ELSE : STAR;
 
             Assertions.assertEquals(MARKER, map2.get(TEST_UNIVERSE, BASE), "at " + i);
@@ -76,10 +70,10 @@ public class OneShotTests {
         private final AtomicInteger invokes1;
         private final AtomicInteger invokes2;
 
-        public TestOneShotInOne(boolean starred, int end, AtomicInteger invokes1, AtomicInteger invokes2) {
-            super(TEST_UNIVERSE);
-            this.starred  = starred;
-            this.end      = end;
+        public TestOneShotInOne(boolean pull, boolean starred, int end, AtomicInteger invokes1, AtomicInteger invokes2) {
+            super(TEST_UNIVERSE, pull);
+            this.starred = starred;
+            this.end = end;
             this.invokes1 = invokes1;
             this.invokes2 = invokes2;
         }
@@ -105,16 +99,16 @@ public class OneShotTests {
         public static final Observed<TestUniverse, String> STAR    = Observed.of("STAR", null);
         public static final Observed<TestUniverse, String> ELSE    = Observed.of("ELSE", null);
         public static final MutableClass                   D_CLASS = new MutableClass() {
-            @Override
-            public Collection<? extends Observer<?>> dObservers() {
-                return Collection.of();
-            }
+                                                                       @Override
+                                                                       public Collection<? extends Observer<?>> dObservers() {
+                                                                           return Collection.of();
+                                                                       }
 
-            @Override
-            public Collection<? extends Setable<? extends Mutable, ?>> dSetables() {
-                return Collection.of();
-            }
-        };
+                                                                       @Override
+                                                                       public Collection<? extends Setable<? extends Mutable, ?>> dSetables() {
+                                                                           return Collection.of(BASE, STAR, ELSE);
+                                                                       }
+                                                                   };
 
         @Override
         public MutableClass dClass() {

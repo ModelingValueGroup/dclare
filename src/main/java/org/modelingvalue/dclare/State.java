@@ -266,7 +266,16 @@ public class State extends StateMap implements IState, Serializable {
     public <R> R derive(Supplier<R> supplier, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, constantState);
+            return tx.derive(supplier, this, constantState, tx);
+        } finally {
+            universeTransaction.derivation.closeTransaction(tx);
+        }
+    }
+
+    public <R> R derive(Supplier<R> supplier, ConstantState constantState, ConstantChangeHandler changeHandler) {
+        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(supplier, this, constantState, changeHandler);
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
         }
@@ -285,7 +294,7 @@ public class State extends StateMap implements IState, Serializable {
         ConstantState derivationState = new ConstantState("LAZY", universeTransaction::handleException);
         LazyDerivationTransaction tx = universeTransaction.lazyDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(() -> tx.derive(), this, derivationState);
+            return tx.derive(() -> tx.derive(), this, derivationState, tx);
         } finally {
             derivationState.stop();
             universeTransaction.lazyDerivation.closeTransaction(tx);

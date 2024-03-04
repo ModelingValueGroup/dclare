@@ -95,7 +95,7 @@ public class ObserverTransaction extends ActionTransaction {
     @Override
     protected final void run(State pre, UniverseTransaction universeTransaction) {
         Observer<?> observer = observer();
-        // check if the universe is still in the same transaction, if not: reset my state
+        // check if the universe is still in the same transaction run, if not: reset the counts of my observer
         observer.startTransaction(universeTransaction.stats());
         // check if we should do the work...
         if (!observer.isStopped() && !universeTransaction.isKilled()) {
@@ -345,7 +345,7 @@ public class ObserverTransaction extends ActionTransaction {
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+    public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
         if (observing(object, setable)) {
             changed.set(TRUE);
         }

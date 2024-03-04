@@ -20,6 +20,16 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
@@ -35,16 +45,6 @@ import org.modelingvalue.dclare.NonCheckingObserver.NonCheckingTransaction;
 import org.modelingvalue.dclare.Priority.MutableStates;
 import org.modelingvalue.dclare.ex.ConsistencyError;
 import org.modelingvalue.dclare.ex.TooManyChangesException;
-
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 @SuppressWarnings("unused")
 public class UniverseTransaction extends MutableTransaction {
@@ -70,6 +70,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
     //
+    private final boolean                                                                              pull;
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
     private final State                                                                                emptyState              = createState(StateMap.EMPTY_STATE_MAP);
@@ -163,11 +164,12 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer) {
-        this(universe, pool, config, startStatusConsumer, null);
+        this(universe, pool, false, config, startStatusConsumer, null);
     }
 
-    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap) {
+    public UniverseTransaction(Universe universe, ContextPool pool, boolean pull, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap) {
         super(null);
+        this.pull = pull;
         if (universe == null) {
             throw new IllegalArgumentException("UniverseTransaction can not start without a Universe (universe argument is null)");
         }
@@ -194,6 +196,16 @@ public class UniverseTransaction extends MutableTransaction {
         if (startStatusConsumer != null) {
             startStatusConsumer.accept(startStatus);
         }
+    }
+
+    @Override
+    public final boolean pull() {
+        return pull;
+    }
+
+    @Override
+    public final boolean push() {
+        return !pull;
     }
 
     private State createStartState(Universe universe, StateMap stateMap) {

@@ -220,24 +220,31 @@ public class Setable<O, T> extends Getable<O, T> {
             changed.accept(tx, object, preValue, postValue);
         }
         if (containment) {
+            boolean push = tx.push();
             Setable.<T, Mutable> diff(preValue, postValue, added -> {
                 Pair<Mutable, Setable<Mutable, ?>> prePair = tx.getRaw(added, Mutable.D_PARENT_CONTAINING);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
                 Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
-                if (prePair == null) {
-                    added.dActivate();
-                } else {
-                    tx.set((Mutable) object, tx.state().children(one), Set::add, added);
+                if (push) {
+                    if (prePair == null) {
+                        added.dActivate();
+                    } else {
+                        tx.set((Mutable) object, tx.state().children(one), Set::add, added);
+                    }
                 }
             }, removed -> {
-                for (Priority prio : Priority.ALL) {
-                    tx.set((Mutable) object, tx.state().children(prio), Set::remove, removed);
+                if (push) {
+                    for (Priority prio : Priority.ALL) {
+                        tx.set((Mutable) object, tx.state().children(prio), Set::remove, removed);
+                    }
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);
-                    removed.dHandleRemoved((Mutable) object);
+                    if (push) {
+                        removed.dHandleRemoved((Mutable) object);
+                    }
                 }
             });
         }

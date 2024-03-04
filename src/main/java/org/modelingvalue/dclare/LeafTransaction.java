@@ -36,7 +36,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
-public abstract class LeafTransaction extends Transaction {
+public abstract class LeafTransaction extends Transaction implements ConstantChangeHandler {
 
     private static final Context<LeafTransaction> CURRENT = Context.of();
 
@@ -87,8 +87,6 @@ public abstract class LeafTransaction extends Transaction {
         return CURRENT;
     }
 
-    public abstract State state();
-
     public State current() {
         return state();
     }
@@ -96,8 +94,6 @@ public abstract class LeafTransaction extends Transaction {
     public abstract <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element);
 
     public abstract <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper);
-
-    public abstract <O, T> T set(O object, Setable<O, T> property, T post);
 
     public <O, T> T setDefault(O object, Setable<O, T> property) {
         return set(object, property, property.getDefault(object));
@@ -119,7 +115,8 @@ public abstract class LeafTransaction extends Transaction {
         return universeTransaction().preState().get(object, property);
     }
 
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+    @Override
+    public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
         setable.changed(this, object, rawPreValue, postValue);
     }
 

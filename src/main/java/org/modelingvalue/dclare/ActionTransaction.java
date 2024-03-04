@@ -23,6 +23,7 @@ package org.modelingvalue.dclare;
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
@@ -38,9 +39,31 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private final CurrentState currentState = new CurrentState();
-    private State              preState;
-    private State              postState;
+    private final CurrentState          currentState  = new CurrentState();
+    private final ConstantChangeHandler changeHandler = new ConstantChangeHandler() {
+                                                          @Override
+                                                          public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+                                                              ActionTransaction.this.set(object, setable, preValue, postValue);
+                                                          }
+
+                                                          @Override
+                                                          public State state() {
+                                                              return ActionTransaction.this.state();
+                                                          }
+
+                                                          @Override
+                                                          public <O, T> T set(O object, Setable<O, T> property, T post) {
+                                                              return ActionTransaction.this.set(object, property, post);
+                                                          }
+                                                      };
+    @SuppressWarnings("unchecked")
+    private final Supplier<Object>      supplier      = () -> {
+                                                          ((Action<Mutable>) action()).run(mutable());
+                                                          return null;
+                                                      };
+
+    private State                       preState;
+    private State                       postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -52,7 +75,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("unchecked")
     protected void run(State pre, UniverseTransaction universeTransaction) {
-        ((Action<Mutable>) action()).run(mutable());
+        if (push()) {
+            ((Action<Mutable>) action()).run(mutable());
+        } else {
+            state().derive(supplier, constantState(), changeHandler);
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -162,13 +189,15 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+    public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
         super.changed(object, setable, preValue, rawPreValue, postValue);
-        if (setable.preserved()) {
-            setChanged(object, setable, postValue);
-        }
-        if (setable instanceof Observed && !Objects.equals(preValue, postValue)) {
-            trigger(object, (Observed<O, T>) setable);
+        if (push()) {
+            if (setable.preserved()) {
+                setChanged(object, setable, postValue);
+            }
+            if (setable instanceof Observed && !Objects.equals(preValue, postValue)) {
+                trigger(object, (Observed<O, T>) setable);
+            }
         }
     }
 

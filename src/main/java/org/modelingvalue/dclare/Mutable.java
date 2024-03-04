@@ -32,6 +32,7 @@ import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Observer.Constructed;
+import org.modelingvalue.dclare.ex.NotYetDerivableException;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -262,5 +263,17 @@ public interface Mutable extends TransactionClass {
         private Pair<Mutable, Setable<Mutable, ?>> superGet(Mutable object) {
             return super.get(object);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public default boolean pull() {
+        return MutableClass.D_OBSERVEDS.get(dClass()).map(o -> {
+            try {
+                o.get(this);
+            } catch (NotYetDerivableException nyde) {
+                return true;
+            }
+            return false;
+        }).reduce(false, (a, b) -> a || b);
     }
 }

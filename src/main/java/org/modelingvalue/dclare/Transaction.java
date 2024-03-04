@@ -60,6 +60,14 @@ public abstract class Transaction {
         return universeTransaction;
     }
 
+    public boolean pull() {
+        return universeTransaction.pull();
+    }
+
+    public boolean push() {
+        return universeTransaction.push();
+    }
+
     public void start(TransactionClass cls, MutableTransaction parent) {
         if (this.cls != null) {
             throw new ConcurrentModificationException();
