@@ -33,8 +33,8 @@ public interface Newable extends Mutable {
     Object dNewableType();
 
     @Override
-    default void dActivate() {
-        Mutable.super.dActivate();
+    default void dActivate(LeafTransaction tx) {
+        Mutable.super.dActivate(tx);
     }
 
     @Override

@@ -83,7 +83,8 @@ public class UniverseTransaction extends MutableTransaction {
     protected final AtomicReference<Set<Throwable>>                                                    errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Set<Throwable>>                                                      inconsistencies         = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
-    private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
+    private final ConstantState                                                                        constantState;
+    private final ConstantState                                                                        pullConstantState;
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
     private final MutableStates                                                                        preStartStates;
@@ -164,15 +165,17 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer) {
-        this(universe, pool, false, config, startStatusConsumer, null);
+        this(universe, pool, false, config, startStatusConsumer, null, null);
     }
 
-    public UniverseTransaction(Universe universe, ContextPool pool, boolean pull, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap) {
+    public UniverseTransaction(Universe universe, ContextPool pool, boolean pull, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap, ConstantState startConstantState) {
         super(null);
-        this.pull = pull;
         if (universe == null) {
             throw new IllegalArgumentException("UniverseTransaction can not start without a Universe (universe argument is null)");
         }
+        this.pull = pull;
+        this.constantState = startConstantState != null ? startConstantState : new ConstantState("CONST", this::handleException);
+        this.pullConstantState = pull ? new ConstantState("PULL", this::handleException) : null;
         State initState = createStartState(universe, startStateMap);
         startState = initState.get(() -> incrementChangeId(universe, initState));
         Status startStatus = new Status(Mood.starting, null, startState, null, Set.of());
@@ -273,7 +276,7 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                         runActions(preActions);
                         runAction(action);
-                        if (initialized) {
+                        if (initialized && push()) {
                             runAction(checkConsistency);
                         }
                         handleTooManyChanges(state);
@@ -628,7 +631,7 @@ public class UniverseTransaction extends MutableTransaction {
             return o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty();
         }).map(e -> (Mutable) e.getKey()).asSet();
         orphansDetected.set(!orphans.isEmpty());
-        orphans.forEach(tx::clearOrphan);
+        orphans.forEach(tx::dDeactivate);
     }
 
     public boolean isStopped(State state) {
@@ -829,6 +832,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public ConstantState constantState() {
         return constantState;
+    }
+
+    public ConstantState pullConstantState() {
+        return pullConstantState;
     }
 
     public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post, Action<?> action) {

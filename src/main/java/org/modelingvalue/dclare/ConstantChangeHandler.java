@@ -28,4 +28,6 @@ public interface ConstantChangeHandler {
 
     State state();
 
+    <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority);
+
 }

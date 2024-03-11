@@ -55,6 +55,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                                                           public <O, T> T set(O object, Setable<O, T> property, T post) {
                                                               return ActionTransaction.this.set(object, property, post);
                                                           }
+
+                                                          @Override
+                                                          public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
+                                                              ActionTransaction.this.trigger(mutable, action, priority);
+                                                          }
                                                       };
     @SuppressWarnings("unchecked")
     private final Supplier<Object>      supplier      = () -> {
@@ -78,7 +83,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
         if (push()) {
             ((Action<Mutable>) action()).run(mutable());
         } else {
-            state().derive(supplier, constantState(), changeHandler);
+            state().derive(supplier, pullConstantState(), changeHandler);
         }
     }
 

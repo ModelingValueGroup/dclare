@@ -51,6 +51,10 @@ public interface MutableClass extends Internable {
     Constant<MutableClass, Set<Observer>>                      D_NON_DERIVERS      = Constant.of("D_NON_DERIVERS",                                                                         //
             c -> c.dObservers().filter(o -> o.targets().isEmpty()).map(s -> (Observer) s).asSet());
 
+    @SuppressWarnings({"rawtypes"})
+    Constant<MutableClass, Set<Observed>>                      D_PUSH_IF_PULL      = Constant.of("D_PUSH_IF_PULL",                                                                         //
+            c -> D_OBSERVEDS.get(c).filter(o -> o.containment() || o.hasOpposite()).filter(o -> !D_DERIVERS.get(c).get(o).isEmpty()).asSet());
+
     Collection<? extends Observer<?>> dObservers();
 
     Collection<? extends Setable<? extends Mutable, ?>> dSetables();

@@ -97,7 +97,7 @@ public class ReadOnlyTransaction extends LeafTransaction {
     }
 
     @Override
-    protected <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
+    public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
         throw new UnsupportedOperationException();
     }
 

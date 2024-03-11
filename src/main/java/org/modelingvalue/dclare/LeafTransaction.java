@@ -120,6 +120,17 @@ public abstract class LeafTransaction extends Transaction implements ConstantCha
         setable.changed(this, object, rawPreValue, postValue);
     }
 
+    protected final void dActivate(Mutable added) {
+        added.dActivate(this);
+        added.dChildren().forEach(this::dActivate);
+    }
+
+    protected final void dDeactivate(Mutable orphan) {
+        orphan.dDeactivate(this);
+        clear(orphan);
+        orphan.dChildren().forEach(this::dDeactivate);
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void clear(Mutable object) {
         for (Setable setable : toBeCleared(object)) {
@@ -127,18 +138,13 @@ public abstract class LeafTransaction extends Transaction implements ConstantCha
         }
     }
 
-    protected final void clearOrphan(Mutable orphan) {
-        orphan.dDeactivate(this);
-        clear(orphan);
-        orphan.dChildren().forEach(this::clearOrphan);
-    }
-
     @SuppressWarnings("rawtypes")
     protected Collection<Setable> toBeCleared(Mutable object) {
         return state().getProperties(object).map(Entry::getKey).exclude(Setable::doNotClear);
     }
 
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
+    @Override
+    public <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         Mutable object = target;
         set(object, state().actions(priority), Set::add, action);
         for (int i = priority.ordinal() + 1; i < ALL.length; i++) {
@@ -200,6 +206,10 @@ public abstract class LeafTransaction extends Transaction implements ConstantCha
 
     protected ConstantState constantState() {
         return universeTransaction().constantState();
+    }
+
+    protected ConstantState pullConstantState() {
+        return universeTransaction().pullConstantState();
     }
 
     public <O extends Newable> O directConstruct(Construction.Reason reason, Supplier<O> supplier) {

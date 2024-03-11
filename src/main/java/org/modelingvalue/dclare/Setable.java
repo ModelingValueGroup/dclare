@@ -21,7 +21,6 @@
 package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
-import static org.modelingvalue.dclare.Priority.one;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -204,6 +203,10 @@ public class Setable<O, T> extends Getable<O, T> {
         return opposite != null ? opposite.get() : null;
     }
 
+    public boolean hasOpposite() {
+        return opposite != null;
+    }
+
     @Override
     public Setable<O, Set<?>> scope() {
         return scope != null ? scope.get() : null;
@@ -227,18 +230,17 @@ public class Setable<O, T> extends Getable<O, T> {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
                 Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
-                if (push) {
-                    if (prePair == null) {
-                        added.dActivate();
-                    } else {
-                        tx.set((Mutable) object, tx.state().children(one), Set::add, added);
+                if (prePair == null) {
+                    tx.dActivate(added);
+                }
+                for (Priority prio : Priority.ALL) {
+                    if ((prePair != null && prio == Priority.one) || !tx.current(added, tx.state().children(prio)).isEmpty() || !tx.current(added, tx.state().actions(prio)).isEmpty()) {
+                        tx.set((Mutable) object, tx.state().children(prio), Set::add, added);
                     }
                 }
             }, removed -> {
-                if (push) {
-                    for (Priority prio : Priority.ALL) {
-                        tx.set((Mutable) object, tx.state().children(prio), Set::remove, removed);
-                    }
+                for (Priority prio : Priority.ALL) {
+                    tx.set((Mutable) object, tx.state().children(prio), Set::remove, removed);
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);

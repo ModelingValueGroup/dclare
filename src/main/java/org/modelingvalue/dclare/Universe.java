@@ -24,11 +24,9 @@ import org.modelingvalue.collections.util.Internable;
 
 public interface Universe extends Mutable, Internable {
     default void init() {
-        UniverseTransaction universeTransaction = LeafTransaction.getCurrent().universeTransaction();
-        universeTransaction.setInitialized();
-        if (universeTransaction.push()) {
-            dActivate();
-        }
+        LeafTransaction tx = LeafTransaction.getCurrent();
+        tx.universeTransaction().setInitialized();
+        tx.dActivate(this);
     }
 
     default void exit() {
@@ -37,13 +35,6 @@ public interface Universe extends Mutable, Internable {
 
     @Override
     default boolean dIsOrphan(State state) {
-        return false;
-    }
-
-    @Override
-    public default boolean pull() {
-        for (boolean incomplete = Mutable.super.pull(); incomplete; incomplete = Mutable.super.pull()) {
-        }
         return false;
     }
 }

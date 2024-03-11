@@ -181,7 +181,7 @@ public class ImperativeTransaction extends LeafTransaction {
     }
 
     @Override
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
+    public <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         set(target, state.actions(priority), Set::add, action);
     }
 

@@ -32,7 +32,6 @@ import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Observer.Constructed;
-import org.modelingvalue.dclare.ex.NotYetDerivableException;
 
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
@@ -74,6 +73,11 @@ public interface Mutable extends TransactionClass {
                                                                                                       }
                                                                                                   });
                                                                                       }, plumbing, doNotMerge);
+
+    @SuppressWarnings("unchecked")
+    Action<Mutable>                                          D_PUSH_IF_PULL_ACTION    = Action.of("D_PUSH_IF_PULL_ACTION", m -> {
+                                                                                          MutableClass.D_PUSH_IF_PULL.get(m.dClass()).forEach(o -> o.get(m));
+                                                                                      });
 
     default Construction dInitialConstruction() {
         return D_INITIAL_CONSTRUCTION.get(this);
@@ -167,18 +171,21 @@ public interface Mutable extends TransactionClass {
         return cls.isInstance(p) ? (T) p : null;
     }
 
-    default void dActivate() {
-        D_OBSERVERS_RULE.trigger(this);
-        D_PUSHING_CONSTANTS_RULE.trigger(this);
-        for (Mutable child : dChildren()) {
-            child.dActivate();
+    default void dActivate(LeafTransaction tx) {
+        if (tx.push()) {
+            D_OBSERVERS_RULE.trigger(this);
+            D_PUSHING_CONSTANTS_RULE.trigger(this);
+        } else if (!MutableClass.D_PUSH_IF_PULL.get(dClass()).isEmpty()) {
+            D_PUSH_IF_PULL_ACTION.trigger(this);
         }
     }
 
     default void dDeactivate(LeafTransaction tx) {
-        D_OBSERVERS_RULE.deObserve(tx, this);
-        D_PUSHING_CONSTANTS_RULE.deObserve(tx, this);
-        D_OBSERVERS.setDefault(this);
+        if (tx.push()) {
+            D_OBSERVERS_RULE.deObserve(tx, this);
+            D_PUSHING_CONSTANTS_RULE.deObserve(tx, this);
+            D_OBSERVERS.setDefault(this);
+        }
     }
 
     MutableClass dClass();
@@ -265,15 +272,4 @@ public interface Mutable extends TransactionClass {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public default boolean pull() {
-        return MutableClass.D_OBSERVEDS.get(dClass()).map(o -> {
-            try {
-                o.get(this);
-            } catch (NotYetDerivableException nyde) {
-                return true;
-            }
-            return false;
-        }).reduce(false, (a, b) -> a || b);
-    }
 }

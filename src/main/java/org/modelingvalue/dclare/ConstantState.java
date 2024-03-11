@@ -171,6 +171,16 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
+        public <V> V getOrSet(ConstantChangeHandler cch, O object, Constant<O, V> constant, V soll) {
+            Map<Constant<O, ?>, Object> prev = constants;
+            V ist = (V) prev.get(constant);
+            if (ist == null) {
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, false);
+            }
+            return ist;
+        }
+
+        @SuppressWarnings("unchecked")
         public <V> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
@@ -308,6 +318,10 @@ public class ConstantState {
 
     public <O, V> boolean isSet(ConstantChangeHandler cch, O object, Constant<O, V> constant) {
         return getConstants(cch, object, referenceType(constant)).isSet(constant);
+    }
+
+    public <O, V> V getOrSet(ConstantChangeHandler cch, O object, Constant<O, V> constant, V value) {
+        return getConstants(cch, object, referenceType(constant)).getOrSet(cch, object, constant, value);
     }
 
     public <O, V> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, V value, boolean forced) {
