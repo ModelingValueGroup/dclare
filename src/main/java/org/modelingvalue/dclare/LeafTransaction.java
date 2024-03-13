@@ -36,7 +36,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Context;
 
 @SuppressWarnings("unused")
-public abstract class LeafTransaction extends Transaction implements ConstantChangeHandler {
+public abstract class LeafTransaction extends Transaction implements ILeafTransaction {
 
     private static final Context<LeafTransaction> CURRENT = Context.of();
 

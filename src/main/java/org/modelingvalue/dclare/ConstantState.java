@@ -156,7 +156,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V get(ConstantChangeHandler cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        public <V> V get(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
@@ -171,7 +171,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V getOrSet(ConstantChangeHandler cch, O object, Constant<O, V> constant, V soll) {
+        public <V> V getOrSet(ILeafTransaction cch, O object, Constant<O, V> constant, V soll) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
@@ -181,7 +181,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, V soll, boolean forced) {
+        public <V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null || forced) {
@@ -194,7 +194,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V, E> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
+        public <V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             V soll = function.apply(ist, element);
@@ -224,7 +224,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        private <V> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
+        private <V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
             V ist;
             Map<Constant<O, ?>, Object> next = prev.put(constant, soll);
             while (!UPDATOR.compareAndSet(this, prev, next)) {
@@ -243,7 +243,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings({"unchecked", "resource"})
-        private <V> V derive(ConstantChangeHandler cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        private <V> V derive(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
             List<Pair<Object, Constant>> list = List.of();
             while (true) {
                 try {
@@ -304,31 +304,31 @@ public class ConstantState {
         remover.interrupt();
     }
 
-    public <O, V> V get(ConstantChangeHandler cch, O object, Constant<O, V> constant) {
+    public <O, V> V get(ILeafTransaction cch, O object, Constant<O, V> constant) {
         return getConstants(cch, object, referenceType(constant)).get(cch, object, constant, constant.deriver());
     }
 
-    public <O, V> O object(ConstantChangeHandler cch, O object) {
+    public <O, V> O object(ILeafTransaction cch, O object) {
         return getConstants(cch, object, ReferenceType.weak).object();
     }
 
-    public <O, V> V get(ConstantChangeHandler cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
+    public <O, V> V get(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
         return getConstants(cch, object, referenceType(constant)).get(cch, object, constant, deriver);
     }
 
-    public <O, V> boolean isSet(ConstantChangeHandler cch, O object, Constant<O, V> constant) {
+    public <O, V> boolean isSet(ILeafTransaction cch, O object, Constant<O, V> constant) {
         return getConstants(cch, object, referenceType(constant)).isSet(constant);
     }
 
-    public <O, V> V getOrSet(ConstantChangeHandler cch, O object, Constant<O, V> constant, V value) {
+    public <O, V> V getOrSet(ILeafTransaction cch, O object, Constant<O, V> constant, V value) {
         return getConstants(cch, object, referenceType(constant)).getOrSet(cch, object, constant, value);
     }
 
-    public <O, V> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, V value, boolean forced) {
+    public <O, V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, V value, boolean forced) {
         return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, value, forced);
     }
 
-    public <O, V, E> V set(ConstantChangeHandler cch, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
+    public <O, V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
         return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, deriver, element);
     }
 
@@ -337,7 +337,7 @@ public class ConstantState {
     }
 
     @SuppressWarnings("unchecked")
-    private <O> Constants<O> getConstants(ConstantChangeHandler cch, O object, ReferenceType referenceType) {
+    private <O> Constants<O> getConstants(ILeafTransaction cch, O object, ReferenceType referenceType) {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {

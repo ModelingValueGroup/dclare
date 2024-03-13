@@ -20,7 +20,7 @@
 
 package org.modelingvalue.dclare;
 
-public interface ConstantChangeHandler {
+public interface ILeafTransaction {
 
     <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue);
 

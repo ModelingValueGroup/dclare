@@ -39,36 +39,36 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private final CurrentState          currentState  = new CurrentState();
-    private final ConstantChangeHandler changeHandler = new ConstantChangeHandler() {
-                                                          @Override
-                                                          public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
-                                                              ActionTransaction.this.set(object, setable, preValue, postValue);
-                                                          }
+    private final CurrentState     currentState  = new CurrentState();
+    private final ILeafTransaction changeHandler = new ILeafTransaction() {
+                                                     @Override
+                                                     public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+                                                         ActionTransaction.this.set(object, setable, preValue, postValue);
+                                                     }
 
-                                                          @Override
-                                                          public State state() {
-                                                              return ActionTransaction.this.state();
-                                                          }
+                                                     @Override
+                                                     public State state() {
+                                                         return ActionTransaction.this.state();
+                                                     }
 
-                                                          @Override
-                                                          public <O, T> T set(O object, Setable<O, T> property, T post) {
-                                                              return ActionTransaction.this.set(object, property, post);
-                                                          }
+                                                     @Override
+                                                     public <O, T> T set(O object, Setable<O, T> property, T post) {
+                                                         return ActionTransaction.this.set(object, property, post);
+                                                     }
 
-                                                          @Override
-                                                          public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
-                                                              ActionTransaction.this.trigger(mutable, action, priority);
-                                                          }
-                                                      };
+                                                     @Override
+                                                     public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
+                                                         ActionTransaction.this.trigger(mutable, action, priority);
+                                                     }
+                                                 };
     @SuppressWarnings("unchecked")
-    private final Supplier<Object>      supplier      = () -> {
-                                                          ((Action<Mutable>) action()).run(mutable());
-                                                          return null;
-                                                      };
+    private final Supplier<Object> supplier      = () -> {
+                                                     ((Action<Mutable>) action()).run(mutable());
+                                                     return null;
+                                                 };
 
-    private State                       preState;
-    private State                       postState;
+    private State                  preState;
+    private State                  postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);

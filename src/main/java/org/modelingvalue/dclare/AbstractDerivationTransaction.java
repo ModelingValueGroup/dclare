@@ -52,9 +52,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     private ConstantState         memoization;
-    private ConstantChangeHandler changeHandler;
+    private ILeafTransaction changeHandler;
 
-    public <R> R derive(Supplier<R> action, State state, ConstantState memoization, ConstantChangeHandler changeHandler) {
+    public <R> R derive(Supplier<R> action, State state, ConstantState memoization, ILeafTransaction changeHandler) {
         this.memoization = memoization;
         this.changeHandler = changeHandler;
         try {

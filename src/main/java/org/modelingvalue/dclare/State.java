@@ -272,7 +272,7 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    public <R> R derive(Supplier<R> supplier, ConstantState constantState, ConstantChangeHandler changeHandler) {
+    public <R> R derive(Supplier<R> supplier, ConstantState constantState, ILeafTransaction changeHandler) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
             return tx.derive(supplier, this, constantState, changeHandler);
