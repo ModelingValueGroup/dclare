@@ -51,12 +51,12 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         super(universeTransaction);
     }
 
-    private ConstantState         memoization;
-    private ILeafTransaction changeHandler;
+    private ConstantState    memoization;
+    private ILeafTransaction iLeafTransaction;
 
-    public <R> R derive(Supplier<R> action, State state, ConstantState memoization, ILeafTransaction changeHandler) {
+    public <R> R derive(Supplier<R> action, State state, ConstantState memoization, ILeafTransaction iLeafTransaction) {
         this.memoization = memoization;
-        this.changeHandler = changeHandler;
+        this.iLeafTransaction = iLeafTransaction;
         try {
             return get(action, state);
         } catch (Throwable t) {
@@ -64,7 +64,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             return null;
         } finally {
             this.memoization = null;
-            this.changeHandler = null;
+            this.iLeafTransaction = null;
         }
     }
 
@@ -104,7 +104,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             Constant<O, T> constant = observed.constant();
             if (isDerived && outerDerivedValue.isSet()) {
                 return outerDerivedValue.get();
-            } else if (!mem.isSet(changeHandler, object, constant)) {
+            } else if (!mem.isSet(iLeafTransaction, object, constant)) {
                 if (Newable.D_ALL_DERIVATIONS.equals(observed) || Mutable.D_PARENT_CONTAINING.equals(observed)) {
                     return nonDerived;
                 } else {
@@ -130,7 +130,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                                 setInMemoization(mem, object, observed, innerDerivedValue.get(), false);
                             }
                         })));
-                        if (!mem.isSet(changeHandler, object, constant)) {
+                        if (!mem.isSet(iLeafTransaction, object, constant)) {
                             if (isTraceDerivation(object, observed)) {
                                 INDENT.run(INDENT.get() + 1, () -> runNonDeriving(() -> System.err.println(tracePre(object) + "NODR " + object + "." + observed + " => NO DERIVATION, result is the non-derived value: " + nonDerived)));
                             }
@@ -139,7 +139,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                     }
                 }
             }
-            return mem.get(changeHandler, object, constant);
+            return mem.get(iLeafTransaction, object, constant);
         } else {
             return nonDerived;
         }
@@ -193,7 +193,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             boolean isDerived = derivedValue != null && derivedValue.isDerived(object, observed);
             ConstantState mem = memoization(object);
             Constant<O, T> constant = observed.constant();
-            T pre = isDerived && derivedValue.isSet() ? derivedValue.get() : mem.isSet(changeHandler, object, constant) ? mem.get(changeHandler, object, constant) : nonDerived;
+            T pre = isDerived && derivedValue.isSet() ? derivedValue.get() : mem.isSet(iLeafTransaction, object, constant) ? mem.get(iLeafTransaction, object, constant) : nonDerived;
             T result = match(mem, observed, pre, post);
             if (isDerived) {
                 derivedValue.set(result);
@@ -214,7 +214,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             }
             return pre;
         } else if (!Objects.equals(nonDerived, post)) {
-            return changeHandler == this ? super.set(object, setable, post) : changeHandler.set(object, setable, post);
+            return iLeafTransaction == this ? super.set(object, setable, post) : iLeafTransaction.set(object, setable, post);
         } else {
             return post;
         }
@@ -227,21 +227,21 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             if (!pres.isEmpty()) {
                 for (Newable po : posts) {
                     Construction poInit = Mutable.D_INITIAL_CONSTRUCTION.get(po);
-                    if (poInit.isDerived() && mem.isSet(changeHandler, po, Newable.D_ALL_DERIVATIONS.constant())) {
+                    if (poInit.isDerived() && mem.isSet(iLeafTransaction, po, Newable.D_ALL_DERIVATIONS.constant())) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
                             if (preInit.isDirect() && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
                                 post = replace(post, po, pr);
-                                setInMemoization(mem, pr, Mutable.D_ALL_DERIVATIONS, mem.get(changeHandler, po, Newable.D_ALL_DERIVATIONS.constant()), true);
+                                setInMemoization(mem, pr, Mutable.D_ALL_DERIVATIONS, mem.get(iLeafTransaction, po, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     } else if (poInit.isDirect()) {
                         for (Newable pr : pres) {
                             Construction preInit = Mutable.D_INITIAL_CONSTRUCTION.get(pr);
-                            if (preInit.isDerived() && mem.isSet(changeHandler, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
+                            if (preInit.isDerived() && mem.isSet(iLeafTransaction, pr, Newable.D_ALL_DERIVATIONS.constant()) && po.dNewableType().equals(pr.dNewableType()) && Objects.equals(po.dIdentity(), pr.dIdentity())) {
                                 pres = pres.remove(pr);
-                                setInMemoization(mem, po, Mutable.D_ALL_DERIVATIONS, mem.get(changeHandler, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
+                                setInMemoization(mem, po, Mutable.D_ALL_DERIVATIONS, mem.get(iLeafTransaction, pr, Newable.D_ALL_DERIVATIONS.constant()), true);
                             }
                         }
                     }
@@ -263,7 +263,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @Override
     public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
-        changeHandler.trigger(mutable, action, priority);
+        iLeafTransaction.trigger(mutable, action, priority);
     }
 
     @Override
@@ -283,7 +283,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     protected <T, O> T setInMemoization(ConstantState mem, O object, Setable<O, T> setable, T result, boolean force) {
-        return force ? mem.set(changeHandler, object, setable.constant(), result, force) : mem.getOrSet(changeHandler, object, setable.constant(), result);
+        return force ? mem.set(iLeafTransaction, object, setable.constant(), result, force) : mem.getOrSet(iLeafTransaction, object, setable.constant(), result);
     }
 
     protected <O> ConstantState memoization(O object) {
