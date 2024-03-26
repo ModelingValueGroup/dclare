@@ -20,6 +20,13 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.QualifiedSet;
@@ -28,18 +35,11 @@ import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.sync.Util;
 import org.modelingvalue.json.ToJson;
 
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.function.Predicate;
-
 @SuppressWarnings({"rawtypes", "unused"})
 public class StateToJson extends ToJson {
-    public static final  String                            ID_FIELD_NAME     = "@id";
-    public static final  String                            ID_REF_FIELD_NAME = "@idref";
-    public static final  String                            NAME_FIELD_NAME   = "name";
+    public static final String                             ID_FIELD_NAME     = "@id";
+    public static final String                             ID_REF_FIELD_NAME = "@idref";
+    public static final String                             NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
@@ -60,6 +60,11 @@ public class StateToJson extends ToJson {
 
     public State getState() {
         return state;
+    }
+
+    @Override
+    public String render() {
+        return state.get(super::render);
     }
 
     public boolean renderIdFor(Mutable mutable) {
@@ -87,11 +92,11 @@ public class StateToJson extends ToJson {
         List<Entry<Object, Object>> entries;
         if (o instanceof Mutable mutable) {
             Collection<Entry<Object, Object>> stream = mutable.dClass().dSetables() //
-                                                              .filter(getSetableFilter()) //
-                                                              .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))) //
-                                                              .filter(pair -> !Objects.equals(pair.b(), ((Setable) pair.a()).getDefault(mutable))) //
-                                                              .map(pair -> (Entry<Object, Object>) new SimpleEntry<>((Object) renderTag(pair.a()), renderValue(o, pair.a(), pair.b()))) //
-                                                              .sorted(FIELD_SORTER);
+                    .filter(getSetableFilter()) //
+                    .map(setable -> Pair.of(setable, state.get(mutable, (Setable) setable))) //
+                    .filter(pair -> !Objects.equals(pair.b(), ((Setable) pair.a()).getDefault(mutable))) //
+                    .map(pair -> (Entry<Object, Object>) new SimpleEntry<>((Object) renderTag(pair.a()), renderValue(o, pair.a(), pair.b()))) //
+                    .sorted(FIELD_SORTER);
             if (renderIdFor(mutable)) {
                 Collection<Entry<Object, Object>> idEntry = Collection.of(new SimpleEntry<>(ID_FIELD_NAME, getId(mutable)));
                 stream = Collection.concat(idEntry, stream);
@@ -100,9 +105,9 @@ public class StateToJson extends ToJson {
         } else if (o instanceof QualifiedSet) {
             QualifiedSet<Object, Object> q = (QualifiedSet<Object, Object>) o;
             entries = q.toKeys() //
-                       .map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))) //
-                       .sortedBy(e -> e.getKey().toString()) //
-                       .asList();
+                    .map(k -> (Entry<Object, Object>) new SimpleEntry<>(k, q.get(k))) //
+                    .sortedBy(e -> e.getKey().toString()) //
+                    .asList();
         } else {
             throw new RuntimeException("this should not be reachable");
         }
