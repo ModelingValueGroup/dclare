@@ -31,7 +31,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.NamedIdentity;
 import org.modelingvalue.dclare.Priority.Queued;
 
-public class ImperativeTransaction extends LeafTransaction {
+public final class ImperativeTransaction extends LeafTransaction implements IImperativeTransaction {
 
     @SuppressWarnings("rawtypes")
     protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
