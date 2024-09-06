@@ -238,7 +238,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 for (ObserverTrace trace : post) {
                     result = result.add(new DebugTrace(object, observer(), trace));
                 }
-                if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
+                if (!currentLeaf(object).universeTransaction().stats().debugging()) {
                     set(object, getDefault(object));
                 }
             }

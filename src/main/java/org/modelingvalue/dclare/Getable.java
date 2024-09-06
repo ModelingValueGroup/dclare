@@ -28,6 +28,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 import org.modelingvalue.collections.util.StringUtil;
+import org.modelingvalue.dclare.ex.NoCurrentTransactionException;
 
 @SuppressWarnings("unused")
 public abstract class Getable<O, T> implements Feature, Internable {
@@ -93,7 +94,7 @@ public abstract class Getable<O, T> implements Feature, Internable {
     protected LeafTransaction currentLeaf(O object) {
         LeafTransaction current = LeafTransaction.getCurrent();
         if (current == null) {
-            throw new NullPointerException("No current transaction in " + Thread.currentThread() + " , while accessing " + toString());
+            throw new NoCurrentTransactionException(object, this, "No current transaction in " + Thread.currentThread());
         } else if (object == null) {
             throw new NullPointerException("Object is null, while accessing " + current.state().get((this::toString)));
         }
