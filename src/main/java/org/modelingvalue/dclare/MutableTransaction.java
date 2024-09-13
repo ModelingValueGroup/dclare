@@ -136,17 +136,17 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         if (random.size() <= 2 || universeTransaction().getConfig().isRunSequential()) {
             runSequential(random);
-            if (!universeTransaction().isKilled() && (parent() == null || !hasQueued(state[0], parent().mutable(), one))) {
-                move(mutable(), one, zero);
+            if (!universeTransaction().isKilled() && !hasToGoUp()) {
+                moveOneToZero();
             }
         } else {
             List<? extends TransactionClass> begin = random.sublist(0, random.size() >> 1);
             runParallel(begin);
             if (!universeTransaction().isKilled()) {
-                if (parent() == null || !hasQueued(state[0], parent().mutable(), one)) {
+                if (!hasToGoUp()) {
                     state[0] = state[0].set(mutable(), state[0].actions(zero), Set::addAll, actions.removeAll(begin));
                     state[0] = state[0].set(mutable(), state[0].children(zero), Set::addAll, children.removeAll(begin));
-                    move(mutable(), one, zero);
+                    moveOneToZero();
                 } else {
                     state[0] = state[0].set(mutable(), state[0].actions(one), Set::addAll, actions.removeAll(begin));
                     state[0] = state[0].set(mutable(), state[0].children(one), Set::addAll, children.removeAll(begin));
@@ -154,6 +154,16 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
         }
 
+    }
+
+    private void moveOneToZero() {
+        if (parent() != null || !universeTransaction().poll(state)) {
+            move(mutable(), one, zero);
+        }
+    }
+
+    private boolean hasToGoUp() {
+        return parent() != null && (hasQueued(state[0], parent().mutable(), one) || universeTransaction().hasImmediate());
     }
 
     private <T extends TransactionClass> void runParallel(List<T> todo) {

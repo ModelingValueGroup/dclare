@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -69,9 +70,11 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
+    private final Action<Universe>                                                                     poll                    = Action.of("$poll", this::poll);
     //
     private final boolean                                                                              pull;
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
+    protected final ConcurrentLinkedQueue<Action<Universe>>                                            immediateQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
     private final State                                                                                emptyState              = createState(StateMap.EMPTY_STATE_MAP);
     private final State                                                                                startState;
@@ -182,6 +185,7 @@ public class UniverseTransaction extends MutableTransaction {
         statusProvider = new StatusProvider<>(this, startStatus);
         this.config = Objects.requireNonNull(config);
         inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
+        immediateQueue = new ConcurrentLinkedQueue<>();
         universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = startState;
@@ -283,7 +287,7 @@ public class UniverseTransaction extends MutableTransaction {
                         runActions(postActions);
                     }
                     commit(state, timeTraveling, imperativeTransactions.iterator());
-                    if (!killed && inQueue.isEmpty() && isStopped(state)) {
+                    if (!killed && inQueue.isEmpty() && immediateQueue.isEmpty() && isStopped(state)) {
                         break;
                     }
                 } catch (Throwable t) {
@@ -490,7 +494,11 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public int numInQueue() {
-        return inQueue.size();
+        return inQueue.size() + immediateQueue.size();
+    }
+
+    protected boolean hasImmediate() {
+        return !immediateQueue.isEmpty();
     }
 
     public boolean isHandling() { //TODO wire onto MoodManager
@@ -652,11 +660,35 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
+    public void offer(Action<Universe> action) {
+        if (!killed) {
+            immediateQueue.offer(action);
+            put(poll);
+        }
+    }
+
     private Action<Universe> take() {
         try {
             return inQueue.take();
         } catch (InterruptedException e) {
             throw new Error(e);
+        }
+    }
+
+    protected boolean poll(State[] state) {
+        Action<Universe> action = immediateQueue.poll();
+        if (action != null) {
+            state[0] = state[0].set(universe(), state[0].actions(Priority.zero), Set::add, action);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    protected void poll(Universe universe) {
+        Action<Universe> action = immediateQueue.poll();
+        if (action != null) {
+            action.trigger(universe);
         }
     }
 
@@ -707,7 +739,11 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
+        return addImperative(id, diffHandler, scheduler, keepTransaction, false);
+    }
+
+    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction, boolean immediate) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction, immediate);
         synchronized (this) {
             imperativeTransactions = imperativeTransactions.add(n);
         }
