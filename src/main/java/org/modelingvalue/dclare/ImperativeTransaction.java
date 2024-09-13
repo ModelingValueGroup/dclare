@@ -125,7 +125,7 @@ public class ImperativeTransaction extends LeafTransaction {
         }
         if (!setted.isEmpty()) {
             insync = false;
-            imper2dclare();
+            universeTransaction().put(imper2dclare());
         } else if (insync && active) {
             active = false;
             universeTransaction().removeActive(this);
@@ -155,17 +155,16 @@ public class ImperativeTransaction extends LeafTransaction {
         diffHandler.handleDelta(imper, dclare, insync, finalAllSetted);
     }
 
+    private void immediate() {
+        universeTransaction().offer(imper2dclare());
+    }
+
     @SuppressWarnings("rawtypes")
-    private void imper2dclare() {
+    private Action<Universe> imper2dclare() {
         State imper = state();
         DefaultMap<Object, Set<Setable>> changed = setted;
         setted = SETTED_MAP;
-        Action<Universe> action = changeAction(imper, changed);
-        if (immediate) {
-            universeTransaction().offer(action);
-        } else {
-            universeTransaction().put(action);
-        }
+        return changeAction(imper, changed);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -239,7 +238,7 @@ public class ImperativeTransaction extends LeafTransaction {
                         universeTransaction().addActive(this);
                     }
                     if (immediate) {
-                        schedule(this::imper2dclare);
+                        schedule(this::immediate);
                     } else {
                         universeTransaction().commit();
                     }
