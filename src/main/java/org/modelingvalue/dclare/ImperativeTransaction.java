@@ -156,7 +156,9 @@ public class ImperativeTransaction extends LeafTransaction {
     }
 
     private void immediate() {
-        universeTransaction().offer(imper2dclare());
+        if (!setted.isEmpty()) {
+            universeTransaction().offer(imper2dclare());
+        }
     }
 
     @SuppressWarnings("rawtypes")
