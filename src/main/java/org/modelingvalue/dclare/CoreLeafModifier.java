@@ -20,47 +20,11 @@
 
 package org.modelingvalue.dclare;
 
-public class Imperative extends Leaf {
-
-    public static Imperative of(String id, LeafModifier<?>... modifiers) {
-        return new Imperative(id, modifiers);
-    }
-
-    private final boolean immediate;
-    private final boolean keep;
-
-    protected Imperative(String id, LeafModifier<?>... modifiers) {
-        super(id, modifiers);
-        this.immediate = hasModifier(CoreLeafModifier.immediate);
-        this.keep = hasModifier(CoreLeafModifier.keep);
-    }
-
-    @Override
-    public String id() {
-        return (String) super.id();
-    }
-
-    @Override
-    public Transaction openTransaction(MutableTransaction parent) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void closeTransaction(Transaction tx) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ImperativeTransaction newTransaction(UniverseTransaction universeTransaction) {
-        throw new UnsupportedOperationException();
-    }
-
-    public boolean immediate() {
-        return immediate;
-    }
-
-    public boolean keep() {
-        return keep;
-    }
-
+public enum CoreLeafModifier implements LeafModifier<LeafModifier<?>> {
+    anonymous,
+    preserved,
+    atomic,
+    read,
+    immediate,
+    keep;
 }

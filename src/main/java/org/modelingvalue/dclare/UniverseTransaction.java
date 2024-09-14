@@ -738,12 +738,8 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
-        return addImperative(id, diffHandler, scheduler, keepTransaction, false);
-    }
-
-    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction, boolean immediate) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction, immediate);
+    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, LeafModifier<?>... modifiers) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id, modifiers), preState, this, scheduler, diffHandler);
         synchronized (this) {
             imperativeTransactions = imperativeTransactions.add(n);
         }

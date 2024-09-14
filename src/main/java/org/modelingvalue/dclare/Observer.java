@@ -126,8 +126,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
         this.targets = targets;
-        this.anonymous = hasModifier(LeafModifier.anonymous);
-        this.atomic = hasModifier(LeafModifier.atomic);
+        this.anonymous = hasModifier(CoreLeafModifier.anonymous);
+        this.atomic = hasModifier(CoreLeafModifier.atomic);
     }
 
     public Observerds observeds() {

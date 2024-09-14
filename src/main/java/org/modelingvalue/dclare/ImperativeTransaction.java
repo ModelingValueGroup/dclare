@@ -37,8 +37,8 @@ public class ImperativeTransaction extends LeafTransaction {
     protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
     @SuppressWarnings("rawtypes")
-    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction, boolean immediate) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction, immediate);
+    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
@@ -49,7 +49,6 @@ public class ImperativeTransaction extends LeafTransaction {
     private final NamedIdentity                               actionId;
     private final Direction                                   direction;
     private final MutableState                                state;
-    private final boolean                                     immediate;
 
     private boolean                                           active;
     private boolean                                           commiting;
@@ -59,9 +58,8 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  allSetted;
 
     @SuppressWarnings("rawtypes")
-    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction, boolean immediate) {
+    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler) {
         super(universeTransaction);
-        this.immediate = immediate;
         this.state = universeTransaction.createMutableState(init);
         this.setted = SETTED_MAP;
         this.allSetted = SETTED_MAP;
@@ -69,7 +67,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.direction = Direction.of(cls.id());
         this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
-        this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
+        this.scheduler = cls.keep() ? r -> scheduler.accept(() -> {
             if (isOpen()) {
                 LeafTransaction.getContext().setOnThread(this);
                 try {
@@ -190,7 +188,7 @@ public class ImperativeTransaction extends LeafTransaction {
                 CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
-        }, direction, LeafModifier.preserved);
+        }, direction, CoreLeafModifier.preserved);
     }
 
     @Override
@@ -239,7 +237,7 @@ public class ImperativeTransaction extends LeafTransaction {
                         active = true;
                         universeTransaction().addActive(this);
                     }
-                    if (immediate) {
+                    if (imperative().immediate()) {
                         schedule(this::immediate);
                     } else {
                         universeTransaction().commit();

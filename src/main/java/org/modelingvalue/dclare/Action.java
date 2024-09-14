@@ -37,15 +37,15 @@ public class Action<O extends Mutable> extends Leaf {
     private final Direction   direction;
     private final boolean     preserved;
     private final boolean     read;
-    private       long        durationNano = -1;
+    private long              durationNano = -1;
 
     protected Action(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         super(id, modifiers);
         this.action = action;
         Direction dir = getModifier(Direction.class);
         this.direction = dir == null ? Direction.DEFAULT : dir;
-        this.preserved = hasModifier(LeafModifier.preserved);
-        this.read      = hasModifier(LeafModifier.read);
+        this.preserved = hasModifier(CoreLeafModifier.preserved);
+        this.read = hasModifier(CoreLeafModifier.read);
     }
 
     @Override

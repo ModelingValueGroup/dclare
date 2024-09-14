@@ -63,7 +63,7 @@ public class TestUniverse extends TestMutable implements Universe {
                     }
                 }
             });
-        }, scheduler, false, false);
+        }, scheduler);
     }
 
     @Override

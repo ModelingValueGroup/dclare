@@ -21,33 +21,4 @@
 package org.modelingvalue.dclare;
 
 public interface LeafModifier<M extends LeafModifier<?>> extends FeatureModifier<M> {
-
-    static LeafModifier<LeafModifier<?>> anonymous = new LeafModifier<>() {
-                                                       @Override
-                                                       public String toString() {
-                                                           return "anonymous";
-                                                       }
-                                                   };
-
-    static LeafModifier<LeafModifier<?>> preserved = new LeafModifier<>() {
-                                                       @Override
-                                                       public String toString() {
-                                                           return "preserved";
-                                                       }
-                                                   };
-
-    static LeafModifier<LeafModifier<?>> atomic    = new LeafModifier<>() {
-                                                       @Override
-                                                       public String toString() {
-                                                           return "atomic";
-                                                       }
-                                                   };
-
-    static LeafModifier<LeafModifier<?>> read      = new LeafModifier<>() {
-                                                       @Override
-                                                       public String toString() {
-                                                           return "read";
-                                                       }
-                                                   };
-
 }
