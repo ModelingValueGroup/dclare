@@ -271,4 +271,15 @@ public interface Mutable extends TransactionClass {
         }
     }
 
+    default boolean dHasParentCycle(State state) {
+        List<Mutable> ancestors = List.of(this);
+        for (Mutable parent = state.getA(this, D_PARENT_CONTAINING); parent != null; parent = state.getA(parent, D_PARENT_CONTAINING)) {
+            if (ancestors.contains(parent)) {
+                return true;
+            }
+            ancestors = ancestors.add(parent);
+        }
+        return false;
+    }
+
 }
