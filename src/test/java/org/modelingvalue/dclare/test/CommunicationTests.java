@@ -27,9 +27,15 @@ import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWait
 import java.io.IOException;
 import java.util.ConcurrentModificationException;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.test.support.*;
+import org.modelingvalue.dclare.test.support.CommunicationHelper;
+import org.modelingvalue.dclare.test.support.CommunicationPeer;
+import org.modelingvalue.dclare.test.support.ModelMaker;
+import org.modelingvalue.dclare.test.support.PeerTester;
+import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
 
 public class CommunicationTests {
     static {
@@ -82,8 +88,6 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, b.getXyzzy_aDefMap().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aQuaSet().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aQuaSet().size());
-            assertEquals(NEW_VALUE, a.getXyzzy_aQuaDefSet().size());
-            assertEquals(NEW_VALUE, b.getXyzzy_aQuaDefSet().size());
 
             assertEquals("~1", a.getXyzzy_aList().get(1));
             assertEquals("~1", b.getXyzzy_aList().get(1));
@@ -95,8 +99,6 @@ public class CommunicationTests {
             assertEquals("1!dm!v!", b.getXyzzy_aDefMap().get("1!dm!k!"));
             assertEquals("QS1", a.getXyzzy_aQuaSet().get("QS1"));
             assertEquals("QS1", b.getXyzzy_aQuaSet().get("QS1"));
-            assertEquals("QDS1", a.getXyzzy_aQuaDefSet().get("QDS1"));
-            assertEquals("QDS1", b.getXyzzy_aQuaDefSet().get("QDS1"));
         }
         busyWaitAllForIdle();
     }

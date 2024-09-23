@@ -20,17 +20,23 @@
 
 package org.modelingvalue.dclare.test.support;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import static org.modelingvalue.dclare.CoreSetableModifier.containment;
+
+import java.util.function.Predicate;
+
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedDefaultSet;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.ContextPool;
+import org.modelingvalue.collections.util.ContextThread;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.DclareConfig;
@@ -40,13 +46,6 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
-
-import java.util.function.Predicate;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 
 @SuppressWarnings({"FieldCanBeLocal", "unchecked", "rawtypes"})
 public class ModelMaker {
@@ -68,7 +67,6 @@ public class ModelMaker {
     private static final Observed<TestMutable, Map<String, String>>                                           aMap                                     = TestObserved.of("#aMap", ModelMaker::id, ModelMaker::desMap, Map.of());
     private static final Observed<TestMutable, DefaultMap<String, String>>                                    aDefMap                                  = TestObserved.of("#aDefMap", ModelMaker::id, ModelMaker::desDefMap, DefaultMap.of(k -> "zut"));
     private static final Observed<TestMutable, QualifiedSet<String, String>>                                  aQuaSet                                  = TestObserved.of("#aQuaSet", ModelMaker::id, ModelMaker::desQuaSet, QualifiedSet.of(v -> v));
-    private static final Observed<TestMutable, QualifiedDefaultSet<String, String>>                           aQuaDefSet                               = TestObserved.of("#aQuaDefSet", ModelMaker::id, ModelMaker::desQuaDefSet, QualifiedDefaultSet.of(v -> v, k -> "zutje"));
 
     public static final SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> SERIALIZATION_HELPER                     = new SerializationHelper<>() {
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -183,11 +181,6 @@ public class ModelMaker {
         return obs.getDefault(mutable).addAll(oo);
     }
 
-    private static QualifiedDefaultSet<String, String> desQuaDefSet(TestMutable mutable, TestObserved<TestMutable, QualifiedDefaultSet<String, String>> obs, Object o) {
-        List<String> oo = (List<String>) o;
-        return obs.getDefault(mutable).addAll(oo);
-    }
-
     private static final TestMutableClass            extraClass      = TestMutableClass.of("ExtraClass");
     private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                                                                                                    //
             o -> target.set(o, source.get(o))).observe(                                                                                                                                                                              //
@@ -204,8 +197,7 @@ public class ModelMaker {
                                                                     o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).asSet())).observe(                                         //
                                                                             o -> aMap.set(o, Collection.range(0, source.get(o)).asMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                            //
                                                                                     o -> aDefMap.set(o, aDefMap.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
-                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
-                                                                                                    o -> aQuaDefSet.set(o, aQuaDefSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
+                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i))));
     private final String                             name;
     private final TestMutable                        xyzzy;
     private final Constant<TestMutable, TestMutable> plugConst;
@@ -294,10 +286,6 @@ public class ModelMaker {
 
     public QualifiedSet<String, String> getXyzzy_aQuaSet() {
         return tx.currentState().get(xyzzy, aQuaSet);
-    }
-
-    public QualifiedDefaultSet<String, String> getXyzzy_aQuaDefSet() {
-        return tx.currentState().get(xyzzy, aQuaDefSet);
     }
 
     public TestMutable getXyzzy_extra() {
