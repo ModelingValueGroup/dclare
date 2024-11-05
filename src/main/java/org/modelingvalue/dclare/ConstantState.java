@@ -377,7 +377,11 @@ public class ConstantState {
                     }
                 }
             }
-            allWithEqualhash = prev.allWithEqualhash(object);
+            if (i == 0) {
+                break;
+            } else {
+                allWithEqualhash = prev.allWithEqualhash(object);
+            }
         }
         return prev;
     }
