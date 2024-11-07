@@ -557,7 +557,7 @@ public class ObserverTransaction extends ActionTransaction {
                 before = postInfo.newable();
             } else if (observed.containment()) {
                 boolean found = false;
-                for (Observed cont : MutableClass.D_CONTAINMENTS.get(object.dClass()).filter(Observed.class).exclude(observed::equals)) {
+                for (Observed cont : MutableClass.D_CONTAINMENTS.get(object.dClass()).filter(Observed.class).filter(o -> o.getClass().equals(observed.getClass())).exclude(observed::equals)) {
                     Object val = cont.current(object);
                     if (val instanceof Newable && ((Newable) after).dNewableType().equals(((Newable) val).dNewableType())) {
                         if (after.equals(val)) {
