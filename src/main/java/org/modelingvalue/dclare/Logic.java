@@ -22,9 +22,10 @@ public final class Logic {
     private Logic() {
     }
 
-    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
+    private static final Context<Map<Object, Object>> VARIABLES      = Context.of(Map.of());
+    private static final String                       NO_MATCH_FOUND = "No match found";
 
-    public static abstract class Functor {
+    public static abstract class Functor implements Feature {
 
         protected final <S extends Struct> S bind(S in) {
             Map<Object, Object> vars = VARIABLES.get();
@@ -44,7 +45,7 @@ public final class Logic {
             if (!empty.isEmpty()) {
                 Set<S> extend = extend(out);
                 if (extend.isEmpty()) {
-                    throw new NonDeterministicException(in, constant(), "No match found");
+                    throw new NonDeterministicException(in, this, NO_MATCH_FOUND);
                 } else {
                     Set<Object> em = empty;
                     throw new UnboundVariableException(empty, extend.map(s -> {
@@ -65,9 +66,6 @@ public final class Logic {
         protected abstract <S extends Struct> S copy(Object[] array);
 
         protected abstract <S extends Struct> Set<S> extend(S s);
-
-        @SuppressWarnings("rawtypes")
-        protected abstract Constant constant();
     };
 
     // Functions
@@ -137,12 +135,6 @@ public final class Logic {
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Single) s);
         }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
-        }
     }
 
     public static final class Fun2<O1, O2, T> extends Functor {
@@ -187,12 +179,6 @@ public final class Logic {
         @Override
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Pair) s);
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
         }
     }
 
@@ -243,13 +229,6 @@ public final class Logic {
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Triple) s);
         }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
-        }
-
     }
 
     // Relations
@@ -320,13 +299,6 @@ public final class Logic {
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Single) s);
         }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
-        }
-
     }
 
     public static final class Rel2<O1, O2> extends Functor {
@@ -372,12 +344,6 @@ public final class Logic {
         @Override
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Pair) s);
-        }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
         }
     }
 
@@ -429,12 +395,6 @@ public final class Logic {
         protected <S extends Struct> Set<S> extend(S s) {
             return extend.get((Triple) s);
         }
-
-        @SuppressWarnings("rawtypes")
-        @Override
-        protected Constant constant() {
-            return constant;
-        }
     }
 
     // Inv
@@ -476,7 +436,9 @@ public final class Logic {
                 try {
                     return p.getAsBoolean();
                 } catch (NonDeterministicException nde) {
-                    rte[0] = nde;
+                    if (!(nde.getFeature() instanceof Functor)) {
+                        rte[0] = nde;
+                    }
                     return false;
                 }
             });
@@ -511,7 +473,9 @@ public final class Logic {
                 try {
                     return p.getAsBoolean();
                 } catch (NonDeterministicException nde) {
-                    rte[0] = nde;
+                    if (!(nde.getFeature() instanceof Functor)) {
+                        rte[0] = nde;
+                    }
                     return true;
                 }
             });
