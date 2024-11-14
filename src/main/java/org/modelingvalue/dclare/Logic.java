@@ -1,23 +1,3 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//  (C) Copyright 2018-2024 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
-//                                                                                                                       ~
-//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
-//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
-//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
-//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
-//  specific language governing permissions and limitations under the License.                                           ~
-//                                                                                                                       ~
-//  Maintainers:                                                                                                         ~
-//      Wim Bast, Tom Brus                                                                                               ~
-//                                                                                                                       ~
-//  Contributors:                                                                                                        ~
-//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
-// --------------------------------------------------------------------------------------------------------------------- ~
-//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
-//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
-//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 package org.modelingvalue.dclare;
 
 import java.util.function.BiPredicate;
@@ -26,8 +6,11 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.Single;
@@ -39,9 +22,52 @@ public final class Logic {
     private Logic() {
     }
 
-    private static final Context<List<Object>> VARIABLES = Context.of(List.of());
+    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
 
     public static abstract class Functor {
+
+        protected final <S extends Struct> S bind(S in) {
+            Map<Object, Object> vars = VARIABLES.get();
+            Object[] array = in.toArray();
+            Set<Object> empty = Set.of();
+            for (int i = 0; i < in.length(); i++) {
+                Object vin = in.get(i);
+                if (vars.containsKey(vin)) {
+                    Object vout = vars.get(vin);
+                    array[i] = vout;
+                    if (vout == null) {
+                        empty = empty.add(vin);
+                    }
+                }
+            }
+            S out = copy(array);
+            if (!empty.isEmpty()) {
+                Set<S> extend = extend(out);
+                if (extend.isEmpty()) {
+                    throw new NonDeterministicException(in, constant(), "No match found");
+                } else {
+                    Set<Object> em = empty;
+                    throw new UnboundVariableException(empty, extend.map(s -> {
+                        Map<Object, Object> vs = vars;
+                        for (int i = 0; i < in.length(); i++) {
+                            Object vin = in.get(i);
+                            if (em.contains(vin)) {
+                                vs = vs.put(vin, s.get(i));
+                            }
+                        }
+                        return vs;
+                    }).asSet());
+                }
+            }
+            return out;
+        }
+
+        protected abstract <S extends Struct> S copy(Object[] array);
+
+        protected abstract <S extends Struct> Set<S> extend(S s);
+
+        @SuppressWarnings("rawtypes")
+        protected abstract Constant constant();
     };
 
     // Functions
@@ -88,7 +114,7 @@ public final class Logic {
         }
 
         public T get(O o) {
-            return constant.get(Single.of(o));
+            return constant.get(bind(Single.of(o)));
         }
 
         public void set(O o, T t) {
@@ -98,6 +124,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Single.of(array[0]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Single) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
     }
 
@@ -121,7 +165,7 @@ public final class Logic {
         }
 
         public T get(O1 o1, O2 o2) {
-            return constant.get(Pair.of(o1, o2));
+            return constant.get(bind(Pair.of(o1, o2)));
         }
 
         public void set(O1 o1, O2 o2, T t) {
@@ -131,6 +175,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Pair.of(array[0], array[1]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Pair) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
     }
 
@@ -158,7 +220,7 @@ public final class Logic {
         }
 
         public T get(O1 o1, O2 o2, O3 o3) {
-            return constant.get(Triple.of(o1, o2, o3));
+            return constant.get(bind(Triple.of(o1, o2, o3)));
         }
 
         public void set(O1 o1, O2 o2, O3 o3, T t) {
@@ -168,6 +230,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Triple.of(array[0], array[1], array[2]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Triple) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
 
     }
@@ -217,7 +297,7 @@ public final class Logic {
         }
 
         public boolean is(O o) {
-            return constant.get(Single.of(o));
+            return constant.get(bind(Single.of(o)));
         }
 
         public void set(O o) {
@@ -227,6 +307,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Single.of(array[0]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Single) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
 
     }
@@ -252,7 +350,7 @@ public final class Logic {
         }
 
         public boolean is(O1 o1, O2 o2) {
-            return constant.get(Pair.of(o1, o2));
+            return constant.get(bind(Pair.of(o1, o2)));
         }
 
         public void set(O1 o1, O2 o2) {
@@ -262,6 +360,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Pair.of(array[0], array[1]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Pair) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
     }
 
@@ -290,7 +406,7 @@ public final class Logic {
         }
 
         public boolean is(O1 o1, O2 o2, O3 o3) {
-            return constant.get(Triple.of(o1, o2, o3));
+            return constant.get(bind(Triple.of(o1, o2, o3)));
         }
 
         public void set(O1 o1, O2 o2, O3 o3) {
@@ -300,6 +416,24 @@ public final class Logic {
         @Override
         public String toString() {
             return constant.toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected <S extends Struct> S copy(Object[] array) {
+            return (S) Triple.of(array[0], array[1], array[2]);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        protected <S extends Struct> Set<S> extend(S s) {
+            return extend.get((Triple) s);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Constant constant() {
+            return constant;
         }
     }
 
@@ -392,44 +526,38 @@ public final class Logic {
     // Unification
 
     private static final class UnboundVariableException extends RuntimeException {
-        private static final long       serialVersionUID = 4505117271488648346L;
+        private static final long              serialVersionUID = 4505117271488648346L;
 
-        private final Object            var;
-        private final Set<List<Object>> vars;
+        private final Set<Object>              vars;
+        private final Set<Map<Object, Object>> bindings;
 
-        private UnboundVariableException(Object var, Set<List<Object>> vars) {
-            this.var = var;
+        private UnboundVariableException(Set<Object> vars, Set<Map<Object, Object>> bindings) {
             this.vars = vars;
+            this.bindings = bindings;
         }
     }
 
-    private static final class Var {
+    @SuppressWarnings("unchecked")
+    public static final <V1> BooleanSupplier uni(V1 v1, BooleanSupplier predicate) {
+        return () -> doUni(Collection.of(v1).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
     }
 
     @SuppressWarnings("unchecked")
-    public static final <V1> BooleanSupplier uni(java.util.function.Function<V1, BooleanSupplier> predicate) {
-        List<Object> vars = List.of(new Var());
-        return () -> uni(vars, v -> predicate.apply((V1) v.get(0)).getAsBoolean());
+    public static final <V1, V2> BooleanSupplier uni(V1 v1, V2 v2, BooleanSupplier predicate) {
+        return () -> doUni(Collection.of(v1, v2).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
     }
 
     @SuppressWarnings("unchecked")
-    public static final <V1, V2> BooleanSupplier uni(java.util.function.BiFunction<V1, V2, BooleanSupplier> predicate) {
-        List<Object> vars = List.of(new Var(), new Var());
-        return () -> uni(vars, v -> predicate.apply((V1) v.get(0), (V2) v.get(1)).getAsBoolean());
+    public static final <V1, V2, V3> BooleanSupplier uni(V1 v1, V2 v2, V3 v3, BooleanSupplier predicate) {
+        return () -> doUni(Collection.of(v1, v2, v3).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
     }
 
-    @SuppressWarnings("unchecked")
-    public static final <V1, V2, V3> BooleanSupplier uni(org.modelingvalue.collections.util.TriFunction<V1, V2, V3, BooleanSupplier> predicate) {
-        List<Object> vars = List.of(new Var(), new Var(), new Var());
-        return () -> uni(vars, v -> predicate.apply((V1) v.get(0), (V2) v.get(1), (V3) v.get(2)).getAsBoolean());
-    }
-
-    private static boolean uni(List<Object> vars, Predicate<List<Object>> predicate) {
+    private static boolean doUni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
         try {
-            return VARIABLES.get(vars, () -> predicate.test(vars));
+            return VARIABLES.get(vars, predicate);
         } catch (UnboundVariableException uve) {
-            if (vars.contains(uve.var)) {
-                return any(uve.vars.map(vs -> () -> uni(vs, predicate))).getAsBoolean();
+            if (uve.vars.anyMatch(vars::containsKey)) {
+                return any(uve.bindings.map(vs -> () -> doUni(vs, predicate))).getAsBoolean();
             } else {
                 throw uve;
             }

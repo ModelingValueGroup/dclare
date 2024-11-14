@@ -43,19 +43,19 @@ public class LogicTest {
 
     static final Fun1<String, Set<String>> PARENTS   = fun1("parent", Set.of());
 
-    static final Fun1<String, Set<String>> ANCESTORS = fun1("ancestor",                          //
+    static final Fun1<String, Set<String>> ANCESTORS = fun1("ancestors",                         //
             (p) -> sup(PARENTS.get(p).addAll(PARENTS.get(p).flatMap(LogicTest.ANCESTORS::get))));
 
     static final Rel2<String, String>      PARENT    = rel2("parent",                            //
             (a, b) -> sup(PARENTS.get(a).contains(b)));
 
-    static final Rel2<String, String>      ANCESTOR1 = rel2("isAncestor",                        //
+    static final Rel2<String, String>      ANCESTOR1 = rel2("ancestor1",                         //
             (a, o) -> or(PARENT.sup(o, a),                                                       //
                     any(PARENTS.get(o).map(p -> LogicTest.ANCESTOR1.sup(a, p)))));
 
-    static final Rel2<String, String>      ANCESTOR2 = rel2("isAncestor",                        // 
+    static final Rel2<String, String>      ANCESTOR2 = rel2("ancestor2",                         // 
             (a, o) -> or(PARENT.sup(o, a),                                                       //
-                    uni((String x) -> and(LogicTest.ANCESTOR2.sup(a, x), PARENT.sup(o, x)))));
+                    uni("X", and(LogicTest.ANCESTOR2.sup(a, "X"), PARENT.sup(o, "X")))));
 
     @RepeatedTest(32)
     public void test1() {
