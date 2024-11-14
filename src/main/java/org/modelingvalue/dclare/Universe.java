@@ -20,6 +20,8 @@
 
 package org.modelingvalue.dclare;
 
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Internable;
 
 public interface Universe extends Mutable, Internable {
@@ -36,5 +38,34 @@ public interface Universe extends Mutable, Internable {
     @Override
     default boolean dIsOrphan(State state) {
         return false;
+    }
+
+    static Universe of(Feature... features) {
+        return new Universe() {
+            private final MutableClass universeClass = new MutableClass() {
+
+                @SuppressWarnings("unchecked")
+                Set<? extends Observer<?>>                   observers =                                                     //
+                        (Set<? extends Observer<?>>) Collection.of(features).filter(Observer.class).asSet();
+                @SuppressWarnings("unchecked")
+                Set<? extends Setable<? extends Mutable, ?>> setables  =                                                     //
+                        (Set<? extends Setable<? extends Mutable, ?>>) Collection.of(features).filter(Setable.class).asSet();
+
+                @Override
+                public Set<? extends Observer<?>> dObservers() {
+                    return observers;
+                }
+
+                @Override
+                public Set<? extends Setable<? extends Mutable, ?>> dSetables() {
+                    return setables;
+                }
+            };
+
+            @Override
+            public MutableClass dClass() {
+                return universeClass;
+            }
+        };
     }
 }
