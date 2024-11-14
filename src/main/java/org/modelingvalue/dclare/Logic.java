@@ -21,42 +21,42 @@ public final class Logic {
 
     private static final Context<List<Object>> VARIABLES = Context.of(List.of());
 
-    public static abstract class ClauseType {
+    public static abstract class Functor {
     };
 
     // Functions
 
     public static final <O, T> Fun1<O, T> fun1(Object id, java.util.function.Function<O, Supplier<T>> f) {
-        return new Fun1<O, T>(id, (o) -> f.apply(o).get());
+        return new Fun1<O, T>(id, null, (o) -> f.apply(o).get());
     }
 
-    public static final <O, T> Fun1<O, T> fun1(Object id) {
-        return new Fun1<O, T>(id, (o) -> null);
+    public static final <O, T> Fun1<O, T> fun1(Object id, T def) {
+        return new Fun1<O, T>(id, def, null);
     }
 
     public static final <O1, O2, T> Fun2<O1, O2, T> fun2(Object id, java.util.function.BiFunction<O1, O2, Supplier<T>> f) {
-        return new Fun2<O1, O2, T>(id, (o1, o2) -> f.apply(o1, o2).get());
+        return new Fun2<O1, O2, T>(id, null, (o1, o2) -> f.apply(o1, o2).get());
     }
 
-    public static final <O1, O2, T> Fun2<O1, O2, T> fun2(Object id) {
-        return new Fun2<O1, O2, T>(id, (o1, o2) -> null);
+    public static final <O1, O2, T> Fun2<O1, O2, T> fun2(Object id, T def) {
+        return new Fun2<O1, O2, T>(id, def, null);
     }
 
     public static final <O1, O2, O3, T> Fun3<O1, O2, O3, T> function(Object id, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, Supplier<T>> f) {
-        return new Fun3<O1, O2, O3, T>(id, (o1, o2, o3) -> f.apply(o1, o2, o3).get());
+        return new Fun3<O1, O2, O3, T>(id, null, (o1, o2, o3) -> f.apply(o1, o2, o3).get());
     }
 
-    public static final <O1, O2, O3, T> Fun3<O1, O2, O3, T> function(Object id) {
-        return new Fun3<O1, O2, O3, T>(id, (o1, o2, o3) -> null);
+    public static final <O1, O2, O3, T> Fun3<O1, O2, O3, T> function(Object id, T def) {
+        return new Fun3<O1, O2, O3, T>(id, def, null);
     }
 
-    public static final class Fun1<O, T> extends ClauseType {
+    public static final class Fun1<O, T> extends Functor {
         private final Constant<Single<O>, T>             constant;
         private final Setable<Single<O>, Set<Single<O>>> extend;
 
-        private Fun1(Object id, java.util.function.Function<O, T> f) {
+        private Fun1(Object id, T def, java.util.function.Function<O, T> f) {
             extend = Setable.<Single<O>, Set<Single<O>>> of(Single.of(id), Set.of());
-            constant = Constant.<Single<O>, T> of(id, o -> f.apply(o.a()), (tx, o, b, t) -> {
+            constant = Constant.<Single<O>, T> of(id, def, f == null ? null : o -> f.apply(o.a()), (tx, o, b, t) -> {
                 if (t != null) {
                     extend.add(Single.of(null), o);
                 }
@@ -81,13 +81,13 @@ public final class Logic {
         }
     }
 
-    public static final class Fun2<O1, O2, T> extends ClauseType {
+    public static final class Fun2<O1, O2, T> extends Functor {
         private final Constant<Pair<O1, O2>, T>                constant;
         private final Setable<Pair<O1, O2>, Set<Pair<O1, O2>>> extend;
 
-        private Fun2(Object id, java.util.function.BiFunction<O1, O2, T> f) {
+        private Fun2(Object id, T def, java.util.function.BiFunction<O1, O2, T> f) {
             extend = Setable.<Pair<O1, O2>, Set<Pair<O1, O2>>> of(Single.of(id), Set.of());
-            constant = Constant.<Pair<O1, O2>, T> of(id, o -> f.apply(o.a(), o.b()), (tx, o, b, t) -> {
+            constant = Constant.<Pair<O1, O2>, T> of(id, def, f == null ? null : o -> f.apply(o.a(), o.b()), (tx, o, b, t) -> {
                 if (t != null) {
                     extend.add(Pair.of(null, null), o);
                     extend.add(Pair.of(o.a(), null), o);
@@ -114,13 +114,13 @@ public final class Logic {
         }
     }
 
-    public static final class Fun3<O1, O2, O3, T> extends ClauseType {
+    public static final class Fun3<O1, O2, O3, T> extends Functor {
         private final Constant<Triple<O1, O2, O3>, T>                      constant;
         private final Setable<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> extend;
 
-        private Fun3(Object id, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, T> f) {
+        private Fun3(Object id, T def, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, T> f) {
             extend = Setable.<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> of(Single.of(id), Set.of());
-            constant = Constant.<Triple<O1, O2, O3>, T> of(id, o -> f.apply(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
+            constant = Constant.<Triple<O1, O2, O3>, T> of(id, def, f == null ? null : o -> f.apply(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
                 if (t != null) {
                     extend.add(Triple.of(null, null, null), o);
                     extend.add(Triple.of(o.a(), null, null), o);
@@ -159,7 +159,7 @@ public final class Logic {
     }
 
     public static final <O> Rel1<O> rel1(Object id) {
-        return new Rel1<O>(id, (o) -> false);
+        return new Rel1<O>(id, null);
     }
 
     public static final <O1, O2> Rel2<O1, O2> rel2(Object id, java.util.function.BiFunction<O1, O2, BooleanSupplier> p) {
@@ -167,7 +167,7 @@ public final class Logic {
     }
 
     public static final <O1, O2> Rel2<O1, O2> rel2(Object id) {
-        return new Rel2<O1, O2>(id, (o1, o2) -> false);
+        return new Rel2<O1, O2>(id, null);
     }
 
     public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, BooleanSupplier> p) {
@@ -175,16 +175,16 @@ public final class Logic {
     }
 
     public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id) {
-        return new Rel3<O1, O2, O3>(id, (o1, o2, o3) -> false);
+        return new Rel3<O1, O2, O3>(id, null);
     }
 
-    public static final class Rel1<O> extends ClauseType {
+    public static final class Rel1<O> extends Functor {
         private final Constant<Single<O>, Boolean>       constant;
         private final Setable<Single<O>, Set<Single<O>>> extend;
 
         private Rel1(Object id, Predicate<O> p) {
             extend = Setable.<Single<O>, Set<Single<O>>> of(Single.of(id), Set.of());
-            constant = Constant.<Single<O>, Boolean> of(id, o -> p.test(o.a()), (tx, o, b, t) -> {
+            constant = Constant.<Single<O>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a()), (tx, o, b, t) -> {
                 if (t != null) {
                     extend.add(Single.of(null), o);
                 }
@@ -211,13 +211,13 @@ public final class Logic {
 
     }
 
-    public static final class Rel2<O1, O2> extends ClauseType {
+    public static final class Rel2<O1, O2> extends Functor {
         private final Constant<Pair<O1, O2>, Boolean>          constant;
         private final Setable<Pair<O1, O2>, Set<Pair<O1, O2>>> extend;
 
         private Rel2(Object id, BiPredicate<O1, O2> p) {
             extend = Setable.<Pair<O1, O2>, Set<Pair<O1, O2>>> of(Single.of(id), Set.of());
-            constant = Constant.<Pair<O1, O2>, Boolean> of(id, o -> p.test(o.a(), o.b()), (tx, o, b, t) -> {
+            constant = Constant.<Pair<O1, O2>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a(), o.b()), (tx, o, b, t) -> {
                 if (t) {
                     extend.add(Pair.of(null, null), o);
                     extend.add(Pair.of(o.a(), null), o);
@@ -245,13 +245,13 @@ public final class Logic {
         }
     }
 
-    public static final class Rel3<O1, O2, O3> extends ClauseType {
+    public static final class Rel3<O1, O2, O3> extends Functor {
         private final Constant<Triple<O1, O2, O3>, Boolean>                constant;
         private final Setable<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> extend;
 
         private Rel3(Object id, TriPredicate<O1, O2, O3> p) {
             extend = Setable.<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> of(Single.of(id), Set.of());
-            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, o -> p.test(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
+            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
                 if (t) {
                     extend.add(Triple.of(null, null, null), o);
                     extend.add(Triple.of(o.a(), null, null), o);

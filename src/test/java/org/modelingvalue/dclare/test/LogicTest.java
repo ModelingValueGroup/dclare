@@ -21,7 +21,7 @@ public class LogicTest {
         universeTransaction.waitForEnd();
     }
 
-    static final Fun1<String, Set<String>> PARENTS   = fun1("parent");
+    static final Fun1<String, Set<String>> PARENTS   = fun1("parent", Set.of());
 
     static final Fun1<String, Set<String>> ANCESTORS = fun1("ancestor",                          //
             (p) -> sup(PARENTS.get(p).addAll(PARENTS.get(p).flatMap(LogicTest.ANCESTORS::get))));
@@ -35,7 +35,7 @@ public class LogicTest {
 
     static final Rel2<String, String>      ANCESTOR2 = rel2("isAncestor",                        // 
             (a, o) -> or(PARENT.sup(o, a),                                                       //
-                    uni((String x) -> and(LogicTest.ANCESTOR1.sup(a, x), PARENT.sup(o, x)))));
+                    uni((String x) -> and(LogicTest.ANCESTOR2.sup(a, x), PARENT.sup(o, x)))));
 
     @RepeatedTest(32)
     public void test1() {
@@ -44,10 +44,13 @@ public class LogicTest {
             PARENTS.set("Wim", Set.of("Jan", "Elske"));
             PARENTS.set("Joppe", Set.of("Wim", "Heleen"));
             PARENTS.set("Marijn", Set.of("Wim", "Heleen"));
-            assertEquals(ANCESTORS.sup("Joppe"), Set.of("Wim", "Heleen", "Jan", "Elske", "Carel"));
+            assertEquals(ANCESTORS.get("Joppe"), Set.of("Wim", "Heleen", "Jan", "Elske", "Carel"));
 
-            assertTrue(ANCESTOR1.sup("Carel", "Marijn"));
-            assertTrue(ANCESTOR1.sup("Wim", "Marijn"));
+            assertTrue(ANCESTOR1.is("Carel", "Marijn"));
+            assertTrue(ANCESTOR1.is("Wim", "Marijn"));
+
+            assertTrue(ANCESTOR2.is("Carel", "Marijn"));
+            assertTrue(ANCESTOR2.is("Wim", "Marijn"));
         });
     }
 }

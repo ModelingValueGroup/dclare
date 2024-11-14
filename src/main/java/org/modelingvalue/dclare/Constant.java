@@ -52,6 +52,10 @@ public class Constant<O, T> extends Setable<O, T> {
         return new Constant<>(id, o -> def, null, null, deriver, null, modifiers);
     }
 
+    public static <C, V> Constant<C, V> of(Object id, V def, Function<C, V> deriver, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
+        return new Constant<>(id, o -> def, null, null, deriver, changed, modifiers);
+    }
+
     public static <C, V> Constant<C, V> of(Object id, Function<C, V> deriver, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
         return new Constant<>(id, null, null, null, deriver, changed, modifiers);
     }
