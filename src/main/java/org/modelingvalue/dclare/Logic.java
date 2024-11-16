@@ -53,16 +53,21 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         private final List<Pair<Functor, Struct>> derived;
+        @SuppressWarnings("rawtypes")
+        private final Pair<Functor, Struct>       current;
 
         @SuppressWarnings("rawtypes")
         private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
-            int i = derived.firstIndexOf(current);
-            this.derived = derived.sublist(0, i + 1).prepend(current);
+            this.derived = derived;
+            this.current = current;
         }
 
+        @SuppressWarnings("rawtypes")
         @Override
         public String getMessage() {
-            return "Cycle " + derived.reverse().asList().toString().substring(4);
+            int i = derived.firstIndexOf(current);
+            List<Pair<Functor, Struct>> cycle = derived.sublist(0, i + 1).prepend(current);
+            return "Cycle " + cycle.reverse().asList().toString().substring(4);
         }
     }
 
@@ -107,17 +112,7 @@ public final class Logic {
                 if (!empty.isEmpty()) {
                     Set<S> set = extend.get(copy(pat));
                     if (!set.isEmpty()) {
-                        Set<Object> em = empty;
-                        throw new UnboundVariableException(empty, set.map(s -> {
-                            Map<Object, Object> vs = vars;
-                            for (int i = 0; i < in.length(); i++) {
-                                Object vin = in.get(i);
-                                if (em.contains(vin)) {
-                                    vs = vs.put(vin, s.get(i));
-                                }
-                            }
-                            return vs;
-                        }).asSet());
+                        throw new UnboundVariableException(empty, set, in);
                     }
                 }
                 return copy(out);
@@ -406,14 +401,29 @@ public final class Logic {
     private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
 
     public static final class UnboundVariableException extends RuntimeException {
-        private static final long              serialVersionUID = 4505117271488648346L;
+        private static final long           serialVersionUID = 4505117271488648346L;
 
-        private final Set<Object>              vars;
-        private final Set<Map<Object, Object>> bindings;
+        private final Set<Object>           empty;
+        private final Set<? extends Struct> set;
+        private final Struct                in;
 
-        private UnboundVariableException(Set<Object> vars, Set<Map<Object, Object>> bindings) {
-            this.vars = vars;
-            this.bindings = bindings;
+        private UnboundVariableException(Set<Object> empty, Set<? extends Struct> set, Struct in) {
+            this.empty = empty;
+            this.set = set;
+            this.in = in;
+        }
+
+        private Set<Map<Object, Object>> bindings(Map<Object, Object> vars) {
+            return set.map(s -> {
+                Map<Object, Object> vs = vars;
+                for (int i = 0; i < s.length(); i++) {
+                    Object vin = in.get(i);
+                    if (empty.contains(vin)) {
+                        vs = vs.put(vin, s.get(i));
+                    }
+                }
+                return vs;
+            }).asSet();
         }
     }
 
@@ -436,8 +446,8 @@ public final class Logic {
         try {
             return VARIABLES.get(vars, predicate);
         } catch (UnboundVariableException uve) {
-            if (uve.vars.anyMatch(vars::containsKey)) {
-                return any(uve.bindings.map(vs -> () -> doUni(vs, predicate))).getAsBoolean();
+            if (uve.empty.anyMatch(vars::containsKey)) {
+                return any(uve.bindings(vars).map(vs -> () -> doUni(vs, predicate))).getAsBoolean();
             } else {
                 throw uve;
             }

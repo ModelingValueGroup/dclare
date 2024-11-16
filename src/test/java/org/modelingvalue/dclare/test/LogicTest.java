@@ -72,6 +72,7 @@ public class LogicTest {
 
             isFalse(PARENT.is("Marijn", "Wim"));
             isFalse(PARENT.is("Heleeen", "Wim"));
+            isFalse(PARENT.is("Wim", "Wim"));
 
             isTrue(ANCESTOR.is("Carel", "Marijn"));
             isTrue(ANCESTOR.is("Wim", "Marijn"));
@@ -79,6 +80,7 @@ public class LogicTest {
             isFalse(ANCESTOR.is("Marijn", "Wim"));
             isFalse(ANCESTOR.is("Heleeen", "Wim"));
             isFalse(ANCESTOR.is("Joppe", "Carel"));
+            isFalse(ANCESTOR.is("Carel", "Carel"));
         });
     }
 }
