@@ -20,6 +20,7 @@
 
 package org.modelingvalue.dclare;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
@@ -47,7 +48,7 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
 
-    private static final class CircularLogicException extends RuntimeException {
+    public static final class CircularLogicException extends RuntimeException {
         private static final long                 serialVersionUID = 293433487448006753L;
 
         @SuppressWarnings("rawtypes")
@@ -88,20 +89,23 @@ public final class Logic {
         protected final S bind(S in) {
             Map<Object, Object> vars = VARIABLES.get();
             if (!vars.isEmpty()) {
-                Object[] array = in.toArray();
+                Object[] pat = in.toArray();
+                Object[] out = in.toArray();
                 Set<Object> empty = Set.of();
                 for (int i = 0; i < in.length(); i++) {
                     Object vin = in.get(i);
                     if (vars.containsKey(vin)) {
                         Object vout = vars.get(vin);
-                        array[i] = vout;
                         if (vout == null) {
+                            pat[i] = null;
                             empty = empty.add(vin);
+                        } else {
+                            out[i] = vout;
                         }
                     }
                 }
                 if (!empty.isEmpty()) {
-                    Set<S> set = extend.get(copy(array));
+                    Set<S> set = extend.get(copy(pat));
                     if (!set.isEmpty()) {
                         Set<Object> em = empty;
                         throw new UnboundVariableException(empty, set.map(s -> {
@@ -116,12 +120,16 @@ public final class Logic {
                         }).asSet());
                     }
                 }
+                return copy(out);
             }
             return in;
         }
 
-        protected final void extend(S in) {
-            extend(0, in, in.toArray());
+        @SuppressWarnings("rawtypes")
+        protected final void extend(S in, Boolean res, boolean der) {
+            if (res && !der) {
+                extend(0, in, in.toArray());
+            }
         }
 
         private void extend(int i, S in, Object[] array) {
@@ -188,7 +196,7 @@ public final class Logic {
             super(id);
             constant = Constant.<Single<O>, Boolean> of(id, p != null ? null : false, //
                     p == null ? null : derive(o -> p.test(o.a())), //
-                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
+                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
@@ -219,7 +227,7 @@ public final class Logic {
             super(id);
             constant = Constant.<Pair<O1, O2>, Boolean> of(id, p != null ? null : false, //
                     p == null ? null : derive(o -> p.test(o.a(), o.b())), //
-                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
+                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
@@ -250,7 +258,7 @@ public final class Logic {
             super(id);
             constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, p != null ? null : false, //
                     p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c())), //
-                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
+                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
@@ -281,7 +289,7 @@ public final class Logic {
             super(id);
             constant = Constant.<Quadruple<O1, O2, O3, O4>, Boolean> of(id, p != null ? null : false, //
                     p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c(), o.d())), //
-                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
+                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
@@ -329,22 +337,23 @@ public final class Logic {
             return predicates.first().getAsBoolean();
         } else {
             List<BooleanSupplier> or = predicates.random().asList();
-            RuntimeException[] rte = new RuntimeException[2];
+            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
             boolean result = or.anyMatch(p -> {
                 try {
                     return p.getAsBoolean();
-                } catch (CircularLogicException cle) {
-                    rte[0] = cle;
-                    return false;
                 } catch (UnboundVariableException uve) {
-                    rte[1] = uve;
+                    ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
                     return true;
+                } catch (CircularLogicException cle) {
+                    ref.updateAndGet(rte -> rte == null ? cle : rte);
+                    return false;
                 }
             });
-            if (rte[1] != null) {
-                throw rte[1];
-            } else if (!result && rte[0] != null) {
-                throw rte[0];
+            RuntimeException exc = ref.get();
+            if (exc instanceof UnboundVariableException) {
+                throw exc;
+            } else if (!result && exc != null) {
+                throw exc;
             } else {
                 return result;
             }
@@ -369,22 +378,23 @@ public final class Logic {
             return predicates.first().getAsBoolean();
         } else {
             List<BooleanSupplier> and = predicates.random().asList();
-            RuntimeException[] rte = new RuntimeException[2];
-            boolean result = and.anyMatch(p -> {
+            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+            boolean result = and.allMatch(p -> {
                 try {
                     return p.getAsBoolean();
-                } catch (CircularLogicException cle) {
-                    rte[0] = cle;
-                    return true;
                 } catch (UnboundVariableException uve) {
-                    rte[1] = uve;
+                    ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
                     return false;
+                } catch (CircularLogicException cle) {
+                    ref.updateAndGet(rte -> rte == null ? cle : rte);
+                    return true;
                 }
             });
-            if (rte[1] != null) {
-                throw rte[1];
-            } else if (result && rte[0] != null) {
-                throw rte[0];
+            RuntimeException exc = ref.get();
+            if (exc instanceof UnboundVariableException) {
+                throw exc;
+            } else if (result && exc != null) {
+                throw exc;
             } else {
                 return result;
             }
@@ -395,7 +405,7 @@ public final class Logic {
 
     private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
 
-    private static final class UnboundVariableException extends RuntimeException {
+    public static final class UnboundVariableException extends RuntimeException {
         private static final long              serialVersionUID = 4505117271488648346L;
 
         private final Set<Object>              vars;

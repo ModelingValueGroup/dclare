@@ -26,6 +26,7 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
 import java.util.function.BooleanSupplier;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.dclare.Logic.Rel2;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -55,7 +56,7 @@ public class LogicTest {
             (a, o) -> or(PARENT.is(a, o),                                       //
                     uni(X, and(LogicTest.ANCESTOR.is(a, X), PARENT.is(X, o)))));
 
-    // @RepeatedTest(32)
+    @RepeatedTest(512)
     public void test1() {
         run(() -> {
             PARENT.fact("Carel", "Jan");
