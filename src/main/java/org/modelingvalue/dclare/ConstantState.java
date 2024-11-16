@@ -194,12 +194,12 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
+        public <V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
-            V soll = function.apply(ist, element);
-            if (ist == null) {
-                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, false);
+            V soll = function.apply(ist == null ? constant.getDefault(object) : ist == NULL ? null : ist, element);
+            if (ist == null || forced) {
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {
                 throw new NonDeterministicException(object, constant, "Constant is not consistent " + StringUtil.toString(object) + "." + constant + "=" + StringUtil.toString(ist) + "!=" + StringUtil.toString(soll));
@@ -328,8 +328,8 @@ public class ConstantState {
         return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, value, forced);
     }
 
-    public <O, V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
-        return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, deriver, element);
+    public <O, V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element, boolean forced) {
+        return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, deriver, element, forced);
     }
 
     private <O, V> ReferenceType referenceType(Constant<O, V> constant) {

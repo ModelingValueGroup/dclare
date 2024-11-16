@@ -20,14 +20,13 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
+import java.util.function.BooleanSupplier;
+
 import org.junit.jupiter.api.RepeatedTest;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Logic.Fun1;
 import org.modelingvalue.dclare.Logic.Rel2;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -41,36 +40,44 @@ public class LogicTest {
         universeTransaction.waitForEnd();
     }
 
-    static final Fun1<String, Set<String>> PARENTS   = fun1("parent", Set.of());
+    static void isTrue(BooleanSupplier bs) {
+        assertTrue(bs.getAsBoolean());
+    }
 
-    static final Fun1<String, Set<String>> ANCESTORS = fun1("ancestors",                         //
-            (p) -> sup(PARENTS.get(p).addAll(PARENTS.get(p).flatMap(LogicTest.ANCESTORS::get))));
+    static void isFalse(BooleanSupplier bs) {
+        assertTrue(!bs.getAsBoolean());
+    }
 
-    static final Rel2<String, String>      PARENT    = rel2("parent",                            //
-            (a, b) -> sup(PARENTS.get(a).contains(b)));
+    static final String               X        = "$X";
 
-    static final Rel2<String, String>      ANCESTOR1 = rel2("ancestor1",                         //
-            (a, o) -> or(PARENT.sup(o, a),                                                       //
-                    any(PARENTS.get(o).map(p -> LogicTest.ANCESTOR1.sup(a, p)))));
+    static final Rel2<String, String> PARENT   = rel2("parent");
 
-    static final Rel2<String, String>      ANCESTOR2 = rel2("ancestor2",                         // 
-            (a, o) -> or(PARENT.sup(o, a),                                                       //
-                    uni("X", and(LogicTest.ANCESTOR2.sup(a, "X"), PARENT.sup(o, "X")))));
+    static final Rel2<String, String> ANCESTOR = rel2("ancestor",               // 
+            (a, o) -> or(PARENT.is(a, o),                                       //
+                    uni(X, and(LogicTest.ANCESTOR.is(a, X), PARENT.is(X, o)))));
 
     @RepeatedTest(32)
     public void test1() {
         run(() -> {
-            PARENTS.set("Jan", Set.of("Carel"));
-            PARENTS.set("Wim", Set.of("Jan", "Elske"));
-            PARENTS.set("Joppe", Set.of("Wim", "Heleen"));
-            PARENTS.set("Marijn", Set.of("Wim", "Heleen"));
-            assertEquals(ANCESTORS.get("Joppe"), Set.of("Wim", "Heleen", "Jan", "Elske", "Carel"));
+            PARENT.fact("Carel", "Jan");
+            PARENT.fact("Jan", "Wim");
+            PARENT.fact("Elske", "Wim");
+            PARENT.fact("Wim", "Joppe");
+            PARENT.fact("Heleen", "Joppe");
+            PARENT.fact("Wim", "Marijn");
+            PARENT.fact("Heleeen", "Marijn");
 
-            assertTrue(ANCESTOR1.is("Carel", "Marijn"));
-            assertTrue(ANCESTOR1.is("Wim", "Marijn"));
+            isTrue(PARENT.is("Heleen", "Joppe"));
+            isTrue(PARENT.is("Jan", "Wim"));
 
-            assertTrue(ANCESTOR2.is("Carel", "Marijn"));
-            assertTrue(ANCESTOR2.is("Wim", "Marijn"));
+            isFalse(PARENT.is("Marijn", "Wim"));
+            isFalse(PARENT.is("Heleeen", "Wim"));
+
+            isTrue(ANCESTOR.is("Carel", "Marijn"));
+            isTrue(ANCESTOR.is("Wim", "Marijn"));
+
+            isFalse(ANCESTOR.is("Marijn", "Wim"));
+            isFalse(ANCESTOR.is("Heleeen", "Wim"));
         });
     }
 }

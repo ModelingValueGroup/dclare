@@ -22,6 +22,7 @@ package org.modelingvalue.dclare;
 
 import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -33,227 +34,119 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
+import org.modelingvalue.collections.util.QuadPredicate;
+import org.modelingvalue.collections.util.Quadruple;
 import org.modelingvalue.collections.util.Single;
 import org.modelingvalue.collections.util.TriPredicate;
 import org.modelingvalue.collections.util.Triple;
-import org.modelingvalue.dclare.ex.NonDeterministicException;
 
 public final class Logic {
     private Logic() {
     }
 
-    private static final Context<Map<Object, Object>> VARIABLES      = Context.of(Map.of());
-    private static final String                       NO_MATCH_FOUND = "No match found";
+    @SuppressWarnings("rawtypes")
+    private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
 
-    public static abstract class Functor implements Feature {
+    private static final class CircularLogicException extends RuntimeException {
+        private static final long                 serialVersionUID = 293433487448006753L;
 
-        protected final <S extends Struct> S bind(S in) {
+        @SuppressWarnings("rawtypes")
+        private final List<Pair<Functor, Struct>> derived;
+
+        @SuppressWarnings("rawtypes")
+        private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
+            int i = derived.firstIndexOf(current);
+            this.derived = derived.sublist(0, i + 1).prepend(current);
+        }
+
+        @Override
+        public String getMessage() {
+            return "Cycle " + derived.reverse().asList().toString().substring(4);
+        }
+    }
+
+    public static abstract class Functor<S extends Struct> {
+        private final Constant<S, Set<S>> extend;
+
+        protected Functor(Object id) {
+            extend = Constant.<S, Set<S>> of(Single.of(id), Set.of(), CoreSetableModifier.durable);
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected final Function<S, Boolean> derive(Function<S, Boolean> f) {
+            return o -> {
+                Pair<Functor, Struct> slot = Pair.of(this, o);
+                List<Pair<Functor, Struct>> pre = DERIVED.get();
+                if (pre.contains(slot)) {
+                    throw new CircularLogicException(pre, slot);
+                } else {
+                    return DERIVED.get(pre.prepend(slot), () -> f.apply(o));
+                }
+            };
+        }
+
+        protected final S bind(S in) {
             Map<Object, Object> vars = VARIABLES.get();
-            Object[] array = in.toArray();
-            Set<Object> empty = Set.of();
-            for (int i = 0; i < in.length(); i++) {
-                Object vin = in.get(i);
-                if (vars.containsKey(vin)) {
-                    Object vout = vars.get(vin);
-                    array[i] = vout;
-                    if (vout == null) {
-                        empty = empty.add(vin);
+            if (!vars.isEmpty()) {
+                Object[] array = in.toArray();
+                Set<Object> empty = Set.of();
+                for (int i = 0; i < in.length(); i++) {
+                    Object vin = in.get(i);
+                    if (vars.containsKey(vin)) {
+                        Object vout = vars.get(vin);
+                        array[i] = vout;
+                        if (vout == null) {
+                            empty = empty.add(vin);
+                        }
+                    }
+                }
+                if (!empty.isEmpty()) {
+                    Set<S> set = extend.get(copy(array));
+                    if (!set.isEmpty()) {
+                        Set<Object> em = empty;
+                        throw new UnboundVariableException(empty, set.map(s -> {
+                            Map<Object, Object> vs = vars;
+                            for (int i = 0; i < in.length(); i++) {
+                                Object vin = in.get(i);
+                                if (em.contains(vin)) {
+                                    vs = vs.put(vin, s.get(i));
+                                }
+                            }
+                            return vs;
+                        }).asSet());
                     }
                 }
             }
-            S out = copy(array);
-            if (!empty.isEmpty()) {
-                Set<S> extend = extend(out);
-                if (extend.isEmpty()) {
-                    throw new NonDeterministicException(in, this, NO_MATCH_FOUND);
-                } else {
-                    Set<Object> em = empty;
-                    throw new UnboundVariableException(empty, extend.map(s -> {
-                        Map<Object, Object> vs = vars;
-                        for (int i = 0; i < in.length(); i++) {
-                            Object vin = in.get(i);
-                            if (em.contains(vin)) {
-                                vs = vs.put(vin, s.get(i));
-                            }
-                        }
-                        return vs;
-                    }).asSet());
+            return in;
+        }
+
+        protected final void extend(S in) {
+            extend(0, in, in.toArray());
+        }
+
+        private void extend(int i, S in, Object[] array) {
+            if (i < array.length) {
+                array = array.clone();
+                if (array[i] == null) {
+                    array[i] = in.get(i);
+                    extend.force(copy(array), Set::add, in);
                 }
+                extend(i + 1, in, array);
+                if (array[i] != null) {
+                    array[i] = null;
+                    extend.force(copy(array), Set::add, in);
+                }
+                extend(i + 1, in, array);
             }
-            return out;
         }
 
-        protected abstract <S extends Struct> S copy(Object[] array);
-
-        protected abstract <S extends Struct> Set<S> extend(S s);
+        protected abstract S copy(Object[] array);
     };
-
-    // Functions
-
-    public static final <O, T> Fun1<O, T> fun1(Object id, java.util.function.Function<O, Supplier<T>> f) {
-        return new Fun1<O, T>(id, null, (o) -> f.apply(o).get());
-    }
-
-    public static final <O, T> Fun1<O, T> fun1(Object id, T def) {
-        return new Fun1<O, T>(id, def, null);
-    }
-
-    public static final <O1, O2, T> Fun2<O1, O2, T> fun2(Object id, java.util.function.BiFunction<O1, O2, Supplier<T>> f) {
-        return new Fun2<O1, O2, T>(id, null, (o1, o2) -> f.apply(o1, o2).get());
-    }
-
-    public static final <O1, O2, T> Fun2<O1, O2, T> fun2(Object id, T def) {
-        return new Fun2<O1, O2, T>(id, def, null);
-    }
-
-    public static final <O1, O2, O3, T> Fun3<O1, O2, O3, T> function(Object id, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, Supplier<T>> f) {
-        return new Fun3<O1, O2, O3, T>(id, null, (o1, o2, o3) -> f.apply(o1, o2, o3).get());
-    }
-
-    public static final <O1, O2, O3, T> Fun3<O1, O2, O3, T> function(Object id, T def) {
-        return new Fun3<O1, O2, O3, T>(id, def, null);
-    }
-
-    public static final class Fun1<O, T> extends Functor {
-        private final Constant<Single<O>, T>             constant;
-        private final Setable<Single<O>, Set<Single<O>>> extend;
-
-        private Fun1(Object id, T def, java.util.function.Function<O, T> f) {
-            extend = Setable.<Single<O>, Set<Single<O>>> of(Single.of(id), Set.of());
-            constant = Constant.<Single<O>, T> of(id, def, f == null ? null : o -> f.apply(o.a()), (tx, o, b, t) -> {
-                if (t != null) {
-                    extend.add(Single.of(null), o);
-                }
-            });
-        }
-
-        public Supplier<T> sup(O o) {
-            return () -> get(o);
-        }
-
-        public T get(O o) {
-            return constant.get(bind(Single.of(o)));
-        }
-
-        public void set(O o, T t) {
-            constant.force(Single.of(o), t);
-        }
-
-        @Override
-        public String toString() {
-            return constant.toString();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Single.of(array[0]);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Single) s);
-        }
-    }
-
-    public static final class Fun2<O1, O2, T> extends Functor {
-        private final Constant<Pair<O1, O2>, T>                constant;
-        private final Setable<Pair<O1, O2>, Set<Pair<O1, O2>>> extend;
-
-        private Fun2(Object id, T def, java.util.function.BiFunction<O1, O2, T> f) {
-            extend = Setable.<Pair<O1, O2>, Set<Pair<O1, O2>>> of(Single.of(id), Set.of());
-            constant = Constant.<Pair<O1, O2>, T> of(id, def, f == null ? null : o -> f.apply(o.a(), o.b()), (tx, o, b, t) -> {
-                if (t != null) {
-                    extend.add(Pair.of(null, null), o);
-                    extend.add(Pair.of(o.a(), null), o);
-                    extend.add(Pair.of(null, o.b()), o);
-                }
-            });
-        }
-
-        public Supplier<T> sup(O1 o1, O2 o2) {
-            return () -> get(o1, o2);
-        }
-
-        public T get(O1 o1, O2 o2) {
-            return constant.get(bind(Pair.of(o1, o2)));
-        }
-
-        public void set(O1 o1, O2 o2, T t) {
-            constant.force(Pair.of(o1, o2), t);
-        }
-
-        @Override
-        public String toString() {
-            return constant.toString();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Pair.of(array[0], array[1]);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Pair) s);
-        }
-    }
-
-    public static final class Fun3<O1, O2, O3, T> extends Functor {
-        private final Constant<Triple<O1, O2, O3>, T>                      constant;
-        private final Setable<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> extend;
-
-        private Fun3(Object id, T def, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, T> f) {
-            extend = Setable.<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> of(Single.of(id), Set.of());
-            constant = Constant.<Triple<O1, O2, O3>, T> of(id, def, f == null ? null : o -> f.apply(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
-                if (t != null) {
-                    extend.add(Triple.of(null, null, null), o);
-                    extend.add(Triple.of(o.a(), null, null), o);
-                    extend.add(Triple.of(null, o.b(), null), o);
-                    extend.add(Triple.of(null, null, o.c()), o);
-                    extend.add(Triple.of(o.a(), o.b(), null), o);
-                    extend.add(Triple.of(o.a(), null, o.c()), o);
-                    extend.add(Triple.of(null, o.b(), o.c()), o);
-                }
-            });
-        }
-
-        public Supplier<T> sup(O1 o1, O2 o2, O3 o3) {
-            return () -> get(o1, o2, o3);
-        }
-
-        public T get(O1 o1, O2 o2, O3 o3) {
-            return constant.get(bind(Triple.of(o1, o2, o3)));
-        }
-
-        public void set(O1 o1, O2 o2, O3 o3, T t) {
-            constant.force(Triple.of(o1, o2, o3), t);
-        }
-
-        @Override
-        public String toString() {
-            return constant.toString();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Triple.of(array[0], array[1], array[2]);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Triple) s);
-        }
-    }
 
     // Relations
 
-    public static final <O> Rel1<O> rel1(Object id, java.util.function.Function<O, BooleanSupplier> p) {
+    public static final <O> Rel1<O> rel1(Object id, //
+            java.util.function.Function<O, BooleanSupplier> p) {
         return new Rel1<O>(id, (o) -> p.apply(o).getAsBoolean());
     }
 
@@ -261,7 +154,8 @@ public final class Logic {
         return new Rel1<O>(id, null);
     }
 
-    public static final <O1, O2> Rel2<O1, O2> rel2(Object id, java.util.function.BiFunction<O1, O2, BooleanSupplier> p) {
+    public static final <O1, O2> Rel2<O1, O2> rel2(Object id, //
+            java.util.function.BiFunction<O1, O2, BooleanSupplier> p) {
         return new Rel2<O1, O2>(id, (o1, o2) -> p.apply(o1, o2).getAsBoolean());
     }
 
@@ -269,7 +163,8 @@ public final class Logic {
         return new Rel2<O1, O2>(id, null);
     }
 
-    public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id, org.modelingvalue.collections.util.TriFunction<O1, O2, O3, BooleanSupplier> p) {
+    public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id, //
+            org.modelingvalue.collections.util.TriFunction<O1, O2, O3, BooleanSupplier> p) {
         return new Rel3<O1, O2, O3>(id, (o1, o2, o3) -> p.apply(o1, o2, o3).getAsBoolean());
     }
 
@@ -277,30 +172,32 @@ public final class Logic {
         return new Rel3<O1, O2, O3>(id, null);
     }
 
-    public static final class Rel1<O> extends Functor {
-        private final Constant<Single<O>, Boolean>       constant;
-        private final Setable<Single<O>, Set<Single<O>>> extend;
+    public static final <O1, O2, O3, O4> Rel4<O1, O2, O3, O4> rel4(Object id, //
+            org.modelingvalue.collections.util.QuadFunction<O1, O2, O3, O4, BooleanSupplier> p) {
+        return new Rel4<O1, O2, O3, O4>(id, (o1, o2, o3, o4) -> p.apply(o1, o2, o3, o4).getAsBoolean());
+    }
+
+    public static final <O1, O2, O3, O4> Rel4<O1, O2, O3, O4> rel4(Object id) {
+        return new Rel4<O1, O2, O3, O4>(id, null);
+    }
+
+    public static final class Rel1<O> extends Functor<Single<O>> {
+        private final Constant<Single<O>, Boolean> constant;
 
         private Rel1(Object id, Predicate<O> p) {
-            extend = Setable.<Single<O>, Set<Single<O>>> of(Single.of(id), Set.of());
-            constant = Constant.<Single<O>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a()), (tx, o, b, t) -> {
-                if (t != null) {
-                    extend.add(Single.of(null), o);
-                }
-            });
+            super(id);
+            constant = Constant.<Single<O>, Boolean> of(id, p != null ? null : false, //
+                    p == null ? null : derive(o -> p.test(o.a())), //
+                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier sup(O o) {
-            return () -> is(o);
+        public BooleanSupplier is(O o) {
+            return () -> constant.get(bind(Single.of(o)));
         }
 
-        public boolean is(O o) {
-            return constant.get(bind(Single.of(o)));
-        }
-
-        public void set(O o) {
-            constant.force(Single.of(o), true);
+        public void fact(O o) {
+            constant.set(Single.of(o), true);
         }
 
         @Override
@@ -310,43 +207,28 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Single.of(array[0]);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Single) s);
+        protected Single<O> copy(Object[] array) {
+            return Single.of((O) array[0]);
         }
     }
 
-    public static final class Rel2<O1, O2> extends Functor {
-        private final Constant<Pair<O1, O2>, Boolean>          constant;
-        private final Setable<Pair<O1, O2>, Set<Pair<O1, O2>>> extend;
+    public static final class Rel2<O1, O2> extends Functor<Pair<O1, O2>> {
+        private final Constant<Pair<O1, O2>, Boolean> constant;
 
         private Rel2(Object id, BiPredicate<O1, O2> p) {
-            extend = Setable.<Pair<O1, O2>, Set<Pair<O1, O2>>> of(Single.of(id), Set.of());
-            constant = Constant.<Pair<O1, O2>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a(), o.b()), (tx, o, b, t) -> {
-                if (t) {
-                    extend.add(Pair.of(null, null), o);
-                    extend.add(Pair.of(o.a(), null), o);
-                    extend.add(Pair.of(null, o.b()), o);
-                }
-            });
+            super(id);
+            constant = Constant.<Pair<O1, O2>, Boolean> of(id, p != null ? null : false, //
+                    p == null ? null : derive(o -> p.test(o.a(), o.b())), //
+                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier sup(O1 o1, O2 o2) {
-            return () -> is(o1, o2);
+        public BooleanSupplier is(O1 o1, O2 o2) {
+            return () -> constant.get(bind(Pair.of(o1, o2)));
         }
 
-        public boolean is(O1 o1, O2 o2) {
-            return constant.get(bind(Pair.of(o1, o2)));
-        }
-
-        public void set(O1 o1, O2 o2) {
-            constant.force(Pair.of(o1, o2), true);
+        public void fact(O1 o1, O2 o2) {
+            constant.set(Pair.of(o1, o2), true);
         }
 
         @Override
@@ -356,47 +238,28 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Pair.of(array[0], array[1]);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Pair) s);
+        protected Pair<O1, O2> copy(Object[] array) {
+            return Pair.of((O1) array[0], (O2) array[1]);
         }
     }
 
-    public static final class Rel3<O1, O2, O3> extends Functor {
-        private final Constant<Triple<O1, O2, O3>, Boolean>                constant;
-        private final Setable<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> extend;
+    public static final class Rel3<O1, O2, O3> extends Functor<Triple<O1, O2, O3>> {
+        private final Constant<Triple<O1, O2, O3>, Boolean> constant;
 
         private Rel3(Object id, TriPredicate<O1, O2, O3> p) {
-            extend = Setable.<Triple<O1, O2, O3>, Set<Triple<O1, O2, O3>>> of(Single.of(id), Set.of());
-            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, p != null ? null : false, p == null ? null : o -> p.test(o.a(), o.b(), o.c()), (tx, o, b, t) -> {
-                if (t) {
-                    extend.add(Triple.of(null, null, null), o);
-                    extend.add(Triple.of(o.a(), null, null), o);
-                    extend.add(Triple.of(null, o.b(), null), o);
-                    extend.add(Triple.of(null, null, o.c()), o);
-                    extend.add(Triple.of(o.a(), o.b(), null), o);
-                    extend.add(Triple.of(o.a(), null, o.c()), o);
-                    extend.add(Triple.of(null, o.b(), o.c()), o);
-                }
-            });
+            super(id);
+            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, p != null ? null : false, //
+                    p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c())), //
+                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier sup(O1 o1, O2 o2, O3 o3) {
-            return () -> is(o1, o2, o3);
+        public BooleanSupplier is(O1 o1, O2 o2, O3 o3) {
+            return () -> constant.get(bind(Triple.of(o1, o2, o3)));
         }
 
-        public boolean is(O1 o1, O2 o2, O3 o3) {
-            return constant.get(bind(Triple.of(o1, o2, o3)));
-        }
-
-        public void set(O1 o1, O2 o2, O3 o3) {
-            constant.force(Triple.of(o1, o2, o3), true);
+        public void fact(O1 o1, O2 o2, O3 o3) {
+            constant.set(Triple.of(o1, o2, o3), true);
         }
 
         @Override
@@ -406,25 +269,40 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected <S extends Struct> S copy(Object[] array) {
-            return (S) Triple.of(array[0], array[1], array[2]);
+        protected Triple<O1, O2, O3> copy(Object[] array) {
+            return Triple.of((O1) array[0], (O2) array[1], (O3) array[2]);
+        }
+    }
+
+    public static final class Rel4<O1, O2, O3, O4> extends Functor<Quadruple<O1, O2, O3, O4>> {
+        private final Constant<Quadruple<O1, O2, O3, O4>, Boolean> constant;
+
+        private Rel4(Object id, QuadPredicate<O1, O2, O3, O4> p) {
+            super(id);
+            constant = Constant.<Quadruple<O1, O2, O3, O4>, Boolean> of(id, p != null ? null : false, //
+                    p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c(), o.d())), //
+                    (tx, o, b, t) -> extend(o), CoreSetableModifier.durable);
         }
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        @SuppressWarnings("unchecked")
+        public BooleanSupplier is(O1 o1, O2 o2, O3 o3, O4 o4) {
+            return () -> constant.get(bind(Quadruple.of(o1, o2, o3, o4)));
+        }
+
+        public void fact(O1 o1, O2 o2, O3 o3, O4 o4) {
+            constant.set(Quadruple.of(o1, o2, o3, o4), true);
+        }
+
         @Override
-        protected <S extends Struct> Set<S> extend(S s) {
-            return extend.get((Triple) s);
+        public String toString() {
+            return constant.toString();
         }
-    }
 
-    // Inv
-
-    public static final BooleanSupplier sup(boolean b) {
-        return () -> b;
-    }
-
-    public static final <T> Supplier<T> sup(T t) {
-        return () -> t;
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Quadruple<O1, O2, O3, O4> copy(Object[] array) {
+            return Quadruple.of((O1) array[0], (O2) array[1], (O3) array[2], (O4) array[3]);
+        }
     }
 
     // Not
@@ -451,18 +329,21 @@ public final class Logic {
             return predicates.first().getAsBoolean();
         } else {
             List<BooleanSupplier> or = predicates.random().asList();
-            RuntimeException[] rte = new RuntimeException[1];
+            RuntimeException[] rte = new RuntimeException[2];
             boolean result = or.anyMatch(p -> {
                 try {
                     return p.getAsBoolean();
-                } catch (NonDeterministicException nde) {
-                    if (!(nde.getFeature() instanceof Functor)) {
-                        rte[0] = nde;
-                    }
+                } catch (CircularLogicException cle) {
+                    rte[0] = cle;
                     return false;
+                } catch (UnboundVariableException uve) {
+                    rte[1] = uve;
+                    return true;
                 }
             });
-            if (!result && rte[0] != null) {
+            if (rte[1] != null) {
+                throw rte[1];
+            } else if (!result && rte[0] != null) {
                 throw rte[0];
             } else {
                 return result;
@@ -488,18 +369,21 @@ public final class Logic {
             return predicates.first().getAsBoolean();
         } else {
             List<BooleanSupplier> and = predicates.random().asList();
-            RuntimeException[] rte = new RuntimeException[1];
+            RuntimeException[] rte = new RuntimeException[2];
             boolean result = and.anyMatch(p -> {
                 try {
                     return p.getAsBoolean();
-                } catch (NonDeterministicException nde) {
-                    if (!(nde.getFeature() instanceof Functor)) {
-                        rte[0] = nde;
-                    }
+                } catch (CircularLogicException cle) {
+                    rte[0] = cle;
                     return true;
+                } catch (UnboundVariableException uve) {
+                    rte[1] = uve;
+                    return false;
                 }
             });
-            if (result && rte[0] != null) {
+            if (rte[1] != null) {
+                throw rte[1];
+            } else if (result && rte[0] != null) {
                 throw rte[0];
             } else {
                 return result;
@@ -508,6 +392,8 @@ public final class Logic {
     }
 
     // Unification
+
+    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
 
     private static final class UnboundVariableException extends RuntimeException {
         private static final long              serialVersionUID = 4505117271488648346L;

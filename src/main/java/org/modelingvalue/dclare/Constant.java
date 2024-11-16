@@ -94,7 +94,13 @@ public class Constant<O, T> extends Setable<O, T> {
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
         LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
-        return constants.set(leafTransaction, object, this, function, element);
+        return constants.set(leafTransaction, object, this, function, element, false);
+    }
+
+    public <E> T force(O object, BiFunction<T, E, T> function, E element) {
+        LeafTransaction leafTransaction = currentLeaf(object);
+        ConstantState constants = leafTransaction.constantState();
+        return constants.set(leafTransaction, object, this, function, element, true);
     }
 
     @Override
