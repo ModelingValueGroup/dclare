@@ -99,13 +99,13 @@ public final class Logic {
             };
         }
 
-        protected final S bind(S in) {
+        protected final S bind(Object... in) {
             Map<Object, Object> vars = VARIABLES.get();
-            Object[] pat = in.toArray();
-            Object[] out = in.toArray();
+            Object[] pat = in.clone();
+            Object[] out = in.clone();
             Set<Object> empty = Set.of();
-            for (int i = 0; i < in.length(); i++) {
-                Object vin = in.get(i);
+            for (int i = 0; i < in.length; i++) {
+                Object vin = in[i];
                 if (vars.containsKey(vin)) {
                     Object vout = vars.get(vin);
                     pat[i] = vout;
@@ -117,12 +117,12 @@ public final class Logic {
                 }
             }
             if (!empty.isEmpty()) {
-                Set<S> set = extend.get(copy(pat));
+                Set<S> set = extend.get(struct(pat));
                 if (!set.isEmpty()) {
                     throw new UnboundVariableException(empty, set, in);
                 }
             }
-            return copy(out);
+            return struct(out);
         }
 
         @SuppressWarnings("rawtypes")
@@ -137,18 +137,18 @@ public final class Logic {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = in.get(i);
-                    extend.force(copy(array), Set::add, in);
+                    extend.force(struct(array), Set::add, in);
                 }
                 extend(i + 1, in, array);
                 if (array[i] != null) {
                     array[i] = null;
-                    extend.force(copy(array), Set::add, in);
+                    extend.force(struct(array), Set::add, in);
                 }
                 extend(i + 1, in, array);
             }
         }
 
-        protected abstract S copy(Object[] array);
+        protected abstract S struct(Object[] array);
     };
 
     private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
@@ -191,7 +191,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         public Supplier<Boolean> is(O o) {
-            return () -> constant.get(bind(Single.of(o)), deriver);
+            return () -> constant.get(bind(o), deriver);
         }
 
         public void fact(O o) {
@@ -205,7 +205,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Single<O> copy(Object[] array) {
+        protected Single<O> struct(Object[] array) {
             return Single.of((O) array[0]);
         }
     }
@@ -228,7 +228,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         public Supplier<Boolean> is(O1 o1, O2 o2) {
-            return () -> constant.get(bind(Pair.of(o1, o2)), deriver);
+            return () -> constant.get(bind(o1, o2), deriver);
         }
 
         public void fact(O1 o1, O2 o2) {
@@ -242,7 +242,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Pair<O1, O2> copy(Object[] array) {
+        protected Pair<O1, O2> struct(Object[] array) {
             return Pair.of((O1) array[0], (O2) array[1]);
         }
     }
@@ -265,7 +265,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3) {
-            return () -> constant.get(bind(Triple.of(o1, o2, o3)), deriver);
+            return () -> constant.get(bind(o1, o2, o3), deriver);
         }
 
         public void fact(O1 o1, O2 o2, O3 o3) {
@@ -279,7 +279,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Triple<O1, O2, O3> copy(Object[] array) {
+        protected Triple<O1, O2, O3> struct(Object[] array) {
             return Triple.of((O1) array[0], (O2) array[1], (O3) array[2]);
         }
     }
@@ -302,7 +302,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3, O4 o4) {
-            return () -> constant.get(bind(Quadruple.of(o1, o2, o3, o4)), deriver);
+            return () -> constant.get(bind(o1, o2, o3, o4), deriver);
         }
 
         public void fact(O1 o1, O2 o2, O3 o3, O4 o4) {
@@ -316,7 +316,7 @@ public final class Logic {
 
         @SuppressWarnings("unchecked")
         @Override
-        protected Quadruple<O1, O2, O3, O4> copy(Object[] array) {
+        protected Quadruple<O1, O2, O3, O4> struct(Object[] array) {
             return Quadruple.of((O1) array[0], (O2) array[1], (O3) array[2], (O4) array[3]);
         }
     }
@@ -410,9 +410,9 @@ public final class Logic {
 
         private final Set<Object>           empty;
         private final Set<? extends Struct> set;
-        private final Struct                in;
+        private final Object[]              in;
 
-        private UnboundVariableException(Set<Object> empty, Set<? extends Struct> set, Struct in) {
+        private UnboundVariableException(Set<Object> empty, Set<? extends Struct> set, Object[] in) {
             this.empty = empty;
             this.set = set;
             this.in = in;
@@ -422,7 +422,7 @@ public final class Logic {
             return set.map(s -> {
                 Map<Object, Object> vs = vars;
                 for (int i = 0; i < s.length(); i++) {
-                    Object vin = in.get(i);
+                    Object vin = in[i];
                     if (empty.contains(vin)) {
                         vs = vs.put(vin, s.get(i));
                     }
