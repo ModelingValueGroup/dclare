@@ -22,7 +22,6 @@ package org.modelingvalue.dclare;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -33,6 +32,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
+import org.modelingvalue.collections.struct.impl.StructImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadPredicate;
@@ -71,6 +71,14 @@ public final class Logic {
         }
     }
 
+    public static final class Relation extends StructImpl {
+        private static final long serialVersionUID = -3477936037166526320L;
+
+        public Relation(Object... data) {
+            super(data);
+        }
+    }
+
     public static abstract class Functor<S extends Struct> {
         private final Constant<S, Set<S>> extend;
 
@@ -93,31 +101,28 @@ public final class Logic {
 
         protected final S bind(S in) {
             Map<Object, Object> vars = VARIABLES.get();
-            if (!vars.isEmpty()) {
-                Object[] pat = in.toArray();
-                Object[] out = in.toArray();
-                Set<Object> empty = Set.of();
-                for (int i = 0; i < in.length(); i++) {
-                    Object vin = in.get(i);
-                    if (vars.containsKey(vin)) {
-                        Object vout = vars.get(vin);
-                        if (vout == null) {
-                            pat[i] = null;
-                            empty = empty.add(vin);
-                        } else {
-                            out[i] = vout;
-                        }
+            Object[] pat = in.toArray();
+            Object[] out = in.toArray();
+            Set<Object> empty = Set.of();
+            for (int i = 0; i < in.length(); i++) {
+                Object vin = in.get(i);
+                if (vars.containsKey(vin)) {
+                    Object vout = vars.get(vin);
+                    pat[i] = vout;
+                    if (vout == null) {
+                        empty = empty.add(vin);
+                    } else {
+                        out[i] = vout;
                     }
                 }
-                if (!empty.isEmpty()) {
-                    Set<S> set = extend.get(copy(pat));
-                    if (!set.isEmpty()) {
-                        throw new UnboundVariableException(empty, set, in);
-                    }
-                }
-                return copy(out);
             }
-            return in;
+            if (!empty.isEmpty()) {
+                Set<S> set = extend.get(copy(pat));
+                if (!set.isEmpty()) {
+                    throw new UnboundVariableException(empty, set, in);
+                }
+            }
+            return copy(out);
         }
 
         @SuppressWarnings("rawtypes")
@@ -146,57 +151,47 @@ public final class Logic {
         protected abstract S copy(Object[] array);
     };
 
+    private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
+        return VARIABLES.get(VARIABLES.get().putAll(vars), predicate);
+    }
+
     // Relations
 
-    public static final <O> Rel1<O> rel1(Object id, //
-            java.util.function.Function<O, BooleanSupplier> p) {
-        return new Rel1<O>(id, (o) -> p.apply(o).getAsBoolean());
-    }
-
     public static final <O> Rel1<O> rel1(Object id) {
-        return new Rel1<O>(id, null);
-    }
-
-    public static final <O1, O2> Rel2<O1, O2> rel2(Object id, //
-            java.util.function.BiFunction<O1, O2, BooleanSupplier> p) {
-        return new Rel2<O1, O2>(id, (o1, o2) -> p.apply(o1, o2).getAsBoolean());
+        return new Rel1<O>(id);
     }
 
     public static final <O1, O2> Rel2<O1, O2> rel2(Object id) {
-        return new Rel2<O1, O2>(id, null);
-    }
-
-    public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id, //
-            org.modelingvalue.collections.util.TriFunction<O1, O2, O3, BooleanSupplier> p) {
-        return new Rel3<O1, O2, O3>(id, (o1, o2, o3) -> p.apply(o1, o2, o3).getAsBoolean());
+        return new Rel2<O1, O2>(id);
     }
 
     public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id) {
-        return new Rel3<O1, O2, O3>(id, null);
-    }
-
-    public static final <O1, O2, O3, O4> Rel4<O1, O2, O3, O4> rel4(Object id, //
-            org.modelingvalue.collections.util.QuadFunction<O1, O2, O3, O4, BooleanSupplier> p) {
-        return new Rel4<O1, O2, O3, O4>(id, (o1, o2, o3, o4) -> p.apply(o1, o2, o3, o4).getAsBoolean());
+        return new Rel3<O1, O2, O3>(id);
     }
 
     public static final <O1, O2, O3, O4> Rel4<O1, O2, O3, O4> rel4(Object id) {
-        return new Rel4<O1, O2, O3, O4>(id, null);
+        return new Rel4<O1, O2, O3, O4>(id);
     }
 
     public static final class Rel1<O> extends Functor<Single<O>> {
         private final Constant<Single<O>, Boolean> constant;
+        private Set<Predicate<O>>                  rules   = Set.of();
+        private Function<Single<O>, Boolean>       deriver = null;
 
-        private Rel1(Object id, Predicate<O> p) {
+        private Rel1(Object id) {
             super(id);
-            constant = Constant.<Single<O>, Boolean> of(id, p != null ? null : false, //
-                    p == null ? null : derive(o -> p.test(o.a())), //
-                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
+            constant = Constant.<Single<O>, Boolean> of(id, false, //
+                    (tx, o, b, t) -> extend(o, t, deriver != null), CoreSetableModifier.durable);
+        }
+
+        public void rule(O v1, Supplier<Boolean> p) {
+            rules = rules.add(o -> run(Map.of(Entry.of(v1, o)), p));
+            deriver = s -> any(rules.map(r -> () -> r.test(s.a()))).get();
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier is(O o) {
-            return () -> constant.get(bind(Single.of(o)));
+        public Supplier<Boolean> is(O o) {
+            return () -> constant.get(bind(Single.of(o)), deriver);
         }
 
         public void fact(O o) {
@@ -217,17 +212,23 @@ public final class Logic {
 
     public static final class Rel2<O1, O2> extends Functor<Pair<O1, O2>> {
         private final Constant<Pair<O1, O2>, Boolean> constant;
+        private Set<BiPredicate<O1, O2>>              rules   = Set.of();
+        private Function<Pair<O1, O2>, Boolean>       deriver = null;
 
-        private Rel2(Object id, BiPredicate<O1, O2> p) {
+        private Rel2(Object id) {
             super(id);
-            constant = Constant.<Pair<O1, O2>, Boolean> of(id, p != null ? null : false, //
-                    p == null ? null : derive(o -> p.test(o.a(), o.b())), //
-                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
+            constant = Constant.<Pair<O1, O2>, Boolean> of(id, false, //
+                    (tx, o, b, t) -> extend(o, t, deriver != null), CoreSetableModifier.durable);
+        }
+
+        public void rule(O1 v1, O2 v2, Supplier<Boolean> p) {
+            rules = rules.add((o1, o2) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2)), p));
+            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b()))).get();
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier is(O1 o1, O2 o2) {
-            return () -> constant.get(bind(Pair.of(o1, o2)));
+        public Supplier<Boolean> is(O1 o1, O2 o2) {
+            return () -> constant.get(bind(Pair.of(o1, o2)), deriver);
         }
 
         public void fact(O1 o1, O2 o2) {
@@ -248,17 +249,23 @@ public final class Logic {
 
     public static final class Rel3<O1, O2, O3> extends Functor<Triple<O1, O2, O3>> {
         private final Constant<Triple<O1, O2, O3>, Boolean> constant;
+        private Set<TriPredicate<O1, O2, O3>>               rules   = Set.of();
+        private Function<Triple<O1, O2, O3>, Boolean>       deriver = null;
 
-        private Rel3(Object id, TriPredicate<O1, O2, O3> p) {
+        private Rel3(Object id) {
             super(id);
-            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, p != null ? null : false, //
-                    p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c())), //
-                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
+            constant = Constant.<Triple<O1, O2, O3>, Boolean> of(id, false, //
+                    (tx, o, b, t) -> extend(o, t, deriver != null), CoreSetableModifier.durable);
+        }
+
+        public void rule(O1 v1, O2 v2, O3 v3, Supplier<Boolean> p) {
+            rules = rules.add((o1, o2, o3) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2), Entry.of(v3, o3)), p));
+            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b(), s.c()))).get();
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier is(O1 o1, O2 o2, O3 o3) {
-            return () -> constant.get(bind(Triple.of(o1, o2, o3)));
+        public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3) {
+            return () -> constant.get(bind(Triple.of(o1, o2, o3)), deriver);
         }
 
         public void fact(O1 o1, O2 o2, O3 o3) {
@@ -279,17 +286,23 @@ public final class Logic {
 
     public static final class Rel4<O1, O2, O3, O4> extends Functor<Quadruple<O1, O2, O3, O4>> {
         private final Constant<Quadruple<O1, O2, O3, O4>, Boolean> constant;
+        private Set<QuadPredicate<O1, O2, O3, O4>>                 rules   = Set.of();
+        private Function<Quadruple<O1, O2, O3, O4>, Boolean>       deriver = null;
 
-        private Rel4(Object id, QuadPredicate<O1, O2, O3, O4> p) {
+        private Rel4(Object id) {
             super(id);
-            constant = Constant.<Quadruple<O1, O2, O3, O4>, Boolean> of(id, p != null ? null : false, //
-                    p == null ? null : derive(o -> p.test(o.a(), o.b(), o.c(), o.d())), //
-                    (tx, o, b, t) -> extend(o, t, p != null), CoreSetableModifier.durable);
+            constant = Constant.<Quadruple<O1, O2, O3, O4>, Boolean> of(id, false, //
+                    (tx, o, b, t) -> extend(o, t, deriver != null), CoreSetableModifier.durable);
+        }
+
+        public void rule(O1 v1, O2 v2, O3 v3, O4 v4, Supplier<Boolean> p) {
+            rules = rules.add((o1, o2, o3, o4) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2), Entry.of(v3, o3), Entry.of(v4, o4)), p));
+            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b(), s.c(), s.d()))).get();
         }
 
         @SuppressWarnings("unchecked")
-        public BooleanSupplier is(O1 o1, O2 o2, O3 o3, O4 o4) {
-            return () -> constant.get(bind(Quadruple.of(o1, o2, o3, o4)));
+        public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3, O4 o4) {
+            return () -> constant.get(bind(Quadruple.of(o1, o2, o3, o4)), deriver);
         }
 
         public void fact(O1 o1, O2 o2, O3 o3, O4 o4) {
@@ -310,89 +323,81 @@ public final class Logic {
 
     // Not
 
-    public static final BooleanSupplier not(BooleanSupplier predicate) {
-        return () -> !predicate.getAsBoolean();
+    public static final Supplier<Boolean> not(Supplier<Boolean> predicate) {
+        return () -> !predicate.get();
     }
 
     // Or
 
     @SafeVarargs
-    public static final BooleanSupplier or(BooleanSupplier... predicates) {
-        return () -> or(List.of(predicates));
+    public static final Supplier<Boolean> or(Supplier<Boolean>... predicates) {
+        List<Supplier<Boolean>> list = List.of(predicates);
+        return list.isEmpty() ? () -> false : list.size() == 1 ? list.get(0) : () -> or(list);
     }
 
-    public static final BooleanSupplier any(Collection<BooleanSupplier> predicates) {
-        return () -> or(predicates.asList());
+    public static final Supplier<Boolean> any(Collection<Supplier<Boolean>> predicates) {
+        List<Supplier<Boolean>> list = predicates.asList();
+        return list.isEmpty() ? () -> false : list.size() == 1 ? list.get(0) : () -> or(list);
     }
 
-    private static boolean or(List<BooleanSupplier> predicates) {
-        if (predicates.isEmpty()) {
-            return false;
-        } else if (predicates.size() == 1) {
-            return predicates.first().getAsBoolean();
-        } else {
-            List<BooleanSupplier> or = predicates.random().asList();
-            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-            boolean result = or.anyMatch(p -> {
-                try {
-                    return p.getAsBoolean();
-                } catch (UnboundVariableException uve) {
-                    ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
-                    return true;
-                } catch (CircularLogicException cle) {
-                    ref.updateAndGet(rte -> rte == null ? cle : rte);
-                    return false;
-                }
-            });
-            RuntimeException exc = ref.get();
-            if (exc instanceof UnboundVariableException) {
-                throw exc;
-            } else if (!result && exc != null) {
-                throw exc;
-            } else {
-                return result;
+    private static boolean or(List<Supplier<Boolean>> predicates) {
+        List<Supplier<Boolean>> or = predicates.random().asList();
+        AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+        boolean result = or.anyMatch(p -> {
+            try {
+                return p.get();
+            } catch (UnboundVariableException uve) {
+                ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
+                return true;
+            } catch (CircularLogicException cle) {
+                ref.updateAndGet(rte -> rte == null ? cle : rte);
+                return false;
             }
+        });
+        RuntimeException exc = ref.get();
+        if (exc instanceof UnboundVariableException) {
+            throw exc;
+        } else if (!result && exc != null) {
+            throw exc;
+        } else {
+            return result;
         }
     }
 
     // And
 
     @SafeVarargs
-    public static final BooleanSupplier and(BooleanSupplier... predicates) {
-        return () -> and(List.of(predicates));
+    public static final Supplier<Boolean> and(Supplier<Boolean>... predicates) {
+        List<Supplier<Boolean>> list = List.of(predicates);
+        return list.isEmpty() ? () -> true : list.size() == 1 ? list.get(0) : () -> and(list);
     }
 
-    public static final BooleanSupplier all(Collection<BooleanSupplier> predicates) {
-        return () -> and(predicates.asList());
+    public static final Supplier<Boolean> all(Collection<Supplier<Boolean>> predicates) {
+        List<Supplier<Boolean>> list = predicates.asList();
+        return list.isEmpty() ? () -> true : list.size() == 1 ? list.get(0) : () -> and(list);
     }
 
-    private static boolean and(List<BooleanSupplier> predicates) {
-        if (predicates.isEmpty()) {
-            return true;
-        } else if (predicates.size() == 1) {
-            return predicates.first().getAsBoolean();
-        } else {
-            List<BooleanSupplier> and = predicates.random().asList();
-            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-            boolean result = and.allMatch(p -> {
-                try {
-                    return p.getAsBoolean();
-                } catch (UnboundVariableException uve) {
-                    ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
-                    return false;
-                } catch (CircularLogicException cle) {
-                    ref.updateAndGet(rte -> rte == null ? cle : rte);
-                    return true;
-                }
-            });
-            RuntimeException exc = ref.get();
-            if (exc instanceof UnboundVariableException) {
-                throw exc;
-            } else if (result && exc != null) {
-                throw exc;
-            } else {
-                return result;
+    private static boolean and(List<Supplier<Boolean>> predicates) {
+        List<Supplier<Boolean>> and = predicates.random().asList();
+        AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+        boolean result = and.allMatch(p -> {
+            try {
+                return p.get();
+            } catch (UnboundVariableException uve) {
+                ref.updateAndGet(rte -> rte == null || rte instanceof CircularLogicException ? uve : rte);
+                return false;
+            } catch (CircularLogicException cle) {
+                ref.updateAndGet(rte -> rte == null ? cle : rte);
+                return true;
             }
+        });
+        RuntimeException exc = ref.get();
+        if (exc instanceof UnboundVariableException) {
+            throw exc;
+        } else if (result && exc != null) {
+            throw exc;
+        } else {
+            return result;
         }
     }
 
@@ -428,26 +433,35 @@ public final class Logic {
     }
 
     @SuppressWarnings("unchecked")
-    public static final <V1> BooleanSupplier uni(V1 v1, BooleanSupplier predicate) {
-        return () -> doUni(Collection.of(v1).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
+    public static final <V1> Supplier<Boolean> uni(V1 v1, Supplier<Boolean> predicate) {
+        Map<Object, Object> vars = Map.of(Entry.of(v1, null));
+        return () -> doUni(vars, predicate);
     }
 
     @SuppressWarnings("unchecked")
-    public static final <V1, V2> BooleanSupplier uni(V1 v1, V2 v2, BooleanSupplier predicate) {
-        return () -> doUni(Collection.of(v1, v2).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
+    public static final <V1, V2> Supplier<Boolean> uni(V1 v1, V2 v2, Supplier<Boolean> predicate) {
+        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null));
+        return () -> doUni(vars, predicate);
     }
 
     @SuppressWarnings("unchecked")
-    public static final <V1, V2, V3> BooleanSupplier uni(V1 v1, V2 v2, V3 v3, BooleanSupplier predicate) {
-        return () -> doUni(Collection.of(v1, v2, v3).asMap(o -> Entry.of(o, null)), () -> predicate.getAsBoolean());
+    public static final <V1, V2, V3> Supplier<Boolean> uni(V1 v1, V2 v2, V3 v3, Supplier<Boolean> predicate) {
+        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null), Entry.of(v3, null));
+        return () -> doUni(vars, predicate);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static final <V1, V2, V3, V4> Supplier<Boolean> uni(V1 v1, V2 v2, V3 v3, V4 v4, Supplier<Boolean> predicate) {
+        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null), Entry.of(v3, null), Entry.of(v4, null));
+        return () -> doUni(vars, predicate);
     }
 
     private static boolean doUni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
         try {
-            return VARIABLES.get(vars, predicate);
+            return run(vars, predicate);
         } catch (UnboundVariableException uve) {
             if (uve.empty.anyMatch(vars::containsKey)) {
-                return any(uve.bindings(vars).map(vs -> () -> doUni(vs, predicate))).getAsBoolean();
+                return any(uve.bindings(vars).map(vs -> () -> doUni(vs, predicate))).get();
             } else {
                 throw uve;
             }

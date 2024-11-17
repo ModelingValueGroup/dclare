@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
-import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.dclare.Logic.Rel2;
@@ -40,21 +40,24 @@ public class LogicTest {
         universeTransaction.waitForEnd();
     }
 
-    static void isTrue(BooleanSupplier bs) {
-        assertTrue(bs.getAsBoolean());
+    static void isTrue(Supplier<Boolean> bs) {
+        assertTrue(bs.get());
     }
 
-    static void isFalse(BooleanSupplier bs) {
-        assertTrue(!bs.getAsBoolean());
+    static void isFalse(Supplier<Boolean> bs) {
+        assertTrue(!bs.get());
     }
-
-    static final String               X        = "$X";
 
     static final Rel2<String, String> PARENT   = rel2("parent");
+    static final Rel2<String, String> ANCESTOR = rel2("ancestor");
 
-    static final Rel2<String, String> ANCESTOR = rel2("ancestor",               // 
-            (a, o) -> or(PARENT.is(a, o),                                       //
-                    uni(X, and(LogicTest.ANCESTOR.is(a, X), PARENT.is(X, o)))));
+    static final String               A        = "A";             // Ancestor
+    static final String               O        = "O";             // Offspring
+    static final String               R        = "R";             // Relative
+    static {
+        ANCESTOR.rule(A, O, PARENT.is(A, O)); //
+        ANCESTOR.rule(A, O, uni(R, and(ANCESTOR.is(A, R), PARENT.is(R, O))));
+    }
 
     @RepeatedTest(512)
     public void test1() {
@@ -74,8 +77,8 @@ public class LogicTest {
             isFalse(PARENT.is("Heleeen", "Wim"));
             isFalse(PARENT.is("Wim", "Wim"));
 
-            isTrue(ANCESTOR.is("Carel", "Marijn"));
             isTrue(ANCESTOR.is("Wim", "Marijn"));
+            isTrue(ANCESTOR.is("Carel", "Marijn"));
 
             isFalse(ANCESTOR.is("Marijn", "Wim"));
             isFalse(ANCESTOR.is("Heleeen", "Wim"));
