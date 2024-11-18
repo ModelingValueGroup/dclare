@@ -27,7 +27,6 @@ import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.RepeatedTest;
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Logic.Rel2;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -36,7 +35,7 @@ public class LogicTest {
 
     void run(Runnable test) {
         UniverseTransaction universeTransaction = new UniverseTransaction(Universe.of(), THE_POOL);
-        universeTransaction.put("test", Collection.sequential(test));
+        universeTransaction.put("test", test);
         universeTransaction.stop();
         universeTransaction.waitForEnd();
     }

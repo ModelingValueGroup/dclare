@@ -48,26 +48,6 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
 
-    @SuppressWarnings("rawtypes")
-    public static final class CircularLogicException extends RuntimeException {
-        private static final long                 serialVersionUID = 293433487448006753L;
-
-        private final List<Pair<Functor, Struct>> derived;
-        private final Pair<Functor, Struct>       current;
-
-        private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
-            this.derived = derived;
-            this.current = current;
-        }
-
-        @Override
-        public String getMessage() {
-            int i = derived.firstIndexOf(current);
-            List<Pair<Functor, Struct>> cycle = derived.sublist(0, i + 1).prepend(current);
-            return "Cycle " + cycle.reverse().asList().toString().substring(4);
-        }
-    }
-
     public static final class Relation extends StructImpl {
         private static final long serialVersionUID = -3477936037166526320L;
 
@@ -109,7 +89,6 @@ public final class Logic {
                 }
             }
             S s = struct(out);
-
             if (deriver != null) {
                 Pair<Functor, Struct> slot = Pair.of(this, s);
                 List<Pair<Functor, Struct>> pre = DERIVED.get();
@@ -123,7 +102,17 @@ public final class Logic {
                 if (set.isEmpty()) {
                     return false;
                 } else if (!empty.isEmpty()) {
-                    throw new UnboundVariableException(empty, set, in);
+                    Set<Object> em = empty;
+                    throw new UnboundVariableException(set.map(b -> {
+                        Map<Object, Object> vs = Map.of();
+                        for (int i = 0; i < b.length(); i++) {
+                            Object vin = in[i];
+                            if (em.contains(vin)) {
+                                vs = vs.put(vin, b.get(i));
+                            }
+                        }
+                        return vs;
+                    }).asSet());
                 } else {
                     return true;
                 }
@@ -160,11 +149,11 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
         Map<Object, Object> pre = VARIABLES.get();
-        if (vars.filter(kv -> kv.getValue() == null).anyMatch(kv -> pre.containsKey(kv.getKey()) && pre.get(kv.getKey()) == null)) {
-            List<Pair<Functor, Struct>> der = DERIVED.get();
-            throw new CircularLogicException(der, der.first());
-        } else {
+        Set<Object> cycle = vars.filter(kv -> kv.getValue() == null).map(Entry::getKey).filter(k -> pre.containsKey(k) && pre.get(k) == null).asSet();
+        if (cycle.isEmpty()) {
             return VARIABLES.get(pre.putAll(vars), predicate);
+        } else {
+            throw new CircularBindingException(cycle);
         }
     }
 
@@ -332,12 +321,12 @@ public final class Logic {
                     if (rte instanceof UnboundVariableException) {
                         return ((UnboundVariableException) rte).merge(uve);
                     } else {
-                        return rte == null || rte instanceof CircularLogicException ? uve : rte;
+                        return rte == null || rte instanceof CycleExcpetion ? uve : rte;
                     }
                 });
                 return false;
-            } catch (CircularLogicException cle) {
-                ref.updateAndGet(rte -> rte == null ? cle : rte);
+            } catch (CycleExcpetion ce) {
+                ref.updateAndGet(rte -> rte == null ? ce : rte);
                 return false;
             }
         });
@@ -375,12 +364,12 @@ public final class Logic {
                     if (rte instanceof UnboundVariableException) {
                         return ((UnboundVariableException) rte).merge(uve);
                     } else {
-                        return rte == null || rte instanceof CircularLogicException ? uve : rte;
+                        return rte == null || rte instanceof CycleExcpetion ? uve : rte;
                     }
                 });
                 return true;
-            } catch (CircularLogicException cle) {
-                ref.updateAndGet(rte -> rte == null ? cle : rte);
+            } catch (CycleExcpetion ce) {
+                ref.updateAndGet(rte -> rte == null ? ce : rte);
                 return true;
             }
         });
@@ -397,33 +386,6 @@ public final class Logic {
     // Unification
 
     private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
-
-    public static final class UnboundVariableException extends RuntimeException {
-        private static final long              serialVersionUID = 4505117271488648346L;
-
-        private final Set<Map<Object, Object>> bindings;
-
-        private UnboundVariableException(Set<Object> empty, Set<? extends Struct> set, Object[] in) {
-            this.bindings = set.map(b -> {
-                Map<Object, Object> vars = Map.of();
-                for (int i = 0; i < b.length(); i++) {
-                    Object vin = in[i];
-                    if (empty.contains(vin)) {
-                        vars = vars.put(vin, b.get(i));
-                    }
-                }
-                return vars;
-            }).asSet();
-        }
-
-        private UnboundVariableException(Set<Map<Object, Object>> bindings) {
-            this.bindings = bindings;
-        }
-
-        private UnboundVariableException merge(UnboundVariableException other) {
-            return new UnboundVariableException(bindings.addAll(other.bindings));
-        }
-    }
 
     @SuppressWarnings("unchecked")
     public static final <V1> Supplier<Boolean> uni(V1 v1, Supplier<Boolean> predicate) {
@@ -454,6 +416,61 @@ public final class Logic {
             return run(vars, predicate);
         } catch (UnboundVariableException uve) {
             return any(uve.bindings.map(vs -> () -> doUni(vars.putAll(vs), predicate))).get();
+        }
+    }
+
+    // Runtime Exceptions
+
+    public static final class UnboundVariableException extends RuntimeException {
+        private static final long              serialVersionUID = 4505117271488648346L;
+
+        private final Set<Map<Object, Object>> bindings;
+
+        private UnboundVariableException(Set<Map<Object, Object>> bindings) {
+            this.bindings = bindings;
+        }
+
+        private UnboundVariableException merge(UnboundVariableException other) {
+            return new UnboundVariableException(bindings.addAll(other.bindings));
+        }
+    }
+
+    private static abstract class CycleExcpetion extends RuntimeException {
+        private static final long serialVersionUID = -1561492438458671302L;
+    }
+
+    public static final class CircularBindingException extends CycleExcpetion {
+        private static final long serialVersionUID = 1636584651815799600L;
+
+        private final Set<Object> cycle;
+
+        private CircularBindingException(Set<Object> cycle) {
+            this.cycle = cycle;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Cycle Variables " + cycle.toString().substring(3);
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static final class CircularLogicException extends CycleExcpetion {
+        private static final long                 serialVersionUID = 293433487448006753L;
+
+        private final List<Pair<Functor, Struct>> derived;
+        private final Pair<Functor, Struct>       current;
+
+        private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
+            this.derived = derived;
+            this.current = current;
+        }
+
+        @Override
+        public String getMessage() {
+            int i = derived.firstIndexOf(current);
+            List<Pair<Functor, Struct>> cycle = derived.sublist(0, i + 1).prepend(current);
+            return "Cycle Logic " + cycle.reverse().asList().toString().substring(4);
         }
     }
 
