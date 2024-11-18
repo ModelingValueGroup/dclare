@@ -34,7 +34,6 @@ import org.modelingvalue.dclare.Logic.Is;
 import org.modelingvalue.dclare.Logic.Rel2;
 import org.modelingvalue.dclare.Logic.Relation1;
 import org.modelingvalue.dclare.Logic.Relation2;
-import org.modelingvalue.dclare.Logic.Rule;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 
@@ -104,7 +103,7 @@ public class LogicTest {
             fact(parentChild(Wim, Joppe));
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
-            Rule r = rule(ancestorDescendent(A, D), R, ancestorDescendent(A, R), parentChild(R, D));
+            rule(ancestorDescendent(A, D), R, ancestorDescendent(A, R), parentChild(R, D));
 
             isTrue(is(ancestorDescendent(Carel, Joppe)));
 
