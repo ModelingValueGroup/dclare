@@ -59,19 +59,8 @@ public class LogicTest {
         ANCESTOR.rule(A, O, uni(R, and(ANCESTOR.is(A, R), PARENT.is(R, O))));
     }
 
-    @RepeatedTest(512)
+    @RepeatedTest(1024)
     public void test1() {
-        run(() -> {
-            PARENT.fact("Carel", "Jan");
-            PARENT.fact("Jan", "Wim");
-            PARENT.fact("Wim", "Joppe");
-
-            isTrue(ANCESTOR.is("Carel", "Joppe"));
-        });
-    }
-
-    @RepeatedTest(512)
-    public void test2() {
         run(() -> {
             PARENT.fact("Carel", "Jan");
             PARENT.fact("Jan", "Wim");
