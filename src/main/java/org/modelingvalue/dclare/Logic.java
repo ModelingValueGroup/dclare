@@ -48,21 +48,18 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
 
+    @SuppressWarnings("rawtypes")
     public static final class CircularLogicException extends RuntimeException {
         private static final long                 serialVersionUID = 293433487448006753L;
 
-        @SuppressWarnings("rawtypes")
         private final List<Pair<Functor, Struct>> derived;
-        @SuppressWarnings("rawtypes")
         private final Pair<Functor, Struct>       current;
 
-        @SuppressWarnings("rawtypes")
         private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
             this.derived = derived;
             this.current = current;
         }
 
-        @SuppressWarnings("rawtypes")
         @Override
         public String getMessage() {
             int i = derived.firstIndexOf(current);
