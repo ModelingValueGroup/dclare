@@ -162,17 +162,19 @@ public final class Logic {
                     String string = super.toString();
                     return string.substring(1, string.length() - 1).replaceFirst(",", "(") + ")";
                 }
-            } else if (method.getName().equals("get1")) {
-                return super.get(1);
-            } else if (method.getName().equals("get2")) {
-                return super.get(2);
-            } else if (method.getName().equals("get3")) {
-                return super.get(3);
-            } else if (method.getName().equals("get4")) {
-                return super.get(4);
-            } else if (method.getName().equals("type")) {
-                return super.get(0);
             } else {
+                switch (method.getName()) {
+                case "get1":
+                    return super.get(1);
+                case "get2":
+                    return super.get(2);
+                case "get3":
+                    return super.get(3);
+                case "get4":
+                    return super.get(4);
+                case "type":
+                    return super.get(0);
+                }
                 throw new Error("No handler for " + method);
             }
         }
