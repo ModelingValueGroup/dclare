@@ -20,6 +20,9 @@
 
 package org.modelingvalue.dclare;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -32,7 +35,6 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
-import org.modelingvalue.collections.struct.impl.StructImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadPredicate;
@@ -48,13 +50,58 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
 
-    public static final class Relation extends StructImpl {
-        private static final long serialVersionUID = -3477936037166526320L;
+    public static interface Variable {
+    }
 
-        public Relation(Object... data) {
-            super(data);
+    public static interface Thing {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T var(Class<T> type, String name) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(name));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T obj(Class<T> type, String name) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Thing.class}, new DynamicClass(name));
+    }
+
+    private static final class DynamicClass implements InvocationHandler {
+
+        private static Method EQUALS;
+        private static Method HASHCODE;
+        private static Method TO_STRING;
+        static {
+            try {
+                EQUALS = Object.class.getMethod("equals", Object.class);
+                HASHCODE = Object.class.getMethod("hashCode");
+                TO_STRING = Object.class.getMethod("toString");
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw new Error(e);
+            }
+        }
+
+        private final String name;
+
+        public DynamicClass(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (method.equals(EQUALS)) {
+                return proxy == args[0] ? Boolean.TRUE : Boolean.FALSE;
+            } else if (method.equals(HASHCODE)) {
+                return Integer.valueOf(System.identityHashCode(proxy));
+            } else if (method.equals(TO_STRING)) {
+                return name;
+            } else {
+                throw new Error("unexpected Object method dispatched: " + method);
+            }
         }
     }
+
+    // Functors
 
     public static abstract class Functor<S extends Struct> {
         private final Constant<S, Set<S>> extend;

@@ -24,9 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.RepeatedTest;
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Logic.Rel2;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -35,7 +37,8 @@ public class LogicTest {
 
     void run(Runnable test) {
         UniverseTransaction universeTransaction = new UniverseTransaction(Universe.of(), THE_POOL);
-        universeTransaction.put("test", test);
+        boolean seq = ThreadLocalRandom.current().nextBoolean();
+        universeTransaction.put("test", seq ? Collection.sequential(test) : test);
         universeTransaction.stop();
         universeTransaction.waitForEnd();
     }
@@ -48,42 +51,52 @@ public class LogicTest {
         assertTrue(!bs.get());
     }
 
-    static final Rel2<String, String> PARENT   = rel2("parent");
-    static final Rel2<String, String> ANCESTOR = rel2("ancestor");
-
-    static final String               A        = "A";             // Ancestor
-    static final String               O        = "O";             // Offspring
-    static final String               R        = "R";             // Relative
-    static {
-        ANCESTOR.rule(A, O, PARENT.is(A, O)); //
-        ANCESTOR.rule(A, O, uni(R, and(ANCESTOR.is(A, R), PARENT.is(R, O))));
-    }
-
     @RepeatedTest(1024)
     public void test1() {
         run(() -> {
-            PARENT.fact("Carel", "Jan");
-            PARENT.fact("Jan", "Wim");
-            PARENT.fact("Elske", "Wim");
-            PARENT.fact("Wim", "Joppe");
-            PARENT.fact("Heleen", "Joppe");
-            PARENT.fact("Wim", "Marijn");
-            PARENT.fact("Heleeen", "Marijn");
+            interface Person {
+            }
 
-            isTrue(PARENT.is("Heleen", "Joppe"));
-            isTrue(PARENT.is("Jan", "Wim"));
+            Rel2<Person, Person> PARENT = rel2("parent");
+            Rel2<Person, Person> ANCESTOR = rel2("ancestor");
 
-            isFalse(PARENT.is("Marijn", "Wim"));
-            isFalse(PARENT.is("Heleeen", "Wim"));
-            isFalse(PARENT.is("Wim", "Wim"));
+            Person A = var(Person.class, "A"); // Ancestor
+            Person O = var(Person.class, "O"); // Offspring
+            Person R = var(Person.class, "R"); // Relative
 
-            isTrue(ANCESTOR.is("Wim", "Marijn"));
-            isTrue(ANCESTOR.is("Carel", "Marijn"));
+            ANCESTOR.rule(A, O, PARENT.is(A, O));
+            ANCESTOR.rule(A, O, uni(R, and(ANCESTOR.is(A, R), PARENT.is(R, O))));
 
-            isFalse(ANCESTOR.is("Marijn", "Wim"));
-            isFalse(ANCESTOR.is("Heleeen", "Wim"));
-            isFalse(ANCESTOR.is("Joppe", "Carel"));
-            isFalse(ANCESTOR.is("Carel", "Carel"));
+            Person Carel = obj(Person.class, "Carel");
+            Person Jan = obj(Person.class, "Jan");
+            Person Elske = obj(Person.class, "Elske");
+            Person Wim = obj(Person.class, "Wim");
+            Person Joppe = obj(Person.class, "Joppe");
+            Person Heleen = obj(Person.class, "Heleen");
+            Person Marijn = obj(Person.class, "Marijn");
+
+            PARENT.fact(Carel, Jan);
+            PARENT.fact(Jan, Wim);
+            PARENT.fact(Elske, Wim);
+            PARENT.fact(Wim, Joppe);
+            PARENT.fact(Heleen, Joppe);
+            PARENT.fact(Wim, Marijn);
+            PARENT.fact(Heleen, Marijn);
+
+            isTrue(PARENT.is(Heleen, Joppe));
+            isTrue(PARENT.is(Jan, Wim));
+
+            isFalse(PARENT.is(Marijn, Wim));
+            isFalse(PARENT.is(Heleen, Wim));
+            isFalse(PARENT.is(Wim, Wim));
+
+            isTrue(ANCESTOR.is(Wim, Marijn));
+            isTrue(ANCESTOR.is(Carel, Marijn));
+
+            isFalse(ANCESTOR.is(Marijn, Wim));
+            isFalse(ANCESTOR.is(Heleen, Wim));
+            isFalse(ANCESTOR.is(Joppe, Carel));
+            isFalse(ANCESTOR.is(Carel, Carel));
         });
     }
 }
