@@ -112,10 +112,10 @@ public final class Logic {
                 }
             }
             S s = struct(out);
-            Pair<Functor, Struct> slot = Pair.of(this, s);
-            List<Pair<Functor, Struct>> pre = DERIVED.get();
+
             if (deriver != null) {
-                System.err.println("  ".repeat(pre.size()) + slot);
+                Pair<Functor, Struct> slot = Pair.of(this, s);
+                List<Pair<Functor, Struct>> pre = DERIVED.get();
                 if (pre.contains(slot)) {
                     throw new CircularLogicException(pre, slot);
                 } else {
@@ -123,7 +123,6 @@ public final class Logic {
                 }
             } else {
                 Set<S> set = extend.get(s);
-                System.err.println("  ".repeat(pre.size()) + slot + " " + set);
                 if (set.isEmpty()) {
                     return false;
                 } else if (!empty.isEmpty()) {
@@ -164,13 +163,11 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
         Map<Object, Object> pre = VARIABLES.get();
-        List<Pair<Functor, Struct>> der = DERIVED.get();
         if (vars.filter(kv -> kv.getValue() == null).anyMatch(kv -> pre.containsKey(kv.getKey()) && pre.get(kv.getKey()) == null)) {
+            List<Pair<Functor, Struct>> der = DERIVED.get();
             throw new CircularLogicException(der, der.first());
         } else {
-            Map<Object, Object> all = pre.putAll(vars);
-            System.err.println(" ".repeat(der.size() * 2 - 1) + all);
-            return VARIABLES.get(all, predicate);
+            return VARIABLES.get(pre.putAll(vars), predicate);
         }
     }
 
