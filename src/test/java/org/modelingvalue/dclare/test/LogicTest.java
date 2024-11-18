@@ -57,15 +57,15 @@ public class LogicTest {
             interface Person {
             }
 
-            Rel2<Person, Person> PARENT = rel2("parent");
-            Rel2<Person, Person> ANCESTOR = rel2("ancestor");
+            Rel2<Person, Person> parent_child = rel2("PC");
+            Rel2<Person, Person> ancestor_descendent = rel2("AD");
 
             Person A = var(Person.class, "A"); // Ancestor
-            Person O = var(Person.class, "O"); // Offspring
+            Person D = var(Person.class, "D"); // Descendent
             Person R = var(Person.class, "R"); // Relative
 
-            ANCESTOR.rule(A, O, PARENT.is(A, O));
-            ANCESTOR.rule(A, O, uni(R, and(ANCESTOR.is(A, R), PARENT.is(R, O))));
+            ancestor_descendent.rule(A, D, parent_child.is(A, D));
+            ancestor_descendent.rule(A, D, uni(R, and(ancestor_descendent.is(A, R), parent_child.is(R, D))));
 
             Person Carel = obj(Person.class, "Carel");
             Person Jan = obj(Person.class, "Jan");
@@ -75,28 +75,28 @@ public class LogicTest {
             Person Heleen = obj(Person.class, "Heleen");
             Person Marijn = obj(Person.class, "Marijn");
 
-            PARENT.fact(Carel, Jan);
-            PARENT.fact(Jan, Wim);
-            PARENT.fact(Elske, Wim);
-            PARENT.fact(Wim, Joppe);
-            PARENT.fact(Heleen, Joppe);
-            PARENT.fact(Wim, Marijn);
-            PARENT.fact(Heleen, Marijn);
+            parent_child.fact(Carel, Jan);
+            parent_child.fact(Jan, Wim);
+            parent_child.fact(Elske, Wim);
+            parent_child.fact(Wim, Joppe);
+            parent_child.fact(Heleen, Joppe);
+            parent_child.fact(Wim, Marijn);
+            parent_child.fact(Heleen, Marijn);
 
-            isTrue(PARENT.is(Heleen, Joppe));
-            isTrue(PARENT.is(Jan, Wim));
+            isTrue(parent_child.is(Heleen, Joppe));
+            isTrue(parent_child.is(Jan, Wim));
 
-            isFalse(PARENT.is(Marijn, Wim));
-            isFalse(PARENT.is(Heleen, Wim));
-            isFalse(PARENT.is(Wim, Wim));
+            isFalse(parent_child.is(Marijn, Wim));
+            isFalse(parent_child.is(Heleen, Wim));
+            isFalse(parent_child.is(Wim, Wim));
 
-            isTrue(ANCESTOR.is(Wim, Marijn));
-            isTrue(ANCESTOR.is(Carel, Marijn));
+            isTrue(ancestor_descendent.is(Wim, Marijn));
+            isTrue(ancestor_descendent.is(Carel, Marijn));
 
-            isFalse(ANCESTOR.is(Marijn, Wim));
-            isFalse(ANCESTOR.is(Heleen, Wim));
-            isFalse(ANCESTOR.is(Joppe, Carel));
-            isFalse(ANCESTOR.is(Carel, Carel));
+            isFalse(ancestor_descendent.is(Marijn, Wim));
+            isFalse(ancestor_descendent.is(Heleen, Wim));
+            isFalse(ancestor_descendent.is(Joppe, Carel));
+            isFalse(ancestor_descendent.is(Carel, Carel));
         });
     }
 }
