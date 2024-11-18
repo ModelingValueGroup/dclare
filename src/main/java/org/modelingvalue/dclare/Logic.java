@@ -55,43 +55,68 @@ public final class Logic {
     }
 
     public static interface Relation {
+        Class<? extends Relation> type();
+    }
+
+    public static interface Relation0 extends Relation {
     }
 
     public static interface Relation1<R1> extends Relation {
+        R1 get1();
     }
 
     public static interface Relation2<R1, R2> extends Relation {
+        R1 get1();
+
+        R2 get2();
     }
 
     public static interface Relation3<R1, R2, R3> extends Relation {
+        R1 get1();
+
+        R2 get2();
+
+        R3 get3();
     }
 
     public static interface Relation4<R1, R2, R3, R4> extends Relation {
+        R1 get1();
+
+        R2 get2();
+
+        R3 get3();
+
+        R4 get4();
     }
 
     @SuppressWarnings("unchecked")
     public static <T extends Relation> T var(Class<T> type, String id) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(id, type));
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(type, id));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Relation0> T obj(Class<T> type) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type));
     }
 
     @SuppressWarnings("unchecked")
     public static <R1, T extends Relation1<R1>> T obj(Class<T> type, R1 id1) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, type));
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1));
     }
 
     @SuppressWarnings("unchecked")
     public static <R1, R2, T extends Relation2<R1, R2>> T obj(Class<T> type, R1 id1, R2 id2) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, type));
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2));
     }
 
     @SuppressWarnings("unchecked")
     public static <R1, R2, R3, T extends Relation3<R1, R2, R3>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, id3, type));
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2, id3));
     }
 
     @SuppressWarnings("unchecked")
     public static <R1, R2, R3, R4, T extends Relation4<R1, R2, R3, R4>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3, R4 id4) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, id3, id4, type));
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2, id3, id4));
     }
 
     private static final class DynamicClass extends StructImpl implements InvocationHandler {
@@ -114,6 +139,7 @@ public final class Logic {
             super(id);
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if (method.equals(EQUALS)) {
@@ -130,11 +156,88 @@ public final class Logic {
             } else if (method.equals(HASHCODE)) {
                 return super.hashCode();
             } else if (method.equals(TO_STRING)) {
-                return super.toString();
+                if (proxy instanceof L) {
+                    return list((L) proxy).toString().substring(4);
+                } else {
+                    String string = super.toString();
+                    return string.substring(1, string.length() - 1).replaceFirst(",", "(") + ")";
+                }
+            } else if (method.getName().equals("get1")) {
+                return super.get(1);
+            } else if (method.getName().equals("get2")) {
+                return super.get(2);
+            } else if (method.getName().equals("get3")) {
+                return super.get(3);
+            } else if (method.getName().equals("get4")) {
+                return super.get(4);
+            } else if (method.getName().equals("type")) {
+                return super.get(0);
             } else {
                 throw new Error("No handler for " + method);
             }
         }
+    }
+
+    // Facts, Rules, Is
+
+    public interface L<E extends Relation> extends Relation {
+    }
+
+    private interface EL<E extends Relation> extends L<E>, Relation0 {
+    }
+
+    private interface NEL<E extends Relation> extends L<E>, Relation2<E, L<E>> {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Relation> L<E> l(E head, L<E> tail) {
+        return obj(NEL.class, head, tail);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final L EMPTY = obj(EL.class);
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Relation> List<E> list(L<E> l) {
+        List<E> list = List.of();
+        while (l instanceof NEL) {
+            list = list.prepend(((NEL<E>) l).get1());
+            l = ((NEL<E>) l).get2();
+        }
+        return list;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Relation> L<E> l(E... es) {
+        L<E> l = EMPTY;
+        for (int i = es.length - 1; i >= 0; i--) {
+            l = l(es[i], l);
+        }
+        return l;
+    }
+
+    public static interface Fact extends Relation1<Relation> {
+    }
+
+    public static Fact fact(Relation rel) {
+        return obj(Fact.class, rel);
+    }
+
+    public static interface Rule extends Relation3<Relation, L<Relation>, L<Relation>> {
+    }
+
+    public static Rule rule(Relation rel, Relation... variablesPredicates) {
+        List<Relation> list = List.of(variablesPredicates);
+        List<Relation> variables = list.filter(r -> r instanceof Variable).asList();
+        List<Relation> predicates = list.filter(r -> !(r instanceof Variable)).asList();
+        return obj(Rule.class, rel, l(variables.toArray(i -> new Relation[i])), l(predicates.toArray(i -> new Relation[i])));
+    }
+
+    public static interface Is extends Relation1<L<Relation>> {
+    }
+
+    public static Is is(Relation... predicates) {
+        return obj(Is.class, l(predicates));
     }
 
     // Functors
