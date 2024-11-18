@@ -70,15 +70,15 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected final Boolean get(Function<S, Boolean> deriver, Object... in) {
-            Set<Object> empty = deriver == null ? Set.of() : null;
+            Set<Object> empty = Set.of();
             Map<Object, Object> vars = VARIABLES.get();
             Object[] out = in.clone();
             for (int i = 0; i < in.length; i++) {
                 while (vars.containsKey(in[i])) {
                     Object v = vars.get(in[i]);
                     if (v == null) {
+                        empty = empty.add(in[i]);
                         if (deriver == null) {
-                            empty = empty.add(out[i]);
                             out[i] = null;
                         }
                         break;
@@ -89,42 +89,44 @@ public final class Logic {
                 }
             }
             S s = struct(out);
-            if (deriver != null) {
-                Pair<Functor, Struct> slot = Pair.of(this, s);
-                List<Pair<Functor, Struct>> pre = DERIVED.get();
-                if (pre.contains(slot)) {
-                    throw new CircularLogicException(pre, slot);
-                } else {
-                    return DERIVED.get(pre.prepend(slot), () -> deriver.apply(s));
-                }
-            } else {
-                Set<S> set = extend.get(s);
-                if (set.isEmpty()) {
-                    return false;
-                } else if (!empty.isEmpty()) {
-                    Set<Object> em = empty;
-                    throw new BindingsFoundException(set.map(b -> {
-                        Map<Object, Object> vs = Map.of();
-                        for (int i = 0; i < b.length(); i++) {
-                            Object vin = in[i];
-                            if (em.contains(vin)) {
-                                vs = vs.put(vin, b.get(i));
-                            }
+            Set<S> set = deriver == null || empty.isEmpty() ? extend.get(s) : Set.of();
+            if (set.isEmpty()) {
+                if (deriver != null) {
+                    Pair<Functor, Struct> slot = Pair.of(this, s);
+                    List<Pair<Functor, Struct>> pre = DERIVED.get();
+                    if (pre.contains(slot)) {
+                        throw new CircularLogicException(pre, slot);
+                    } else {
+                        Boolean result = DERIVED.get(pre.prepend(slot), () -> deriver.apply(s));
+                        if (result) {
+                            extend.force(s, Set::add, s);
                         }
-                        return vs;
-                    }).asSet());
+                        return result;
+                    }
                 } else {
-                    return true;
+                    return Boolean.FALSE;
                 }
+            } else if (!empty.isEmpty()) {
+                Set<Object> em = empty;
+                throw new BindingsFoundException(set.map(b -> {
+                    Map<Object, Object> vs = Map.of();
+                    for (int i = 0; i < b.length(); i++) {
+                        Object vin = in[i];
+                        if (em.contains(vin)) {
+                            vs = vs.put(vin, b.get(i));
+                        }
+                    }
+                    return vs;
+                }).asSet());
+            } else {
+                return Boolean.TRUE;
             }
         }
 
         @SuppressWarnings("rawtypes")
-        protected final void set(S in, Boolean res, Function<S, Boolean> deriver) {
-            if (res && deriver == null) {
-                extend.force(in, Set::add, in);
-                set(0, in, in.toArray());
-            }
+        protected final void set(S in) {
+            extend.force(in, Set::add, in);
+            set(0, in, in.toArray());
         }
 
         private void set(int i, S in, Object[] array) {
@@ -194,7 +196,7 @@ public final class Logic {
         }
 
         public void fact(O1 o1) {
-            set(Single.of(o1), true, deriver);
+            set(Single.of(o1));
         }
 
         @SuppressWarnings("unchecked")
@@ -223,7 +225,7 @@ public final class Logic {
         }
 
         public void fact(O1 o1, O2 o2) {
-            set(Pair.of(o1, o2), true, deriver);
+            set(Pair.of(o1, o2));
         }
 
         @SuppressWarnings("unchecked")
@@ -252,7 +254,7 @@ public final class Logic {
         }
 
         public void fact(O1 o1, O2 o2, O3 o3) {
-            set(Triple.of(o1, o2, o3), true, deriver);
+            set(Triple.of(o1, o2, o3));
         }
 
         @SuppressWarnings("unchecked")
@@ -281,7 +283,7 @@ public final class Logic {
         }
 
         public void fact(O1 o1, O2 o2, O3 o3, O4 o4) {
-            set(Quadruple.of(o1, o2, o3, o4), true, deriver);
+            set(Quadruple.of(o1, o2, o3, o4));
         }
 
         @SuppressWarnings("unchecked")
