@@ -35,6 +35,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.Struct;
+import org.modelingvalue.collections.struct.impl.StructImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.QuadPredicate;
@@ -53,24 +54,52 @@ public final class Logic {
     public static interface Variable {
     }
 
-    public static interface Thing {
+    public static interface Relation {
+    }
+
+    public static interface Relation1<R1> extends Relation {
+    }
+
+    public static interface Relation2<R1, R2> extends Relation {
+    }
+
+    public static interface Relation3<R1, R2, R3> extends Relation {
+    }
+
+    public static interface Relation4<R1, R2, R3, R4> extends Relation {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T var(Class<T> type, String name) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(name));
+    public static <T extends Relation> T var(Class<T> type, String id) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(id, type));
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T obj(Class<T> type, String name) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Thing.class}, new DynamicClass(name));
+    public static <R1, T extends Relation1<R1>> T obj(Class<T> type, R1 id1) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, type));
     }
 
-    private static final class DynamicClass implements InvocationHandler {
+    @SuppressWarnings("unchecked")
+    public static <R1, R2, T extends Relation2<R1, R2>> T obj(Class<T> type, R1 id1, R2 id2) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, type));
+    }
 
-        private static Method EQUALS;
-        private static Method HASHCODE;
-        private static Method TO_STRING;
+    @SuppressWarnings("unchecked")
+    public static <R1, R2, R3, T extends Relation3<R1, R2, R3>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, id3, type));
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <R1, R2, R3, R4, T extends Relation4<R1, R2, R3, R4>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3, R4 id4) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(id1, id2, id3, id4, type));
+    }
+
+    private static final class DynamicClass extends StructImpl implements InvocationHandler {
+        private static final long   serialVersionUID = 7315776001191198132L;
+
+        private static final Method EQUALS;
+        private static final Method HASHCODE;
+        private static final Method TO_STRING;
         static {
             try {
                 EQUALS = Object.class.getMethod("equals", Object.class);
@@ -81,22 +110,29 @@ public final class Logic {
             }
         }
 
-        private final String name;
-
-        public DynamicClass(String name) {
-            this.name = name;
+        private DynamicClass(Object... id) {
+            super(id);
         }
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if (method.equals(EQUALS)) {
-                return proxy == args[0] ? Boolean.TRUE : Boolean.FALSE;
+                if (proxy == args[0]) {
+                    return true;
+                } else if (args[0] == null) {
+                    return false;
+                } else if (args[0].getClass() != proxy.getClass()) {
+                    return false;
+                } else {
+                    DynamicClass other = (DynamicClass) Proxy.getInvocationHandler(args[0]);
+                    return super.equals(other);
+                }
             } else if (method.equals(HASHCODE)) {
-                return Integer.valueOf(System.identityHashCode(proxy));
+                return super.hashCode();
             } else if (method.equals(TO_STRING)) {
-                return name;
+                return super.toString();
             } else {
-                throw new Error("unexpected Object method dispatched: " + method);
+                throw new Error("No handler for " + method);
             }
         }
     }

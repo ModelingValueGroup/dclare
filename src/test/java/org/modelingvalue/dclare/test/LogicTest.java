@@ -30,6 +30,8 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.dclare.Logic.Rel2;
+import org.modelingvalue.dclare.Logic.Relation1;
+import org.modelingvalue.dclare.Logic.Relation2;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 
@@ -54,7 +56,10 @@ public class LogicTest {
     @RepeatedTest(1024)
     public void test1() {
         run(() -> {
-            interface Person {
+            interface Person extends Relation1<String> {
+            }
+
+            interface ParentChild extends Relation2<Person, Person> {
             }
 
             Rel2<Person, Person> parent_child = rel2("PC");
