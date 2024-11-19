@@ -29,7 +29,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -254,17 +253,17 @@ public final class Logic {
             if (set.isEmpty()) {
                 if (!rules.isEmpty()) {
                     List<TermImpl> pre = DERIVED.get();
-                    if (pre.contains(this)) {
-                        throw new CircularLogicException(pre, this);
+                    if (pre.contains(pattern)) {
+                        throw new CircularLogicException(pre, pattern);
                     } else {
-                        rules = rules.map(r -> {
+                        Set<RuleImpl> bound = rules.map(r -> {
                             List<VarImpl> vars = r.term().variables();
                             return r.<RuleImpl> replace(e -> {
                                 int i = e instanceof VarImpl ? vars.index(e) : -1;
                                 return i >= 0 ? get(i + 1) : e;
                             });
                         }).asSet();
-                        Boolean result = DERIVED.get(pre.prepend(this), any(rules));
+                        Boolean result = DERIVED.get(pre.prepend(pattern), () -> any(bound));
                         if (result) {
                             FACTS.force(this, Set::add, this);
                         }
@@ -385,26 +384,33 @@ public final class Logic {
             return new GoalImpl(array[1]);
         }
 
-        @Override
         @SuppressWarnings("rawtypes")
+        @Override
         public Boolean get() {
+            try {
+                return all(goals());
+            } catch (BindingsFoundException bve) {
+                return any(bve.bindings.map(b -> replace(e -> {
+                    if (e instanceof VarImpl) {
+                        Object v = b.get((VarImpl) e);
+                        if (v != null) {
+                            return v;
+                        }
+                    }
+                    return e;
+                })));
+            }
+        }
+
+        @SuppressWarnings("rawtypes")
+        private Set<TermImpl<?>> goals() {
             Set<TermImpl<?>> set = Set.of();
             TermImpl ht = (TermImpl) get(1);
             while (ht.length() == 2) {
                 set = set.add((TermImpl) ht.get(1));
                 ht = (TermImpl) ht.get(2);
             }
-            return uni(variables().asMap(v -> Entry.of(v, null)), all(set)).get();
-        }
-
-        private Supplier<Boolean> uni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
-            return () -> {
-                try {
-                    return predicate.get();
-                } catch (BindingsFoundException bve) {
-                    return any(bve.bindings.map(vs -> uni(vars.putAll(vs), predicate))).get();
-                }
-            };
+            return set;
         }
     }
 
@@ -439,82 +445,78 @@ public final class Logic {
     // Any
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Supplier<Boolean> any(Collection<? extends Supplier<Boolean>> terms) {
+    private static Boolean any(Collection<? extends Supplier<Boolean>> terms) {
         List<? extends Supplier<Boolean>> any = terms.random().asList();
-        return () -> {
-            if (any.isEmpty()) {
-                return false;
-            } else if (any.size() == 1) {
-                return any.get(0).get();
-            } else {
-                AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-                boolean result = any.anyMatch(t -> {
-                    try {
-                        return t.get();
-                    } catch (BindingsFoundException bve) {
-                        ref.updateAndGet(rte -> {
-                            if (rte instanceof BindingsFoundException) {
-                                return ((BindingsFoundException) rte).merge(bve);
-                            } else {
-                                return rte == null || rte instanceof CircularLogicException ? bve : rte;
-                            }
-                        });
-                        return false;
-                    } catch (CircularLogicException ce) {
-                        ref.updateAndGet(rte -> rte == null ? ce : rte);
-                        return false;
-                    }
-                });
-                RuntimeException exc = ref.get();
-                if (exc instanceof BindingsFoundException) {
-                    throw exc;
-                } else if (!result && exc != null) {
-                    throw exc;
-                } else {
-                    return result;
+        if (any.isEmpty()) {
+            return false;
+        } else if (any.size() == 1) {
+            return any.get(0).get();
+        } else {
+            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+            boolean result = any.anyMatch(t -> {
+                try {
+                    return t.get();
+                } catch (BindingsFoundException bve) {
+                    ref.updateAndGet(rte -> {
+                        if (rte instanceof BindingsFoundException) {
+                            return ((BindingsFoundException) rte).merge(bve);
+                        } else {
+                            return rte == null || rte instanceof CircularLogicException ? bve : rte;
+                        }
+                    });
+                    return false;
+                } catch (CircularLogicException ce) {
+                    ref.updateAndGet(rte -> rte == null ? ce : rte);
+                    return false;
                 }
+            });
+            RuntimeException exc = ref.get();
+            if (exc instanceof BindingsFoundException) {
+                throw exc;
+            } else if (!result && exc != null) {
+                throw exc;
+            } else {
+                return result;
             }
-        };
+        }
     }
 
     // All
 
-    private static Supplier<Boolean> all(Collection<? extends Supplier<Boolean>> terms) {
+    private static Boolean all(Collection<? extends Supplier<Boolean>> terms) {
         List<? extends Supplier<Boolean>> all = terms.random().asList();
-        return () -> {
-            if (all.isEmpty()) {
-                return true;
-            } else if (all.size() == 1) {
-                return all.get(0).get();
-            } else {
-                AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-                boolean result = all.allMatch(p -> {
-                    try {
-                        return p.get();
-                    } catch (BindingsFoundException bve) {
-                        ref.updateAndGet(rte -> {
-                            if (rte instanceof BindingsFoundException) {
-                                return ((BindingsFoundException) rte).merge(bve);
-                            } else {
-                                return rte == null || rte instanceof CircularLogicException ? bve : rte;
-                            }
-                        });
-                        return true;
-                    } catch (CircularLogicException ce) {
-                        ref.updateAndGet(rte -> rte == null ? ce : rte);
-                        return true;
-                    }
-                });
-                RuntimeException exc = ref.get();
-                if (exc instanceof BindingsFoundException) {
-                    throw exc;
-                } else if (result && exc != null) {
-                    throw exc;
-                } else {
-                    return result;
+        if (all.isEmpty()) {
+            return true;
+        } else if (all.size() == 1) {
+            return all.get(0).get();
+        } else {
+            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+            boolean result = all.allMatch(p -> {
+                try {
+                    return p.get();
+                } catch (BindingsFoundException bve) {
+                    ref.updateAndGet(rte -> {
+                        if (rte instanceof BindingsFoundException) {
+                            return ((BindingsFoundException) rte).merge(bve);
+                        } else {
+                            return rte == null || rte instanceof CircularLogicException ? bve : rte;
+                        }
+                    });
+                    return true;
+                } catch (CircularLogicException ce) {
+                    ref.updateAndGet(rte -> rte == null ? ce : rte);
+                    return true;
                 }
+            });
+            RuntimeException exc = ref.get();
+            if (exc instanceof BindingsFoundException) {
+                throw exc;
+            } else if (result && exc != null) {
+                throw exc;
+            } else {
+                return result;
             }
-        };
+        }
     }
 
     // Runtime Exceptions
