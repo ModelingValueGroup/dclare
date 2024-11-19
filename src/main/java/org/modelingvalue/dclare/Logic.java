@@ -23,10 +23,8 @@ package org.modelingvalue.dclare;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
@@ -34,92 +32,24 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.struct.Struct;
 import org.modelingvalue.collections.struct.impl.StructImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
-import org.modelingvalue.collections.util.QuadPredicate;
-import org.modelingvalue.collections.util.Quadruple;
-import org.modelingvalue.collections.util.Single;
-import org.modelingvalue.collections.util.TriPredicate;
-import org.modelingvalue.collections.util.Triple;
 
 public final class Logic {
     private Logic() {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final Context<List<Pair<Functor, Struct>>> DERIVED = Context.of(List.of());
+    private static final Context<List<TermImpl>>                       DERIVED = Context.of(List.of());
 
-    public static interface Variable {
-    }
+    @SuppressWarnings("rawtypes")
+    private static final Constant<TermImpl, Set<TermImpl>>             FACTS   = Constant.of("FACTS", Set.of(), CoreSetableModifier.durable);
 
-    public static interface Relation {
-        Class<? extends Relation> type();
-    }
+    @SuppressWarnings("rawtypes")
+    private static final Constant<Pair<Class, Integer>, Set<RuleImpl>> RULES   = Constant.of("RULES", Set.of(), CoreSetableModifier.durable);
 
-    public static interface Relation0 extends Relation {
-    }
-
-    public static interface Relation1<R1> extends Relation {
-        R1 get1();
-    }
-
-    public static interface Relation2<R1, R2> extends Relation {
-        R1 get1();
-
-        R2 get2();
-    }
-
-    public static interface Relation3<R1, R2, R3> extends Relation {
-        R1 get1();
-
-        R2 get2();
-
-        R3 get3();
-    }
-
-    public static interface Relation4<R1, R2, R3, R4> extends Relation {
-        R1 get1();
-
-        R2 get2();
-
-        R3 get3();
-
-        R4 get4();
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends Relation> T var(Class<T> type, String id) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type, Variable.class}, new DynamicClass(type, id));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends Relation0> T obj(Class<T> type) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <R1, T extends Relation1<R1>> T obj(Class<T> type, R1 id1) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <R1, R2, T extends Relation2<R1, R2>> T obj(Class<T> type, R1 id1, R2 id2) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <R1, R2, R3, T extends Relation3<R1, R2, R3>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2, id3));
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <R1, R2, R3, R4, T extends Relation4<R1, R2, R3, R4>> T obj(Class<T> type, R1 id1, R2 id2, R3 id3, R4 id4) {
-        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class[]{type}, new DynamicClass(type, id1, id2, id3, id4));
-    }
-
-    private static final class DynamicClass extends StructImpl implements InvocationHandler {
+    private static abstract class AbstractTermImpl<F> extends StructImpl implements InvocationHandler {
         private static final long   serialVersionUID = 7315776001191198132L;
 
         private static final Method EQUALS;
@@ -135,10 +65,6 @@ public final class Logic {
             }
         }
 
-        private DynamicClass(Object... id) {
-            super(id);
-        }
-
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -150,123 +76,158 @@ public final class Logic {
                 } else if (args[0].getClass() != proxy.getClass()) {
                     return false;
                 } else {
-                    DynamicClass other = (DynamicClass) Proxy.getInvocationHandler(args[0]);
-                    return super.equals(other);
+                    return super.equals(Logic.unproxy(args[0]));
                 }
             } else if (method.equals(HASHCODE)) {
                 return super.hashCode();
             } else if (method.equals(TO_STRING)) {
-                if (proxy instanceof L) {
-                    return list((L) proxy).toString().substring(4);
-                } else {
-                    String string = super.toString();
-                    return string.substring(1, string.length() - 1).replaceFirst(",", "(") + ")";
-                }
+                return toString();
             } else {
-                switch (method.getName()) {
-                case "get1":
-                    return super.get(1);
-                case "get2":
-                    return super.get(2);
-                case "get3":
-                    return super.get(3);
-                case "get4":
-                    return super.get(4);
-                case "type":
-                    return super.get(0);
-                }
                 throw new Error("No handler for " + method);
             }
         }
-    }
 
-    // Facts, Rules, Is
-
-    public interface L<E extends Relation> extends Relation {
-    }
-
-    private interface EL<E extends Relation> extends L<E>, Relation0 {
-    }
-
-    private interface NEL<E extends Relation> extends L<E>, Relation2<E, L<E>> {
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <E extends Relation> L<E> l(E head, L<E> tail) {
-        return obj(NEL.class, head, tail);
-    }
-
-    @SuppressWarnings("rawtypes")
-    private static final L EMPTY = obj(EL.class);
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Relation> List<E> list(L<E> l) {
-        List<E> list = List.of();
-        while (l instanceof NEL) {
-            list = list.prepend(((NEL<E>) l).get1());
-            l = ((NEL<E>) l).get2();
-        }
-        return list;
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <E extends Relation> L<E> l(E... es) {
-        L<E> l = EMPTY;
-        for (int i = es.length - 1; i >= 0; i--) {
-            l = l(es[i], l);
-        }
-        return l;
-    }
-
-    public static interface Fact extends Relation1<Relation> {
-    }
-
-    public static Fact fact(Relation rel) {
-        return obj(Fact.class, rel);
-    }
-
-    public static interface Rule extends Relation3<Relation, L<Relation>, L<Relation>> {
-    }
-
-    public static Rule rule(Relation rel, Relation... variablesPredicates) {
-        List<Relation> list = List.of(variablesPredicates);
-        List<Relation> variables = list.filter(r -> r instanceof Variable).asList();
-        List<Relation> predicates = list.filter(r -> !(r instanceof Variable)).asList();
-        return obj(Rule.class, rel, l(variables.toArray(i -> new Relation[i])), l(predicates.toArray(i -> new Relation[i])));
-    }
-
-    public static interface Is extends Relation1<L<Relation>> {
-    }
-
-    public static Is is(Relation... predicates) {
-        return obj(Is.class, l(predicates));
-    }
-
-    // Functors
-
-    public static abstract class Functor<S extends Struct> {
-        private final Constant<S, Set<S>> extend;
-
-        protected Functor(Object id) {
-            extend = Constant.<S, Set<S>> of(id, Set.of(), CoreSetableModifier.durable);
-        }
-
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public String toString() {
-            return extend.toString();
+            if (functor() == L.class) {
+                List list = List.of();
+                AbstractTermImpl ht = this;
+                while (ht.length() == 2) {
+                    list = list.prepend(ht.get(1));
+                    ht = (AbstractTermImpl) ht.get(2);
+                }
+                return list.toString().substring(4);
+            } else {
+                String string = super.toString();
+                return string.substring(1, string.length() - 1).replaceFirst(",", "(") + ")";
+            }
+        }
+
+        protected AbstractTermImpl(Class<F> functor, Object... args) {
+            super(unproxy(functor, args));
         }
 
         @SuppressWarnings("rawtypes")
-        protected final Boolean get(Function<S, Boolean> deriver, Object... in) {
+        private static final Object[] unproxy(Class functor, Object[] args) {
+            Object[] result = new Object[args.length + 1];
+            result[0] = functor;
+            for (int i = 0; i < args.length; i++) {
+                result[i + 1] = Logic.unproxy(args[i]);
+            }
+            return result;
+        }
+
+        protected abstract F proxy();
+
+        @SuppressWarnings("unchecked")
+        protected Class<F> functor() {
+            return (Class<F>) get(0);
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final Object unproxy(Object object) {
+        if (object instanceof Term) {
+            return Proxy.getInvocationHandler(object);
+        } else {
+            return object;
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final TermImpl unproxy(Term object) {
+        return (TermImpl) Proxy.getInvocationHandler(object);
+    }
+
+    // Variables
+
+    public static interface Variable {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F> F var(Class<F> functor, String id) {
+        return new VarImpl<F>(functor, id).proxy();
+    }
+
+    private static final class VarImpl<F> extends AbstractTermImpl<F> {
+        private static final long serialVersionUID = -8998368070388908726L;
+
+        private VarImpl(Class<F> functor, String name) {
+            super(functor, name);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected final F proxy() {
+            return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Variable.class}, this);
+        }
+    }
+
+    // Terms
+
+    public static interface Term {
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F> F term(Class<F> functor, Object... args) {
+        return new TermImpl<F>(functor).proxy();
+    }
+
+    private static class TermImpl<F> extends AbstractTermImpl<F> implements Supplier<Boolean> {
+        private static final long serialVersionUID = -1605559565948158856L;
+
+        private TermImpl(Class<F> functor, Object... args) {
+            super(functor, args);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected F proxy() {
+            return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Term.class}, this);
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected final void makeFact() {
+            FACTS.force(this, Set::add, this);
+            patterns(1, toArray());
+        }
+
+        private void patterns(int i, Object[] array) {
+            if (i < length()) {
+                array = array.clone();
+                if (array[i] == null) {
+                    array[i] = get(i);
+                    FACTS.force(term(array), Set::add, this);
+                }
+                patterns(i + 1, array);
+                if (array[i] != null) {
+                    array[i] = null;
+                    FACTS.force(term(array), Set::add, this);
+                }
+                patterns(i + 1, array);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        protected TermImpl<F> term(Object[] array) {
+            return new TermImpl<F>(functor(), Arrays.copyOfRange(array, 1, array.length));
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        public Boolean get() {
+            Set<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
             Set<Object> empty = Set.of();
             Map<Object, Object> vars = VARIABLES.get();
-            Object[] out = in.clone();
+            Object[] in = toArray();
+            Object[] out = toArray();
             for (int i = 0; i < in.length; i++) {
                 while (vars.containsKey(in[i])) {
                     Object v = vars.get(in[i]);
                     if (v == null) {
                         empty = empty.add(in[i]);
-                        if (deriver == null) {
+                        if (rules.isEmpty()) {
                             out[i] = null;
                         }
                         break;
@@ -276,18 +237,18 @@ public final class Logic {
                     }
                 }
             }
-            S s = struct(out);
-            Set<S> set = deriver == null || empty.isEmpty() ? extend.get(s) : Set.of();
+            TermImpl term = term(out);
+            Set<TermImpl> set = rules.isEmpty() || empty.isEmpty() ? FACTS.get(term) : Set.of();
             if (set.isEmpty()) {
-                if (deriver != null) {
-                    Pair<Functor, Struct> slot = Pair.of(this, s);
-                    List<Pair<Functor, Struct>> pre = DERIVED.get();
-                    if (pre.contains(slot)) {
-                        throw new CircularLogicException(pre, slot);
+                if (!rules.isEmpty()) {
+                    List<TermImpl> pre = DERIVED.get();
+                    if (pre.contains(term)) {
+                        throw new CircularLogicException(pre, term);
                     } else {
-                        Boolean result = DERIVED.get(pre.prepend(slot), () -> deriver.apply(s));
+                        // actualize rules
+                        Boolean result = DERIVED.get(pre.prepend(term), any(rules));
                         if (result) {
-                            extend.force(s, Set::add, s);
+                            FACTS.force(term, Set::add, term);
                         }
                         return result;
                     }
@@ -310,31 +271,9 @@ public final class Logic {
                 return Boolean.TRUE;
             }
         }
-
-        @SuppressWarnings("rawtypes")
-        protected final void set(S in) {
-            extend.force(in, Set::add, in);
-            set(0, in, in.toArray());
-        }
-
-        private void set(int i, S in, Object[] array) {
-            if (i < array.length) {
-                array = array.clone();
-                if (array[i] == null) {
-                    array[i] = in.get(i);
-                    extend.force(struct(array), Set::add, in);
-                }
-                set(i + 1, in, array);
-                if (array[i] != null) {
-                    array[i] = null;
-                    extend.force(struct(array), Set::add, in);
-                }
-                set(i + 1, in, array);
-            }
-        }
-
-        protected abstract S struct(Object[] array);
     };
+
+    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
 
     @SuppressWarnings("rawtypes")
     private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
@@ -347,265 +286,215 @@ public final class Logic {
         }
     }
 
-    // Relations
+    // Rules
 
-    public static final <O> Rel1<O> rel1(Object id) {
-        return new Rel1<O>(id);
+    public static interface Rule extends Term {
     }
 
-    public static final <O1, O2> Rel2<O1, O2> rel2(Object id) {
-        return new Rel2<O1, O2>(id);
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Rule rule(Term term, Term... goals) {
+        RuleImpl ruleImpl = new RuleImpl(term, goal(goals));
+        TermImpl termImpl = unproxy(term);
+        RULES.force(Pair.of(termImpl.functor(), termImpl.length() - 1), Set::add, ruleImpl);
+        return ruleImpl.proxy();
     }
 
-    public static final <O1, O2, O3> Rel3<O1, O2, O3> rel3(Object id) {
-        return new Rel3<O1, O2, O3>(id);
-    }
+    private static final class RuleImpl extends TermImpl<Rule> {
+        private static final long serialVersionUID = -4602043866952049391L;
 
-    public static final <O1, O2, O3, O4> Rel4<O1, O2, O3, O4> rel4(Object id) {
-        return new Rel4<O1, O2, O3, O4>(id);
-    }
-
-    public static final class Rel1<O1> extends Functor<Single<O1>> {
-        private Set<Predicate<O1>>            rules   = Set.of();
-        private Function<Single<O1>, Boolean> deriver = null;
-
-        private Rel1(Object id) {
-            super(id);
+        private RuleImpl(Term term, Goal goal) {
+            super(Rule.class, term, goal);
         }
 
-        public void rule(O1 v1, Supplier<Boolean> p) {
-            rules = rules.add(o1 -> run(Map.of(Entry.of(v1, o1)), p));
-            deriver = s -> any(rules.map(r -> () -> r.test(s.a()))).get();
+        private RuleImpl(Object term, Object goal) {
+            super(Rule.class, term, goal);
         }
 
-        @SuppressWarnings("unchecked")
-        public Supplier<Boolean> is(O1 o1) {
-            return () -> get(deriver, o1);
-        }
-
-        public void fact(O1 o1) {
-            set(Single.of(o1));
-        }
-
-        @SuppressWarnings("unchecked")
         @Override
-        protected Single<O1> struct(Object[] array) {
-            return Single.of((O1) array[0]);
-        }
-    }
-
-    public static final class Rel2<O1, O2> extends Functor<Pair<O1, O2>> {
-        private Set<BiPredicate<O1, O2>>        rules   = Set.of();
-        private Function<Pair<O1, O2>, Boolean> deriver = null;
-
-        private Rel2(Object id) {
-            super(id);
-        }
-
-        public void rule(O1 v1, O2 v2, Supplier<Boolean> p) {
-            rules = rules.add((o1, o2) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2)), p));
-            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b()))).get();
-        }
-
         @SuppressWarnings("unchecked")
-        public Supplier<Boolean> is(O1 o1, O2 o2) {
-            return () -> get(deriver, o1, o2);
+        protected final Rule proxy() {
+            return (Rule) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{Rule.class}, this);
         }
 
-        public void fact(O1 o1, O2 o2) {
-            set(Pair.of(o1, o2));
-        }
-
-        @SuppressWarnings("unchecked")
         @Override
-        protected Pair<O1, O2> struct(Object[] array) {
-            return Pair.of((O1) array[0], (O2) array[1]);
-        }
-    }
-
-    public static final class Rel3<O1, O2, O3> extends Functor<Triple<O1, O2, O3>> {
-        private Set<TriPredicate<O1, O2, O3>>         rules   = Set.of();
-        private Function<Triple<O1, O2, O3>, Boolean> deriver = null;
-
-        private Rel3(Object id) {
-            super(id);
+        @SuppressWarnings("rawtypes")
+        public Boolean get() {
+            return ((GoalImpl) get(2)).get();
         }
 
-        public void rule(O1 v1, O2 v2, O3 v3, Supplier<Boolean> p) {
-            rules = rules.add((o1, o2, o3) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2), Entry.of(v3, o3)), p));
-            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b(), s.c()))).get();
-        }
-
-        @SuppressWarnings("unchecked")
-        public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3) {
-            return () -> get(deriver, o1, o2, o3);
-        }
-
-        public void fact(O1 o1, O2 o2, O3 o3) {
-            set(Triple.of(o1, o2, o3));
-        }
-
-        @SuppressWarnings("unchecked")
         @Override
-        protected Triple<O1, O2, O3> struct(Object[] array) {
-            return Triple.of((O1) array[0], (O2) array[1], (O3) array[2]);
+        @SuppressWarnings("unchecked")
+        protected RuleImpl term(Object[] array) {
+            return new RuleImpl(array[1], array[2]);
         }
     }
 
-    public static final class Rel4<O1, O2, O3, O4> extends Functor<Quadruple<O1, O2, O3, O4>> {
-        private Set<QuadPredicate<O1, O2, O3, O4>>           rules   = Set.of();
-        private Function<Quadruple<O1, O2, O3, O4>, Boolean> deriver = null;
+    // Goals
 
-        private Rel4(Object id) {
-            super(id);
+    public static interface Goal extends Term {
+    }
+
+    public static boolean is(Term... goals) {
+        return new GoalImpl(l(goals)).get();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Goal goal(Term... goals) {
+        return new GoalImpl(l(goals)).proxy();
+    }
+
+    private static final class GoalImpl extends TermImpl<Goal> {
+        private static final long serialVersionUID = -4100263206389367132L;
+
+        private GoalImpl(L<Term> goals) {
+            super(Goal.class, goals);
         }
 
-        public void rule(O1 v1, O2 v2, O3 v3, O4 v4, Supplier<Boolean> p) {
-            rules = rules.add((o1, o2, o3, o4) -> run(Map.of(Entry.of(v1, o1), Entry.of(v2, o2), Entry.of(v3, o3), Entry.of(v4, o4)), p));
-            deriver = s -> any(rules.map(r -> () -> r.test(s.a(), s.b(), s.c(), s.d()))).get();
+        private GoalImpl(Object goals) {
+            super(Goal.class, goals);
         }
 
-        @SuppressWarnings("unchecked")
-        public Supplier<Boolean> is(O1 o1, O2 o2, O3 o3, O4 o4) {
-            return () -> get(deriver, o1, o2, o3, o4);
-        }
-
-        public void fact(O1 o1, O2 o2, O3 o3, O4 o4) {
-            set(Quadruple.of(o1, o2, o3, o4));
-        }
-
-        @SuppressWarnings("unchecked")
         @Override
-        protected Quadruple<O1, O2, O3, O4> struct(Object[] array) {
-            return Quadruple.of((O1) array[0], (O2) array[1], (O3) array[2], (O4) array[3]);
+        @SuppressWarnings("unchecked")
+        protected final Goal proxy() {
+            return (Goal) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{Goal.class}, this);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected GoalImpl term(Object[] array) {
+            return new GoalImpl(array[1]);
+        }
+
+        @Override
+        @SuppressWarnings("rawtypes")
+        public Boolean get() {
+            Set<TermImpl<?>> set = Set.of();
+            TermImpl ht = (TermImpl) get(0);
+            while (ht.length() == 2) {
+                set = set.add((TermImpl) ht.get(1));
+                ht = (TermImpl) ht.get(2);
+            }
+            return uni(null, all(set)).get();
         }
     }
 
-    // Not
+    // Lists
 
-    public static final Supplier<Boolean> not(Supplier<Boolean> predicate) {
-        return () -> !predicate.get();
+    public interface L<E> {
     }
 
-    // Or
-
-    @SafeVarargs
-    public static final Supplier<Boolean> or(Supplier<Boolean>... predicates) {
-        List<Supplier<Boolean>> list = List.of(predicates);
-        return list.isEmpty() ? () -> false : list.size() == 1 ? list.get(0) : () -> or(list);
+    @SuppressWarnings("unchecked")
+    public static <E> L<E> l(E head, L<E> tail) {
+        return term(L.class, head, tail);
     }
 
-    public static final Supplier<Boolean> any(Collection<Supplier<Boolean>> predicates) {
-        List<Supplier<Boolean>> list = predicates.asList();
-        return list.isEmpty() ? () -> false : list.size() == 1 ? list.get(0) : () -> or(list);
+    @SuppressWarnings("rawtypes")
+    private static final L EMPTY_LIST = term(L.class);
+
+    @SuppressWarnings("unchecked")
+    public static <E> L<E> l(E... es) {
+        L<E> l = EMPTY_LIST;
+        for (int i = es.length - 1; i >= 0; i--) {
+            l = l(es[i], l);
+        }
+        return l;
     }
 
-    private static boolean or(List<Supplier<Boolean>> predicates) {
-        List<Supplier<Boolean>> or = predicates.random().asList();
-        AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-        boolean result = or.anyMatch(p -> {
-            try {
-                return p.get();
-            } catch (BindingsFoundException bve) {
-                ref.updateAndGet(rte -> {
-                    if (rte instanceof BindingsFoundException) {
-                        return ((BindingsFoundException) rte).merge(bve);
-                    } else {
-                        return rte == null || rte instanceof CycleException ? bve : rte;
+    // Facts, Is
+
+    public static void fact(Term term) {
+        unproxy(term).makeFact();
+    }
+
+    // Any
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static Supplier<Boolean> any(Collection<? extends Supplier<Boolean>> terms) {
+        List<? extends Supplier<Boolean>> any = terms.random().asList();
+        return () -> {
+            if (any.isEmpty()) {
+                return false;
+            } else if (any.size() == 1) {
+                return any.get(0).get();
+            } else {
+                AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+                boolean result = any.anyMatch(t -> {
+                    try {
+                        return t.get();
+                    } catch (BindingsFoundException bve) {
+                        ref.updateAndGet(rte -> {
+                            if (rte instanceof BindingsFoundException) {
+                                return ((BindingsFoundException) rte).merge(bve);
+                            } else {
+                                return rte == null || rte instanceof CycleException ? bve : rte;
+                            }
+                        });
+                        return false;
+                    } catch (CycleException ce) {
+                        ref.updateAndGet(rte -> rte == null ? ce : rte);
+                        return false;
                     }
                 });
-                return false;
-            } catch (CycleException ce) {
-                ref.updateAndGet(rte -> rte == null ? ce : rte);
-                return false;
+                RuntimeException exc = ref.get();
+                if (exc instanceof BindingsFoundException) {
+                    throw exc;
+                } else if (!result && exc != null) {
+                    throw exc;
+                } else {
+                    return result;
+                }
             }
-        });
-        RuntimeException exc = ref.get();
-        if (exc instanceof BindingsFoundException) {
-            throw exc;
-        } else if (!result && exc != null) {
-            throw exc;
-        } else {
-            return result;
-        }
+        };
     }
 
-    // And
+    // All
 
-    @SafeVarargs
-    public static final Supplier<Boolean> and(Supplier<Boolean>... predicates) {
-        List<Supplier<Boolean>> list = List.of(predicates);
-        return list.isEmpty() ? () -> true : list.size() == 1 ? list.get(0) : () -> and(list);
-    }
-
-    public static final Supplier<Boolean> all(Collection<Supplier<Boolean>> predicates) {
-        List<Supplier<Boolean>> list = predicates.asList();
-        return list.isEmpty() ? () -> true : list.size() == 1 ? list.get(0) : () -> and(list);
-    }
-
-    private static boolean and(List<Supplier<Boolean>> predicates) {
-        List<Supplier<Boolean>> and = predicates.random().asList();
-        AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-        boolean result = and.allMatch(p -> {
-            try {
-                return p.get();
-            } catch (BindingsFoundException bve) {
-                ref.updateAndGet(rte -> {
-                    if (rte instanceof BindingsFoundException) {
-                        return ((BindingsFoundException) rte).merge(bve);
-                    } else {
-                        return rte == null || rte instanceof CycleException ? bve : rte;
+    private static Supplier<Boolean> all(Collection<? extends Supplier<Boolean>> terms) {
+        List<? extends Supplier<Boolean>> all = terms.random().asList();
+        return () -> {
+            if (all.isEmpty()) {
+                return true;
+            } else if (all.size() == 1) {
+                return all.get(0).get();
+            } else {
+                AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
+                boolean result = all.allMatch(p -> {
+                    try {
+                        return p.get();
+                    } catch (BindingsFoundException bve) {
+                        ref.updateAndGet(rte -> {
+                            if (rte instanceof BindingsFoundException) {
+                                return ((BindingsFoundException) rte).merge(bve);
+                            } else {
+                                return rte == null || rte instanceof CycleException ? bve : rte;
+                            }
+                        });
+                        return true;
+                    } catch (CycleException ce) {
+                        ref.updateAndGet(rte -> rte == null ? ce : rte);
+                        return true;
                     }
                 });
-                return true;
-            } catch (CycleException ce) {
-                ref.updateAndGet(rte -> rte == null ? ce : rte);
-                return true;
+                RuntimeException exc = ref.get();
+                if (exc instanceof BindingsFoundException) {
+                    throw exc;
+                } else if (result && exc != null) {
+                    throw exc;
+                } else {
+                    return result;
+                }
             }
-        });
-        RuntimeException exc = ref.get();
-        if (exc instanceof BindingsFoundException) {
-            throw exc;
-        } else if (result && exc != null) {
-            throw exc;
-        } else {
-            return result;
-        }
+        };
     }
 
     // Unification
 
-    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
-
-    @SuppressWarnings("unchecked")
-    public static final <V1> Supplier<Boolean> uni(V1 v1, Supplier<Boolean> predicate) {
-        Map<Object, Object> vars = Map.of(Entry.of(v1, null));
-        return () -> doUni(vars, predicate);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static final <V1, V2> Supplier<Boolean> uni(V1 v1, V2 v2, Supplier<Boolean> predicate) {
-        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null));
-        return () -> doUni(vars, predicate);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static final <V1, V2, V3> Supplier<Boolean> uni(V1 v1, V2 v2, V3 v3, Supplier<Boolean> predicate) {
-        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null), Entry.of(v3, null));
-        return () -> doUni(vars, predicate);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static final <V1, V2, V3, V4> Supplier<Boolean> uni(V1 v1, V2 v2, V3 v3, V4 v4, Supplier<Boolean> predicate) {
-        Map<Object, Object> vars = Map.of(Entry.of(v1, null), Entry.of(v2, null), Entry.of(v3, null), Entry.of(v4, null));
-        return () -> doUni(vars, predicate);
-    }
-
-    private static boolean doUni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
+    private static Supplier<Boolean> uni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
         try {
-            return run(vars, predicate);
+            return () -> run(vars, predicate);
         } catch (BindingsFoundException bve) {
-            return any(bve.bindings.map(vs -> () -> doUni(vars.putAll(vs), predicate))).get();
+            return any(bve.bindings.map(vs -> uni(vars.putAll(vs), predicate)));
         }
     }
 
@@ -646,12 +535,12 @@ public final class Logic {
 
     @SuppressWarnings("rawtypes")
     public static final class CircularLogicException extends CycleException {
-        private static final long                 serialVersionUID = 293433487448006753L;
+        private static final long    serialVersionUID = 293433487448006753L;
 
-        private final List<Pair<Functor, Struct>> derived;
-        private final Pair<Functor, Struct>       current;
+        private final List<TermImpl> derived;
+        private final TermImpl       current;
 
-        private CircularLogicException(List<Pair<Functor, Struct>> derived, Pair<Functor, Struct> current) {
+        private CircularLogicException(List<TermImpl> derived, TermImpl current) {
             this.derived = derived;
             this.current = current;
         }
@@ -659,7 +548,7 @@ public final class Logic {
         @Override
         public String getMessage() {
             int i = derived.firstIndexOf(current);
-            List<Pair<Functor, Struct>> cycle = derived.sublist(0, i + 1).prepend(current);
+            List<TermImpl> cycle = derived.sublist(0, i + 1).prepend(current);
             return "Circular Logic " + cycle.reverse().asList().toString().substring(4);
         }
     }
