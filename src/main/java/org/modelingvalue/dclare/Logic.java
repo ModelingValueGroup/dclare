@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
@@ -124,6 +125,25 @@ public final class Logic {
         protected Class<F> functor() {
             return (Class<F>) get(0);
         }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        protected <R extends AbstractTermImpl<F>> R replace(Function<Object, Object> replacer) {
+            Object[] array = toArray();
+            boolean changed = false;
+            for (int i = 0; i < array.length; i++) {
+                Object old = array[i];
+                if (array[i] instanceof AbstractTermImpl) {
+                    array[i] = ((AbstractTermImpl) array[i]).replace(replacer);
+                }
+                array[i] = replacer.apply(array[i]);
+                if (old != array[i]) {
+                    changed = true;
+                }
+            }
+            return (R) (changed ? term(array) : this);
+        }
+
+        protected abstract AbstractTermImpl<F> term(Object[] array);
     }
 
     @SuppressWarnings("rawtypes")
@@ -157,10 +177,20 @@ public final class Logic {
             super(functor, name);
         }
 
+        private VarImpl(Class<F> functor, Object name) {
+            super(functor, name);
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         protected final F proxy() {
             return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Variable.class}, this);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected VarImpl<F> term(Object[] array) {
+            return new VarImpl<F>(functor(), array[1]);
         }
     }
 
@@ -209,60 +239,46 @@ public final class Logic {
             }
         }
 
+        @Override
         @SuppressWarnings("unchecked")
         protected TermImpl<F> term(Object[] array) {
             return new TermImpl<F>(functor(), Arrays.copyOfRange(array, 1, array.length));
         }
 
-        @SuppressWarnings("rawtypes")
+        @SuppressWarnings({"rawtypes", "unchecked"})
         @Override
         public Boolean get() {
             Set<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
-            Set<Object> empty = Set.of();
-            Map<Object, Object> vars = VARIABLES.get();
-            Object[] in = toArray();
-            Object[] out = toArray();
-            for (int i = 0; i < in.length; i++) {
-                while (vars.containsKey(in[i])) {
-                    Object v = vars.get(in[i]);
-                    if (v == null) {
-                        empty = empty.add(in[i]);
-                        if (rules.isEmpty()) {
-                            out[i] = null;
-                        }
-                        break;
-                    } else {
-                        out[i] = v;
-                        in[i] = v;
-                    }
-                }
-            }
-            TermImpl term = term(out);
-            Set<TermImpl> set = rules.isEmpty() || empty.isEmpty() ? FACTS.get(term) : Set.of();
+            TermImpl pattern = replace(e -> e instanceof VarImpl ? null : e);
+            Set<TermImpl> set = rules.isEmpty() || pattern == this ? FACTS.get(pattern) : Set.of();
             if (set.isEmpty()) {
                 if (!rules.isEmpty()) {
                     List<TermImpl> pre = DERIVED.get();
-                    if (pre.contains(term)) {
-                        throw new CircularLogicException(pre, term);
+                    if (pre.contains(this)) {
+                        throw new CircularLogicException(pre, this);
                     } else {
-                        // actualize rules
-                        Boolean result = DERIVED.get(pre.prepend(term), any(rules));
+                        rules = rules.map(r -> {
+                            List<VarImpl> vars = r.term().variables();
+                            return r.<RuleImpl> replace(e -> {
+                                int i = e instanceof VarImpl ? vars.index(e) : -1;
+                                return i >= 0 ? get(i + 1) : e;
+                            });
+                        }).asSet();
+                        Boolean result = DERIVED.get(pre.prepend(this), any(rules));
                         if (result) {
-                            FACTS.force(term, Set::add, term);
+                            FACTS.force(this, Set::add, this);
                         }
                         return result;
                     }
                 } else {
                     return Boolean.FALSE;
                 }
-            } else if (!empty.isEmpty()) {
-                Set<Object> em = empty;
+            } else if (pattern != this) {
                 throw new BindingsFoundException(set.map(b -> {
-                    Map<Object, Object> vs = Map.of();
-                    for (int i = 0; i < b.length(); i++) {
-                        Object vin = in[i];
-                        if (em.contains(vin)) {
-                            vs = vs.put(vin, b.get(i));
+                    Map<VarImpl, Object> vs = Map.of();
+                    for (int i = 0; i < length(); i++) {
+                        if (get(i) instanceof VarImpl) {
+                            vs = vs.put((VarImpl) get(i), b.get(i));
                         }
                     }
                     return vs;
@@ -271,20 +287,18 @@ public final class Logic {
                 return Boolean.TRUE;
             }
         }
-    };
 
-    private static final Context<Map<Object, Object>> VARIABLES = Context.of(Map.of());
-
-    @SuppressWarnings("rawtypes")
-    private static boolean run(Map<Object, Object> vars, Supplier<Boolean> predicate) {
-        Map<Object, Object> pre = VARIABLES.get();
-        Set<Object> cycle = vars.filter(kv -> kv.getValue() == null).map(Entry::getKey).filter(k -> pre.containsKey(k) && pre.get(k) == null).asSet();
-        if (cycle.isEmpty()) {
-            return VARIABLES.get(pre.putAll(vars), predicate);
-        } else {
-            throw new CircularVariableException(cycle);
+        @SuppressWarnings("rawtypes")
+        protected List<VarImpl> variables() {
+            List<VarImpl> vars = List.of();
+            for (int i = 0; i < length(); i++) {
+                if (get(i) instanceof VarImpl) {
+                    vars.add((VarImpl) get(i));
+                }
+            }
+            return vars;
         }
-    }
+    };
 
     // Rules
 
@@ -314,6 +328,11 @@ public final class Logic {
         @SuppressWarnings("unchecked")
         protected final Rule proxy() {
             return (Rule) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{Rule.class}, this);
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected final TermImpl term() {
+            return ((TermImpl) get(2));
         }
 
         @Override
@@ -370,12 +389,22 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         public Boolean get() {
             Set<TermImpl<?>> set = Set.of();
-            TermImpl ht = (TermImpl) get(0);
+            TermImpl ht = (TermImpl) get(1);
             while (ht.length() == 2) {
                 set = set.add((TermImpl) ht.get(1));
                 ht = (TermImpl) ht.get(2);
             }
-            return uni(null, all(set)).get();
+            return uni(variables().asMap(v -> Entry.of(v, null)), all(set)).get();
+        }
+
+        private Supplier<Boolean> uni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
+            return () -> {
+                try {
+                    return predicate.get();
+                } catch (BindingsFoundException bve) {
+                    return any(bve.bindings.map(vs -> uni(vars.putAll(vs), predicate))).get();
+                }
+            };
         }
     }
 
@@ -427,11 +456,11 @@ public final class Logic {
                             if (rte instanceof BindingsFoundException) {
                                 return ((BindingsFoundException) rte).merge(bve);
                             } else {
-                                return rte == null || rte instanceof CycleException ? bve : rte;
+                                return rte == null || rte instanceof CircularLogicException ? bve : rte;
                             }
                         });
                         return false;
-                    } catch (CycleException ce) {
+                    } catch (CircularLogicException ce) {
                         ref.updateAndGet(rte -> rte == null ? ce : rte);
                         return false;
                     }
@@ -467,11 +496,11 @@ public final class Logic {
                             if (rte instanceof BindingsFoundException) {
                                 return ((BindingsFoundException) rte).merge(bve);
                             } else {
-                                return rte == null || rte instanceof CycleException ? bve : rte;
+                                return rte == null || rte instanceof CircularLogicException ? bve : rte;
                             }
                         });
                         return true;
-                    } catch (CycleException ce) {
+                    } catch (CircularLogicException ce) {
                         ref.updateAndGet(rte -> rte == null ? ce : rte);
                         return true;
                     }
@@ -488,24 +517,16 @@ public final class Logic {
         };
     }
 
-    // Unification
-
-    private static Supplier<Boolean> uni(Map<Object, Object> vars, Supplier<Boolean> predicate) {
-        try {
-            return () -> run(vars, predicate);
-        } catch (BindingsFoundException bve) {
-            return any(bve.bindings.map(vs -> uni(vars.putAll(vs), predicate)));
-        }
-    }
-
     // Runtime Exceptions
 
     public static final class BindingsFoundException extends RuntimeException {
-        private static final long              serialVersionUID = 4505117271488648346L;
+        private static final long               serialVersionUID = 4505117271488648346L;
 
-        private final Set<Map<Object, Object>> bindings;
+        @SuppressWarnings("rawtypes")
+        private final Set<Map<VarImpl, Object>> bindings;
 
-        private BindingsFoundException(Set<Map<Object, Object>> bindings) {
+        @SuppressWarnings("rawtypes")
+        private BindingsFoundException(Set<Map<VarImpl, Object>> bindings) {
             this.bindings = bindings;
         }
 
@@ -514,27 +535,8 @@ public final class Logic {
         }
     }
 
-    private static abstract class CycleException extends RuntimeException {
-        private static final long serialVersionUID = -1561492438458671302L;
-    }
-
-    public static final class CircularVariableException extends CycleException {
-        private static final long serialVersionUID = 1636584651815799600L;
-
-        private final Set<Object> vars;
-
-        private CircularVariableException(Set<Object> vars) {
-            this.vars = vars;
-        }
-
-        @Override
-        public String getMessage() {
-            return "Circular Variables " + vars.toString().substring(3);
-        }
-    }
-
     @SuppressWarnings("rawtypes")
-    public static final class CircularLogicException extends CycleException {
+    public static final class CircularLogicException extends RuntimeException {
         private static final long    serialVersionUID = 293433487448006753L;
 
         private final List<TermImpl> derived;
