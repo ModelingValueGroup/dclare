@@ -24,11 +24,11 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
@@ -41,15 +41,26 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final Context<List<TermImpl>>                       DERIVED = Context.of(List.of());
+    private static final BiFunction<Set<TermImpl>, TermImpl, Set<TermImpl>>                   ADD_FACT   = (s, e) -> s == null ? Set.of(e) : s.add(e);
+
+    private static final BiFunction<Set<RuleImpl>, RuleImpl, Set<RuleImpl>>                   ADD_RULE   = (s, e) -> s == null ? Set.of(e) : s.add(e);
 
     @SuppressWarnings("rawtypes")
-    private static final Constant<TermImpl, Set<TermImpl>>             FACTS   = Constant.of("FACTS", Set.of(), CoreSetableModifier.durable);
+    private static final Context<List<TermImpl>>                                              DERIVED    = Context.of(List.of());
 
     @SuppressWarnings("rawtypes")
-    private static final Constant<Pair<Class, Integer>, Set<RuleImpl>> RULES   = Constant.of("RULES", Set.of(), CoreSetableModifier.durable);
+    private static final Constant<TermImpl, Set<TermImpl>>                                    FACTS      = Constant.of("FACTS", null, CoreSetableModifier.durable);
 
-    private static abstract class AbstractTermImpl<F> extends StructImpl implements InvocationHandler {
+    @SuppressWarnings("rawtypes")
+    private static final Constant<Pair<Class, Integer>, Set<RuleImpl>>                        RULES      = Constant.of("RULES", null, CoreSetableModifier.durable);
+
+    @SuppressWarnings("rawtypes")
+    private static final Pair<Collection<TermImpl>, Collection<Supplier<String>>>             EMPTY      = Pair.of(Set.of(), Set.of());
+
+    @SuppressWarnings("rawtypes")
+    private static final Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> EMPTY_VARS = Pair.of(Set.of(), Set.of());
+
+    private static abstract class ClauseImpl<F> extends StructImpl implements InvocationHandler {
         private static final long   serialVersionUID = 7315776001191198132L;
 
         private static final Method EQUALS;
@@ -92,10 +103,10 @@ public final class Logic {
         public String toString() {
             if (functor() == L.class) {
                 List list = List.of();
-                AbstractTermImpl ht = this;
-                while (ht.length() == 2) {
+                ClauseImpl ht = this;
+                while (ht.length() == 3) {
                     list = list.prepend(ht.get(1));
-                    ht = (AbstractTermImpl) ht.get(2);
+                    ht = (ClauseImpl) ht.get(2);
                 }
                 return list.toString().substring(4);
             } else {
@@ -104,7 +115,7 @@ public final class Logic {
             }
         }
 
-        protected AbstractTermImpl(Class<F> functor, Object... args) {
+        protected ClauseImpl(Class<F> functor, Object... args) {
             super(unproxy(functor, args));
         }
 
@@ -125,24 +136,7 @@ public final class Logic {
             return (Class<F>) get(0);
         }
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        protected <R extends AbstractTermImpl<F>> R replace(Function<Object, Object> replacer) {
-            Object[] array = toArray();
-            boolean changed = false;
-            for (int i = 0; i < array.length; i++) {
-                Object old = array[i];
-                if (array[i] instanceof AbstractTermImpl) {
-                    array[i] = ((AbstractTermImpl) array[i]).replace(replacer);
-                }
-                array[i] = replacer.apply(array[i]);
-                if (old != array[i]) {
-                    changed = true;
-                }
-            }
-            return (R) (changed ? term(array) : this);
-        }
-
-        protected abstract AbstractTermImpl<F> term(Object[] array);
+        protected abstract ClauseImpl<F> term(Object[] array);
     }
 
     @SuppressWarnings("rawtypes")
@@ -169,7 +163,7 @@ public final class Logic {
         return new VarImpl<F>(functor, id).proxy();
     }
 
-    private static final class VarImpl<F> extends AbstractTermImpl<F> {
+    private static final class VarImpl<F> extends ClauseImpl<F> {
         private static final long serialVersionUID = -8998368070388908726L;
 
         private VarImpl(Class<F> functor, String name) {
@@ -187,6 +181,11 @@ public final class Logic {
         }
 
         @Override
+        public String toString() {
+            return get(1).toString();
+        }
+
+        @Override
         @SuppressWarnings("unchecked")
         protected VarImpl<F> term(Object[] array) {
             return new VarImpl<F>(functor(), array[1]);
@@ -200,10 +199,10 @@ public final class Logic {
 
     @SuppressWarnings("unchecked")
     public static <F> F term(Class<F> functor, Object... args) {
-        return new TermImpl<F>(functor).proxy();
+        return new TermImpl<F>(functor, args).proxy();
     }
 
-    private static class TermImpl<F> extends AbstractTermImpl<F> implements Supplier<Boolean> {
+    private static class TermImpl<F> extends ClauseImpl<F> {
         private static final long serialVersionUID = -1605559565948158856L;
 
         private TermImpl(Class<F> functor, Object... args) {
@@ -216,9 +215,15 @@ public final class Logic {
             return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Term.class}, this);
         }
 
+        @Override
+        @SuppressWarnings("unchecked")
+        protected TermImpl<F> term(Object[] array) {
+            return new TermImpl<F>((Class<F>) array[0], Arrays.copyOfRange(array, 1, array.length));
+        }
+
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
-            FACTS.force(this, Set::add, this);
+            FACTS.force(this, ADD_FACT, this);
             patterns(1, toArray());
         }
 
@@ -227,75 +232,87 @@ public final class Logic {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = get(i);
-                    FACTS.force(term(array), Set::add, this);
+                    FACTS.force(term(array), ADD_FACT, this);
                 }
                 patterns(i + 1, array);
                 if (array[i] != null) {
                     array[i] = null;
-                    FACTS.force(term(array), Set::add, this);
+                    FACTS.force(term(array), ADD_FACT, this);
                 }
                 patterns(i + 1, array);
             }
         }
 
-        @Override
-        @SuppressWarnings("unchecked")
-        protected TermImpl<F> term(Object[] array) {
-            return new TermImpl<F>(functor(), Arrays.copyOfRange(array, 1, array.length));
-        }
-
         @SuppressWarnings({"rawtypes", "unchecked"})
-        @Override
-        public Boolean get() {
-            Set<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
-            TermImpl pattern = replace(e -> e instanceof VarImpl ? null : e);
-            Set<TermImpl> set = rules.isEmpty() || pattern == this ? FACTS.get(pattern) : Set.of();
-            if (set.isEmpty()) {
-                if (!rules.isEmpty()) {
-                    List<TermImpl> pre = DERIVED.get();
-                    if (pre.contains(pattern)) {
-                        throw new CircularLogicException(pre, pattern);
-                    } else {
-                        Set<RuleImpl> bound = rules.map(r -> {
-                            List<VarImpl> vars = r.term().variables();
-                            return r.<RuleImpl> replace(e -> {
-                                int i = e instanceof VarImpl ? vars.index(e) : -1;
-                                return i >= 0 ? get(i + 1) : e;
-                            });
-                        }).asSet();
-                        Boolean result = DERIVED.get(pre.prepend(pattern), () -> any(bound));
-                        if (result) {
-                            FACTS.force(this, Set::add, this);
-                        }
-                        return result;
-                    }
-                } else {
-                    return Boolean.FALSE;
-                }
-            } else if (pattern != this) {
-                throw new BindingsFoundException(set.map(b -> {
-                    Map<VarImpl, Object> vs = Map.of();
-                    for (int i = 0; i < length(); i++) {
-                        if (get(i) instanceof VarImpl) {
-                            vs = vs.put((VarImpl) get(i), b.get(i));
-                        }
-                    }
-                    return vs;
-                }).asSet());
-            } else {
-                return Boolean.TRUE;
-            }
-        }
-
-        @SuppressWarnings("rawtypes")
-        protected List<VarImpl> variables() {
-            List<VarImpl> vars = List.of();
+        protected Set<VarImpl> variables() {
+            Set<VarImpl> vars = Set.of();
             for (int i = 0; i < length(); i++) {
                 if (get(i) instanceof VarImpl) {
-                    vars.add((VarImpl) get(i));
+                    vars = vars.add((VarImpl) get(i));
                 }
             }
             return vars;
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected Map<VarImpl, Object> getBinding(TermImpl term) {
+            Map<VarImpl, Object> vars = Map.of();
+            for (int i = 1; i < length(); i++) {
+                if (get(i) instanceof VarImpl) {
+                    vars = vars.put((VarImpl) get(i), term.get(i));
+                }
+            }
+            return vars;
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected TermImpl<F> setBinding(Map<VarImpl, Object> vars) {
+            Object[] array = toArray();
+            for (int i = 1; i < length(); i++) {
+                if (get(i) instanceof VarImpl) {
+                    array[i] = vars.get((VarImpl) get(i));
+                }
+            }
+            return term(array);
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected Pair<Collection<TermImpl>, Collection<Supplier<String>>> match() {
+            Set<TermImpl> facts = FACTS.get(this);
+            if (facts == null) {
+                Set<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                if (rules != null) {
+                    List<TermImpl> pre = DERIVED.get();
+                    if (pre.contains(this)) {
+                        return Pair.of(Set.of(), Set.of(() -> {
+                            int i = pre.firstIndexOf(this);
+                            List<TermImpl> cycle = pre.sublist(0, i + 1).prepend(this);
+                            return "Circular Logic " + cycle.reverse().asList().toString().substring(4);
+                        }));
+                    } else {
+                        List<TermImpl> post = pre.prepend(this);
+                        Pair<Collection<TermImpl>, Collection<Supplier<String>>> result = DERIVED.get(post, () -> {
+                            Pair<Collection<TermImpl>, Collection<Supplier<String>>> r = EMPTY;
+                            for (RuleImpl rule : rules) {
+                                Pair<Collection<TermImpl>, Collection<Supplier<String>>> e = rule.eval(this);
+                                r = Pair.of(Collection.concat(r.a(), e.a()), Collection.concat(r.b(), e.b()));
+                            }
+                            return r;
+                        });
+                        if (result.b().isEmpty()) {
+                            facts = result.a().asSet();
+                            FACTS.force(this, facts);
+                            return Pair.of(facts, Set.of());
+                        } else {
+                            return result;
+                        }
+                    }
+                } else {
+                    return EMPTY;
+                }
+            } else {
+                return Pair.of(facts, Set.of());
+            }
         }
     };
 
@@ -308,7 +325,7 @@ public final class Logic {
     public static Rule rule(Term term, Term... goals) {
         RuleImpl ruleImpl = new RuleImpl(term, goal(goals));
         TermImpl termImpl = unproxy(term);
-        RULES.force(Pair.of(termImpl.functor(), termImpl.length() - 1), Set::add, ruleImpl);
+        RULES.force(Pair.of(termImpl.functor(), termImpl.length() - 1), ADD_RULE, ruleImpl);
         return ruleImpl.proxy();
     }
 
@@ -331,13 +348,19 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected final TermImpl term() {
-            return ((TermImpl) get(2));
+            return ((TermImpl) get(1));
         }
 
-        @Override
         @SuppressWarnings("rawtypes")
-        public Boolean get() {
-            return ((GoalImpl) get(2)).get();
+        protected final GoalImpl goal() {
+            return ((GoalImpl) get(2));
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected Pair<Collection<TermImpl>, Collection<Supplier<String>>> eval(TermImpl ptrn) {
+            TermImpl head = term();
+            Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> result = goal().eval(head.getBinding(ptrn));
+            return Pair.of(result.a().map(m -> head.setBinding(m)), result.b());
         }
 
         @Override
@@ -353,7 +376,9 @@ public final class Logic {
     }
 
     public static boolean is(Term... goals) {
-        return new GoalImpl(l(goals)).get();
+        @SuppressWarnings("rawtypes")
+        Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> result = new GoalImpl(l(goals)).eval();
+        return result.b().isEmpty() && !result.a().isEmpty();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -385,32 +410,21 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        @Override
-        public Boolean get() {
-            try {
-                return all(goals());
-            } catch (BindingsFoundException bve) {
-                return any(bve.bindings.map(b -> replace(e -> {
-                    if (e instanceof VarImpl) {
-                        Object v = b.get((VarImpl) e);
-                        if (v != null) {
-                            return v;
-                        }
-                    }
-                    return e;
-                })));
-            }
+        public Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> eval() {
+            return eval(variables().asMap(v -> Entry.of(v, null)));
         }
 
-        @SuppressWarnings("rawtypes")
-        private Set<TermImpl<?>> goals() {
-            Set<TermImpl<?>> set = Set.of();
-            TermImpl ht = (TermImpl) get(1);
-            while (ht.length() == 2) {
-                set = set.add((TermImpl) ht.get(1));
-                ht = (TermImpl) ht.get(2);
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> eval(Map<VarImpl, Object> vars) {
+            Pair<Collection<Map<VarImpl, Object>>, Collection<Supplier<String>>> r = EMPTY_VARS;
+            TermImpl list = (TermImpl) get(1);
+            while (list.length() == 3) {
+                TermImpl goal = (TermImpl) list.get(1);
+                Pair<Collection<TermImpl>, Collection<Supplier<String>>> e = goal.setBinding(vars).match();
+                r = Pair.of(Collection.concat(r.a(), e.a().map(m -> goal.getBinding(m))), Collection.concat(r.b(), e.b()));
+                list = (TermImpl) list.get(2);
             }
-            return set;
+            return r;
         }
     }
 
@@ -440,121 +454,6 @@ public final class Logic {
 
     public static void fact(Term term) {
         unproxy(term).makeFact();
-    }
-
-    // Any
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Boolean any(Collection<? extends Supplier<Boolean>> terms) {
-        List<? extends Supplier<Boolean>> any = terms.random().asList();
-        if (any.isEmpty()) {
-            return false;
-        } else if (any.size() == 1) {
-            return any.get(0).get();
-        } else {
-            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-            boolean result = any.anyMatch(t -> {
-                try {
-                    return t.get();
-                } catch (BindingsFoundException bve) {
-                    ref.updateAndGet(rte -> {
-                        if (rte instanceof BindingsFoundException) {
-                            return ((BindingsFoundException) rte).merge(bve);
-                        } else {
-                            return rte == null || rte instanceof CircularLogicException ? bve : rte;
-                        }
-                    });
-                    return false;
-                } catch (CircularLogicException ce) {
-                    ref.updateAndGet(rte -> rte == null ? ce : rte);
-                    return false;
-                }
-            });
-            RuntimeException exc = ref.get();
-            if (exc instanceof BindingsFoundException) {
-                throw exc;
-            } else if (!result && exc != null) {
-                throw exc;
-            } else {
-                return result;
-            }
-        }
-    }
-
-    // All
-
-    private static Boolean all(Collection<? extends Supplier<Boolean>> terms) {
-        List<? extends Supplier<Boolean>> all = terms.random().asList();
-        if (all.isEmpty()) {
-            return true;
-        } else if (all.size() == 1) {
-            return all.get(0).get();
-        } else {
-            AtomicReference<RuntimeException> ref = new AtomicReference<>(null);
-            boolean result = all.allMatch(p -> {
-                try {
-                    return p.get();
-                } catch (BindingsFoundException bve) {
-                    ref.updateAndGet(rte -> {
-                        if (rte instanceof BindingsFoundException) {
-                            return ((BindingsFoundException) rte).merge(bve);
-                        } else {
-                            return rte == null || rte instanceof CircularLogicException ? bve : rte;
-                        }
-                    });
-                    return true;
-                } catch (CircularLogicException ce) {
-                    ref.updateAndGet(rte -> rte == null ? ce : rte);
-                    return true;
-                }
-            });
-            RuntimeException exc = ref.get();
-            if (exc instanceof BindingsFoundException) {
-                throw exc;
-            } else if (result && exc != null) {
-                throw exc;
-            } else {
-                return result;
-            }
-        }
-    }
-
-    // Runtime Exceptions
-
-    public static final class BindingsFoundException extends RuntimeException {
-        private static final long               serialVersionUID = 4505117271488648346L;
-
-        @SuppressWarnings("rawtypes")
-        private final Set<Map<VarImpl, Object>> bindings;
-
-        @SuppressWarnings("rawtypes")
-        private BindingsFoundException(Set<Map<VarImpl, Object>> bindings) {
-            this.bindings = bindings;
-        }
-
-        private BindingsFoundException merge(BindingsFoundException other) {
-            return new BindingsFoundException(bindings.addAll(other.bindings));
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    public static final class CircularLogicException extends RuntimeException {
-        private static final long    serialVersionUID = 293433487448006753L;
-
-        private final List<TermImpl> derived;
-        private final TermImpl       current;
-
-        private CircularLogicException(List<TermImpl> derived, TermImpl current) {
-            this.derived = derived;
-            this.current = current;
-        }
-
-        @Override
-        public String getMessage() {
-            int i = derived.firstIndexOf(current);
-            List<TermImpl> cycle = derived.sublist(0, i + 1).prepend(current);
-            return "Circular Logic " + cycle.reverse().asList().toString().substring(4);
-        }
     }
 
 }

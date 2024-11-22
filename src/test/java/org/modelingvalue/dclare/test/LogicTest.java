@@ -119,4 +119,32 @@ public class LogicTest {
             isFalse(ancestorDescendent(Carel, Carel));
         });
     }
+
+    @RepeatedTest(1)
+    public void test1() {
+        run(() -> {
+            Person A = var("A"); // Ancestor
+            Person D = var("D"); // Descendent
+            Person R = var("R"); // Relative
+
+            rule(ancestorDescendent(A, D), parentChild(A, D));
+            rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
+
+            Person Carel = person("Carel");
+            Person Jan = person("Jan");
+            Person Wim = person("Wim");
+
+            fact(parentChild(Carel, Jan));
+            fact(parentChild(Jan, Wim));
+
+            isTrue(parentChild(Carel, Jan));
+            isTrue(parentChild(Jan, Wim));
+
+            isFalse(parentChild(Jan, Carel));
+            isFalse(parentChild(Wim, Wim));
+
+            isTrue(ancestorDescendent(Carel, Jan));
+            isTrue(ancestorDescendent(Carel, Wim));
+        });
+    }
 }
