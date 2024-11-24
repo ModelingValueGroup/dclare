@@ -77,7 +77,7 @@ public class LogicTest {
         return term(AncestorDescendent.class, ancestor, descendent);
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(100)
     public void test0() {
         run(() -> {
             Person A = var("A"); // Ancestor
@@ -120,7 +120,7 @@ public class LogicTest {
         });
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(100)
     public void test1() {
         run(() -> {
             Person A = var("A"); // Ancestor

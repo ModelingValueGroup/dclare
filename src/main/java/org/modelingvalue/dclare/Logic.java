@@ -440,25 +440,24 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected Set<Map<VarImpl, Object>> eval(Map<VarImpl, Object> vars) {
-            List list = ((TermImpl) get(1)).list();
-            return eval(list, list, Set.of(vars));
+            return eval(((TermImpl) get(1)).list(), Set.of(vars));
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private Set<Map<VarImpl, Object>> eval(List<TermImpl> goals, List<TermImpl> actual, Set<Map<VarImpl, Object>> vars) {
+        private Set<Map<VarImpl, Object>> eval(List<TermImpl> goals, Set<Map<VarImpl, Object>> vars) {
             if (goals.isEmpty()) {
                 return vars;
             } else {
                 return vars.<Map<VarImpl, Object>> flatMap(v -> {
-                    List<TermImpl> b = actual;
-                    for (int i = 0; i < goals.size(); i++) {
-                        b = b.replace(i, goals.get(i).setBinding(v));
+                    List<TermImpl> actual = List.of();
+                    for (TermImpl g : goals) {
+                        actual = actual.add(g.setBinding(v));
                     }
-                    TermImpl f = first(b);
-                    int i = b.index(f);
+                    int i = first(actual);
+                    TermImpl f = actual.get(i);
                     TermImpl g = goals.get(i);
                     Set<TermImpl> m = f.match();
-                    return eval(goals.removeIndex(i), b.removeIndex(i), m.map(t -> {
+                    return eval(goals.removeIndex(i), m.map(t -> {
                         Map<VarImpl, Object> pa = v.putAll(g.getBinding(t));
                         return pa;
                     }).asSet());
@@ -467,13 +466,13 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        private static TermImpl first(List<TermImpl> list) {
-            TermImpl first = null;
+        private static int first(List<TermImpl> list) {
+            int first = -1;
             int min = Integer.MAX_VALUE;
-            for (TermImpl t : list) {
-                int prio = t.prio();
-                if (first == null || prio < min) {
-                    first = t;
+            for (int i = 0; i < list.size(); i++) {
+                int prio = list.get(i).prio();
+                if (first == -1 || prio < min) {
+                    first = i;
                     min = prio;
                 }
             }
