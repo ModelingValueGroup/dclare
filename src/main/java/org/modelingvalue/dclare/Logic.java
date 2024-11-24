@@ -26,6 +26,7 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 
+import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
@@ -279,7 +280,7 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Set<TermImpl> match() {
+        protected Collection<TermImpl> match() {
             Set<TermImpl> facts = FACTS.get(this);
             if (facts == null) {
                 Set<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
@@ -288,14 +289,14 @@ public final class Logic {
                     if (pre.contains(this)) {
                         return Set.of(INCOMPLETE);
                     } else {
-                        Set<TermImpl> result = DERIVED.get(pre.prepend(this), () -> {
-                            Set<TermImpl> r = Set.of();
-                            for (RuleImpl rule : rules.random()) {
-                                r = r.addAll(rule.eval(this));
+                        Collection<TermImpl> result = DERIVED.get(pre.prepend(this), () -> {
+                            Collection<TermImpl> r = Set.of();
+                            for (RuleImpl rule : rules) {
+                                r = Collection.concat(r, rule.eval(this));
                             }
                             return r;
                         });
-                        FACTS.force(this, result);
+                        // FACTS.force(this, result);
                         return result;
                     }
                 } else {
@@ -383,10 +384,10 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Set<TermImpl> eval(TermImpl ptrn) {
+        protected Collection<TermImpl> eval(TermImpl ptrn) {
             TermImpl head = term();
-            Set<Map<VarImpl, Object>> r = goal().eval(variables().putAll(head.getBinding(ptrn)));
-            return r.map(m -> head.setBinding(m)).asSet();
+            Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(head.getBinding(ptrn)));
+            return r.map(m -> head.setBinding(m));
         }
 
         @Override
@@ -434,17 +435,17 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        public Set<Map<VarImpl, Object>> eval() {
+        public Collection<Map<VarImpl, Object>> eval() {
             return eval(variables());
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Set<Map<VarImpl, Object>> eval(Map<VarImpl, Object> vars) {
+        protected Collection<Map<VarImpl, Object>> eval(Map<VarImpl, Object> vars) {
             return eval(((TermImpl) get(1)).list(), Set.of(vars));
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private Set<Map<VarImpl, Object>> eval(List<TermImpl> goals, Set<Map<VarImpl, Object>> vars) {
+        private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars) {
             if (goals.isEmpty()) {
                 return vars;
             } else {
@@ -456,12 +457,12 @@ public final class Logic {
                     int i = first(actual);
                     TermImpl f = actual.get(i);
                     TermImpl g = goals.get(i);
-                    Set<TermImpl> m = f.match();
+                    Collection<TermImpl> m = f.match();
                     return eval(goals.removeIndex(i), m.map(t -> {
                         Map<VarImpl, Object> pa = v.putAll(g.getBinding(t));
                         return pa;
-                    }).asSet());
-                }).asSet();
+                    }));
+                });
             }
         }
 
