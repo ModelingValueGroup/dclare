@@ -582,4 +582,15 @@ public final class Logic {
         unproxy(term).makeFact();
     }
 
+    // Variable bindings
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Map<Variable, Object> bind(Term... varVal) {
+        Map<Variable, Object> b = Map.of();
+        for (int i = 0; i < varVal.length; i += 2) {
+            b = b.add(Entry.of((Variable) varVal[i], varVal[i + 1]));
+        }
+        return b;
+    }
+
 }

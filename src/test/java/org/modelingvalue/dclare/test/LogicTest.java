@@ -28,11 +28,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Term;
+import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 
@@ -54,7 +54,7 @@ public class LogicTest {
         assertFalse(is(goals));
     }
 
-    static void hasResult(Set<Map<Term, Object>> bindings, Term... goals) {
+    static void hasResult(Set<Map<Variable, Object>> bindings, Term... goals) {
         assertEquals(bindings, eval(goals));
     }
 
@@ -171,8 +171,8 @@ public class LogicTest {
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
 
-            hasResult(Set.of(Map.of(Entry.of(A, Jan)), Map.of(Entry.of(A, Carel))), ancestorDescendent(A, Wim));
-            hasResult(Set.of(Map.of(Entry.of(D, Jan)), Map.of(Entry.of(D, Wim))), ancestorDescendent(Carel, D));
+            hasResult(Set.of(bind(A, Jan), bind(A, Carel)), ancestorDescendent(A, Wim));
+            hasResult(Set.of(bind(D, Jan), bind(D, Wim)), ancestorDescendent(Carel, D));
         });
     }
 
