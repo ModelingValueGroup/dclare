@@ -528,6 +528,7 @@ public final class Logic {
     }
 
     private static final TermImpl<Incomplete> INCOMPLETE     = new TermImpl<Incomplete>(Incomplete.class);
+    @SuppressWarnings("rawtypes")
     private static final Set<TermImpl>        INCOMPLETE_SET = Set.of(INCOMPLETE);
     private static final VarImpl<Incomplete>  INCOMPLETE_VAR = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
     @SuppressWarnings("rawtypes")
