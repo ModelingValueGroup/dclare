@@ -154,7 +154,7 @@ public class LogicTest {
         });
     }
 
-    //@RepeatedTest(1)
+    @RepeatedTest(100)
     public void test2() {
         run(() -> {
             Person A = var("A"); // Ancestor
@@ -163,7 +163,6 @@ public class LogicTest {
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
-            // rule(ancestorDescendent(A, D), parentChild(A, R), ancestorDescendent(R, D));
 
             Person Carel = person("Carel");
             Person Jan = person("Jan");

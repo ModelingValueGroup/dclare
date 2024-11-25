@@ -228,24 +228,22 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
             FACTS.force(this, ADD_FACT, this);
-            patterns(1, toArray(), true);
+            patterns(1, toArray());
         }
 
-        private void patterns(int i, Object[] array, boolean empty) {
+        private void patterns(int i, Object[] array) {
             if (i < length()) {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = get(i);
                     FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array, false);
+                patterns(i + 1, array);
                 if (array[i] != null) {
                     array[i] = null;
-                    if (!empty || i < length() - 1) {
-                        FACTS.force(term(array), ADD_FACT, this);
-                    }
+                    FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array, empty);
+                patterns(i + 1, array);
             }
         }
 
@@ -302,29 +300,25 @@ public final class Logic {
                         return INCOMPLETE_SET;
                     } else {
                         int non = nrOfNulls();
-                        if (non == length() - 1) {
-                            return INCOMPLETE_SET;
-                        } else {
-                            der = der.prepend(this);
-                            Collection<TermImpl> r = Set.of();
-                            for (RuleImpl rule : rules) {
-                                Collection<TermImpl> eval = rule.eval(this, der);
-                                if (non == 0) {
-                                    Set<TermImpl> set = eval.asSet();
-                                    if (!set.isEmpty()) {
-                                        return set;
-                                    }
-                                } else {
-                                    r = Collection.concat(r, eval);
+                        der = der.prepend(this);
+                        Collection<TermImpl> r = Set.of();
+                        for (RuleImpl rule : rules) {
+                            Collection<TermImpl> eval = rule.eval(this, der);
+                            if (non == 0) {
+                                Set<TermImpl> set = eval.asSet();
+                                if (!set.isEmpty()) {
+                                    return set;
                                 }
-                            }
-                            if (non < 2) {
-                                Set<TermImpl> set = r.asSet();
-                                FACTS.force(this, set);
-                                return set;
                             } else {
-                                return r;
+                                r = Collection.concat(r, eval);
                             }
+                        }
+                        if (non < 2 && non < length() - 1) {
+                            Set<TermImpl> set = r.asSet();
+                            FACTS.force(this, set);
+                            return set;
+                        } else {
+                            return r;
                         }
                     }
                 } else {
@@ -337,25 +331,20 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected int termPrio(List<TermImpl> der) {
-            int non = nrOfNulls();
-            if (non == length() - 1) {
-                return Integer.MAX_VALUE;
+            Set<TermImpl> facts = FACTS.get(this);
+            if (facts != null) {
+                return Integer.MIN_VALUE + facts.size();
             } else {
-                Set<TermImpl> facts = FACTS.get(this);
-                if (facts != null) {
-                    return Integer.MIN_VALUE + facts.size();
-                } else {
-                    List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
-                    if (rules != null) {
-                        if (der.contains(this)) {
-                            return Integer.MAX_VALUE;
-                        } else {
-                            return non;
-                        }
+                List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                if (rules != null) {
+                    if (der.contains(this)) {
+                        return Integer.MAX_VALUE;
+                    } else {
+                        return nrOfNulls();
                     }
                 }
-                return Integer.MIN_VALUE;
             }
+            return Integer.MIN_VALUE;
         }
 
         @SuppressWarnings("rawtypes")
