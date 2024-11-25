@@ -229,22 +229,24 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
             FACTS.force(this, ADD_FACT, this);
-            patterns(1, toArray());
+            patterns(1, toArray(), true);
         }
 
-        private void patterns(int i, Object[] array) {
+        private void patterns(int i, Object[] array, boolean empty) {
             if (i < length()) {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = get(i);
                     FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array);
+                patterns(i + 1, array, false);
                 if (array[i] != null) {
                     array[i] = null;
-                    FACTS.force(term(array), ADD_FACT, this);
+                    if (!empty || i < length() - 1) {
+                        FACTS.force(term(array), ADD_FACT, this);
+                    }
                 }
-                patterns(i + 1, array);
+                patterns(i + 1, array, empty);
             }
         }
 
@@ -299,30 +301,34 @@ public final class Logic {
                 if (rules != null) {
                     List<TermImpl> pre = DERIVED.get();
                     if (pre.contains(this)) {
-                        return Set.of(INCOMPLETE);
+                        return INCOMPLETE_SET;
                     } else {
                         int non = nrOfNulls();
-                        Collection<TermImpl> result = DERIVED.get(pre.prepend(this), () -> {
-                            Collection<TermImpl> r = Set.of();
-                            for (RuleImpl rule : rules) {
-                                Collection<TermImpl> eval = rule.eval(this);
-                                if (non == 0) {
-                                    Set<TermImpl> set = eval.asSet();
-                                    if (!set.isEmpty()) {
-                                        return set;
-                                    }
-                                } else {
-                                    r = Collection.concat(r, eval);
-                                }
-                            }
-                            return r;
-                        });
-                        if (non == 0 || (non == 1 && length() > 1)) {
-                            Set<TermImpl> set = result.asSet();
-                            FACTS.force(this, set);
-                            return set;
+                        if (non == length()) {
+                            return INCOMPLETE_SET;
                         } else {
-                            return result;
+                            Collection<TermImpl> result = DERIVED.get(pre.prepend(this), () -> {
+                                Collection<TermImpl> r = Set.of();
+                                for (RuleImpl rule : rules) {
+                                    Collection<TermImpl> eval = rule.eval(this);
+                                    if (non == 0) {
+                                        Set<TermImpl> set = eval.asSet();
+                                        if (!set.isEmpty()) {
+                                            return set;
+                                        }
+                                    } else {
+                                        r = Collection.concat(r, eval);
+                                    }
+                                }
+                                return r;
+                            });
+                            if (non < 2) {
+                                Set<TermImpl> set = result.asSet();
+                                FACTS.force(this, set);
+                                return set;
+                            } else {
+                                return result;
+                            }
                         }
                     }
                 } else {
@@ -522,6 +528,7 @@ public final class Logic {
     }
 
     private static final TermImpl<Incomplete> INCOMPLETE     = new TermImpl<Incomplete>(Incomplete.class);
+    private static final Set<TermImpl>        INCOMPLETE_SET = Set.of(INCOMPLETE);
     private static final VarImpl<Incomplete>  INCOMPLETE_VAR = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
     @SuppressWarnings("rawtypes")
     private static final Map<VarImpl, Object> INCOMPLETE_MAP = Map.of(Entry.of(INCOMPLETE_VAR, INCOMPLETE));
