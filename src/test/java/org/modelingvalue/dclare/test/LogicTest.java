@@ -20,8 +20,7 @@
 
 package org.modelingvalue.dclare.test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
@@ -29,6 +28,9 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.Entry;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Universe;
@@ -50,6 +52,10 @@ public class LogicTest {
 
     static void isFalse(Term... goals) {
         assertFalse(is(goals));
+    }
+
+    static void hasResult(Set<Map<Term, Object>> bindings, Term... goals) {
+        assertEquals(bindings, eval(goals));
     }
 
     interface Person extends Term {
@@ -147,4 +153,28 @@ public class LogicTest {
             isTrue(ancestorDescendent(Carel, Wim));
         });
     }
+
+    @RepeatedTest(1)
+    public void test2() {
+        run(() -> {
+            Person A = var("A"); // Ancestor
+            Person D = var("D"); // Descendent
+            Person R = var("R"); // Relative
+
+            rule(ancestorDescendent(A, D), parentChild(A, D));
+            rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
+            // rule(ancestorDescendent(A, D), parentChild(A, R), ancestorDescendent(R, D));
+
+            Person Carel = person("Carel");
+            Person Jan = person("Jan");
+            Person Wim = person("Wim");
+
+            fact(parentChild(Carel, Jan));
+            fact(parentChild(Jan, Wim));
+
+            hasResult(Set.of(Map.of(Entry.of(A, Jan)), Map.of(Entry.of(A, Carel))), ancestorDescendent(A, Wim));
+            hasResult(Set.of(Map.of(Entry.of(D, Jan)), Map.of(Entry.of(D, Wim))), ancestorDescendent(Carel, D));
+        });
+    }
+
 }

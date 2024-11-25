@@ -46,7 +46,6 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                                                      public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
                                                          ActionTransaction.this.changed(object, setable, preValue, rawPreValue, postValue);
                                                          if (setable.id() instanceof Observed) {
-                                                             // LeafTransaction.getCurrent().runSilent(() -> System.err.println("PULL " + object + "." + setable + "=" + postValue));
                                                              ActionTransaction.this.set(object, (Observed<O, T>) setable.id(), preValue, postValue);
                                                          }
                                                      }
