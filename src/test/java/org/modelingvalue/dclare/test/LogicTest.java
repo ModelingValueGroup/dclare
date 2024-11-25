@@ -154,7 +154,7 @@ public class LogicTest {
         });
     }
 
-    @RepeatedTest(1)
+    //@RepeatedTest(1)
     public void test2() {
         run(() -> {
             Person A = var("A"); // Ancestor

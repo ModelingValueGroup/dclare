@@ -44,12 +44,12 @@ public interface Universe extends Mutable, Internable {
         return new Universe() {
             private final MutableClass universeClass = new MutableClass() {
 
-                @SuppressWarnings("unchecked")
-                Set<? extends Observer<?>>                   observers =                                                     //
-                        (Set<? extends Observer<?>>) Collection.of(features).filter(Observer.class).asSet();
-                @SuppressWarnings("unchecked")
-                Set<? extends Setable<? extends Mutable, ?>> setables  =                                                     //
-                        (Set<? extends Setable<? extends Mutable, ?>>) Collection.of(features).filter(Setable.class).asSet();
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Set<? extends Observer<?>>                   observers =             //
+                        (Set) Collection.of(features).filter(Observer.class).asSet();
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                Set<? extends Setable<? extends Mutable, ?>> setables  =             //
+                        (Set) Collection.of(features).filter(Setable.class).asSet();
 
                 @Override
                 public Set<? extends Observer<?>> dObservers() {
