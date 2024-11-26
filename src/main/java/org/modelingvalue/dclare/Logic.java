@@ -252,11 +252,6 @@ public final class Logic {
         protected Class<T> functType() {
             return (Class<T>) get(1);
         }
-
-        @Override
-        public int hashCode() {
-            return super.hashCode();
-        }
     }
 
     // Variables
