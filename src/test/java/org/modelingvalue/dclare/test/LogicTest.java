@@ -62,7 +62,7 @@ public class LogicTest {
     interface Person extends Term {
     }
 
-    static Functor<Person> person = functor(Person.class, "person", 1);
+    static Functor<Person> person = functor(LogicTest::person);
 
     Person person(String name) {
         return term(person, name);
@@ -75,7 +75,7 @@ public class LogicTest {
     interface ParentChild extends Term {
     }
 
-    static Functor<ParentChild> parentChild = functor(ParentChild.class, "parentChild", 2);
+    static Functor<ParentChild> parentChild = functor(LogicTest::parentChild);
 
     ParentChild parentChild(Person parent, Person child) {
         return term(parentChild, parent, child);
@@ -84,7 +84,7 @@ public class LogicTest {
     interface AncestorDescendent extends Term {
     }
 
-    static Functor<AncestorDescendent> ancestorDescendent = functor(AncestorDescendent.class, "ancestorDescendent", 2);
+    static Functor<AncestorDescendent> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
     AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);

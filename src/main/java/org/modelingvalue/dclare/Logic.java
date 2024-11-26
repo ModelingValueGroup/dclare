@@ -32,6 +32,16 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.impl.StructImpl;
+import org.modelingvalue.collections.util.SerializableBiFunction;
+import org.modelingvalue.collections.util.SerializableBiFunction.SerializableBiFunctionImpl;
+import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.collections.util.SerializableFunction.SerializableFunctionImpl;
+import org.modelingvalue.collections.util.SerializableQuadFunction;
+import org.modelingvalue.collections.util.SerializableQuadFunction.SerializableQuadFunctionImpl;
+import org.modelingvalue.collections.util.SerializableSupplier;
+import org.modelingvalue.collections.util.SerializableSupplier.SerializableSupplierImpl;
+import org.modelingvalue.collections.util.SerializableTriFunction;
+import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
 
 public final class Logic {
     private Logic() {
@@ -157,20 +167,62 @@ public final class Logic {
     public interface Functor<T> extends Term {
     }
 
-    private static <T> FunctImpl<T> functImpl(Class<T> type, String name, int arity) {
-        return new FunctImpl<T>(type, name, arity);
+    @SuppressWarnings("unchecked")
+    private static <T> FunctImpl<T> functImpl(SerializableSupplier<T> method) {
+        SerializableSupplierImpl<T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), list(l.in()));
     }
 
-    public static <T> Functor<T> functor(Class<T> type, String name, int arity) {
-        return functImpl(type, name, arity).proxy();
+    public static <T> Functor<T> functor(SerializableSupplier<T> method) {
+        return functImpl(method).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A> FunctImpl<T> functImpl(SerializableFunction<A, T> method) {
+        SerializableFunctionImpl<A, T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), list(l.in()));
+    }
+
+    public static <T, A> Functor<T> functor(SerializableFunction<A, T> method) {
+        return functImpl(method).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B> FunctImpl<T> functImpl(SerializableBiFunction<A, B, T> method) {
+        SerializableBiFunctionImpl<A, B, T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), list(l.in()));
+    }
+
+    public static <T, A, B> Functor<T> functor(SerializableBiFunction<A, B, T> method) {
+        return functImpl(method).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B, C> FunctImpl<T> functImpl(SerializableTriFunction<A, B, C, T> method) {
+        SerializableTriFunctionImpl<A, B, C, T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), list(l.in()));
+    }
+
+    public static <T, A, B, C> Functor<T> functor(SerializableTriFunction<A, B, C, T> method) {
+        return functImpl(method).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B, C, D> FunctImpl<T> functImpl(SerializableQuadFunction<A, B, C, D, T> method) {
+        SerializableQuadFunctionImpl<A, B, C, D, T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), list(l.in()));
+    }
+
+    public static <T, A, B, C, D> Functor<T> functor(SerializableQuadFunction<A, B, C, D, T> method) {
+        return functImpl(method).proxy();
     }
 
     private static final class FunctImpl<T> extends ClauseImpl<Functor<T>> {
         private static final long serialVersionUID = 285147889847599160L;
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private FunctImpl(Class<T> type, String name, int arity) {
-            super((Class) Functor.class, type, name, arity);
+        private FunctImpl(Class<T> type, String name, TermImpl<L> args) {
+            super((Class) Functor.class, type, name, args);
         }
 
         @Override
@@ -185,9 +237,9 @@ public final class Logic {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         protected FunctImpl<T> term(Object[] array) {
-            return new FunctImpl<T>((Class<T>) array[1], (String) array[2], (Integer) array[2]);
+            return new FunctImpl<T>((Class<T>) array[1], (String) array[2], (TermImpl<L>) array[3]);
         }
 
         @SuppressWarnings("unchecked")
@@ -374,7 +426,7 @@ public final class Logic {
         protected Collection<TermImpl> match(List<TermImpl> der) {
             int non = nrOfNulls();
             if (!USE_EXTEND && non == length() - 1) {
-                return Set.of(incompl(der.append(this)));
+                return Set.of(incomplete(der.append(this)));
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
                 if (facts == null) {
@@ -382,7 +434,7 @@ public final class Logic {
                     if (rules != null) {
                         int i = der.lastIndexOf(this);
                         if (i >= 0) {
-                            return Set.of(incompl(der.sublist(i, der.size()).append(this)));
+                            return Set.of(incomplete(der.sublist(i, der.size()).append(this)));
                         } else {
                             Collection<TermImpl> r = Set.of();
                             for (RuleImpl rule : rules) {
@@ -462,11 +514,16 @@ public final class Logic {
     public static interface Rule extends Term {
     }
 
-    private static final FunctImpl<Rule> RULE_FUNCTOR = functImpl(Rule.class, "rule", 2);
+    private static final FunctImpl<Rule> RULE_FUNCTOR = functImpl((SerializableBiFunction<Term, Goal, Rule>) Logic::rule);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Rule rule(Term term, Term... goals) {
-        RuleImpl ruleImpl = new RuleImpl(term, goal(goals));
+        return rule(term, goal(goals));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Rule rule(Term term, Goal goal) {
+        RuleImpl ruleImpl = new RuleImpl(term, goal);
         TermImpl termImpl = unproxy(term);
         RULES.force(termImpl.functor(), ADD_RULE, ruleImpl);
         return ruleImpl.proxy();
@@ -522,7 +579,8 @@ public final class Logic {
     public static interface Goal extends Term {
     }
 
-    private static final FunctImpl<Goal> GOAL_FUNCTOR = functImpl(Goal.class, "goal", 1);
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static final FunctImpl<Goal> GOAL_FUNCTOR = functImpl((SerializableFunction<L, Goal>) Logic::goal);
 
     public static boolean is(Term... goals) {
         return new GoalImpl(list(goals)).eval().anyMatch(e -> !e.containsKey(INCOMPLETE_VAR));
@@ -535,7 +593,12 @@ public final class Logic {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Goal goal(Term... goals) {
-        return new GoalImpl(list(goals)).proxy();
+        return goal(list(goals).proxy());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Goal goal(L<Term> goals) {
+        return new GoalImpl(goals).proxy();
     }
 
     private static final class GoalImpl extends TermImpl<Goal> {
@@ -623,9 +686,10 @@ public final class Logic {
     public interface Incomplete extends Term {
     }
 
-    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR = functImpl(Incomplete.class, "incomplete", 1);
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR = functImpl((SerializableFunction<L, Incomplete>) Logic::incomplete);
 
-    private static final VarImpl<Incomplete>   INCOMPLETE_VAR     = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
+    private static final VarImpl<Incomplete>   INCOMPLETE_VAR     = new VarImpl<Incomplete>(Incomplete.class, "I");
 
     @SuppressWarnings("unchecked")
     public static Incomplete incompleteVar() {
@@ -633,17 +697,22 @@ public final class Logic {
     }
 
     public static Map<Variable, Object> incomplete(Term... der) {
-        return Map.of(Entry.of((Variable) incompleteVar(), incompl(list(der)).proxy()));
+        return Map.of(Entry.of((Variable) incompleteVar(), incomplete(list(der)).proxy()));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static TermImpl<Incomplete> incompl(List<TermImpl> der) {
-        return incompl(list(der));
+    private static TermImpl<Incomplete> incomplete(List<TermImpl> der) {
+        return incomplete(list(der));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static TermImpl<Incomplete> incompl(TermImpl der) {
+    private static TermImpl<Incomplete> incomplete(TermImpl der) {
         return termImpl(INCOMPLETE_FUNCTOR, der);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Incomplete incomplete(L der) {
+        return termImpl(INCOMPLETE_FUNCTOR, der).proxy();
     }
 
     // Lists
@@ -652,9 +721,9 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_0 = functImpl(L.class, "l", 0);
+    private static final FunctImpl<L> LIST_FUNCTOR_0 = functImpl((SerializableSupplier<L>) Logic::l);
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_2 = functImpl(L.class, "l", 2);
+    private static final FunctImpl<L> LIST_FUNCTOR_2 = functImpl((SerializableBiFunction<Object, L, L>) Logic::l);
 
     @SuppressWarnings("unchecked")
     public static <E> L<E> l(E head, L<E> tail) {
