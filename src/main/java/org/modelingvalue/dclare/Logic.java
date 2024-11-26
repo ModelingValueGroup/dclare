@@ -38,28 +38,30 @@ public final class Logic {
     private Logic() {
     }
 
-    @SuppressWarnings("rawtypes")
-    private static final BiFunction<Set<TermImpl>, TermImpl, Set<TermImpl>>   ADD_FACT = (s, e) -> s == null ? Set.of(e) : s.add(e);
-
-    private static final BiFunction<List<RuleImpl>, RuleImpl, List<RuleImpl>> ADD_RULE = (l, e) -> {
-                                                                                           if (l == null) {
-                                                                                               return List.of(e);
-                                                                                           } else {
-                                                                                               int p = e.rulePrio();
-                                                                                               for (int i = 0; i < l.size(); i++) {
-                                                                                                   if (l.get(i).rulePrio() > p) {
-                                                                                                       return l.insert(i, e);
-                                                                                                   }
-                                                                                               }
-                                                                                               return l.append(e);
-                                                                                           }
-                                                                                       };
+    private static final boolean                                              USE_EXTEND = Boolean.getBoolean("USE_EXTEND");
 
     @SuppressWarnings("rawtypes")
-    private static final Constant<TermImpl, Set<TermImpl>>                    FACTS    = Constant.of("FACTS", null, CoreSetableModifier.durable);
+    private static final BiFunction<Set<TermImpl>, TermImpl, Set<TermImpl>>   ADD_FACT   = (s, e) -> s == null ? Set.of(e) : s.add(e);
+
+    private static final BiFunction<List<RuleImpl>, RuleImpl, List<RuleImpl>> ADD_RULE   = (l, e) -> {
+                                                                                             if (l == null) {
+                                                                                                 return List.of(e);
+                                                                                             } else {
+                                                                                                 int p = e.rulePrio();
+                                                                                                 for (int i = 0; i < l.size(); i++) {
+                                                                                                     if (l.get(i).rulePrio() > p) {
+                                                                                                         return l.insert(i, e);
+                                                                                                     }
+                                                                                                 }
+                                                                                                 return l.append(e);
+                                                                                             }
+                                                                                         };
 
     @SuppressWarnings("rawtypes")
-    private static final Constant<Pair<Class, Integer>, List<RuleImpl>>       RULES    = Constant.of("RULES", null, CoreSetableModifier.durable);
+    private static final Constant<TermImpl, Set<TermImpl>>                    FACTS      = Constant.of("FACTS", null, CoreSetableModifier.durable);
+
+    @SuppressWarnings("rawtypes")
+    private static final Constant<Pair<Class, Integer>, List<RuleImpl>>       RULES      = Constant.of("RULES", null, CoreSetableModifier.durable);
 
     private static abstract class ClauseImpl<F> extends StructImpl implements InvocationHandler {
         private static final long   serialVersionUID = 7315776001191198132L;
@@ -228,22 +230,24 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
             FACTS.force(this, ADD_FACT, this);
-            patterns(1, toArray());
+            patterns(1, toArray(), 2);
         }
 
-        private void patterns(int i, Object[] array) {
+        private void patterns(int i, Object[] array, int nrOfNulls) {
             if (i < length()) {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = get(i);
                     FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array);
+                patterns(i + 1, array, nrOfNulls);
                 if (array[i] != null) {
                     array[i] = null;
-                    FACTS.force(term(array), ADD_FACT, this);
+                    if (USE_EXTEND || nrOfNulls < array.length) {
+                        FACTS.force(term(array), ADD_FACT, this);
+                    }
                 }
-                patterns(i + 1, array);
+                patterns(i + 1, array, nrOfNulls + 1);
             }
         }
 
@@ -262,8 +266,8 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected Map<VarImpl, Object> getBinding(TermImpl term) {
-            if (term.equals(INCOMPLETE)) {
-                return INCOMPLETE_MAP;
+            if (term.functor() == Incomplete.class) {
+                return Map.of(Entry.of(INCOMPLETE_VAR, term));
             } else {
                 Map<VarImpl, Object> vars = Map.of();
                 for (int i = 1; i < length(); i++) {
@@ -277,8 +281,9 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected TermImpl setBinding(Map<VarImpl, Object> vars) {
-            if (vars.containsKey(INCOMPLETE_VAR)) {
-                return INCOMPLETE;
+            TermImpl inc = (TermImpl) vars.get(INCOMPLETE_VAR);
+            if (inc != null) {
+                return inc;
             } else {
                 Object[] array = toArray();
                 for (int i = 1; i < length(); i++) {
@@ -292,59 +297,67 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected Collection<TermImpl> match(List<TermImpl> der) {
-            Set<TermImpl> facts = FACTS.get(this);
-            if (facts == null) {
-                List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
-                if (rules != null) {
-                    if (der.contains(this)) {
-                        return INCOMPLETE_SET;
-                    } else {
-                        int non = nrOfNulls();
-                        der = der.prepend(this);
-                        Collection<TermImpl> r = Set.of();
-                        for (RuleImpl rule : rules) {
-                            Collection<TermImpl> eval = rule.eval(this, der);
-                            if (non == 0) {
-                                Set<TermImpl> set = eval.asSet();
-                                if (!set.isEmpty()) {
-                                    return set;
+            int non = nrOfNulls();
+            if (!USE_EXTEND && non == length() - 1) {
+                return Set.of(incompl(der.append(this)));
+            } else {
+                Set<TermImpl> facts = FACTS.get(this);
+                if (facts == null) {
+                    List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                    if (rules != null) {
+                        int i = der.lastIndexOf(this);
+                        if (i >= 0) {
+                            return Set.of(incompl(der.sublist(i, der.size()).append(this)));
+                        } else {
+                            Collection<TermImpl> r = Set.of();
+                            for (RuleImpl rule : rules) {
+                                Collection<TermImpl> eval = rule.eval(this, der.append(this));
+                                if (non == 0) {
+                                    eval = eval.asSet();
+                                    if (eval.equals(Set.of(this))) {
+                                        return eval;
+                                    }
                                 }
-                            } else {
                                 r = Collection.concat(r, eval);
                             }
+                            if (non < 2 && non < length() - 1) {
+                                Set<TermImpl> set = r.asSet();
+                                FACTS.force(this, set);
+                                return set;
+                            } else {
+                                return r;
+                            }
                         }
-                        if (non < 2 && non < length() - 1) {
-                            Set<TermImpl> set = r.asSet();
-                            FACTS.force(this, set);
-                            return set;
-                        } else {
-                            return r;
-                        }
+                    } else {
+                        return Set.of();
                     }
                 } else {
-                    return Set.of();
+                    return facts;
                 }
-            } else {
-                return facts;
             }
         }
 
         @SuppressWarnings("rawtypes")
         protected int termPrio(List<TermImpl> der) {
-            Set<TermImpl> facts = FACTS.get(this);
-            if (facts != null) {
-                return Integer.MIN_VALUE + facts.size();
+            int non = nrOfNulls();
+            if (!USE_EXTEND && non == length() - 1) {
+                return Integer.MAX_VALUE;
             } else {
-                List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
-                if (rules != null) {
-                    if (der.contains(this)) {
-                        return Integer.MAX_VALUE;
-                    } else {
-                        return nrOfNulls();
+                Set<TermImpl> facts = FACTS.get(this);
+                if (facts != null) {
+                    return Integer.MIN_VALUE + facts.size();
+                } else {
+                    List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                    if (rules != null) {
+                        if (der.lastIndexOf(this) >= 0) {
+                            return Integer.MAX_VALUE;
+                        } else {
+                            return non;
+                        }
                     }
                 }
+                return Integer.MIN_VALUE;
             }
-            return Integer.MIN_VALUE;
         }
 
         @SuppressWarnings("rawtypes")
@@ -487,11 +500,12 @@ public final class Logic {
         @SuppressWarnings({"rawtypes", "unchecked"})
         private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars, List<TermImpl> der) {
             if (goals.isEmpty()) {
+                vars = vars.asSet();
                 return vars;
             } else {
                 return vars.<Map<VarImpl, Object>> flatMap(v -> {
                     if (v.containsKey(INCOMPLETE_VAR)) {
-                        return INCOMPLETE_MAP_SET;
+                        return Set.of(v);
                     } else {
                         List<TermImpl> actual = List.of();
                         for (TermImpl g : goals) {
@@ -503,7 +517,7 @@ public final class Logic {
                         Collection<TermImpl> m = f.match(der);
                         return eval(goals.removeIndex(i), m.map(t -> {
                             Map<VarImpl, Object> b = g.getBinding(t);
-                            return b == INCOMPLETE_MAP ? b : v.putAll(b);
+                            return b.containsKey(INCOMPLETE_VAR) ? b : v.putAll(b);
                         }), der);
                     }
                 });
@@ -527,31 +541,33 @@ public final class Logic {
 
     // Incomplete
 
-    public interface Incomplete {
+    public interface Incomplete extends Term {
     }
 
-    private static final TermImpl<Incomplete>      INCOMPLETE         = new TermImpl<Incomplete>(Incomplete.class);
-    @SuppressWarnings("rawtypes")
-    private static final Set<TermImpl>             INCOMPLETE_SET     = Set.of(INCOMPLETE);
-    private static final VarImpl<Incomplete>       INCOMPLETE_VAR     = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
-    @SuppressWarnings("rawtypes")
-    private static final Map<VarImpl, Object>      INCOMPLETE_MAP     = Map.of(Entry.of(INCOMPLETE_VAR, INCOMPLETE));
-    @SuppressWarnings("rawtypes")
-    private static final Set<Map<VarImpl, Object>> INCOMPLETE_MAP_SET = Set.of(INCOMPLETE_MAP);
-
-    @SuppressWarnings("unchecked")
-    public static Incomplete incomplete() {
-        return INCOMPLETE.proxy();
-    }
+    private static final VarImpl<Incomplete> INCOMPLETE_VAR = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
 
     @SuppressWarnings("unchecked")
     public static Incomplete incompleteVar() {
         return INCOMPLETE_VAR.proxy();
     }
 
+    public static Map<Variable, Object> incomplete(Term... der) {
+        return Map.of(Entry.of((Variable) incompleteVar(), incompl(list(der)).proxy()));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static TermImpl<Incomplete> incompl(List<TermImpl> der) {
+        return incompl(list(der));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static TermImpl<Incomplete> incompl(TermImpl der) {
+        return new TermImpl<Incomplete>(Incomplete.class, der);
+    }
+
     // Lists
 
-    public interface L<E> {
+    public interface L<E> extends Term {
     }
 
     @SuppressWarnings("unchecked")
@@ -572,6 +588,15 @@ public final class Logic {
         TermImpl<L> l = EMPTY_LIST;
         for (int i = es.length - 1; i >= 0; i--) {
             l = new TermImpl<L>(L.class, unproxy(es[i]), l);
+        }
+        return l;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static <E> TermImpl<L> list(List<E> es) {
+        TermImpl<L> l = EMPTY_LIST;
+        for (int i = es.size() - 1; i >= 0; i--) {
+            l = new TermImpl<L>(L.class, unproxy(es.get(i)), l);
         }
         return l;
     }

@@ -159,10 +159,12 @@ public class LogicTest {
         run(() -> {
             Person A = var("A"); // Ancestor
             Person D = var("D"); // Descendent
-            Person R = var("R"); // Relative
+            Person B = var("B"); // Relative1
+            Person C = var("C"); // Relative2
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
-            rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
+            rule(ancestorDescendent(A, D), parentChild(A, B), parentChild(B, D));
+            rule(ancestorDescendent(A, D), parentChild(A, B), ancestorDescendent(B, C), parentChild(C, D));
 
             Person Carel = person("Carel");
             Person Jan = person("Jan");
@@ -173,6 +175,21 @@ public class LogicTest {
 
             hasResult(Set.of(bind(A, Jan), bind(A, Carel)), ancestorDescendent(A, Wim));
             hasResult(Set.of(bind(D, Jan), bind(D, Wim)), ancestorDescendent(Carel, D));
+        });
+    }
+
+    @RepeatedTest(100)
+    public void test3() {
+        run(() -> {
+            Person P = var("P");
+            Person C = var("C");
+
+            rule(parentChild(P, C), parentChild(P, C));
+
+            Person Jan = person("Jan");
+            Person Wim = person("Wim");
+
+            hasResult(Set.of(incomplete(parentChild(Wim, Jan), parentChild(Wim, Jan))), parentChild(Wim, Jan));
         });
     }
 
