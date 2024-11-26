@@ -252,6 +252,11 @@ public final class Logic {
         protected Class<T> functType() {
             return (Class<T>) get(1);
         }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode();
+        }
     }
 
     // Variables
@@ -731,7 +736,15 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final TermImpl<L> EMPTY_LIST = termImpl(LIST_FUNCTOR_0);
+    private static final TermImpl<L> EMPTY_LIST       = termImpl(LIST_FUNCTOR_0);
+
+    @SuppressWarnings("rawtypes")
+    private static final L           EMPTY_LIST_PROXY = EMPTY_LIST.proxy();
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <E> L<E> l() {
+        return EMPTY_LIST_PROXY;
+    }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <E> L<E> l(E... es) {
