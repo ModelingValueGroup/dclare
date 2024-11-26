@@ -31,6 +31,7 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.dclare.Logic;
+import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
@@ -61,8 +62,10 @@ public class LogicTest {
     interface Person extends Term {
     }
 
+    static Functor<Person> person = functor(Person.class, "person", 1);
+
     Person person(String name) {
-        return term(Person.class, name);
+        return term(person, name);
     }
 
     Person var(String name) {
@@ -72,15 +75,19 @@ public class LogicTest {
     interface ParentChild extends Term {
     }
 
+    static Functor<ParentChild> parentChild = functor(ParentChild.class, "parentChild", 2);
+
     ParentChild parentChild(Person parent, Person child) {
-        return term(ParentChild.class, parent, child);
+        return term(parentChild, parent, child);
     }
 
     interface AncestorDescendent extends Term {
     }
 
+    static Functor<AncestorDescendent> ancestorDescendent = functor(AncestorDescendent.class, "ancestorDescendent", 2);
+
     AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
-        return term(AncestorDescendent.class, ancestor, descendent);
+        return term(ancestorDescendent, ancestor, descendent);
     }
 
     @RepeatedTest(100)

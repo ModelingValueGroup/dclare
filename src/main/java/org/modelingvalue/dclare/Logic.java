@@ -32,7 +32,6 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.impl.StructImpl;
-import org.modelingvalue.collections.util.Pair;
 
 public final class Logic {
     private Logic() {
@@ -61,7 +60,7 @@ public final class Logic {
     private static final Constant<TermImpl, Set<TermImpl>>                    FACTS      = Constant.of("FACTS", null, CoreSetableModifier.durable);
 
     @SuppressWarnings("rawtypes")
-    private static final Constant<Pair<Class, Integer>, List<RuleImpl>>       RULES      = Constant.of("RULES", null, CoreSetableModifier.durable);
+    private static final Constant<FunctImpl, List<RuleImpl>>                  RULES      = Constant.of("RULES", null, CoreSetableModifier.durable);
 
     private static abstract class ClauseImpl<F> extends StructImpl implements InvocationHandler {
         private static final long   serialVersionUID = 7315776001191198132L;
@@ -101,14 +100,22 @@ public final class Logic {
             }
         }
 
-        protected ClauseImpl(Class<F> functor, Object... args) {
+        protected ClauseImpl(Functor<F> functor, Object... args) {
             super(unproxy(functor, args));
         }
 
+        protected ClauseImpl(FunctImpl<F> functor, Object... args) {
+            super(unproxy(functor, args));
+        }
+
+        protected ClauseImpl(Class<F> type, Object... args) {
+            super(unproxy(type, args));
+        }
+
         @SuppressWarnings("rawtypes")
-        private static final Object[] unproxy(Class functor, Object[] args) {
+        private static final Object[] unproxy(Object functor, Object[] args) {
             Object[] result = new Object[args.length + 1];
-            result[0] = functor;
+            result[0] = Logic.unproxy(functor);
             for (int i = 0; i < args.length; i++) {
                 result[i + 1] = Logic.unproxy(args[i]);
             }
@@ -117,10 +124,7 @@ public final class Logic {
 
         protected abstract F proxy();
 
-        @SuppressWarnings("unchecked")
-        protected Class<F> functor() {
-            return (Class<F>) get(0);
-        }
+        protected abstract Class<F> type();
 
         protected abstract ClauseImpl<F> term(Object[] array);
     }
@@ -148,31 +152,77 @@ public final class Logic {
         }
     }
 
+    // Functor
+
+    public interface Functor<T> extends Term {
+    }
+
+    private static <T> FunctImpl<T> functImpl(Class<T> type, String name, int arity) {
+        return new FunctImpl<T>(type, name, arity);
+    }
+
+    public static <T> Functor<T> functor(Class<T> type, String name, int arity) {
+        return functImpl(type, name, arity).proxy();
+    }
+
+    private static final class FunctImpl<T> extends ClauseImpl<Functor<T>> {
+        private static final long serialVersionUID = 285147889847599160L;
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private FunctImpl(Class<T> type, String name, int arity) {
+            super((Class) Functor.class, type, name, arity);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected final Functor<T> proxy() {
+            return (Functor<T>) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Functor.class}, this);
+        }
+
+        @Override
+        public String toString() {
+            return ((String) get(2));
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected FunctImpl<T> term(Object[] array) {
+            return new FunctImpl<T>((Class<T>) array[1], (String) array[2], (Integer) array[2]);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Class<Functor<T>> type() {
+            return (Class<Functor<T>>) get(0);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected Class<T> functType() {
+            return (Class<T>) get(1);
+        }
+    }
+
     // Variables
 
     public static interface Variable {
     }
 
     @SuppressWarnings("unchecked")
-    public static <F> F var(Class<F> functor, String id) {
-        return new VarImpl<F>(functor, id).proxy();
+    public static <F> F var(Class<F> type, String id) {
+        return new VarImpl<F>(type, id).proxy();
     }
 
     private static final class VarImpl<F> extends ClauseImpl<F> {
         private static final long serialVersionUID = -8998368070388908726L;
 
-        private VarImpl(Class<F> functor, String name) {
-            super(functor, name);
-        }
-
-        private VarImpl(Class<F> functor, Object name) {
-            super(functor, name);
+        private VarImpl(Class<F> type, String name) {
+            super(type, name);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         protected final F proxy() {
-            return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Variable.class}, this);
+            return (F) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{type(), Variable.class}, this);
         }
 
         @Override
@@ -183,7 +233,13 @@ public final class Logic {
         @Override
         @SuppressWarnings("unchecked")
         protected VarImpl<F> term(Object[] array) {
-            return new VarImpl<F>(functor(), array[1]);
+            return new VarImpl<F>(type(), (String) array[1]);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Class<F> type() {
+            return (Class<F>) get(0);
         }
     }
 
@@ -193,38 +249,57 @@ public final class Logic {
     }
 
     @SuppressWarnings("unchecked")
-    public static <F> F term(Class<F> functor, Object... args) {
+    public static <F> F term(Functor<F> functor, Object... args) {
         return new TermImpl<F>(functor, args).proxy();
+    }
+
+    private static <F> TermImpl<F> termImpl(FunctImpl<F> functor, Object... args) {
+        return new TermImpl<F>(functor, args);
     }
 
     private static class TermImpl<F> extends ClauseImpl<F> {
         private static final long serialVersionUID = -1605559565948158856L;
 
-        private TermImpl(Class<F> functor, Object... args) {
+        private TermImpl(Functor<F> functor, Object... args) {
+            super(functor, args);
+        }
+
+        private TermImpl(FunctImpl<F> functor, Object... args) {
             super(functor, args);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         protected F proxy() {
-            return (F) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{functor(), Term.class}, this);
+            return (F) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{type(), Term.class}, this);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         protected TermImpl<F> term(Object[] array) {
-            return new TermImpl<F>((Class<F>) array[0], Arrays.copyOfRange(array, 1, array.length));
+            return new TermImpl<F>((FunctImpl<F>) array[0], Arrays.copyOfRange(array, 1, array.length));
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public String toString() {
-            if (functor() == L.class) {
+            if (type() == L.class) {
                 return list().toString().substring(4);
             } else {
                 String string = super.toString();
                 return string.substring(1, string.length() - 1).replaceFirst(",", "(") + ")";
             }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Class<F> type() {
+            return functor().functType();
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        protected FunctImpl<F> functor() {
+            return (FunctImpl<F>) get(0);
         }
 
         @SuppressWarnings("rawtypes")
@@ -266,7 +341,7 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         protected Map<VarImpl, Object> getBinding(TermImpl term) {
-            if (term.functor() == Incomplete.class) {
+            if (term.type() == Incomplete.class) {
                 return Map.of(Entry.of(INCOMPLETE_VAR, term));
             } else {
                 Map<VarImpl, Object> vars = Map.of();
@@ -303,7 +378,7 @@ public final class Logic {
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
                 if (facts == null) {
-                    List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                    List<RuleImpl> rules = RULES.get(functor());
                     if (rules != null) {
                         int i = der.lastIndexOf(this);
                         if (i >= 0) {
@@ -347,7 +422,7 @@ public final class Logic {
                 if (facts != null) {
                     return Integer.MIN_VALUE + facts.size();
                 } else {
-                    List<RuleImpl> rules = RULES.get(Pair.of(functor(), length() - 1));
+                    List<RuleImpl> rules = RULES.get(functor());
                     if (rules != null) {
                         if (der.lastIndexOf(this) >= 0) {
                             return Integer.MAX_VALUE;
@@ -387,11 +462,13 @@ public final class Logic {
     public static interface Rule extends Term {
     }
 
+    private static final FunctImpl<Rule> RULE_FUNCTOR = functImpl(Rule.class, "rule", 2);
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Rule rule(Term term, Term... goals) {
         RuleImpl ruleImpl = new RuleImpl(term, goal(goals));
         TermImpl termImpl = unproxy(term);
-        RULES.force(Pair.of(termImpl.functor(), termImpl.length() - 1), ADD_RULE, ruleImpl);
+        RULES.force(termImpl.functor(), ADD_RULE, ruleImpl);
         return ruleImpl.proxy();
     }
 
@@ -399,17 +476,17 @@ public final class Logic {
         private static final long serialVersionUID = -4602043866952049391L;
 
         private RuleImpl(Term term, Goal goal) {
-            super(Rule.class, term, goal);
+            super(RULE_FUNCTOR, term, goal);
         }
 
         private RuleImpl(Object term, Object goal) {
-            super(Rule.class, term, goal);
+            super(RULE_FUNCTOR, term, goal);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         protected final Rule proxy() {
-            return (Rule) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{Rule.class}, this);
+            return (Rule) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Rule.class}, this);
         }
 
         @SuppressWarnings("rawtypes")
@@ -445,6 +522,8 @@ public final class Logic {
     public static interface Goal extends Term {
     }
 
+    private static final FunctImpl<Goal> GOAL_FUNCTOR = functImpl(Goal.class, "goal", 1);
+
     public static boolean is(Term... goals) {
         return new GoalImpl(list(goals)).eval().anyMatch(e -> !e.containsKey(INCOMPLETE_VAR));
     }
@@ -463,17 +542,17 @@ public final class Logic {
         private static final long serialVersionUID = -4100263206389367132L;
 
         private GoalImpl(L<Term> goals) {
-            super(Goal.class, goals);
+            super(GOAL_FUNCTOR, goals);
         }
 
         private GoalImpl(Object goals) {
-            super(Goal.class, goals);
+            super(GOAL_FUNCTOR, goals);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         protected final Goal proxy() {
-            return (Goal) Proxy.newProxyInstance(functor().getClassLoader(), new Class[]{Goal.class}, this);
+            return (Goal) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Goal.class}, this);
         }
 
         @Override
@@ -544,7 +623,9 @@ public final class Logic {
     public interface Incomplete extends Term {
     }
 
-    private static final VarImpl<Incomplete> INCOMPLETE_VAR = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
+    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR = functImpl(Incomplete.class, "incomplete", 1);
+
+    private static final VarImpl<Incomplete>   INCOMPLETE_VAR     = new VarImpl<Incomplete>(Incomplete.class, "Incomplete");
 
     @SuppressWarnings("unchecked")
     public static Incomplete incompleteVar() {
@@ -562,7 +643,7 @@ public final class Logic {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static TermImpl<Incomplete> incompl(TermImpl der) {
-        return new TermImpl<Incomplete>(Incomplete.class, der);
+        return termImpl(INCOMPLETE_FUNCTOR, der);
     }
 
     // Lists
@@ -570,13 +651,18 @@ public final class Logic {
     public interface L<E> extends Term {
     }
 
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<L> LIST_FUNCTOR_0 = functImpl(L.class, "l", 0);
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<L> LIST_FUNCTOR_2 = functImpl(L.class, "l", 2);
+
     @SuppressWarnings("unchecked")
     public static <E> L<E> l(E head, L<E> tail) {
-        return term(L.class, head, tail);
+        return termImpl(LIST_FUNCTOR_2, head, tail).proxy();
     }
 
     @SuppressWarnings("rawtypes")
-    private static final TermImpl<L> EMPTY_LIST = new TermImpl<L>(L.class);
+    private static final TermImpl<L> EMPTY_LIST = termImpl(LIST_FUNCTOR_0);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <E> L<E> l(E... es) {
@@ -587,7 +673,7 @@ public final class Logic {
     private static <E> TermImpl<L> list(E... es) {
         TermImpl<L> l = EMPTY_LIST;
         for (int i = es.length - 1; i >= 0; i--) {
-            l = new TermImpl<L>(L.class, unproxy(es[i]), l);
+            l = termImpl(LIST_FUNCTOR_2, unproxy(es[i]), l);
         }
         return l;
     }
@@ -596,7 +682,7 @@ public final class Logic {
     private static <E> TermImpl<L> list(List<E> es) {
         TermImpl<L> l = EMPTY_LIST;
         for (int i = es.size() - 1; i >= 0; i--) {
-            l = new TermImpl<L>(L.class, unproxy(es.get(i)), l);
+            l = termImpl(LIST_FUNCTOR_2, unproxy(es.get(i)), l);
         }
         return l;
     }
