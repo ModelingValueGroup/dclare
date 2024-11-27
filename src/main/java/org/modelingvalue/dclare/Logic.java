@@ -461,7 +461,8 @@ public final class Logic {
                                 if (non == 0) {
                                     eval = eval.asSet();
                                     if (eval.equals(Set.of(this))) {
-                                        return eval;
+                                        r = eval;
+                                        break;
                                     }
                                 }
                                 r = Collection.concat(r, eval);
