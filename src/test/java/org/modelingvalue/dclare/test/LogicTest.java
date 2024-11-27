@@ -84,6 +84,10 @@ public class LogicTest {
         return term(parentChild, parent, child);
     }
 
+    static ParentChild parentChildVar(String name) {
+        return var(ParentChild.class, name);
+    }
+
     interface AncestorDescendent extends Term {
     }
 
@@ -91,6 +95,10 @@ public class LogicTest {
 
     static AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);
+    }
+
+    static AncestorDescendent ancestorDescendentVar(String name) {
+        return var(AncestorDescendent.class, name);
     }
 
     @RepeatedTest(100)
