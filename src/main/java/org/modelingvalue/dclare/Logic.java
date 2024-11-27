@@ -123,6 +123,10 @@ public final class Logic {
             super(array(type, args));
         }
 
+        protected ClauseImpl(Object[] args) {
+            super(args);
+        }
+
         private static final Object[] array(Object functor, Object[] args) {
             Object[] result = new Object[args.length + 1];
             result[0] = noProxy(functor);
@@ -244,6 +248,11 @@ public final class Logic {
             super((Class) Functor.class, type, name, args);
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private FunctImpl(Object[] args) {
+            super(args);
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         protected final Functor<T> proxy() {
@@ -258,7 +267,7 @@ public final class Logic {
         @Override
         @SuppressWarnings({"unchecked", "rawtypes"})
         protected FunctImpl<T> term(Object[] array) {
-            return new FunctImpl<T>((Class<T>) array[1], (String) array[2], (List<Class<?>>) array[3]);
+            return new FunctImpl<T>(array);
         }
 
         @SuppressWarnings("unchecked")
@@ -290,6 +299,10 @@ public final class Logic {
             super(type, name);
         }
 
+        private VarImpl(Object[] args) {
+            super(args);
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         protected final F proxy() {
@@ -304,7 +317,7 @@ public final class Logic {
         @Override
         @SuppressWarnings("unchecked")
         protected VarImpl<F> term(Object[] array) {
-            return new VarImpl<F>(type(), (String) array[1]);
+            return new VarImpl<F>(array);
         }
 
         @SuppressWarnings("unchecked")
@@ -337,6 +350,10 @@ public final class Logic {
 
         private TermImpl(FunctImpl<F> functor, Object... args) {
             super(functor, args);
+        }
+
+        private TermImpl(Object[] args) {
+            super(args);
         }
 
         @Override
@@ -562,6 +579,10 @@ public final class Logic {
             super(RULE_FUNCTOR, term, goal);
         }
 
+        private RuleImpl(Object[] args) {
+            super(args);
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         protected final Rule proxy() {
@@ -588,7 +609,7 @@ public final class Logic {
         @Override
         @SuppressWarnings({"unchecked", "rawtypes"})
         protected RuleImpl term(Object[] array) {
-            return new RuleImpl((TermImpl) array[1], (GoalImpl) array[2]);
+            return new RuleImpl(array);
         }
 
         protected int rulePrio() {
@@ -636,6 +657,10 @@ public final class Logic {
             super(GOAL_FUNCTOR, goals);
         }
 
+        private GoalImpl(Object[] args) {
+            super(args);
+        }
+
         @Override
         @SuppressWarnings("unchecked")
         protected final Goal proxy() {
@@ -645,7 +670,7 @@ public final class Logic {
         @Override
         @SuppressWarnings({"unchecked", "rawtypes"})
         protected GoalImpl term(Object[] array) {
-            return new GoalImpl((TermImpl<L>) array[1]);
+            return new GoalImpl(array);
         }
 
         @SuppressWarnings("rawtypes")
