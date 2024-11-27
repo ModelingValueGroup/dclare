@@ -38,6 +38,8 @@ import org.modelingvalue.dclare.UniverseTransaction;
 
 public class LogicTest {
 
+    // Utilities
+
     void run(Runnable test) {
         UniverseTransaction universeTransaction = new UniverseTransaction(Universe.of(), THE_POOL);
         boolean seq = ThreadLocalRandom.current().nextBoolean();
@@ -58,13 +60,19 @@ public class LogicTest {
         assertEquals(bindings, eval(goals));
     }
 
+    // Example
+
     interface Person extends Term {
     }
 
     static Functor<Person> person = functor(LogicTest::person);
 
-    Person person(String name) {
+    static Person person(String name) {
         return term(person, name);
+    }
+
+    static Person personVar(String name) {
+        return var(Person.class, name);
     }
 
     interface ParentChild extends Term {
@@ -72,7 +80,7 @@ public class LogicTest {
 
     static Functor<ParentChild> parentChild = functor(LogicTest::parentChild);
 
-    ParentChild parentChild(Person parent, Person child) {
+    static ParentChild parentChild(Person parent, Person child) {
         return term(parentChild, parent, child);
     }
 
@@ -81,16 +89,16 @@ public class LogicTest {
 
     static Functor<AncestorDescendent> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
-    AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
+    static AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);
     }
 
     @RepeatedTest(100)
     public void test0() {
         run(() -> {
-            Person A = var(Person.class, "A"); // Ancestor
-            Person D = var(Person.class, "D"); // Descendent
-            Person R = var(Person.class, "R"); // Relative
+            Person A = personVar("A"); // Ancestor
+            Person D = personVar("D"); // Descendent
+            Person R = personVar("R"); // Relative
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -131,9 +139,9 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test1() {
         run(() -> {
-            Person A = var(Person.class, "A"); // Ancestor
-            Person D = var(Person.class, "D"); // Descendent
-            Person R = var(Person.class, "R"); // Relative
+            Person A = personVar("A"); // Ancestor
+            Person D = personVar("D"); // Descendent
+            Person R = personVar("R"); // Relative
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -159,10 +167,10 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test2() {
         run(() -> {
-            Person A = var(Person.class, "A"); // Ancestor
-            Person D = var(Person.class, "D"); // Descendent
-            Person B = var(Person.class, "B"); // Relative1
-            Person C = var(Person.class, "C"); // Relative2
+            Person A = personVar("A"); // Ancestor
+            Person D = personVar("D"); // Descendent
+            Person B = personVar("B"); // Relative1
+            Person C = personVar("C"); // Relative2
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), parentChild(A, B), parentChild(B, D));
@@ -183,8 +191,8 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test3() {
         run(() -> {
-            Person P = var(Person.class, "P");
-            Person C = var(Person.class, "C");
+            Person P = personVar("P");
+            Person C = personVar("C");
 
             rule(parentChild(P, C), parentChild(P, C));
 
