@@ -30,7 +30,6 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
@@ -68,10 +67,6 @@ public class LogicTest {
         return term(person, name);
     }
 
-    Person var(String name) {
-        return Logic.var(Person.class, name);
-    }
-
     interface ParentChild extends Term {
     }
 
@@ -93,9 +88,9 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test0() {
         run(() -> {
-            Person A = var("A"); // Ancestor
-            Person D = var("D"); // Descendent
-            Person R = var("R"); // Relative
+            Person A = var(Person.class, "A"); // Ancestor
+            Person D = var(Person.class, "D"); // Descendent
+            Person R = var(Person.class, "R"); // Relative
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -136,9 +131,9 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test1() {
         run(() -> {
-            Person A = var("A"); // Ancestor
-            Person D = var("D"); // Descendent
-            Person R = var("R"); // Relative
+            Person A = var(Person.class, "A"); // Ancestor
+            Person D = var(Person.class, "D"); // Descendent
+            Person R = var(Person.class, "R"); // Relative
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -164,10 +159,10 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test2() {
         run(() -> {
-            Person A = var("A"); // Ancestor
-            Person D = var("D"); // Descendent
-            Person B = var("B"); // Relative1
-            Person C = var("C"); // Relative2
+            Person A = var(Person.class, "A"); // Ancestor
+            Person D = var(Person.class, "D"); // Descendent
+            Person B = var(Person.class, "B"); // Relative1
+            Person C = var(Person.class, "C"); // Relative2
 
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), parentChild(A, B), parentChild(B, D));
@@ -188,8 +183,8 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test3() {
         run(() -> {
-            Person P = var("P");
-            Person C = var("C");
+            Person P = var(Person.class, "P");
+            Person C = var(Person.class, "C");
 
             rule(parentChild(P, C), parentChild(P, C));
 

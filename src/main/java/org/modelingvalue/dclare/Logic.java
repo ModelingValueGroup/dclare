@@ -656,7 +656,8 @@ public final class Logic {
         private GoalImpl(TermImpl<L> goals) {
             super(GOAL_FUNCTOR, goals);
         }
-
+        
+        
         private GoalImpl(Object[] args) {
             super(args);
         }
