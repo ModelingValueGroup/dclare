@@ -33,6 +33,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.impl.StructImpl;
+import org.modelingvalue.collections.util.LambdaReflection;
 import org.modelingvalue.collections.util.SerializableBiFunction;
 import org.modelingvalue.collections.util.SerializableBiFunction.SerializableBiFunctionImpl;
 import org.modelingvalue.collections.util.SerializableFunction;
@@ -190,61 +191,110 @@ public final class Logic {
     public interface Functor<T> extends Term {
     }
 
+    public interface Functor0<T> extends Functor<T> {
+    }
+
     @SuppressWarnings("unchecked")
-    private static <T> FunctImpl<T> functImpl(SerializableSupplier<T> method) {
+    private static <T> FunctImpl<T> functImpl(SerializableSupplier<T> method, SerializableSupplier<Set<T>> impl) {
         SerializableSupplierImpl<T> l = method.of();
-        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in());
-    }
-
-    public static <T> Functor<T> functor(SerializableSupplier<T> method) {
-        return functImpl(method).proxy();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A> FunctImpl<T> functImpl(SerializableFunction<A, T> method) {
+    public static <T> Functor0<T> functor(SerializableSupplier<T> method, SerializableSupplier<Set<T>> impl) {
+        return (Functor0<T>) functImpl(method, impl).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Functor0<T> functor(SerializableSupplier<T> method) {
+        return (Functor0<T>) functImpl(method, null).proxy();
+    }
+
+    public interface Functor1<T, A> extends Functor0<T> {
+        A get1();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A> FunctImpl<T> functImpl(SerializableFunction<A, T> method, SerializableFunction<A, Set<T>> impl) {
         SerializableFunctionImpl<A, T> l = method.of();
-        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in());
-    }
-
-    public static <T, A> Functor<T> functor(SerializableFunction<A, T> method) {
-        return functImpl(method).proxy();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B> FunctImpl<T> functImpl(SerializableBiFunction<A, B, T> method) {
+    public static <T, A> Functor1<T, A> functor(SerializableFunction<A, T> method, SerializableFunction<A, Set<T>> impl) {
+        return (Functor1<T, A>) functImpl(method, impl).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, A> Functor1<T, A> functor(SerializableFunction<A, T> method) {
+        return (Functor1<T, A>) functImpl(method, null).proxy();
+    }
+
+    public interface Functor2<T, A, B> extends Functor1<T, A> {
+        B get2();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B> FunctImpl<T> functImpl(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Set<T>> impl) {
         SerializableBiFunctionImpl<A, B, T> l = method.of();
-        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in());
-    }
-
-    public static <T, A, B> Functor<T> functor(SerializableBiFunction<A, B, T> method) {
-        return functImpl(method).proxy();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B, C> FunctImpl<T> functImpl(SerializableTriFunction<A, B, C, T> method) {
+    public static <T, A, B> Functor2<T, A, B> functor(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Set<T>> impl) {
+        return (Functor2<T, A, B>) functImpl(method, impl.of()).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, A, B> Functor2<T, A, B> functor(SerializableBiFunction<A, B, T> method) {
+        return (Functor2<T, A, B>) functImpl(method, null).proxy();
+    }
+
+    public interface Functor3<T, A, B, C> extends Functor2<T, A, B> {
+        C get3();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B, C> FunctImpl<T> functImpl(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Set<T>> impl) {
         SerializableTriFunctionImpl<A, B, C, T> l = method.of();
-        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in());
-    }
-
-    public static <T, A, B, C> Functor<T> functor(SerializableTriFunction<A, B, C, T> method) {
-        return functImpl(method).proxy();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B, C, D> FunctImpl<T> functImpl(SerializableQuadFunction<A, B, C, D, T> method) {
-        SerializableQuadFunctionImpl<A, B, C, D, T> l = method.of();
-        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in());
+    public static <T, A, B, C> Functor3<T, A, B, C> functor(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Set<T>> impl) {
+        return (Functor3<T, A, B, C>) functImpl(method, impl).proxy();
     }
 
-    public static <T, A, B, C, D> Functor<T> functor(SerializableQuadFunction<A, B, C, D, T> method) {
-        return functImpl(method).proxy();
+    @SuppressWarnings("unchecked")
+    public static <T, A, B, C> Functor3<T, A, B, C> functor(SerializableTriFunction<A, B, C, T> method) {
+        return (Functor3<T, A, B, C>) functImpl(method, null).proxy();
+    }
+
+    public interface Functor4<T, A, B, C, D> extends Functor3<T, A, B, C> {
+        D get4();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, A, B, C, D> FunctImpl<T> functImpl(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Set<T>> impl) {
+        SerializableQuadFunctionImpl<A, B, C, D, T> l = method.of();
+        return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, A, B, C, D> Functor4<T, A, B, C, D> functor(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Set<T>> impl) {
+        return (Functor4<T, A, B, C, D>) functImpl(method, impl).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, A, B, C, D> Functor4<T, A, B, C, D> functor(SerializableQuadFunction<A, B, C, D, T> method) {
+        return (Functor4<T, A, B, C, D>) functImpl(method, null).proxy();
     }
 
     private static final class FunctImpl<T> extends ClauseImpl<Functor<T>> {
         private static final long serialVersionUID = 285147889847599160L;
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private FunctImpl(Class<T> type, String name, List<Class<?>> args) {
+        private FunctImpl(Class<T> type, String name, List<Class<?>> args, LambdaReflection l) {
             super((Class) Functor.class, type, name, args);
         }
 
@@ -254,9 +304,11 @@ public final class Logic {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         protected final Functor<T> proxy() {
-            return (Functor<T>) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Functor.class}, this);
+            int l = length() - 1;
+            Class<? extends Functor> f = l == 0 ? Functor0.class : l == 1 ? Functor1.class : l == 2 ? Functor2.class : l == 3 ? Functor3.class : Functor4.class;
+            return (Functor<T>) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{f}, this);
         }
 
         @Override
@@ -551,7 +603,7 @@ public final class Logic {
     public static interface Rule extends Term {
     }
 
-    private static final FunctImpl<Rule> RULE_FUNCTOR       = functImpl((SerializableBiFunction<Term, Goal, Rule>) Logic::rule);
+    private static final FunctImpl<Rule> RULE_FUNCTOR       = functImpl((SerializableBiFunction<Term, Goal, Rule>) Logic::rule, null);
     private static final Functor<Rule>   RULE_FUNCTOR_PROXY = RULE_FUNCTOR.proxy();
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -623,7 +675,7 @@ public final class Logic {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static final FunctImpl<Goal> GOAL_FUNCTOR       = functImpl((SerializableFunction<L, Goal>) Logic::goal);
+    private static final FunctImpl<Goal> GOAL_FUNCTOR       = functImpl((SerializableFunction<L, Goal>) Logic::goal, null);
     private static final Functor<Goal>   GOAL_FUNCTOR_PROXY = GOAL_FUNCTOR.proxy();
 
     public static boolean is(Term... goals) {
@@ -656,8 +708,7 @@ public final class Logic {
         private GoalImpl(TermImpl<L> goals) {
             super(GOAL_FUNCTOR, goals);
         }
-        
-        
+
         private GoalImpl(Object[] args) {
             super(args);
         }
@@ -737,7 +788,7 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR       = functImpl((SerializableFunction<L, Incomplete>) Logic::incomplete);
+    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR       = functImpl((SerializableFunction<L, Incomplete>) Logic::incomplete, null);
     private static final Functor<Incomplete>   INCOMPLETE_FUNCTOR_PROXY = INCOMPLETE_FUNCTOR.proxy();
     private static final VarImpl<Incomplete>   INCOMPLETE_VAR           = new VarImpl<Incomplete>(Incomplete.class, "I");
     private static final Incomplete            INCOMPLETE_VAR_PROXY     = INCOMPLETE_VAR.proxy();
@@ -772,9 +823,9 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l);
+    private static final FunctImpl<L> LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l, null);
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l);
+    private static final FunctImpl<L> LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l, null);
     @SuppressWarnings("rawtypes")
     private static final Functor<L>   LIST_FUNCTOR_2_PROXY = LIST_FUNCTOR_2.proxy();
     @SuppressWarnings("rawtypes")

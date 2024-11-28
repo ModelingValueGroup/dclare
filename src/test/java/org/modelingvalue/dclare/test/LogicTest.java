@@ -60,7 +60,49 @@ public class LogicTest {
         assertEquals(bindings, eval(goals));
     }
 
-    // Example
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Set<Map<Variable, Object>> set(Map... bindings) {
+        return Set.of(bindings);
+    }
+
+    // Integer
+
+    interface Int extends Term {
+    }
+
+    static Functor<Int> i = functor(LogicTest::i);
+
+    static Int i(Integer x) {
+        return term(i, x);
+    }
+
+    static Int iv(String name) {
+        return var(Int.class, name);
+    }
+
+    Int mOne = i(-1);
+    Int zero = i(0);
+    Int one  = i(1);
+
+    Int U    = iv("U");
+    Int V    = iv("V");
+    Int W    = iv("W");
+    Int X    = iv("X");
+    Int Y    = iv("Y");
+    Int Z    = iv("Z");
+
+    // Plus
+
+    interface Pred extends Term {
+    }
+
+    static Functor<Pred> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> Set.<Pred> of());
+
+    static Pred plus(Int a, Int b, Int r) {
+        return term(plus, a, b, r);
+    }
+
+    // FamilyTree
 
     interface Person extends Term {
     }
@@ -101,23 +143,29 @@ public class LogicTest {
         return var(AncestorDescendent.class, name);
     }
 
+    // Variables
+
+    Person A      = personVar("A");  // Ancestor
+    Person D      = personVar("D");  // Descendent
+    Person R      = personVar("R");  // Relative
+    Person B      = personVar("B");  // Relative1
+    Person C      = personVar("C");  // Relative2
+
+    // Terms
+
+    Person Carel  = person("Carel");
+    Person Jan    = person("Jan");
+    Person Elske  = person("Elske");
+    Person Wim    = person("Wim");
+    Person Joppe  = person("Joppe");
+    Person Heleen = person("Heleen");
+    Person Marijn = person("Marijn");
+
     @RepeatedTest(100)
     public void test0() {
         run(() -> {
-            Person A = personVar("A"); // Ancestor
-            Person D = personVar("D"); // Descendent
-            Person R = personVar("R"); // Relative
-
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
-
-            Person Carel = person("Carel");
-            Person Jan = person("Jan");
-            Person Elske = person("Elske");
-            Person Wim = person("Wim");
-            Person Joppe = person("Joppe");
-            Person Heleen = person("Heleen");
-            Person Marijn = person("Marijn");
 
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
@@ -147,16 +195,8 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test1() {
         run(() -> {
-            Person A = personVar("A"); // Ancestor
-            Person D = personVar("D"); // Descendent
-            Person R = personVar("R"); // Relative
-
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
-
-            Person Carel = person("Carel");
-            Person Jan = person("Jan");
-            Person Wim = person("Wim");
 
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
@@ -175,11 +215,6 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test2() {
         run(() -> {
-            Person A = personVar("A"); // Ancestor
-            Person D = personVar("D"); // Descendent
-            Person B = personVar("B"); // Relative1
-            Person C = personVar("C"); // Relative2
-
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), parentChild(A, B), parentChild(B, D));
             rule(ancestorDescendent(A, D), parentChild(A, B), ancestorDescendent(B, C), parentChild(C, D));
@@ -191,24 +226,27 @@ public class LogicTest {
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
 
-            hasResult(Set.of(bind(A, Jan), bind(A, Carel)), ancestorDescendent(A, Wim));
-            hasResult(Set.of(bind(D, Jan), bind(D, Wim)), ancestorDescendent(Carel, D));
+            hasResult(set(bind(A, Jan), bind(A, Carel)), ancestorDescendent(A, Wim));
+            hasResult(set(bind(D, Jan), bind(D, Wim)), ancestorDescendent(Carel, D));
         });
     }
 
     @RepeatedTest(100)
     public void test3() {
         run(() -> {
-            Person P = personVar("P");
-            Person C = personVar("C");
-
-            rule(parentChild(P, C), parentChild(P, C));
+            rule(parentChild(B, C), parentChild(B, C));
 
             Person Jan = person("Jan");
             Person Wim = person("Wim");
 
-            hasResult(Set.of(incomplete(parentChild(Wim, Jan), parentChild(Wim, Jan))), parentChild(Wim, Jan));
+            hasResult(set(incomplete(parentChild(Wim, Jan), parentChild(Wim, Jan))), parentChild(Wim, Jan));
         });
     }
 
+    @RepeatedTest(100)
+    public void test4() {
+        run(() -> {
+            rule(plus(zero, zero, zero));
+        });
+    }
 }
