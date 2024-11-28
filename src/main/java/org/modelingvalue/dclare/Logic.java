@@ -385,8 +385,28 @@ public final class Logic {
     }
 
     @SuppressWarnings("unchecked")
-    public static <F extends Term> F term(Functor<F> functor, Object... args) {
-        return new TermImpl<F>(functor, args).proxy();
+    public static <F extends Term> F term(Functor0<F> functor) {
+        return new TermImpl<F>(functor).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F extends Term, A> F term(Functor1<F, A> functor, A a) {
+        return new TermImpl<F>(functor, a).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F extends Term, A, B> F term(Functor2<F, A, B> functor, A a, B b) {
+        return new TermImpl<F>(functor, a, b).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F extends Term, A, B, C> F term(Functor3<F, A, B, C> functor, A a, B b, C c) {
+        return new TermImpl<F>(functor, a, b, c).proxy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <F extends Term, A, B, C, D> F term(Functor4<F, A, B, C, D> functor, A a, B b, C c, D d) {
+        return new TermImpl<F>(functor, a, b, c, d).proxy();
     }
 
     private static <F extends Term> TermImpl<F> termImpl(FunctImpl<F> functor, Object... args) {
@@ -445,24 +465,33 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
             FACTS.force(this, ADD_FACT, this);
-            patterns(1, toArray(), 2);
+            Object[] array = toArray();
+            if (USE_EXTEND) {
+                patterns(1, array);
+            } else {
+                Object v;
+                for (int i = 1; i < array.length; i++) {
+                    v = array[i];
+                    array[i] = null;
+                    FACTS.force(term(array), ADD_FACT, this);
+                    array[i] = v;
+                }
+            }
         }
 
-        private void patterns(int i, Object[] array, int nrOfNulls) {
+        private void patterns(int i, Object[] array) {
             if (i < length()) {
                 array = array.clone();
                 if (array[i] == null) {
                     array[i] = get(i);
                     FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array, nrOfNulls);
+                patterns(i + 1, array);
                 if (array[i] != null) {
                     array[i] = null;
-                    if (USE_EXTEND || nrOfNulls < array.length) {
-                        FACTS.force(term(array), ADD_FACT, this);
-                    }
+                    FACTS.force(term(array), ADD_FACT, this);
                 }
-                patterns(i + 1, array, nrOfNulls + 1);
+                patterns(i + 1, array);
             }
         }
 
@@ -513,7 +542,7 @@ public final class Logic {
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected Collection<TermImpl> match(List<TermImpl> der) {
             int non = nrOfNulls();
-            if (!USE_EXTEND && non == length() - 1) {
+            if (!USE_EXTEND && (non > 1 || non >= length() - 1)) {
                 return Set.of(incomplete(der.append(this)));
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
@@ -539,6 +568,9 @@ public final class Logic {
                             if (non < 2 && non < length() - 1) {
                                 Set<TermImpl> set = r.asSet();
                                 FACTS.force(this, set);
+                                for (TermImpl e : set) {
+                                    FACTS.force(e, Set.of(e));
+                                }
                                 return set;
                             } else {
                                 return r;
@@ -556,7 +588,7 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected int termPrio(List<TermImpl> der) {
             int non = nrOfNulls();
-            if (!USE_EXTEND && non == length() - 1) {
+            if (!USE_EXTEND && (non > 1 || non >= length() - 1)) {
                 return Integer.MAX_VALUE;
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
@@ -788,10 +820,11 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<Incomplete> INCOMPLETE_FUNCTOR       = functImpl((SerializableFunction<L, Incomplete>) Logic::incomplete, null);
-    private static final Functor<Incomplete>   INCOMPLETE_FUNCTOR_PROXY = INCOMPLETE_FUNCTOR.proxy();
-    private static final VarImpl<Incomplete>   INCOMPLETE_VAR           = new VarImpl<Incomplete>(Incomplete.class, "I");
-    private static final Incomplete            INCOMPLETE_VAR_PROXY     = INCOMPLETE_VAR.proxy();
+    private static final FunctImpl<Incomplete>   INCOMPLETE_FUNCTOR       = functImpl((SerializableFunction<L, Incomplete>) Logic::incomplete, null);
+    @SuppressWarnings("rawtypes")
+    private static final Functor1<Incomplete, L> INCOMPLETE_FUNCTOR_PROXY = (Functor1<Incomplete, L>) INCOMPLETE_FUNCTOR.proxy();
+    private static final VarImpl<Incomplete>     INCOMPLETE_VAR           = new VarImpl<Incomplete>(Incomplete.class, "I");
+    private static final Incomplete              INCOMPLETE_VAR_PROXY     = INCOMPLETE_VAR.proxy();
 
     @SuppressWarnings("unchecked")
     public static Incomplete incompleteVar() {
@@ -823,15 +856,15 @@ public final class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l, null);
+    private static final FunctImpl<L>           LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l, null);
     @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l, null);
+    private static final FunctImpl<L>           LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l, null);
     @SuppressWarnings("rawtypes")
-    private static final Functor<L>   LIST_FUNCTOR_2_PROXY = LIST_FUNCTOR_2.proxy();
+    private static final Functor2<L, Object, L> LIST_FUNCTOR_2_PROXY = (Functor2<L, Object, L>) LIST_FUNCTOR_2.proxy();
     @SuppressWarnings("rawtypes")
-    private static final TermImpl<L>  EMPTY_LIST           = termImpl(LIST_FUNCTOR_0);
+    private static final TermImpl<L>            EMPTY_LIST           = termImpl(LIST_FUNCTOR_0);
     @SuppressWarnings("rawtypes")
-    private static final L            EMPTY_LIST_PROXY     = EMPTY_LIST.proxy();
+    private static final L                      EMPTY_LIST_PROXY     = EMPTY_LIST.proxy();
 
     @SuppressWarnings("unchecked")
     public static <E> L<E> l(E head, L<E> tail) {

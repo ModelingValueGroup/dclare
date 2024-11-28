@@ -30,7 +30,9 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Logic.Functor;
+import org.modelingvalue.dclare.Logic.Functor1;
+import org.modelingvalue.dclare.Logic.Functor2;
+import org.modelingvalue.dclare.Logic.Functor3;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
@@ -70,7 +72,7 @@ public class LogicTest {
     interface Int extends Term {
     }
 
-    static Functor<Int> i = functor(LogicTest::i);
+    static Functor1<Int, Integer> i = functor(LogicTest::i);
 
     static Int i(Integer x) {
         return term(i, x);
@@ -96,7 +98,7 @@ public class LogicTest {
     interface Pred extends Term {
     }
 
-    static Functor<Pred> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> Set.<Pred> of());
+    static Functor3<Pred, Int, Int, Int> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> Set.<Pred> of());
 
     static Pred plus(Int a, Int b, Int r) {
         return term(plus, a, b, r);
@@ -107,7 +109,7 @@ public class LogicTest {
     interface Person extends Term {
     }
 
-    static Functor<Person> person = functor(LogicTest::person);
+    static Functor1<Person, String> person = functor(LogicTest::person);
 
     static Person person(String name) {
         return term(person, name);
@@ -120,7 +122,7 @@ public class LogicTest {
     interface ParentChild extends Term {
     }
 
-    static Functor<ParentChild> parentChild = functor(LogicTest::parentChild);
+    static Functor2<ParentChild, Person, Person> parentChild = functor(LogicTest::parentChild);
 
     static ParentChild parentChild(Person parent, Person child) {
         return term(parentChild, parent, child);
@@ -133,7 +135,7 @@ public class LogicTest {
     interface AncestorDescendent extends Term {
     }
 
-    static Functor<AncestorDescendent> ancestorDescendent = functor(LogicTest::ancestorDescendent);
+    static Functor2<AncestorDescendent, Person, Person> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
     static AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);
