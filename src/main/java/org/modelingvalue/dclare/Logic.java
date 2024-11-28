@@ -26,6 +26,8 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
@@ -33,16 +35,11 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.impl.StructImpl;
-import org.modelingvalue.collections.util.LambdaReflection;
-import org.modelingvalue.collections.util.SerializableBiFunction;
+import org.modelingvalue.collections.util.*;
 import org.modelingvalue.collections.util.SerializableBiFunction.SerializableBiFunctionImpl;
-import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializableFunction.SerializableFunctionImpl;
-import org.modelingvalue.collections.util.SerializableQuadFunction;
 import org.modelingvalue.collections.util.SerializableQuadFunction.SerializableQuadFunctionImpl;
-import org.modelingvalue.collections.util.SerializableSupplier;
 import org.modelingvalue.collections.util.SerializableSupplier.SerializableSupplierImpl;
-import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
 
 public final class Logic {
@@ -80,11 +77,13 @@ public final class Logic {
         private static final Method EQUALS;
         private static final Method HASHCODE;
         private static final Method TO_STRING;
+        private static final Method GET;
         static {
             try {
                 EQUALS = Object.class.getMethod("equals", Object.class);
                 HASHCODE = Object.class.getMethod("hashCode");
                 TO_STRING = Object.class.getMethod("toString");
+                GET = Term.class.getMethod("get", Integer.class);
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new Error(e);
             }
@@ -107,6 +106,8 @@ public final class Logic {
                 return super.hashCode();
             } else if (method.equals(TO_STRING)) {
                 return toString();
+            } else if (method.equals(GET)) {
+                return get((Integer) args[0]);
             } else {
                 throw new Error("No handler for " + method);
             }
@@ -154,6 +155,13 @@ public final class Logic {
         protected abstract ClauseImpl<F> term(Object[] array);
     }
 
+    private static final Object[] proxy(Object[] array) {
+        for (int i = 0; i < array.length; i++) {
+            array[i] = Logic.proxy(array[i]);
+        }
+        return array;
+    }
+
     private static final Object noProxy(Object object) {
         if (object instanceof Term) {
             throw new IllegalArgumentException();
@@ -195,13 +203,13 @@ public final class Logic {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> FunctImpl<T> functImpl(SerializableSupplier<T> method, SerializableSupplier<Set<T>> impl) {
+    private static <T> FunctImpl<T> functImpl(SerializableSupplier<T> method, SerializableSupplier<Collection<T>> impl) {
         SerializableSupplierImpl<T> l = method.of();
         return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> Functor0<T> functor(SerializableSupplier<T> method, SerializableSupplier<Set<T>> impl) {
+    public static <T> Functor0<T> functor(SerializableSupplier<T> method, SerializableSupplier<Collection<T>> impl) {
         return (Functor0<T>) functImpl(method, impl).proxy();
     }
 
@@ -211,17 +219,16 @@ public final class Logic {
     }
 
     public interface Functor1<T, A> extends Functor0<T> {
-        A get1();
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A> FunctImpl<T> functImpl(SerializableFunction<A, T> method, SerializableFunction<A, Set<T>> impl) {
+    private static <T, A> FunctImpl<T> functImpl(SerializableFunction<A, T> method, SerializableFunction<A, Collection<T>> impl) {
         SerializableFunctionImpl<A, T> l = method.of();
         return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T, A> Functor1<T, A> functor(SerializableFunction<A, T> method, SerializableFunction<A, Set<T>> impl) {
+    public static <T, A> Functor1<T, A> functor(SerializableFunction<A, T> method, SerializableFunction<A, Collection<T>> impl) {
         return (Functor1<T, A>) functImpl(method, impl).proxy();
     }
 
@@ -231,17 +238,16 @@ public final class Logic {
     }
 
     public interface Functor2<T, A, B> extends Functor1<T, A> {
-        B get2();
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B> FunctImpl<T> functImpl(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Set<T>> impl) {
+    private static <T, A, B> FunctImpl<T> functImpl(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Collection<T>> impl) {
         SerializableBiFunctionImpl<A, B, T> l = method.of();
         return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T, A, B> Functor2<T, A, B> functor(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Set<T>> impl) {
+    public static <T, A, B> Functor2<T, A, B> functor(SerializableBiFunction<A, B, T> method, SerializableBiFunction<A, B, Collection<T>> impl) {
         return (Functor2<T, A, B>) functImpl(method, impl.of()).proxy();
     }
 
@@ -251,17 +257,16 @@ public final class Logic {
     }
 
     public interface Functor3<T, A, B, C> extends Functor2<T, A, B> {
-        C get3();
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B, C> FunctImpl<T> functImpl(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Set<T>> impl) {
+    private static <T, A, B, C> FunctImpl<T> functImpl(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Collection<T>> impl) {
         SerializableTriFunctionImpl<A, B, C, T> l = method.of();
         return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T, A, B, C> Functor3<T, A, B, C> functor(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Set<T>> impl) {
+    public static <T, A, B, C> Functor3<T, A, B, C> functor(SerializableTriFunction<A, B, C, T> method, SerializableTriFunction<A, B, C, Collection<T>> impl) {
         return (Functor3<T, A, B, C>) functImpl(method, impl).proxy();
     }
 
@@ -271,17 +276,16 @@ public final class Logic {
     }
 
     public interface Functor4<T, A, B, C, D> extends Functor3<T, A, B, C> {
-        D get4();
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, A, B, C, D> FunctImpl<T> functImpl(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Set<T>> impl) {
+    private static <T, A, B, C, D> FunctImpl<T> functImpl(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Collection<T>> impl) {
         SerializableQuadFunctionImpl<A, B, C, D, T> l = method.of();
         return new FunctImpl<T>((Class<T>) l.out(), l.getImplMethodName(), l.in(), impl != null ? impl.of() : null);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T, A, B, C, D> Functor4<T, A, B, C, D> functor(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Set<T>> impl) {
+    public static <T, A, B, C, D> Functor4<T, A, B, C, D> functor(SerializableQuadFunction<A, B, C, D, T> method, SerializableQuadFunction<A, B, C, D, Collection<T>> impl) {
         return (Functor4<T, A, B, C, D>) functImpl(method, impl).proxy();
     }
 
@@ -295,7 +299,7 @@ public final class Logic {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private FunctImpl(Class<T> type, String name, List<Class<?>> args, LambdaReflection l) {
-            super((Class) Functor.class, type, name, args);
+            super((Class) Functor.class, type, name, args, l);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -326,6 +330,11 @@ public final class Logic {
         @Override
         protected Class<Functor<T>> type() {
             return (Class<Functor<T>>) get(0);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected LambdaReflection lambda() {
+            return (LambdaReflection) get(4);
         }
 
         @SuppressWarnings("unchecked")
@@ -382,6 +391,7 @@ public final class Logic {
     // Terms
 
     public static interface Term {
+        Object get(Integer i);
     }
 
     @SuppressWarnings("unchecked")
@@ -542,42 +552,62 @@ public final class Logic {
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected Collection<TermImpl> match(List<TermImpl> der) {
             int non = nrOfNulls();
-            if (!USE_EXTEND && (non > 1 || non >= length() - 1)) {
+            int len = length();
+            if (!USE_EXTEND && (non > 1 || non >= len - 1)) {
                 return Set.of(incomplete(der.append(this)));
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
                 if (facts == null) {
-                    List<RuleImpl> rules = RULES.get(functor());
-                    if (rules != null) {
-                        int i = der.lastIndexOf(this);
-                        if (i >= 0) {
-                            return Set.of(incomplete(der.sublist(i, der.size()).append(this)));
+                    FunctImpl<F> functor = functor();
+                    LambdaReflection lambda = functor.lambda();
+                    if (lambda != null) {
+                        Object[] array = Logic.proxy(toArray());
+                        if (len == 1) {
+                            return ((Collection) ((Supplier) lambda.original()).get()).map(Logic::unproxy);
+                        } else if (len == 2) {
+                            return ((Collection) ((Function) lambda.original()).apply(array[1])).map(Logic::unproxy);
+                        } else if (len == 3) {
+                            return ((Collection) ((BiFunction) lambda.original()).apply(array[1], array[2])).map(Logic::unproxy);
+                        } else if (len == 4) {
+                            return ((Collection) ((TriFunction) lambda.original()).apply(array[1], array[2], array[3])).map(Logic::unproxy);
+                        } else if (len == 5) {
+                            return ((Collection) ((QuadFunction) lambda.original()).apply(array[1], array[2], array[3], array[4])).map(Logic::unproxy);
                         } else {
-                            Collection<TermImpl> r = Set.of();
-                            for (RuleImpl rule : rules) {
-                                Collection<TermImpl> eval = rule.eval(this, der.append(this));
-                                if (non == 0) {
-                                    eval = eval.asSet();
-                                    if (eval.equals(Set.of(this))) {
-                                        r = eval;
-                                        break;
-                                    }
-                                }
-                                r = Collection.concat(r, eval);
-                            }
-                            if (non < 2 && non < length() - 1) {
-                                Set<TermImpl> set = r.asSet();
-                                FACTS.force(this, set);
-                                for (TermImpl e : set) {
-                                    FACTS.force(e, Set.of(e));
-                                }
-                                return set;
-                            } else {
-                                return r;
-                            }
+                            return Set.of(incomplete(List.of(this)));
                         }
                     } else {
-                        return Set.of();
+                        List<RuleImpl> rules = RULES.get(functor);
+                        if (rules != null) {
+                            int i = der.lastIndexOf(this);
+                            if (i >= 0) {
+                                return Set.of(incomplete(der.sublist(i, der.size()).append(this)));
+                            } else {
+                                Collection<TermImpl> r = Set.of();
+                                for (RuleImpl rule : rules) {
+                                    Collection<TermImpl> eval = rule.eval(this, der.append(this));
+                                    if (non == 0) {
+                                        eval = eval.asSet();
+                                        if (eval.equals(Set.of(this))) {
+                                            r = eval;
+                                            break;
+                                        }
+                                    }
+                                    r = Collection.concat(r, eval);
+                                }
+                                if (non < 2 && non < len - 1) {
+                                    Set<TermImpl> set = r.asSet();
+                                    FACTS.force(this, set);
+                                    for (TermImpl e : set) {
+                                        FACTS.force(e, Set.of(e));
+                                    }
+                                    return set;
+                                } else {
+                                    return r;
+                                }
+                            }
+                        } else {
+                            return Set.of();
+                        }
                     }
                 } else {
                     return facts;
@@ -846,7 +876,7 @@ public final class Logic {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Incomplete incomplete(L der) {
+    public static Incomplete incomplete(L der) {
         return term(INCOMPLETE_FUNCTOR_PROXY, der);
     }
 

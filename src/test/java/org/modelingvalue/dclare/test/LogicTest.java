@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
+import java.math.BigInteger;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.RepeatedTest;
@@ -72,10 +73,14 @@ public class LogicTest {
     interface Int extends Term {
     }
 
-    static Functor1<Int, Integer> i = functor(LogicTest::i);
+    static Functor1<Int, BigInteger> i = functor(LogicTest::i);
 
-    static Int i(Integer x) {
+    static Int i(BigInteger x) {
         return term(i, x);
+    }
+
+    static Int i(long x) {
+        return i(BigInteger.valueOf(x));
     }
 
     static Int iv(String name) {
@@ -98,7 +103,23 @@ public class LogicTest {
     interface Pred extends Term {
     }
 
-    static Functor3<Pred, Int, Int, Int> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> Set.<Pred> of());
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Functor3<Pred, Int, Int, Int> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> {
+        BigInteger ai = a != null ? (BigInteger) a.get(1) : null;
+        BigInteger bi = b != null ? (BigInteger) b.get(1) : null;
+        BigInteger ci = c != null ? (BigInteger) c.get(1) : null;
+        if (ai != null && bi != null && ci != null) {
+            return ai.add(bi).equals(ci) ? Set.of(plus(a, b, c)) : Set.of();
+        } else if (ai != null && bi != null && ci == null) {
+            return Set.of(plus(i(ai), i(bi), i(ai.add(bi))));
+        } else if (ai != null && bi == null && ci != null) {
+            return Set.of(plus(i(ai), i(ci.subtract(ai)), i(ci)));
+        } else if (ai == null && bi != null && ci != null) {
+            return Set.of(plus(i(ci.subtract(bi)), i(bi), i(ci)));
+        } else {
+            return (Set) Set.of(incomplete(l(plus(a, b, c))));
+        }
+    });
 
     static Pred plus(Int a, Int b, Int r) {
         return term(plus, a, b, r);
@@ -248,7 +269,7 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test4() {
         run(() -> {
-            rule(plus(zero, zero, zero));
+            isTrue(plus(one, zero, one));
         });
     }
 }
