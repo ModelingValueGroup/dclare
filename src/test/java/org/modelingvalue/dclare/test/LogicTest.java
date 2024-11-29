@@ -31,9 +31,8 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.dclare.Logic.Functor1;
-import org.modelingvalue.dclare.Logic.Functor2;
-import org.modelingvalue.dclare.Logic.Functor3;
+import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
@@ -73,7 +72,7 @@ public class LogicTest {
     interface Int extends Term {
     }
 
-    static Functor1<Int, BigInteger> i = functor(LogicTest::i);
+    static Functor<Int> i = functor((SerializableFunction<BigInteger, Int>) LogicTest::i);
 
     static Int i(BigInteger x) {
         return term(i, x);
@@ -104,20 +103,20 @@ public class LogicTest {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static Functor3<Pred, Int, Int, Int> plus = functor(LogicTest::plus, (Int a, Int b, Int c) -> {
-        BigInteger ai = a != null ? (BigInteger) a.get(1) : null;
-        BigInteger bi = b != null ? (BigInteger) b.get(1) : null;
-        BigInteger ci = c != null ? (BigInteger) c.get(1) : null;
+    static Functor<Pred> plus = functor(LogicTest::plus, t -> {
+        BigInteger ai = t.get(1, 1);
+        BigInteger bi = t.get(2, 1);
+        BigInteger ci = t.get(3, 1);
         if (ai != null && bi != null && ci != null) {
-            return ai.add(bi).equals(ci) ? Set.of(plus(a, b, c)) : Set.of();
+            return ai.add(bi).equals(ci) ? Set.of(t) : Set.of();
         } else if (ai != null && bi != null && ci == null) {
-            return Set.of(plus(i(ai), i(bi), i(ai.add(bi))));
+            return Set.of(t.set(3, i(ai.add(bi))));
         } else if (ai != null && bi == null && ci != null) {
-            return Set.of(plus(i(ai), i(ci.subtract(ai)), i(ci)));
+            return Set.of(t.set(2, i(ci.subtract(ai))));
         } else if (ai == null && bi != null && ci != null) {
-            return Set.of(plus(i(ci.subtract(bi)), i(bi), i(ci)));
+            return Set.of(t.set(1, i(ci.subtract(bi))));
         } else {
-            return (Set) Set.of(incomplete(l(plus(a, b, c))));
+            return Set.of(incomplete(list(t)));
         }
     });
 
@@ -130,7 +129,7 @@ public class LogicTest {
     interface Person extends Term {
     }
 
-    static Functor1<Person, String> person = functor(LogicTest::person);
+    static Functor<Person> person = functor(LogicTest::person);
 
     static Person person(String name) {
         return term(person, name);
@@ -143,7 +142,7 @@ public class LogicTest {
     interface ParentChild extends Term {
     }
 
-    static Functor2<ParentChild, Person, Person> parentChild = functor(LogicTest::parentChild);
+    static Functor<ParentChild> parentChild = functor(LogicTest::parentChild);
 
     static ParentChild parentChild(Person parent, Person child) {
         return term(parentChild, parent, child);
@@ -156,7 +155,7 @@ public class LogicTest {
     interface AncestorDescendent extends Term {
     }
 
-    static Functor2<AncestorDescendent, Person, Person> ancestorDescendent = functor(LogicTest::ancestorDescendent);
+    static Functor<AncestorDescendent> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
     static AncestorDescendent ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);
@@ -270,6 +269,9 @@ public class LogicTest {
     public void test4() {
         run(() -> {
             isTrue(plus(one, zero, one));
+            isTrue(plus(zero, one, one));
+            isTrue(plus(zero, zero, zero));
+            hasResult(set(bind(X, one)), plus(zero, one, X));
         });
     }
 }
