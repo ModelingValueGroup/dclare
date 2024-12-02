@@ -23,6 +23,7 @@ package org.modelingvalue.dclare;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.math.BigInteger;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -963,6 +964,116 @@ public final class Logic {
             b = b.add(Entry.of((Variable) varVal[i], varVal[i + 1]));
         }
         return b;
+    }
+
+    // Is
+
+    private static Functor<Pred> is = functor((SerializableBiFunction<Int, IntLit, Pred>) Logic::is);
+
+    public static Pred is(Int i, IntLit r) {
+        return term(is, i, r);
+    }
+
+    // Integer
+
+    public static interface Int extends Term {
+    }
+
+    public static interface IntLit extends Int {
+    }
+
+    public static interface IntFun extends Int {
+    }
+
+    private static Functor<IntLit> i = functor((SerializableFunction<BigInteger, IntLit>) Logic::i);
+
+    private static IntLit i(BigInteger x) {
+        return term(i, x);
+    }
+
+    public static IntLit i(long x) {
+        return i(BigInteger.valueOf(x));
+    }
+
+    public static IntLit ilv(String name) {
+        return var(IntLit.class, name);
+    }
+
+    public static IntFun ifv(String name) {
+        return var(IntFun.class, name);
+    }
+
+    public static Int iv(String name) {
+        return var(Int.class, name);
+    }
+
+    // Eq
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Functor<Pred> eq = functor(Logic::eq, t -> {
+        TermImpl at = t.getTerm(1);
+        TermImpl bt = t.getTerm(2);
+        if (at == null && bt == null) {
+            return t.incomplete();
+        } else if (at == null) {
+            return Set.of(t.set(1, bt));
+        } else if (bt == null) {
+            return Set.of(t.set(2, at));
+        } else {
+            return at.equals(bt) ? Set.of(t) : Set.of();
+        }
+    });
+
+    public static Pred eq(Term a, Term b) {
+        return term(eq, a, b);
+    }
+
+    // Plus
+
+    public static interface Pred extends Term {
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Functor<Pred> plusPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Logic::plus, t -> {
+        TermImpl<IntLit> at = t.getTerm(1);
+        TermImpl<IntLit> bt = t.getTerm(2);
+        TermImpl<IntLit> ct = t.getTerm(3);
+        BigInteger ai = at != null ? at.getVal(1) : null;
+        BigInteger bi = bt != null ? bt.getVal(1) : null;
+        BigInteger ci = ct != null ? ct.getVal(1) : null;
+        if (ai != null && bi != null && ci != null) {
+            return ai.add(bi).equals(ci) ? Set.of(t) : Set.of();
+        } else if (ai != null && bi != null && ci == null) {
+            return Set.of(t.set(3, at.set(1, ai.add(bi))));
+        } else if (ai != null && bi == null && ci != null) {
+            return Set.of(t.set(2, at.set(1, ci.subtract(ai))));
+        } else if (ai == null && bi != null && ci != null) {
+            return Set.of(t.set(1, bt.set(1, ci.subtract(bi))));
+        } else {
+            return t.incomplete();
+        }
+    });
+
+    public static Pred plus(IntLit a, IntLit b, IntLit r) {
+        return term(plusPred, a, b, r);
+    }
+
+    private static Functor<IntFun> plusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Logic::plus);
+
+    public static IntFun plus(Int a, Int b) {
+        return term(plusFunc, a, b);
+    }
+
+    public static void isRules() {
+        IntLit PL = ilv("PL");
+        IntLit QL = ilv("QL");
+        IntLit RL = ilv("RL");
+
+        Int X = iv("X");
+        Int Y = iv("Y");
+
+        rule(is(PL, RL), eq(PL, RL));
+        rule(is(plus(X, Y), RL), is(X, PL), is(Y, QL), plus(PL, QL, RL));
     }
 
 }

@@ -24,20 +24,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
-import java.math.BigInteger;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.SerializableBiFunction;
-import org.modelingvalue.collections.util.SerializableFunction;
-import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Functor;
+import org.modelingvalue.dclare.Logic.IntLit;
 import org.modelingvalue.dclare.Logic.Term;
-import org.modelingvalue.dclare.Logic.TermImpl;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -69,124 +65,6 @@ public class LogicTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     static Set<Map<Variable, Object>> set(Map... bindings) {
         return Set.of(bindings);
-    }
-
-    // Is
-
-    static Functor<Pred> is = functor(LogicTest::is);
-
-    static Pred is(Int i, IntLit r) {
-        return term(is, i, r);
-    }
-
-    // Integer
-
-    interface Int extends Term {
-    }
-
-    interface IntLit extends Int {
-    }
-
-    interface IntFun extends Int {
-    }
-
-    static Functor<IntLit> i = functor((SerializableFunction<BigInteger, IntLit>) LogicTest::i);
-
-    static IntLit i(BigInteger x) {
-        return term(i, x);
-    }
-
-    static IntLit i(long x) {
-        return i(BigInteger.valueOf(x));
-    }
-
-    static IntLit ilv(String name) {
-        return var(IntLit.class, name);
-    }
-
-    static IntFun ifv(String name) {
-        return var(IntFun.class, name);
-    }
-
-    static Int iv(String name) {
-        return var(Int.class, name);
-    }
-
-    IntLit               mOne  = i(-1);
-    IntLit               zero  = i(0);
-    IntLit               one   = i(1);
-
-    IntLit               seven = i(7);
-    IntLit               three = i(3);
-    IntLit               ten   = i(10);
-
-    IntLit               O     = ilv("O");
-    IntLit               P     = ilv("P");
-    IntLit               Q     = ilv("Q");
-
-    IntFun               U     = ifv("U");
-    IntFun               V     = ifv("V");
-    IntFun               W     = ifv("W");
-
-    Int                  X     = iv("X");
-    Int                  Y     = iv("Y");
-    Int                  Z     = iv("Z");
-
-    // Eq
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static Functor<Pred> eq    = functor(LogicTest::eq, t -> {
-                                   TermImpl at = t.getTerm(1);
-                                   TermImpl bt = t.getTerm(2);
-                                   if (at == null && bt == null) {
-                                       return t.incomplete();
-                                   } else if (at == null) {
-                                       return Set.of(t.set(1, bt));
-                                   } else if (bt == null) {
-                                       return Set.of(t.set(2, at));
-                                   } else {
-                                       return at.equals(bt) ? Set.of(t) : Set.of();
-                                   }
-                               });
-
-    static Pred eq(Term a, Term b) {
-        return term(eq, a, b);
-    }
-
-    // Plus
-
-    interface Pred extends Term {
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    static Functor<Pred> plusPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) LogicTest::plus, t -> {
-        TermImpl<IntLit> at = t.getTerm(1);
-        TermImpl<IntLit> bt = t.getTerm(2);
-        TermImpl<IntLit> ct = t.getTerm(3);
-        BigInteger ai = at != null ? at.getVal(1) : null;
-        BigInteger bi = bt != null ? bt.getVal(1) : null;
-        BigInteger ci = ct != null ? ct.getVal(1) : null;
-        if (ai != null && bi != null && ci != null) {
-            return ai.add(bi).equals(ci) ? Set.of(t) : Set.of();
-        } else if (ai != null && bi != null && ci == null) {
-            return Set.of(t.set(3, at.set(1, ai.add(bi))));
-        } else if (ai != null && bi == null && ci != null) {
-            return Set.of(t.set(2, at.set(1, ci.subtract(ai))));
-        } else if (ai == null && bi != null && ci != null) {
-            return Set.of(t.set(1, bt.set(1, ci.subtract(bi))));
-        } else {
-            return t.incomplete();
-        }
-    });
-
-    static Pred plus(IntLit a, IntLit b, IntLit r) {
-        return term(plusPred, a, b, r);
-    }
-
-    static Functor<IntFun> plusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) LogicTest::plus);
-
-    static IntFun plus(Int a, Int b) {
-        return term(plusFunc, a, b);
     }
 
     // FamilyTree
@@ -232,6 +110,8 @@ public class LogicTest {
 
     // Variables
 
+    IntLit P      = ilv("P");
+
     Person A      = personVar("A");  // Ancestor
     Person D      = personVar("D");  // Descendent
     Person R      = personVar("R");  // Relative
@@ -249,7 +129,7 @@ public class LogicTest {
     Person Marijn = person("Marijn");
 
     @RepeatedTest(100)
-    public void test0() {
+    public void famTest0() {
         run(() -> {
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -280,7 +160,7 @@ public class LogicTest {
     }
 
     @RepeatedTest(100)
-    public void test1() {
+    public void famTest1() {
         run(() -> {
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), ancestorDescendent(A, R), parentChild(R, D));
@@ -300,7 +180,7 @@ public class LogicTest {
     }
 
     @RepeatedTest(100)
-    public void test2() {
+    public void famTest2() {
         run(() -> {
             rule(ancestorDescendent(A, D), parentChild(A, D));
             rule(ancestorDescendent(A, D), parentChild(A, B), parentChild(B, D));
@@ -319,7 +199,7 @@ public class LogicTest {
     }
 
     @RepeatedTest(100)
-    public void test3() {
+    public void famTest3() {
         run(() -> {
             rule(parentChild(B, C), parentChild(B, C));
 
@@ -331,30 +211,27 @@ public class LogicTest {
     }
 
     @RepeatedTest(100)
-    public void test4() {
+    public void intTest() {
         run(() -> {
-            isTrue(plus(zero, zero, zero));
-            isTrue(plus(one, zero, one));
-            isTrue(plus(seven, three, ten));
-            hasResult(set(bind(P, ten)), plus(seven, three, P));
-            hasResult(set(bind(P, three)), plus(seven, P, ten));
-            hasResult(set(bind(P, seven)), plus(P, three, ten));
+            isTrue(plus(i(11), i(22), i(33)));
+
+            hasResult(set(bind(P, i(10))), plus(i(7), i(3), P));
+            hasResult(set(bind(P, i(3))), plus(i(7), P, i(10)));
+            hasResult(set(bind(P, i(7))), plus(P, i(3), i(10)));
         });
     }
 
     @RepeatedTest(100)
-    public void test5() {
-
+    public void isTest() {
         run(() -> {
-            rule(is(P, Q), eq(P, Q));
-            rule(is(plus(X, Y), O), is(X, P), is(Y, Q), plus(P, Q, O));
+            isRules();
+            isTrue(is(plus(i(11), i(22)), i(33)));
+            isTrue(is(plus(i(11), plus(plus(i(22), i(33)), i(44))), i(110)));
 
-            isTrue(is(plus(zero, zero), zero));
-            isTrue(is(plus(one, zero), one));
-            isTrue(is(plus(seven, three), ten));
-            hasResult(set(bind(P, ten)), is(plus(seven, three), P));
-            hasResult(set(bind(P, three)), is(plus(seven, P), ten));
-            hasResult(set(bind(P, seven)), is(plus(P, three), ten));
+            hasResult(set(bind(P, i(110))), is(plus(i(11), plus(plus(i(22), i(33)), i(44))), P));
+            hasResult(set(bind(P, i(10))), is(plus(i(7), i(3)), P));
+            hasResult(set(bind(P, i(3))), is(plus(i(7), P), i(10)));
+            hasResult(set(bind(P, i(7))), is(plus(P, i(3)), i(10)));
         });
     }
 
