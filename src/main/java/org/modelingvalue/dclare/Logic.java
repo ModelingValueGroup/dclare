@@ -268,7 +268,7 @@ public final class Logic {
         return functImpl(method, null).proxy();
     }
 
-    private static final class FunctImpl<T extends Term> extends ClauseImpl<Functor<T>> {
+    public static final class FunctImpl<T extends Term> extends ClauseImpl<Functor<T>> {
         private static final long serialVersionUID = 285147889847599160L;
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -461,14 +461,23 @@ public final class Logic {
             }
         }
 
+        public boolean isAtom() {
+            for (int i = 1; i < length(); i++) {
+                if (get(i) instanceof TermImpl) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         @SuppressWarnings("unchecked")
         @Override
-        protected Class<F> type() {
+        public Class<F> type() {
             return functor().functType();
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        protected FunctImpl<F> functor() {
+        public FunctImpl<F> functor() {
             return (FunctImpl<F>) get(0);
         }
 
@@ -480,7 +489,7 @@ public final class Logic {
                 patterns(1, array);
             } else {
                 for (int i = 1; i < array.length; i++) {
-                    array[i] = null;
+                    array[i] = getType(i);
                     FACTS.force(term(array), ADD_FACT, this);
                     array = toArray();
                 }
@@ -496,7 +505,7 @@ public final class Logic {
                 }
                 patterns(i + 1, array);
                 if (array[i] != null) {
-                    array[i] = null;
+                    array[i] = getType(i);
                     FACTS.force(term(array), ADD_FACT, this);
                 }
                 patterns(i + 1, array);
@@ -508,7 +517,7 @@ public final class Logic {
             Map<VarImpl, Object> vars = Map.of();
             for (int i = 1; i < length(); i++) {
                 if (get(i) instanceof VarImpl) {
-                    vars = vars.put((VarImpl) get(i), null);
+                    vars = vars.put((VarImpl) get(i), ((VarImpl) get(i)).type());
                 } else if (get(i) instanceof TermImpl) {
                     vars = vars.putAll(((TermImpl) get(i)).variables());
                 }
@@ -521,19 +530,33 @@ public final class Logic {
             if (get(0).equals(term.get(0))) {
                 for (int i = 1; i < length(); i++) {
                     Object tv = term.get(i);
+                    Class tt = tv instanceof TermImpl ? ((TermImpl) tv).type() : tv instanceof Class ? (Class) tv : null;
+                    tv = tv instanceof Class ? null : tv;
                     if (get(i) instanceof VarImpl) {
                         VarImpl var = (VarImpl) get(i);
                         Object vv = vars.get(var);
+                        Class vt = vv instanceof TermImpl ? ((TermImpl) vv).type() : vv instanceof Class ? (Class) vv : null;
+                        vv = vv instanceof Class ? null : vv;
                         if (vv != null) {
                             if (tv != null && !tv.equals(vv)) {
                                 return null;
                             }
                         } else if (tv != null) {
-                            vars = vars.put(var, tv);
+                            if (var.type().isAssignableFrom(tt)) {
+                                vars = vars.put(var, tv);
+                            } else {
+                                return null;
+                            }
+                        } else if (tt == null || !var.type().isAssignableFrom(tt)) {
+                            return null;
+                        } else if (vt != null && !vt.equals(tt)) {
+                            return null;
+                        } else {
+                            vars = vars.put(var, tt);
                         }
                     } else if (get(i) instanceof TermImpl) {
+                        TermImpl t = (TermImpl) get(i);
                         if (tv != null) {
-                            TermImpl t = (TermImpl) get(i);
                             if (tv instanceof TermImpl) {
                                 vars = t.getBinding((TermImpl) tv, vars);
                                 if (vars == null) {
@@ -542,6 +565,8 @@ public final class Logic {
                             } else {
                                 return null;
                             }
+                        } else if (tt == null || !t.type().isAssignableFrom(tt)) {
+                            return null;
                         }
                     } else if (tv != null && !tv.equals(get(i))) {
                         return null;
@@ -568,12 +593,20 @@ public final class Logic {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         public <V extends Term> TermImpl<V> getTerm(int i) {
-            return (TermImpl<V>) super.get(i);
+            Object v = get(i);
+            return v instanceof TermImpl ? (TermImpl<V>) v : null;
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        public Class getType(int i) {
+            Object v = get(i);
+            return v instanceof Class ? (Class) v : v instanceof TermImpl ? ((TermImpl) v).type() : null;
         }
 
         @SuppressWarnings("unchecked")
         public <V> V getVal(int i) {
-            return (V) super.get(i);
+            Object v = get(i);
+            return v instanceof Class || v instanceof TermImpl ? null : (V) v;
         }
 
         public TermImpl<F> set(int i, Object v) {
@@ -676,7 +709,8 @@ public final class Logic {
         protected int nrOfNulls() {
             int nr = 0;
             for (int i = 1; i < length(); i++) {
-                if (get(i) == null) {
+                Object v = get(i);
+                if (v == null || v instanceof Class) {
                     nr++;
                 }
             }

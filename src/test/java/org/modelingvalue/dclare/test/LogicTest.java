@@ -31,7 +31,10 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.SerializableBiFunction;
 import org.modelingvalue.collections.util.SerializableFunction;
+import org.modelingvalue.collections.util.SerializableTriFunction;
+import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.TermImpl;
@@ -52,11 +55,11 @@ public class LogicTest {
     }
 
     static void isTrue(Term... goals) {
-        assertTrue(is(goals));
+        assertTrue(Logic.is(goals));
     }
 
     static void isFalse(Term... goals) {
-        assertFalse(is(goals));
+        assertFalse(Logic.is(goals));
     }
 
     static void hasResult(Set<Map<Variable, Object>> bindings, Term... goals) {
@@ -68,39 +71,87 @@ public class LogicTest {
         return Set.of(bindings);
     }
 
+    // Is
+
+    static Functor<Pred> is = functor(LogicTest::is);
+
+    static Pred is(Int i, IntLit r) {
+        return term(is, i, r);
+    }
+
     // Integer
 
     interface Int extends Term {
     }
 
-    static Functor<Int> i = functor((SerializableFunction<BigInteger, Int>) LogicTest::i);
+    interface IntLit extends Int {
+    }
 
-    static Int i(BigInteger x) {
+    interface IntFun extends Int {
+    }
+
+    static Functor<IntLit> i = functor((SerializableFunction<BigInteger, IntLit>) LogicTest::i);
+
+    static IntLit i(BigInteger x) {
         return term(i, x);
     }
 
-    static Int i(long x) {
+    static IntLit i(long x) {
         return i(BigInteger.valueOf(x));
+    }
+
+    static IntLit ilv(String name) {
+        return var(IntLit.class, name);
+    }
+
+    static IntFun ifv(String name) {
+        return var(IntFun.class, name);
     }
 
     static Int iv(String name) {
         return var(Int.class, name);
     }
 
-    Int mOne  = i(-1);
-    Int zero  = i(0);
-    Int one   = i(1);
+    IntLit               mOne  = i(-1);
+    IntLit               zero  = i(0);
+    IntLit               one   = i(1);
 
-    Int seven = i(7);
-    Int three = i(3);
-    Int ten   = i(10);
+    IntLit               seven = i(7);
+    IntLit               three = i(3);
+    IntLit               ten   = i(10);
 
-    Int U     = iv("U");
-    Int V     = iv("V");
-    Int W     = iv("W");
-    Int X     = iv("X");
-    Int Y     = iv("Y");
-    Int Z     = iv("Z");
+    IntLit               O     = ilv("O");
+    IntLit               P     = ilv("P");
+    IntLit               Q     = ilv("Q");
+
+    IntFun               U     = ifv("U");
+    IntFun               V     = ifv("V");
+    IntFun               W     = ifv("W");
+
+    Int                  X     = iv("X");
+    Int                  Y     = iv("Y");
+    Int                  Z     = iv("Z");
+
+    // Eq
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static Functor<Pred> eq    = functor(LogicTest::eq, t -> {
+                                   TermImpl at = t.getTerm(1);
+                                   TermImpl bt = t.getTerm(2);
+                                   if (at == null && bt == null) {
+                                       return t.incomplete();
+                                   } else if (at == null) {
+                                       return Set.of(t.set(1, bt));
+                                   } else if (bt == null) {
+                                       return Set.of(t.set(2, at));
+                                   } else {
+                                       return at.equals(bt) ? Set.of(t) : Set.of();
+                                   }
+                               });
+
+    static Pred eq(Term a, Term b) {
+        return term(eq, a, b);
+    }
 
     // Plus
 
@@ -108,10 +159,10 @@ public class LogicTest {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    static Functor<Pred> plus = functor(LogicTest::plus, t -> {
-        TermImpl<Int> at = t.getTerm(1);
-        TermImpl<Int> bt = t.getTerm(2);
-        TermImpl<Int> ct = t.getTerm(3);
+    static Functor<Pred> plusPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) LogicTest::plus, t -> {
+        TermImpl<IntLit> at = t.getTerm(1);
+        TermImpl<IntLit> bt = t.getTerm(2);
+        TermImpl<IntLit> ct = t.getTerm(3);
         BigInteger ai = at != null ? at.getVal(1) : null;
         BigInteger bi = bt != null ? bt.getVal(1) : null;
         BigInteger ci = ct != null ? ct.getVal(1) : null;
@@ -128,8 +179,14 @@ public class LogicTest {
         }
     });
 
-    static Pred plus(Int a, Int b, Int r) {
-        return term(plus, a, b, r);
+    static Pred plus(IntLit a, IntLit b, IntLit r) {
+        return term(plusPred, a, b, r);
+    }
+
+    static Functor<IntFun> plusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) LogicTest::plus);
+
+    static IntFun plus(Int a, Int b) {
+        return term(plusFunc, a, b);
     }
 
     // FamilyTree
@@ -279,9 +336,25 @@ public class LogicTest {
             isTrue(plus(zero, zero, zero));
             isTrue(plus(one, zero, one));
             isTrue(plus(seven, three, ten));
-            hasResult(set(bind(X, ten)), plus(seven, three, X));
-            hasResult(set(bind(X, three)), plus(seven, X, ten));
-            hasResult(set(bind(X, seven)), plus(X, three, ten));
+            hasResult(set(bind(P, ten)), plus(seven, three, P));
+            hasResult(set(bind(P, three)), plus(seven, P, ten));
+            hasResult(set(bind(P, seven)), plus(P, three, ten));
+        });
+    }
+
+    @RepeatedTest(100)
+    public void test5() {
+
+        run(() -> {
+            rule(is(P, Q), eq(P, Q));
+            rule(is(plus(X, Y), O), is(X, P), is(Y, Q), plus(P, Q, O));
+
+            isTrue(is(plus(zero, zero), zero));
+            isTrue(is(plus(one, zero), one));
+            isTrue(is(plus(seven, three), ten));
+            hasResult(set(bind(P, ten)), is(plus(seven, three), P));
+            hasResult(set(bind(P, three)), is(plus(seven, P), ten));
+            hasResult(set(bind(P, seven)), is(plus(P, three), ten));
         });
     }
 
