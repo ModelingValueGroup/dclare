@@ -34,6 +34,7 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Term;
+import org.modelingvalue.dclare.Logic.TermImpl;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
@@ -86,16 +87,20 @@ public class LogicTest {
         return var(Int.class, name);
     }
 
-    Int mOne = i(-1);
-    Int zero = i(0);
-    Int one  = i(1);
+    Int mOne  = i(-1);
+    Int zero  = i(0);
+    Int one   = i(1);
 
-    Int U    = iv("U");
-    Int V    = iv("V");
-    Int W    = iv("W");
-    Int X    = iv("X");
-    Int Y    = iv("Y");
-    Int Z    = iv("Z");
+    Int seven = i(7);
+    Int three = i(3);
+    Int ten   = i(10);
+
+    Int U     = iv("U");
+    Int V     = iv("V");
+    Int W     = iv("W");
+    Int X     = iv("X");
+    Int Y     = iv("Y");
+    Int Z     = iv("Z");
 
     // Plus
 
@@ -104,19 +109,22 @@ public class LogicTest {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     static Functor<Pred> plus = functor(LogicTest::plus, t -> {
-        BigInteger ai = t.get(1, 1);
-        BigInteger bi = t.get(2, 1);
-        BigInteger ci = t.get(3, 1);
+        TermImpl<Int> at = t.getTerm(1);
+        TermImpl<Int> bt = t.getTerm(2);
+        TermImpl<Int> ct = t.getTerm(3);
+        BigInteger ai = at != null ? at.getVal(1) : null;
+        BigInteger bi = bt != null ? bt.getVal(1) : null;
+        BigInteger ci = ct != null ? ct.getVal(1) : null;
         if (ai != null && bi != null && ci != null) {
             return ai.add(bi).equals(ci) ? Set.of(t) : Set.of();
         } else if (ai != null && bi != null && ci == null) {
-            return Set.of(t.set(3, i(ai.add(bi))));
+            return Set.of(t.set(3, at.set(1, ai.add(bi))));
         } else if (ai != null && bi == null && ci != null) {
-            return Set.of(t.set(2, i(ci.subtract(ai))));
+            return Set.of(t.set(2, at.set(1, ci.subtract(ai))));
         } else if (ai == null && bi != null && ci != null) {
-            return Set.of(t.set(1, i(ci.subtract(bi))));
+            return Set.of(t.set(1, bt.set(1, ci.subtract(bi))));
         } else {
-            return Set.of(incomplete(list(t)));
+            return t.incomplete();
         }
     });
 
@@ -268,10 +276,13 @@ public class LogicTest {
     @RepeatedTest(100)
     public void test4() {
         run(() -> {
-            isTrue(plus(one, zero, one));
-            isTrue(plus(zero, one, one));
             isTrue(plus(zero, zero, zero));
-            hasResult(set(bind(X, one)), plus(zero, one, X));
+            isTrue(plus(one, zero, one));
+            isTrue(plus(seven, three, ten));
+            hasResult(set(bind(X, ten)), plus(seven, three, X));
+            hasResult(set(bind(X, three)), plus(seven, X, ten));
+            hasResult(set(bind(X, seven)), plus(X, three, ten));
         });
     }
+
 }

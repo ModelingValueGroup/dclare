@@ -65,7 +65,6 @@ public final class Logic {
                                                                                                  return l.append(e);
                                                                                              }
                                                                                          };
-
     @SuppressWarnings("rawtypes")
     private static final Constant<TermImpl, Set<TermImpl>>                    FACTS      = Constant.of("FACTS", null, CoreSetableModifier.durable);
 
@@ -316,6 +315,55 @@ public final class Logic {
         }
     }
 
+    // Lists
+
+    public interface L<E> extends Term {
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<L> LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l, null);
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<L> LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l, null);
+    @SuppressWarnings("rawtypes")
+    private static final Functor<L>   LIST_FUNCTOR_2_PROXY = LIST_FUNCTOR_2.proxy();
+    @SuppressWarnings("rawtypes")
+    private static final TermImpl<L>  EMPTY_LIST           = termImpl(LIST_FUNCTOR_0);
+    @SuppressWarnings("rawtypes")
+    private static final L            EMPTY_LIST_PROXY     = EMPTY_LIST.proxy();
+
+    @SuppressWarnings("unchecked")
+    public static <E> L<E> l(E head, L<E> tail) {
+        return term(LIST_FUNCTOR_2_PROXY, head, tail);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <E> L<E> l() {
+        return EMPTY_LIST_PROXY;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <E> L<E> l(E... es) {
+        return list(es).proxy();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static <E> TermImpl<L> list(E... es) {
+        TermImpl<L> l = EMPTY_LIST;
+        for (int i = es.length - 1; i >= 0; i--) {
+            l = termImpl(LIST_FUNCTOR_2, unproxy(es[i]), l);
+        }
+        return l;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static <E> TermImpl<L> list(List<E> es) {
+        TermImpl<L> l = EMPTY_LIST;
+        for (int i = es.size() - 1; i >= 0; i--) {
+            l = termImpl(LIST_FUNCTOR_2, unproxy(es.get(i)), l);
+        }
+        return l;
+    }
+
     // Variables
 
     public static interface Variable extends Term {
@@ -468,50 +516,75 @@ public final class Logic {
             return vars;
         }
 
-        @SuppressWarnings("rawtypes")
-        protected Map<VarImpl, Object> getBinding(TermImpl term) {
-            if (term.type() == Incomplete.class) {
-                return Map.of(Entry.of(INCOMPLETE_VAR, term));
-            } else {
-                Map<VarImpl, Object> vars = Map.of();
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected Map<VarImpl, Object> getBinding(TermImpl<F> term, Map<VarImpl, Object> vars) {
+            if (get(0).equals(term.get(0))) {
                 for (int i = 1; i < length(); i++) {
+                    Object tv = term.get(i);
                     if (get(i) instanceof VarImpl) {
-                        vars = vars.put((VarImpl) get(i), term.get(i));
+                        VarImpl var = (VarImpl) get(i);
+                        Object vv = vars.get(var);
+                        if (vv != null) {
+                            if (tv != null && !tv.equals(vv)) {
+                                return null;
+                            }
+                        } else if (tv != null) {
+                            vars = vars.put(var, tv);
+                        }
+                    } else if (get(i) instanceof TermImpl) {
+                        if (tv != null) {
+                            TermImpl t = (TermImpl) get(i);
+                            if (tv instanceof TermImpl) {
+                                vars = t.getBinding((TermImpl) tv, vars);
+                                if (vars == null) {
+                                    return null;
+                                }
+                            } else {
+                                return null;
+                            }
+                        }
+                    } else if (tv != null && !tv.equals(get(i))) {
+                        return null;
                     }
                 }
                 return vars;
+            } else {
+                return null;
             }
         }
 
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        public <V> V get(int... is) {
-            Object v = this;
-            for (int i : is) {
-                v = v != null ? ((TermImpl) v).get(i) : null;
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected TermImpl setBinding(Map<VarImpl, Object> vars) {
+            Object[] array = toArray();
+            for (int i = 1; i < length(); i++) {
+                if (get(i) instanceof VarImpl) {
+                    array[i] = vars.get((VarImpl) get(i));
+                } else if (get(i) instanceof TermImpl) {
+                    array[i] = ((TermImpl) get(i)).setBinding(vars);
+                }
             }
-            return (V) v;
+            return term(array);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        public <V extends Term> TermImpl<V> getTerm(int i) {
+            return (TermImpl<V>) super.get(i);
+        }
+
+        @SuppressWarnings("unchecked")
+        public <V> V getVal(int i) {
+            return (V) super.get(i);
         }
 
         public TermImpl<F> set(int i, Object v) {
             Object[] array = toArray();
-            array[i] = unproxy(v);
+            array[i] = v;
             return term(array);
         }
 
-        @SuppressWarnings("rawtypes")
-        protected TermImpl setBinding(Map<VarImpl, Object> vars) {
-            TermImpl inc = (TermImpl) vars.get(INCOMPLETE_VAR);
-            if (inc != null) {
-                return inc;
-            } else {
-                Object[] array = toArray();
-                for (int i = 1; i < length(); i++) {
-                    if (get(i) instanceof VarImpl) {
-                        array[i] = vars.get((VarImpl) get(i));
-                    }
-                }
-                return term(array);
-            }
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        public Set<TermImpl> incomplete() {
+            return Set.of(Logic.incomplete(Logic.list(this)));
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
@@ -519,20 +592,19 @@ public final class Logic {
             int non = nrOfNulls();
             int len = length();
             if (!USE_EXTEND && (non > 1 || non >= len - 1)) {
-                return Set.of(incomplete(der.append(this)));
+                return Set.of(Logic.incomplete(der.append(this)));
             } else {
                 Set<TermImpl> facts = FACTS.get(this);
                 if (facts == null) {
-                    FunctImpl<F> functor = functor();
-                    SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor.lambda();
+                    SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
                     if (lambda != null) {
                         return lambda.apply(this);
                     } else {
-                        List<RuleImpl> rules = RULES.get(functor);
+                        List<RuleImpl> rules = RULES.get(functor());
                         if (rules != null) {
                             int i = der.lastIndexOf(this);
                             if (i >= 0) {
-                                return Set.of(incomplete(der.sublist(i, der.size()).append(this)));
+                                return Set.of(Logic.incomplete(der.sublist(i, der.size()).append(this)));
                             } else {
                                 Collection<TermImpl> r = Set.of();
                                 for (RuleImpl rule : rules) {
@@ -666,10 +738,18 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Collection<TermImpl> eval(TermImpl ptrn, List<TermImpl> der) {
+        protected Collection<TermImpl> eval(TermImpl term, List<TermImpl> der) {
             TermImpl head = term();
-            Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(head.getBinding(ptrn)), der);
-            return r.map(m -> head.setBinding(m));
+            Map<VarImpl, Object> binding = head.getBinding(term, Map.of());
+            if (binding == null) {
+                return Set.of();
+            } else {
+                Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(binding), der);
+                return r.map(m -> {
+                    TermImpl it = (TermImpl) m.get(INCOMPLETE_VAR);
+                    return it != null ? it : head.setBinding(m);
+                });
+            }
         }
 
         @Override
@@ -757,7 +837,6 @@ public final class Logic {
         @SuppressWarnings({"rawtypes", "unchecked"})
         private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars, List<TermImpl> der) {
             if (goals.isEmpty()) {
-                vars = vars.asSet();
                 return vars;
             } else {
                 return vars.<Map<VarImpl, Object>> flatMap(v -> {
@@ -772,9 +851,13 @@ public final class Logic {
                         TermImpl f = actual.get(i);
                         TermImpl g = goals.get(i);
                         Collection<TermImpl> m = f.match(der);
-                        return eval(goals.removeIndex(i), m.map(t -> {
-                            Map<VarImpl, Object> b = g.getBinding(t);
-                            return b.containsKey(INCOMPLETE_VAR) ? b : v.putAll(b);
+                        return eval(goals.removeIndex(i), m.<Map<VarImpl, Object>> map(t -> {
+                            if (t.type() == Incomplete.class) {
+                                return Map.of(Entry.of(INCOMPLETE_VAR, t));
+                            } else {
+                                Map<VarImpl, Object> b = g.getBinding(t, Map.of());
+                                return b == null ? Map.of() : v.putAll(b);
+                            }
                         }), der);
                     }
                 });
@@ -829,55 +912,6 @@ public final class Logic {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Incomplete incomplete(L der) {
         return term(INCOMPLETE_FUNCTOR_PROXY, der);
-    }
-
-    // Lists
-
-    public interface L<E> extends Term {
-    }
-
-    @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_0       = functImpl((SerializableSupplier<L>) Logic::l, null);
-    @SuppressWarnings("rawtypes")
-    private static final FunctImpl<L> LIST_FUNCTOR_2       = functImpl((SerializableBiFunction<Object, L, L>) Logic::l, null);
-    @SuppressWarnings("rawtypes")
-    private static final Functor<L>   LIST_FUNCTOR_2_PROXY = LIST_FUNCTOR_2.proxy();
-    @SuppressWarnings("rawtypes")
-    private static final TermImpl<L>  EMPTY_LIST           = termImpl(LIST_FUNCTOR_0);
-    @SuppressWarnings("rawtypes")
-    private static final L            EMPTY_LIST_PROXY     = EMPTY_LIST.proxy();
-
-    @SuppressWarnings("unchecked")
-    public static <E> L<E> l(E head, L<E> tail) {
-        return term(LIST_FUNCTOR_2_PROXY, head, tail);
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <E> L<E> l() {
-        return EMPTY_LIST_PROXY;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <E> L<E> l(E... es) {
-        return list(es).proxy();
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <E> TermImpl<L> list(E... es) {
-        TermImpl<L> l = EMPTY_LIST;
-        for (int i = es.length - 1; i >= 0; i--) {
-            l = termImpl(LIST_FUNCTOR_2, unproxy(es[i]), l);
-        }
-        return l;
-    }
-
-    @SuppressWarnings("rawtypes")
-    private static <E> TermImpl<L> list(List<E> es) {
-        TermImpl<L> l = EMPTY_LIST;
-        for (int i = es.size() - 1; i >= 0; i--) {
-            l = termImpl(LIST_FUNCTOR_2, unproxy(es.get(i)), l);
-        }
-        return l;
     }
 
     // Facts, Is
