@@ -21,6 +21,8 @@
 package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.modelingvalue.dclare.Arithmetic.*;
+import static org.modelingvalue.dclare.Arithmetic.is;
 import static org.modelingvalue.dclare.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
@@ -30,9 +32,10 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
+import org.modelingvalue.dclare.Arithmetic;
+import org.modelingvalue.dclare.Arithmetic.IntLit;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Functor;
-import org.modelingvalue.dclare.Logic.IntLit;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
@@ -213,6 +216,8 @@ public class LogicTest {
     @RepeatedTest(100)
     public void intTest() {
         run(() -> {
+            Arithmetic.rules();
+
             hasResult(set(bind(P, i(10))), plus(i(7), i(3), P));
             hasResult(set(bind(P, i(3))), plus(i(7), P, i(10)));
             hasResult(set(bind(P, i(7))), plus(P, i(3), i(10)));
@@ -222,7 +227,7 @@ public class LogicTest {
     @RepeatedTest(100)
     public void isTest() {
         run(() -> {
-            isRules();
+            Arithmetic.rules();
 
             isTrue(is(plus(i(11), i(22)), i(33)));
             isTrue(is(minus(i(33), i(22)), i(11)));
