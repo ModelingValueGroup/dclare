@@ -213,8 +213,6 @@ public class LogicTest {
     @RepeatedTest(100)
     public void intTest() {
         run(() -> {
-            isTrue(plus(i(11), i(22), i(33)));
-
             hasResult(set(bind(P, i(10))), plus(i(7), i(3), P));
             hasResult(set(bind(P, i(3))), plus(i(7), P, i(10)));
             hasResult(set(bind(P, i(7))), plus(P, i(3), i(10)));
@@ -225,14 +223,23 @@ public class LogicTest {
     public void isTest() {
         run(() -> {
             isRules();
+
             isTrue(is(plus(i(11), i(22)), i(33)));
+            isTrue(is(minus(i(33), i(22)), i(11)));
             isTrue(is(plus(i(11), plus(plus(i(22), i(33)), i(44))), i(110)));
+
+            isTrue(is(plus(i(11), divide(multiply(i(44), i(33)), i(22))), i(77)));
+
+            isTrue(is(sqrt(i(49)), i(7)));
+            isTrue(is(sqrt(i(49)), i(-7)));
 
             hasResult(set(bind(P, i(110))), is(plus(i(11), plus(plus(i(22), i(33)), i(44))), P));
             hasResult(set(bind(P, i(33))), is(plus(i(11), plus(plus(i(22), P), i(44))), i(110)));
             hasResult(set(bind(P, i(10))), is(plus(i(7), i(3)), P));
             hasResult(set(bind(P, i(3))), is(plus(i(7), P), i(10)));
             hasResult(set(bind(P, i(7))), is(plus(P, i(3)), i(10)));
+
+            hasResult(set(bind(P, i(7)), bind(P, i(-7))), is(sqrt(i(49)), P));
         });
     }
 
