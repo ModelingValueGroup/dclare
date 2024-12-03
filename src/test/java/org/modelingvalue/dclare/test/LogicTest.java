@@ -229,6 +229,7 @@ public class LogicTest {
             isTrue(is(plus(i(11), plus(plus(i(22), i(33)), i(44))), i(110)));
 
             hasResult(set(bind(P, i(110))), is(plus(i(11), plus(plus(i(22), i(33)), i(44))), P));
+            hasResult(set(bind(P, i(33))), is(plus(i(11), plus(plus(i(22), P), i(44))), i(110)));
             hasResult(set(bind(P, i(10))), is(plus(i(7), i(3)), P));
             hasResult(set(bind(P, i(3))), is(plus(i(7), P), i(10)));
             hasResult(set(bind(P, i(7))), is(plus(P, i(3)), i(10)));
