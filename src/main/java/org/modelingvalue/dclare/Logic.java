@@ -169,8 +169,8 @@ public class Logic {
     }
 
     @SuppressWarnings("unchecked")
-    private static final <T extends Term> ClauseImpl<T> unproxy(T object) {
-        return (ClauseImpl<T>) Proxy.getInvocationHandler(object);
+    private static final <T extends Term, R extends ClauseImpl<T>> R unproxy(T object) {
+        return (R) Proxy.getInvocationHandler(object);
     }
 
     @SuppressWarnings("rawtypes")
@@ -440,7 +440,7 @@ public class Logic {
         @Override
         @SuppressWarnings("unchecked")
         protected F proxy() {
-            return (F) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{type(), Term.class}, this);
+            return (F) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{type()}, this);
         }
 
         @Override
@@ -693,16 +693,46 @@ public class Logic {
                     } else {
                         List<RuleImpl> rules = RULES.get(functor());
                         if (rules != null) {
-                            if (der.lastIndexOf(this) >= 0) {
-                                return Integer.MAX_VALUE;
-                            } else {
-                                return non;
+                            for (int i = der.size() - 1; i >= 0; i--) {
+                                TermImpl other = der.get(i);
+                                if (equals(other) || moreNullsThen(other) >= 0) {
+                                    return Integer.MAX_VALUE;
+                                }
                             }
+                            return non;
+
                         }
                     }
                 }
                 return Integer.MIN_VALUE;
             }
+        }
+
+        @SuppressWarnings("rawtypes")
+        private int moreNullsThen(TermImpl other) {
+            if (!get(0).equals(other.get(0))) {
+                return Integer.MIN_VALUE;
+            }
+            int[] nr = new int[2];
+            for (int i = 1; i < length(); i++) {
+                if (!Objects.equals(get(i), other.get(i))) {
+                    if (get(i) == null || get(i) instanceof Class) {
+                        nr[0]++;
+                    } else if (other.get(i) == null || other.get(i) instanceof Class) {
+                        nr[1]++;
+                    } else if (get(i) instanceof TermImpl && other.get(i) instanceof TermImpl) {
+                        int r = ((TermImpl) get(i)).moreNullsThen((TermImpl) other.get(i));
+                        if (r == Integer.MIN_VALUE) {
+                            return Integer.MIN_VALUE;
+                        } else {
+                            nr[0] += r;
+                        }
+                    } else {
+                        return Integer.MIN_VALUE;
+                    }
+                }
+            }
+            return nr[0] - nr[1];
         }
 
         @SuppressWarnings("rawtypes")
@@ -741,14 +771,9 @@ public class Logic {
     private static final Functor<Rule>   RULE_FUNCTOR_PROXY = RULE_FUNCTOR.proxy();
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Rule rule(Term term, Term... goals) {
-        return rule(term, goal(goals));
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public static Rule rule(Term term, Goal goal) {
         RuleImpl ruleImpl = new RuleImpl(term, goal);
-        TermImpl termImpl = (TermImpl) unproxy(term);
+        TermImpl termImpl = Logic.<Term, TermImpl> unproxy(term);
         RULES.force(termImpl.functor(), ADD_RULE, ruleImpl);
         return ruleImpl.proxy();
     }
@@ -820,13 +845,25 @@ public class Logic {
     private static final FunctImpl<Goal> GOAL_FUNCTOR       = functImpl((SerializableFunction<L, Goal>) Logic::goal, null);
     private static final Functor<Goal>   GOAL_FUNCTOR_PROXY = GOAL_FUNCTOR.proxy();
 
-    public static boolean is(Term... goals) {
-        return new GoalImpl(list(goals)).eval().anyMatch(e -> !e.containsKey(INCOMPLETE_VAR));
+    private static GoalImpl getImpl(Goal goal) {
+        return Logic.<Goal, GoalImpl> unproxy(goal);
+    }
+
+    public static boolean isTrue(Goal goal) {
+        return getImpl(goal).eval().anyMatch(e -> !e.containsKey(INCOMPLETE_VAR));
+    }
+
+    public static boolean isFalse(Goal goal) {
+        return getImpl(goal).eval().isEmpty();
+    }
+
+    public static boolean isIncomplete(Goal goal) {
+        return getImpl(goal).eval().anyMatch(e -> e.containsKey(INCOMPLETE_VAR));
     }
 
     @SuppressWarnings("rawtypes")
-    public static Set<Map<Variable, Object>> eval(Term... goals) {
-        return new GoalImpl(list(goals)).eval().map(m -> m.asMap(e -> Entry.of((Variable) e.getKey().proxy(), proxy(e.getValue())))).asSet();
+    public static Set<Map<Variable, Object>> getBindings(Goal goal) {
+        return getImpl(goal).eval().map(m -> m.asMap(e -> Entry.of((Variable) e.getKey().proxy(), proxy(e.getValue())))).asSet();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -943,10 +980,6 @@ public class Logic {
         return INCOMPLETE_VAR_PROXY;
     }
 
-    public static Map<Variable, Object> incomplete(Term... der) {
-        return Map.of(Entry.of((Variable) incompleteVar(), incomplete(list(der)).proxy()));
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static TermImpl<Incomplete> incomplete(List<TermImpl> der) {
         return incomplete(list(der));
@@ -985,14 +1018,18 @@ public class Logic {
 
     // Facts, Is
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static void fact(Term term) {
-        ((TermImpl<?>) unproxy(term)).makeFact();
+        Logic.<Term, TermImpl> unproxy(term).makeFact();
     }
 
-    // Variable bindings
+    // Bindings
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Map<Variable, Object> bind(Term... varVal) {
+    public static Map<Variable, Object> incomplete(Term... der) {
+        return Map.of(Entry.of((Variable) incompleteVar(), incomplete(list(der)).proxy()));
+    }
+
+    public static Map<Variable, Object> binding(Term... varVal) {
         Map<Variable, Object> b = Map.of();
         for (int i = 0; i < varVal.length; i += 2) {
             b = b.add(Entry.of((Variable) varVal[i], varVal[i + 1]));

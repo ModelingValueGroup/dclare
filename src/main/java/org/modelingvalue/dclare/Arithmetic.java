@@ -56,6 +56,35 @@ public class Arithmetic extends Logic {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Functor<Pred> compare = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Arithmetic::compare, t -> {
+        TermImpl<IntLit> at = t.getTerm(1);
+        TermImpl<IntLit> bt = t.getTerm(2);
+        TermImpl<IntLit> ct = t.getTerm(3);
+        BigInteger ai = at != null ? at.getVal(1) : null;
+        BigInteger bi = bt != null ? bt.getVal(1) : null;
+        BigInteger ci = ct != null ? ct.getVal(1) : null;
+        if (ai != null && bi != null) {
+            BigInteger r = BigInteger.valueOf(ai.compareTo(bi));
+            if (ci != null) {
+                return ci.equals(r) ? Set.of(t) : Set.of();
+            } else {
+                return Set.of(t.set(3, at.set(1, r)));
+            }
+        } else if (BigInteger.ZERO.equals(ci)) {
+            if (ai != null) {
+                return Set.of(t.set(2, at));
+            } else if (bi != null) {
+                return Set.of(t.set(1, bt));
+            }
+        }
+        return t.incomplete();
+    });
+
+    public static Pred compare(IntLit a, IntLit b, IntLit c) {
+        return term(compare, a, b, c);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static Functor<Pred> plusPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Arithmetic::plus, t -> {
         TermImpl<IntLit> at = t.getTerm(1);
         TermImpl<IntLit> bt = t.getTerm(2);
@@ -129,6 +158,30 @@ public class Arithmetic extends Logic {
 
     // Functions
 
+    private static Functor<Pred> gt = functor(Arithmetic::gt);
+
+    public static Pred gt(Int a, Int b) {
+        return term(gt, a, b);
+    }
+
+    private static Functor<Pred> lt = functor(Arithmetic::lt);
+
+    public static Pred lt(Int a, Int b) {
+        return term(lt, a, b);
+    }
+
+    private static Functor<Pred> ge = functor(Arithmetic::ge);
+
+    public static Pred ge(Int a, Int b) {
+        return term(ge, a, b);
+    }
+
+    private static Functor<Pred> le = functor(Arithmetic::le);
+
+    public static Pred le(Int a, Int b) {
+        return term(le, a, b);
+    }
+
     private static Functor<IntFun> plusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Arithmetic::plus);
 
     public static IntFun plus(Int a, Int b) {
@@ -175,13 +228,19 @@ public class Arithmetic extends Logic {
         Int X = iv("X");
         Int Y = iv("Y");
 
-        rule(is(PL, RL), eq(PL, RL));
-        rule(is(plus(X, Y), RL), is(X, PL), is(Y, QL), plus(PL, QL, RL));
-        rule(is(minus(X, Y), RL), is(X, PL), is(Y, QL), plus(RL, QL, PL));
-        rule(is(multiply(X, Y), RL), is(X, PL), is(Y, QL), multiply(PL, QL, RL));
-        rule(is(divide(X, Y), RL), is(X, PL), is(Y, QL), multiply(RL, QL, PL));
-        rule(is(power(X), RL), is(X, PL), power(PL, RL));
-        rule(is(sqrt(X), RL), is(X, PL), power(RL, PL));
+        rule(is(PL, RL), goal(eq(PL, RL)));
+        rule(is(plus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(PL, QL, RL)));
+        rule(is(minus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(RL, QL, PL)));
+        rule(is(multiply(X, Y), RL), goal(is(X, PL), is(Y, QL), multiply(PL, QL, RL)));
+        rule(is(divide(X, Y), RL), goal(is(X, PL), is(Y, QL), multiply(RL, QL, PL)));
+        rule(is(power(X), RL), goal(is(X, PL), power(PL, RL)));
+        rule(is(sqrt(X), RL), goal(is(X, PL), power(RL, PL)));
+        rule(gt(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(1))));
+        rule(lt(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(-1))));
+        rule(ge(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(1))));
+        rule(ge(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(0))));
+        rule(le(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(-1))));
+        rule(le(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(0))));
     }
 
 }
