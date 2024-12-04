@@ -681,12 +681,23 @@ public class Logic {
                 if (facts != null) {
                     return Integer.MIN_VALUE + facts.size();
                 } else {
-                    List<RuleImpl> rules = RULES.get(functor());
-                    if (rules != null) {
-                        if (der.lastIndexOf(this) >= 0) {
-                            return Integer.MAX_VALUE;
+                    SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
+                    if (lambda != null) {
+                        Collection<TermImpl> result = lambda.apply(this);
+                        if (result instanceof Set) {
+                            Set<TermImpl> set = (Set<TermImpl>) result;
+                            return set.anyMatch(TermImpl::isIncomplete) ? Integer.MAX_VALUE : Integer.MIN_VALUE + set.size();
                         } else {
                             return non;
+                        }
+                    } else {
+                        List<RuleImpl> rules = RULES.get(functor());
+                        if (rules != null) {
+                            if (der.lastIndexOf(this) >= 0) {
+                                return Integer.MAX_VALUE;
+                            } else {
+                                return non;
+                            }
                         }
                     }
                 }
@@ -714,6 +725,10 @@ public class Logic {
                 }
             }
             return nr;
+        }
+
+        protected boolean isIncomplete() {
+            return functor() == INCOMPLETE_FUNCTOR;
         }
     };
 
