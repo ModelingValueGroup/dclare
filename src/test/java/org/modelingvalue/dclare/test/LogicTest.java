@@ -237,8 +237,8 @@ public class LogicTest {
             isTrue(goal(rootPerson(Root, person(3))));
             isTrue(goal(rootPerson(Root, person(4))));
 
-            // hasBindings(goal(rootPerson(Root, D)), binding(D, person(0)), binding(D, person(1)), //
-            //         binding(D, person(2)), binding(D, person(3)), binding(D, person(4)));
+            hasBindings(goal(rootPerson(Root, D)), binding(D, person(0)), binding(D, person(1)), //
+                    binding(D, person(2)), binding(D, person(3)), binding(D, person(4)));
         });
     }
 
