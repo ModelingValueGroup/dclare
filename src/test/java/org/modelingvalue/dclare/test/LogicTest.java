@@ -137,11 +137,11 @@ public class LogicTest {
     IntLit P      = ilv("P");
     IntLit Q      = ilv("Q");
 
-    Person A      = personVar("A");  // Ancestor
-    Person D      = personVar("D");  // Descendent
-    Person R      = personVar("R");  // Relative
-    Person B      = personVar("B");  // Relative1
-    Person C      = personVar("C");  // Relative2
+    Person A      = personVar("A");
+    Person D      = personVar("D");
+    Person R      = personVar("R");
+    Person B      = personVar("B");
+    Person C      = personVar("C");
 
     // Terms
 
@@ -190,8 +190,7 @@ public class LogicTest {
     public void famTest2() {
         run(() -> {
             rule(ancestorDescendent(A, D), goal(parentChild(A, D)));
-            rule(ancestorDescendent(A, D), goal(parentChild(A, B), parentChild(B, D)));
-            rule(ancestorDescendent(A, D), goal(parentChild(A, B), ancestorDescendent(B, C), parentChild(C, D)));
+            rule(ancestorDescendent(A, D), goal(ancestorDescendent(A, C), parentChild(C, D)));
 
             Person Carel = person("Carel");
             Person Jan = person("Jan");
@@ -218,7 +217,7 @@ public class LogicTest {
         });
     }
 
-    @RepeatedTest(1)
+    @RepeatedTest(100)
     public void famTest4() {
         run(() -> {
             Arithmetic.rules();
