@@ -223,7 +223,7 @@ public class LogicTest {
             isFalse(goal(is(parent(Wim), Heleen)));
             isFalse(goal(is(child(Wim), Wim)));
 
-            isTrue(goal(is(descendent(Wim), Marijn)));
+            isTrue(goal(is(ancestor(Marijn), Wim)));
             isTrue(goal(is(descendent(Carel), Marijn)));
 
             isFalse(goal(is(descendent(Marijn), Wim)));
