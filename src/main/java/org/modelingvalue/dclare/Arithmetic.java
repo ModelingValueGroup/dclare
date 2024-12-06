@@ -31,9 +31,9 @@ public class Arithmetic extends Logic {
 
     // Is
 
-    private static Functor<Pred> is = functor((SerializableBiFunction<Int, IntLit, Pred>) Arithmetic::is);
+    private static Functor<Pred> is = functor((SerializableBiFunction<Int, IntAtom, Pred>) Arithmetic::is);
 
-    public static Pred is(Int i, IntLit r) {
+    public static Pred is(Int i, IntAtom r) {
         return term(is, i, r);
     }
 
@@ -42,28 +42,28 @@ public class Arithmetic extends Logic {
     public static interface Int extends Term {
     }
 
-    public static interface IntLit extends Int {
+    public static interface IntAtom extends Int {
     }
 
-    public static interface IntFun extends Int {
+    public static interface IntFunc extends Int {
     }
 
-    private static Functor<IntLit> i = functor((SerializableFunction<BigInteger, IntLit>) Arithmetic::i);
+    private static Functor<IntAtom> i = functor((SerializableFunction<BigInteger, IntAtom>) Arithmetic::i);
 
-    private static IntLit i(BigInteger x) {
+    private static IntAtom i(BigInteger x) {
         return term(i, x);
     }
 
-    public static IntLit i(long x) {
+    public static IntAtom i(long x) {
         return i(BigInteger.valueOf(x));
     }
 
-    public static IntLit ilv(String name) {
-        return var(IntLit.class, name);
+    public static IntAtom ilv(String name) {
+        return var(IntAtom.class, name);
     }
 
-    public static IntFun ifv(String name) {
-        return var(IntFun.class, name);
+    public static IntFunc ifv(String name) {
+        return var(IntFunc.class, name);
     }
 
     public static Int iv(String name) {
@@ -72,14 +72,11 @@ public class Arithmetic extends Logic {
 
     // Operators
 
-    public static interface Pred extends Term {
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Functor<Pred> compare = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Arithmetic::compare, t -> {
-        TermImpl<IntLit> at = t.getTerm(1);
-        TermImpl<IntLit> bt = t.getTerm(2);
-        TermImpl<IntLit> ct = t.getTerm(3);
+    private static Functor<Pred> compare = functor((SerializableTriFunction<IntAtom, IntAtom, IntAtom, Pred>) Arithmetic::compare, t -> {
+        TermImpl<IntAtom> at = t.getTerm(1);
+        TermImpl<IntAtom> bt = t.getTerm(2);
+        TermImpl<IntAtom> ct = t.getTerm(3);
         BigInteger ai = at != null ? at.getVal(1) : null;
         BigInteger bi = bt != null ? bt.getVal(1) : null;
         BigInteger ci = ct != null ? ct.getVal(1) : null;
@@ -100,15 +97,15 @@ public class Arithmetic extends Logic {
         return t.incomplete();
     });
 
-    public static Pred compare(IntLit a, IntLit b, IntLit c) {
+    public static Pred compare(IntAtom a, IntAtom b, IntAtom c) {
         return term(compare, a, b, c);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Functor<Pred> plusPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Arithmetic::plus, t -> {
-        TermImpl<IntLit> at = t.getTerm(1);
-        TermImpl<IntLit> bt = t.getTerm(2);
-        TermImpl<IntLit> ct = t.getTerm(3);
+    private static Functor<Pred> plusPred = functor((SerializableTriFunction<IntAtom, IntAtom, IntAtom, Pred>) Arithmetic::plus, t -> {
+        TermImpl<IntAtom> at = t.getTerm(1);
+        TermImpl<IntAtom> bt = t.getTerm(2);
+        TermImpl<IntAtom> ct = t.getTerm(3);
         BigInteger ai = at != null ? at.getVal(1) : null;
         BigInteger bi = bt != null ? bt.getVal(1) : null;
         BigInteger ci = ct != null ? ct.getVal(1) : null;
@@ -125,15 +122,15 @@ public class Arithmetic extends Logic {
         }
     });
 
-    public static Pred plus(IntLit a, IntLit b, IntLit r) {
+    public static Pred plus(IntAtom a, IntAtom b, IntAtom r) {
         return term(plusPred, a, b, r);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Functor<Pred> multiplyPred = functor((SerializableTriFunction<IntLit, IntLit, IntLit, Pred>) Arithmetic::multiply, t -> {
-        TermImpl<IntLit> at = t.getTerm(1);
-        TermImpl<IntLit> bt = t.getTerm(2);
-        TermImpl<IntLit> ct = t.getTerm(3);
+    private static Functor<Pred> multiplyPred = functor((SerializableTriFunction<IntAtom, IntAtom, IntAtom, Pred>) Arithmetic::multiply, t -> {
+        TermImpl<IntAtom> at = t.getTerm(1);
+        TermImpl<IntAtom> bt = t.getTerm(2);
+        TermImpl<IntAtom> ct = t.getTerm(3);
         BigInteger ai = at != null ? at.getVal(1) : null;
         BigInteger bi = bt != null ? bt.getVal(1) : null;
         BigInteger ci = ct != null ? ct.getVal(1) : null;
@@ -150,14 +147,14 @@ public class Arithmetic extends Logic {
         }
     });
 
-    public static Pred multiply(IntLit a, IntLit b, IntLit r) {
+    public static Pred multiply(IntAtom a, IntAtom b, IntAtom r) {
         return term(multiplyPred, a, b, r);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Functor<Pred> powerPred = functor((SerializableBiFunction<IntLit, IntLit, Pred>) Arithmetic::power, t -> {
-        TermImpl<IntLit> at = t.getTerm(1);
-        TermImpl<IntLit> bt = t.getTerm(2);
+    private static Functor<Pred> powerPred = functor((SerializableBiFunction<IntAtom, IntAtom, Pred>) Arithmetic::power, t -> {
+        TermImpl<IntAtom> at = t.getTerm(1);
+        TermImpl<IntAtom> bt = t.getTerm(2);
         BigInteger ai = at != null ? at.getVal(1) : null;
         BigInteger bi = bt != null ? bt.getVal(1) : null;
         if (ai != null && bi != null) {
@@ -172,7 +169,7 @@ public class Arithmetic extends Logic {
         }
     });
 
-    public static Pred power(IntLit a, IntLit r) {
+    public static Pred power(IntAtom a, IntAtom r) {
         return term(powerPred, a, r);
     }
 
@@ -202,48 +199,48 @@ public class Arithmetic extends Logic {
         return term(le, a, b);
     }
 
-    private static Functor<IntFun> plusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Arithmetic::plus);
+    private static Functor<IntFunc> plusFunc = functor((SerializableBiFunction<Int, Int, IntFunc>) Arithmetic::plus);
 
-    public static IntFun plus(Int a, Int b) {
+    public static IntFunc plus(Int a, Int b) {
         return term(plusFunc, a, b);
     }
 
-    private static Functor<IntFun> minusFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Arithmetic::minus);
+    private static Functor<IntFunc> minusFunc = functor((SerializableBiFunction<Int, Int, IntFunc>) Arithmetic::minus);
 
-    public static IntFun minus(Int a, Int b) {
+    public static IntFunc minus(Int a, Int b) {
         return term(minusFunc, a, b);
     }
 
-    private static Functor<IntFun> multiplyFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Arithmetic::multiply);
+    private static Functor<IntFunc> multiplyFunc = functor((SerializableBiFunction<Int, Int, IntFunc>) Arithmetic::multiply);
 
-    public static IntFun multiply(Int a, Int b) {
+    public static IntFunc multiply(Int a, Int b) {
         return term(multiplyFunc, a, b);
     }
 
-    private static Functor<IntFun> divideFunc = functor((SerializableBiFunction<Int, Int, IntFun>) Arithmetic::divide);
+    private static Functor<IntFunc> divideFunc = functor((SerializableBiFunction<Int, Int, IntFunc>) Arithmetic::divide);
 
-    public static IntFun divide(Int a, Int b) {
+    public static IntFunc divide(Int a, Int b) {
         return term(divideFunc, a, b);
     }
 
-    private static Functor<IntFun> powerFunc = functor((SerializableFunction<Int, IntFun>) Arithmetic::power);
+    private static Functor<IntFunc> powerFunc = functor((SerializableFunction<Int, IntFunc>) Arithmetic::power);
 
-    public static IntFun power(Int a) {
+    public static IntFunc power(Int a) {
         return term(powerFunc, a);
     }
 
-    private static Functor<IntFun> sqrtFunc = functor((SerializableFunction<Int, IntFun>) Arithmetic::sqrt);
+    private static Functor<IntFunc> sqrtFunc = functor((SerializableFunction<Int, IntFunc>) Arithmetic::sqrt);
 
-    public static IntFun sqrt(Int a) {
+    public static IntFunc sqrt(Int a) {
         return term(sqrtFunc, a);
     }
 
     // Is Rules
 
     public static void rules() {
-        IntLit PL = ilv("PL");
-        IntLit QL = ilv("QL");
-        IntLit RL = ilv("RL");
+        IntAtom PL = ilv("PL");
+        IntAtom QL = ilv("QL");
+        IntAtom RL = ilv("RL");
 
         Int X = iv("X");
         Int Y = iv("Y");

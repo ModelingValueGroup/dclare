@@ -34,10 +34,11 @@ import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.dclare.Arithmetic;
-import org.modelingvalue.dclare.Arithmetic.IntLit;
+import org.modelingvalue.dclare.Arithmetic.IntAtom;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Goal;
+import org.modelingvalue.dclare.Logic.Pred;
 import org.modelingvalue.dclare.Logic.Term;
 import org.modelingvalue.dclare.Logic.Variable;
 import org.modelingvalue.dclare.Universe;
@@ -87,9 +88,9 @@ public class LogicTest {
         return var(Root.class, name);
     }
 
-    static Functor<Term> rootPerson = functor(LogicTest::rootPerson);
+    static Functor<Pred> rootPerson = functor(LogicTest::rootPerson);
 
-    static Term rootPerson(Root root, Person person) {
+    static Pred rootPerson(Root root, Person person) {
         return term(rootPerson, root, person);
     }
 
@@ -104,9 +105,9 @@ public class LogicTest {
         return term(strPerson, name);
     }
 
-    static Functor<Person> intPerson = functor((SerializableFunction<IntLit, Person>) LogicTest::person);
+    static Functor<Person> intPerson = functor((SerializableFunction<IntAtom, Person>) LogicTest::person);
 
-    static Person person(IntLit i) {
+    static Person person(IntAtom i) {
         return term(intPerson, i);
     }
 
@@ -118,15 +119,15 @@ public class LogicTest {
         return var(Person.class, name);
     }
 
-    static Functor<Term> parentChild = functor(LogicTest::parentChild);
+    static Functor<Pred> parentChild = functor(LogicTest::parentChild);
 
-    static Term parentChild(Person parent, Person child) {
+    static Pred parentChild(Person parent, Person child) {
         return term(parentChild, parent, child);
     }
 
-    static Functor<Term> ancestorDescendent = functor(LogicTest::ancestorDescendent);
+    static Functor<Pred> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
-    static Term ancestorDescendent(Person ancestor, Person descendent) {
+    static Pred ancestorDescendent(Person ancestor, Person descendent) {
         return term(ancestorDescendent, ancestor, descendent);
     }
 
@@ -134,8 +135,8 @@ public class LogicTest {
 
     Root   U      = rootVar("U");
 
-    IntLit P      = ilv("P");
-    IntLit Q      = ilv("Q");
+    IntAtom P      = ilv("P");
+    IntAtom Q      = ilv("Q");
 
     Person A      = personVar("A");
     Person D      = personVar("D");

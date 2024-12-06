@@ -42,7 +42,6 @@ import org.modelingvalue.collections.util.SerializableSupplier;
 import org.modelingvalue.collections.util.SerializableSupplier.SerializableSupplierImpl;
 import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
-import org.modelingvalue.dclare.Arithmetic.Pred;
 
 public class Logic {
 
@@ -413,6 +412,9 @@ public class Logic {
     public static interface Term {
     }
 
+    public static interface Pred extends Term {
+    }
+
     @SuppressWarnings("unchecked")
     public static <F extends Term> F term(Functor<F> functor, Object... args) {
         return new TermImpl<F>(functor, args).proxy();
@@ -604,50 +606,44 @@ public class Logic {
             int non = nrOfNulls();
             if (non > 1 || non >= totalLength()) {
                 return Set.of(Logic.incomplete(der.append(this)));
-            } else {
-                SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
-                if (lambda != null) {
-                    return lambda.apply(this);
-                } else {
-                    Set<TermImpl> facts = FACTS.get(this);
-                    if (facts != null) {
-                        return facts;
-                    } else {
-                        List<RuleImpl> rules = RULES.get(functor());
-                        if (rules != null) {
-                            int i = der.lastIndexOf(this);
-                            if (i >= 0) {
-                                Set<TermImpl> r = rec.get(this);
-                                if (r != null) {
-                                    return r;
-                                } else {
-                                    return Set.of(Logic.incomplete(der.sublist(i, der.size()).append(this)));
-                                }
-                            } else {
-                                der = der.append(this);
-                                Set<TermImpl> set = Set.of(), add = Set.of();
-                                boolean found = false, incomplete = false;
-                                do {
-                                    add = or(rules, non, der, add.isEmpty() ? rec : rec.put(this, add)).removeAll(set);
-                                    found = add.anyMatch(this::equalFunctor);
-                                    incomplete |= add.anyMatch(this::isIncomplete);
-                                    if (incomplete && found && set.isEmpty()) {
-                                        add = add.filter(this::equalFunctor).asSet();
-                                    }
-                                    set = set.addAll(add);
-                                } while (found && incomplete);
-                                FACTS.force(this, set);
-                                for (TermImpl e : set) {
-                                    FACTS.force(e, Set.of(e));
-                                }
-                                return set;
-                            }
-                        } else {
-                            return Set.of();
-                        }
-                    }
-                }
             }
+            SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
+            if (lambda != null) {
+                return lambda.apply(this);
+            }
+            Set<TermImpl> facts = FACTS.get(this);
+            if (facts != null) {
+                return facts;
+            }
+            List<RuleImpl> rules = RULES.get(functor());
+            if (rules != null) {
+                Set<TermImpl> r = rec.get(this);
+                if (r != null) {
+                    return r;
+                }
+                int i = der.lastIndexOf(this);
+                if (i >= 0) {
+                    return Set.of(Logic.incomplete(der.sublist(i, der.size()).append(this)));
+                }
+                der = der.append(this);
+                Set<TermImpl> set = Set.of(), add = Set.of();
+                boolean found = false, incomplete = false;
+                do {
+                    add = or(rules, non, der, add.isEmpty() ? rec : rec.put(this, add)).removeAll(set);
+                    found = add.anyMatch(this::equalFunctor);
+                    incomplete |= add.anyMatch(this::isIncomplete);
+                    if (incomplete && found && set.isEmpty()) {
+                        add = add.filter(this::equalFunctor).asSet();
+                    }
+                    set = set.addAll(add);
+                } while (found && incomplete);
+                FACTS.force(this, set);
+                for (TermImpl e : set) {
+                    FACTS.force(e, Set.of(e));
+                }
+                return set;
+            }
+            return Set.of();
         }
 
         @SuppressWarnings("rawtypes")
@@ -655,41 +651,35 @@ public class Logic {
             int non = nrOfNulls();
             if (non > 1 || non >= totalLength()) {
                 return Integer.MAX_VALUE;
-            } else {
-                SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
-                if (lambda != null) {
-                    Collection<TermImpl> result = lambda.apply(this);
-                    if (result instanceof Set) {
-                        Set<TermImpl> set = (Set<TermImpl>) result;
-                        return set.anyMatch(TermImpl::isIncomplete) ? Integer.MAX_VALUE : Integer.MIN_VALUE + set.size();
-                    } else {
-                        return non;
-                    }
-                } else {
-                    Set<TermImpl> facts = FACTS.get(this);
-                    if (facts != null) {
-                        return Integer.MIN_VALUE + facts.size();
-                    } else {
-                        List<RuleImpl> rules = RULES.get(functor());
-                        if (rules != null) {
-                            Set<TermImpl> r = rec.get(this);
-                            if (r != null) {
-                                return Integer.MIN_VALUE + r.size();
-                            } else {
-                                for (int i = der.size() - 1; i >= 0; i--) {
-                                    TermImpl other = der.get(i);
-                                    if (equals(other) || moreNullsThen(other) >= 0) {
-                                        return Integer.MAX_VALUE;
-                                    }
-                                }
-                                return non - nrOfBindings(goal);
-                            }
-                        } else {
-                            return Integer.MIN_VALUE;
-                        }
+            }
+            SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
+            if (lambda != null) {
+                Collection<TermImpl> result = lambda.apply(this);
+                if (result instanceof Set) {
+                    Set<TermImpl> set = (Set<TermImpl>) result;
+                    return set.anyMatch(TermImpl::isIncomplete) ? Integer.MAX_VALUE : Integer.MIN_VALUE + set.size();
+                }
+                return non;
+            }
+            Set<TermImpl> facts = FACTS.get(this);
+            if (facts != null) {
+                return Integer.MIN_VALUE + facts.size();
+            }
+            List<RuleImpl> rules = RULES.get(functor());
+            if (rules != null) {
+                Set<TermImpl> r = rec.get(this);
+                if (r != null) {
+                    return Integer.MIN_VALUE + r.size();
+                }
+                for (int i = der.size() - 1; i >= 0; i--) {
+                    TermImpl other = der.get(i);
+                    if (equals(other) || moreNullsThen(other) >= 0) {
+                        return Integer.MAX_VALUE;
                     }
                 }
+                return non - nrOfBindings(goal);
             }
+            return Integer.MIN_VALUE;
         }
 
         @SuppressWarnings("rawtypes")
@@ -805,13 +795,13 @@ public class Logic {
     public static interface Rule extends Term {
     }
 
-    private static final FunctImpl<Rule> RULE_FUNCTOR       = functImpl((SerializableBiFunction<Term, Goal, Rule>) Logic::rule, null);
+    private static final FunctImpl<Rule> RULE_FUNCTOR       = functImpl((SerializableBiFunction<Pred, Goal, Rule>) Logic::rule, null);
     private static final Functor<Rule>   RULE_FUNCTOR_PROXY = RULE_FUNCTOR.proxy();
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Rule rule(Term term, Goal goal) {
-        RuleImpl ruleImpl = new RuleImpl(term, goal);
-        TermImpl termImpl = Logic.<Term, TermImpl> unproxy(term);
+    public static Rule rule(Pred pred, Goal goal) {
+        RuleImpl ruleImpl = new RuleImpl(pred, goal);
+        TermImpl termImpl = Logic.<Pred, TermImpl> unproxy(pred);
         RULES.force(termImpl.functor(), ADD_RULE, ruleImpl);
         return ruleImpl.proxy();
     }
@@ -854,16 +844,15 @@ public class Logic {
             Map<VarImpl, Object> binding = head.getBinding(term, Map.of());
             if (binding == null) {
                 return Set.of();
-            } else {
-                if (TRACE_LOGIC) {
-                    System.err.println("!!!!!!!!!!!!!! " + "  ".repeat(der.size()) + this + " " + binding.toString().substring(3));
-                }
-                Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(binding), der, rec);
-                return r.map(m -> {
-                    TermImpl it = (TermImpl) m.get(INCOMPLETE_VAR);
-                    return it != null ? it : head.setBinding(m);
-                }).asSet();
             }
+            if (TRACE_LOGIC) {
+                System.err.println("!!!!!!!!!!!!!! " + "  ".repeat(der.size()) + this + " " + binding.toString().substring(3));
+            }
+            Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(binding), der, rec);
+            return r.map(m -> {
+                TermImpl it = (TermImpl) m.get(INCOMPLETE_VAR);
+                return it != null ? it : head.setBinding(m);
+            }).asSet();
         }
 
         @Override
@@ -908,19 +897,19 @@ public class Logic {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Goal goal(Term... goals) {
+    public static Goal goal(Pred... goals) {
         return new GoalImpl(list(goals)).proxy();
     }
 
     @SuppressWarnings("unchecked")
-    public static Goal goal(L<Term> goals) {
+    public static Goal goal(L<Pred> goals) {
         return new GoalImpl(goals).proxy();
     }
 
     private static final class GoalImpl extends TermImpl<Goal> {
         private static final long serialVersionUID = -4100263206389367132L;
 
-        private GoalImpl(L<Term> goals) {
+        private GoalImpl(L<Pred> goals) {
             super(GOAL_FUNCTOR_PROXY, goals);
         }
 
@@ -964,30 +953,28 @@ public class Logic {
         private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
             if (goals.isEmpty()) {
                 return vars;
-            } else {
-                return vars.<Map<VarImpl, Object>> flatMap(v -> {
-                    if (v.containsKey(INCOMPLETE_VAR)) {
-                        return Set.of(v);
-                    } else {
-                        List<TermImpl> actual = List.of();
-                        for (TermImpl g : goals) {
-                            actual = actual.add(g.setBinding(v));
-                        }
-                        int i = first(actual, goals, der, rec);
-                        TermImpl f = actual.get(i);
-                        TermImpl g = goals.get(i);
-                        Collection<TermImpl> m = f.match(g, der, rec);
-                        return eval(goals.removeIndex(i), m.<Map<VarImpl, Object>> map(t -> {
-                            if (t.type() == Incomplete.class) {
-                                return Map.of(Entry.of(INCOMPLETE_VAR, t));
-                            } else {
-                                Map<VarImpl, Object> b = g.getBinding(t, Map.of());
-                                return b == null ? Map.of() : v.putAll(b);
-                            }
-                        }), der, rec);
-                    }
-                });
             }
+            return vars.<Map<VarImpl, Object>> flatMap(v -> {
+                if (v.containsKey(INCOMPLETE_VAR)) {
+                    return Set.of(v);
+                }
+                List<TermImpl> actual = List.of();
+                for (TermImpl g : goals) {
+                    actual = actual.add(g.setBinding(v));
+                }
+                int i = first(actual, goals, der, rec);
+                TermImpl f = actual.get(i);
+                TermImpl g = goals.get(i);
+                Collection<TermImpl> m = f.match(g, der, rec);
+                return eval(goals.removeIndex(i), m.<Map<VarImpl, Object>> map(t -> {
+                    if (t.type() == Incomplete.class) {
+                        return Map.of(Entry.of(INCOMPLETE_VAR, t));
+                    } else {
+                        Map<VarImpl, Object> b = g.getBinding(t, Map.of());
+                        return b == null ? Map.of() : v.putAll(b);
+                    }
+                }), der, rec);
+            });
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
