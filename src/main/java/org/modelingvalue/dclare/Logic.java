@@ -651,7 +651,7 @@ public class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        protected int termPrio(TermImpl goal, List<TermImpl> der) {
+        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
             int non = nrOfNulls();
             if (non > 1 || non >= totalLength()) {
                 return Integer.MAX_VALUE;
@@ -672,13 +672,18 @@ public class Logic {
                     } else {
                         List<RuleImpl> rules = RULES.get(functor());
                         if (rules != null) {
-                            for (int i = der.size() - 1; i >= 0; i--) {
-                                TermImpl other = der.get(i);
-                                if (equals(other) || moreNullsThen(other) >= 0) {
-                                    return Integer.MAX_VALUE;
+                            Set<TermImpl> r = rec.get(this);
+                            if (r != null) {
+                                return Integer.MIN_VALUE + r.size();
+                            } else {
+                                for (int i = der.size() - 1; i >= 0; i--) {
+                                    TermImpl other = der.get(i);
+                                    if (equals(other) || moreNullsThen(other) >= 0) {
+                                        return Integer.MAX_VALUE;
+                                    }
                                 }
+                                return non - nrOfBindings(goal);
                             }
-                            return non - nrOfBindings(goal);
                         } else {
                             return Integer.MIN_VALUE;
                         }
@@ -968,7 +973,7 @@ public class Logic {
                         for (TermImpl g : goals) {
                             actual = actual.add(g.setBinding(v));
                         }
-                        int i = first(actual, goals, der);
+                        int i = first(actual, goals, der, rec);
                         TermImpl f = actual.get(i);
                         TermImpl g = goals.get(i);
                         Collection<TermImpl> m = f.match(g, der, rec);
@@ -986,11 +991,11 @@ public class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private static int first(List<TermImpl> actual, List<TermImpl> goals, List<TermImpl> der) {
+        private static int first(List<TermImpl> actual, List<TermImpl> goals, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
             int first = -1;
             int min = Integer.MAX_VALUE;
             for (int i = 0; i < actual.size(); i++) {
-                int prio = actual.get(i).termPrio(goals.get(i), der);
+                int prio = actual.get(i).termPrio(goals.get(i), der, rec);
                 if (first == -1 || prio < min) {
                     first = i;
                     min = prio;
