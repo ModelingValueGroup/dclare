@@ -74,10 +74,20 @@ public class LogicTest {
     interface Root extends Term {
     }
 
-    static Functor<Root> root = functor(LogicTest::root);
+    interface RootAtom extends Root, Atom<Root> {
+    }
 
-    static Root root(String name) {
-        return term(root, name);
+    interface RootFunc extends Root, Func<Root> {
+    }
+
+    static Functor<RootAtom> rootAtom = functor((SerializableFunction<String, RootAtom>) LogicTest::root);
+
+    static RootAtom root(String name) {
+        return term(rootAtom, name);
+    }
+
+    static RootAtom rootAtomVar(String name) {
+        return var(RootAtom.class, name);
     }
 
     static Root rootVar(String name) {
@@ -86,8 +96,14 @@ public class LogicTest {
 
     static Functor<Pred> rootPerson = functor(LogicTest::rootPerson);
 
-    static Pred rootPerson(Root root, PersonAtom person) {
+    static Pred rootPerson(RootAtom root, PersonAtom person) {
         return term(rootPerson, root, person);
+    }
+
+    static Functor<RootFunc> rootFunc = functor((SerializableFunction<Person, RootFunc>) LogicTest::root);
+
+    static RootFunc root(Person person) {
+        return term(rootFunc, person);
     }
 
     // Family Tree
@@ -163,8 +179,6 @@ public class LogicTest {
 
     // Variables
 
-    Root       U      = rootVar("U");
-
     IntAtom    P      = ilv("P");
     IntAtom    Q      = ilv("Q");
 
@@ -186,7 +200,17 @@ public class LogicTest {
     PersonAtom Heleen = person("Heleen");
     PersonAtom Marijn = person("Marijn");
 
-    Root       Root   = root("Root");
+    RootAtom   Root   = root("Root");
+
+    RootAtom   U      = rootAtomVar("U");
+    Root       V      = rootVar("V");
+
+    private void rootRules() {
+        rule(is(parent(X), A), goal(is(X, B), parentChild(A, B)));
+        rule(is(child(X), A), goal(is(X, B), parentChild(B, A)));
+
+        rule(is(root(X), U), goal(is(X, B), rootPerson(U, B)));
+    }
 
     // Family Rules
 
@@ -297,22 +321,23 @@ public class LogicTest {
     public void famTest4() {
         run(() -> {
             Arithmetic.rules();
+            rootRules();
 
             rule(parentChild(person(Q), person(P)), goal(lt(Q, i(4)), is(plus(Q, i(1)), P)));
             rule(rootPerson(U, person(0)), goal());
             rule(rootPerson(U, C), goal(rootPerson(U, A), parentChild(A, C)));
 
-            isTrue(goal(parentChild(person(0), person(1))));
-            isTrue(goal(parentChild(person(3), person(4))));
-            isFalse(goal(parentChild(person(4), person(5))));
+            isTrue(goal(is(child(person(0)), person(1))));
+            isTrue(goal(is(child(person(3)), person(4))));
+            isFalse(goal(is(child(person(4)), person(5))));
 
-            isTrue(goal(rootPerson(Root, person(0))));
-            isTrue(goal(rootPerson(Root, person(1))));
-            isTrue(goal(rootPerson(Root, person(2))));
-            isTrue(goal(rootPerson(Root, person(3))));
-            isTrue(goal(rootPerson(Root, person(4))));
+            isTrue(goal(is(root(person(0)), Root)));
+            isTrue(goal(is(root(person(1)), Root)));
+            isTrue(goal(is(root(person(4)), Root)));
+            isTrue(goal(is(root(person(3)), Root)));
+            isTrue(goal(is(root(person(2)), Root)));
 
-            hasBindings(goal(rootPerson(Root, C)), binding(C, person(0)), binding(C, person(1)), //
+            hasBindings(goal(is(root(C), Root)), binding(C, person(0)), binding(C, person(1)), //
                     binding(C, person(2)), binding(C, person(3)), binding(C, person(4)));
         });
     }
