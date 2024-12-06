@@ -56,7 +56,10 @@ public class Logic {
                                                                                               } else {
                                                                                                   int p = e.rulePrio();
                                                                                                   for (int i = 0; i < l.size(); i++) {
-                                                                                                      if (l.get(i).rulePrio() > p) {
+                                                                                                      RuleImpl r = l.get(i);
+                                                                                                      if (r.equals(e)) {
+                                                                                                          return l;
+                                                                                                      } else if (r.rulePrio() > p) {
                                                                                                           return l.insert(i, e);
                                                                                                       }
                                                                                                   }
