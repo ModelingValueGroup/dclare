@@ -415,6 +415,9 @@ public class Logic {
     public static interface Pred extends Term {
     }
 
+    public static interface Rel extends Pred {
+    }
+
     @SuppressWarnings("unchecked")
     public static <F extends Term> F term(Functor<F> functor, Object... args) {
         return new TermImpl<F>(functor, args).proxy();
@@ -1053,8 +1056,8 @@ public class Logic {
     // Facts
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static void fact(Pred pred) {
-        Logic.<Pred, TermImpl> unproxy(pred).makeFact();
+    public static void fact(Rel rel) {
+        Logic.<Pred, TermImpl> unproxy(rel).makeFact();
     }
 
     // Is

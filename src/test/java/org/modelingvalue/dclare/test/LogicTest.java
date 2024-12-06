@@ -36,13 +36,7 @@ import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.dclare.Arithmetic;
 import org.modelingvalue.dclare.Arithmetic.IntAtom;
 import org.modelingvalue.dclare.Logic;
-import org.modelingvalue.dclare.Logic.Atom;
-import org.modelingvalue.dclare.Logic.Func;
-import org.modelingvalue.dclare.Logic.Functor;
-import org.modelingvalue.dclare.Logic.Goal;
-import org.modelingvalue.dclare.Logic.Pred;
-import org.modelingvalue.dclare.Logic.Term;
-import org.modelingvalue.dclare.Logic.Variable;
+import org.modelingvalue.dclare.Logic.*;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
 
@@ -131,9 +125,9 @@ public class LogicTest {
         return var(Person.class, name);
     }
 
-    static Functor<Pred> parentChild = functor(LogicTest::parentChild);
+    static Functor<Rel> parentChild = functor(LogicTest::parentChild);
 
-    static Pred parentChild(PersonAtom parent, PersonAtom child) {
+    static Rel parentChild(PersonAtom parent, PersonAtom child) {
         return term(parentChild, parent, child);
     }
 
