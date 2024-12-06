@@ -50,12 +50,8 @@ public class Arithmetic extends Logic {
         return i(BigInteger.valueOf(x));
     }
 
-    public static IntAtom ilv(String name) {
+    public static IntAtom iav(String name) {
         return var(IntAtom.class, name);
-    }
-
-    public static IntFunc ifv(String name) {
-        return var(IntFunc.class, name);
     }
 
     public static Int iv(String name) {
@@ -232,25 +228,25 @@ public class Arithmetic extends Logic {
     public static void arithmeticRules() {
         isAtomRule();
 
-        IntAtom PL = ilv("PL");
-        IntAtom QL = ilv("QL");
-        IntAtom RL = ilv("RL");
+        IntAtom P = iav("PL");
+        IntAtom Q = iav("QL");
+        IntAtom R = iav("RL");
 
         Int X = iv("X");
         Int Y = iv("Y");
 
-        rule(is(plus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(PL, QL, RL)));
-        rule(is(minus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(RL, QL, PL)));
-        rule(is(multiply(X, Y), RL), goal(is(X, PL), is(Y, QL), multiply(PL, QL, RL)));
-        rule(is(divide(X, Y), RL), goal(is(X, PL), is(Y, QL), multiply(RL, QL, PL)));
-        rule(is(power(X), RL), goal(is(X, PL), power(PL, RL)));
-        rule(is(sqrt(X), RL), goal(is(X, PL), power(RL, PL)));
-        rule(gt(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(1))));
-        rule(lt(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(-1))));
-        rule(ge(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(1))));
-        rule(ge(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(0))));
-        rule(le(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(-1))));
-        rule(le(X, Y), goal(is(X, PL), is(Y, QL), compare(PL, QL, i(0))));
+        rule(is(plus(X, Y), R), goal(is(X, P), is(Y, Q), plus(P, Q, R)));
+        rule(is(minus(X, Y), R), goal(is(X, P), is(Y, Q), plus(R, Q, P)));
+        rule(is(multiply(X, Y), R), goal(is(X, P), is(Y, Q), multiply(P, Q, R)));
+        rule(is(divide(X, Y), R), goal(is(X, P), is(Y, Q), multiply(R, Q, P)));
+        rule(is(power(X), R), goal(is(X, P), power(P, R)));
+        rule(is(sqrt(X), R), goal(is(X, P), power(R, P)));
+        rule(gt(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(1))));
+        rule(lt(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(-1))));
+        rule(ge(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(1))));
+        rule(ge(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(0))));
+        rule(le(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(-1))));
+        rule(le(X, Y), goal(is(X, P), is(Y, Q), compare(P, Q, i(0))));
     }
 
 }

@@ -178,8 +178,8 @@ public class LogicTest {
 
     // Variables
 
-    IntAtom    P      = ilv("P");
-    IntAtom    Q      = ilv("Q");
+    IntAtom    P      = iav("P");
+    IntAtom    Q      = iav("Q");
 
     PersonAtom A      = personAtomVar("A");
     PersonAtom B      = personAtomVar("B");
