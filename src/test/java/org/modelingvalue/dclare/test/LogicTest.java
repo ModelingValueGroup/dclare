@@ -33,7 +33,6 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableFunction;
-import org.modelingvalue.dclare.Arithmetic;
 import org.modelingvalue.dclare.Arithmetic.IntAtom;
 import org.modelingvalue.dclare.Logic;
 import org.modelingvalue.dclare.Logic.*;
@@ -206,16 +205,22 @@ public class LogicTest {
     Root       V      = rootVar("V");
 
     private void rootRules() {
+        arithmeticRules();
+
         rule(is(parent(X), A), goal(is(X, B), parentChild(A, B)));
         rule(is(child(X), A), goal(is(X, B), parentChild(B, A)));
 
         rule(is(root(X), U), goal(is(X, B), rootPerson(U, B)));
+
+        rule(parentChild(person(Q), person(P)), goal(lt(Q, i(4)), is(plus(Q, i(1)), P)));
+        rule(rootPerson(U, person(0)), goal());
+        rule(rootPerson(U, C), goal(rootPerson(U, A), parentChild(A, C)));
     }
 
     // Family Rules
 
     private void familyRules() {
-        Logic.isAtomRule();
+        isAtomRule();
 
         rule(is(parent(X), A), goal(is(X, B), parentChild(A, B)));
         rule(is(child(X), A), goal(is(X, B), parentChild(B, A)));
@@ -320,12 +325,7 @@ public class LogicTest {
     @RepeatedTest(100)
     public void famTest4() {
         run(() -> {
-            Arithmetic.rules();
             rootRules();
-
-            rule(parentChild(person(Q), person(P)), goal(lt(Q, i(4)), is(plus(Q, i(1)), P)));
-            rule(rootPerson(U, person(0)), goal());
-            rule(rootPerson(U, C), goal(rootPerson(U, A), parentChild(A, C)));
 
             isTrue(goal(is(child(person(0)), person(1))));
             isTrue(goal(is(child(person(3)), person(4))));
@@ -345,7 +345,7 @@ public class LogicTest {
     @RepeatedTest(100)
     public void intTest() {
         run(() -> {
-            Arithmetic.rules();
+            arithmeticRules();
 
             hasBindings(goal(plus(i(7), i(3), P)), binding(P, i(10)));
             hasBindings(goal(plus(i(7), P, i(10))), binding(P, i(3)));
@@ -356,7 +356,7 @@ public class LogicTest {
     @RepeatedTest(100)
     public void isTest() {
         run(() -> {
-            Arithmetic.rules();
+            arithmeticRules();
 
             isTrue(goal(is(plus(i(11), i(22)), i(33))));
             isTrue(goal(is(minus(i(33), i(22)), i(11))));

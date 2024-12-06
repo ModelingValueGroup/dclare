@@ -229,8 +229,8 @@ public class Arithmetic extends Logic {
 
     // Is Rules
 
-    public static void rules() {
-        Logic.isAtomRule();
+    public static void arithmeticRules() {
+        isAtomRule();
 
         IntAtom PL = ilv("PL");
         IntAtom QL = ilv("QL");
