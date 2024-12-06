@@ -29,23 +29,15 @@ import org.modelingvalue.collections.util.SerializableTriFunction;
 
 public class Arithmetic extends Logic {
 
-    // Is
-
-    private static Functor<Pred> is = functor((SerializableBiFunction<Int, IntAtom, Pred>) Arithmetic::is);
-
-    public static Pred is(Int i, IntAtom r) {
-        return term(is, i, r);
-    }
-
     // Integer
 
     public static interface Int extends Term {
     }
 
-    public static interface IntAtom extends Int {
+    public static interface IntAtom extends Int, Atom<Int> {
     }
 
-    public static interface IntFunc extends Int {
+    public static interface IntFunc extends Int, Func<Int> {
     }
 
     private static Functor<IntAtom> i = functor((SerializableFunction<BigInteger, IntAtom>) Arithmetic::i);
@@ -238,6 +230,8 @@ public class Arithmetic extends Logic {
     // Is Rules
 
     public static void rules() {
+        Logic.isAtomRule();
+
         IntAtom PL = ilv("PL");
         IntAtom QL = ilv("QL");
         IntAtom RL = ilv("RL");
@@ -245,7 +239,6 @@ public class Arithmetic extends Logic {
         Int X = iv("X");
         Int Y = iv("Y");
 
-        rule(is(PL, RL), goal(eq(PL, RL)));
         rule(is(plus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(PL, QL, RL)));
         rule(is(minus(X, Y), RL), goal(is(X, PL), is(Y, QL), plus(RL, QL, PL)));
         rule(is(multiply(X, Y), RL), goal(is(X, PL), is(Y, QL), multiply(PL, QL, RL)));

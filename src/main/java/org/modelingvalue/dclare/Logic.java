@@ -484,6 +484,12 @@ public class Logic {
 
         @SuppressWarnings("rawtypes")
         protected final void makeFact() {
+            if (functor().lambda() != null) {
+                throw new IllegalArgumentException("No facts of a functor with a lambda allowed. " + this);
+            }
+            if (RULES.get(functor()) != null) {
+                throw new IllegalArgumentException("No facts of a functor with rules allowed. " + this);
+            }
             FACTS.force(this, ADD_FACT, this);
             Object[] array = toArray();
             for (int i = 1; i < array.length; i++) {
@@ -1044,11 +1050,36 @@ public class Logic {
         return term(eq, a, b);
     }
 
-    // Facts, Is
+    // Facts
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static void fact(Term term) {
-        Logic.<Term, TermImpl> unproxy(term).makeFact();
+    public static void fact(Pred pred) {
+        Logic.<Pred, TermImpl> unproxy(pred).makeFact();
+    }
+
+    // Is
+
+    public static interface Atom<T extends Term> extends Term {
+
+    }
+
+    public static interface Func<T extends Term> extends Term {
+
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static Functor<Pred> is = functor((SerializableBiFunction<Func, Atom, Pred>) Arithmetic::is);
+
+    public static <T extends Term> Pred is(T t, Atom<T> a) {
+        return term(is, t, a);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static void isAtomRule() {
+        Atom A1 = var(Atom.class, "A1");
+        Atom A2 = var(Atom.class, "A2");
+
+        rule(is(A1, A2), goal(eq(A1, A2)));
     }
 
     // Bindings

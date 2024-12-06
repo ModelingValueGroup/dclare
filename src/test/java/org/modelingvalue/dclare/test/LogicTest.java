@@ -36,6 +36,8 @@ import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.dclare.Arithmetic;
 import org.modelingvalue.dclare.Arithmetic.IntAtom;
 import org.modelingvalue.dclare.Logic;
+import org.modelingvalue.dclare.Logic.Atom;
+import org.modelingvalue.dclare.Logic.Func;
 import org.modelingvalue.dclare.Logic.Functor;
 import org.modelingvalue.dclare.Logic.Goal;
 import org.modelingvalue.dclare.Logic.Pred;
@@ -90,29 +92,39 @@ public class LogicTest {
 
     static Functor<Pred> rootPerson = functor(LogicTest::rootPerson);
 
-    static Pred rootPerson(Root root, Person person) {
+    static Pred rootPerson(Root root, PersonAtom person) {
         return term(rootPerson, root, person);
     }
 
-    // FamilyTree
+    // Family Tree
 
     interface Person extends Term {
     }
 
-    static Functor<Person> strPerson = functor((SerializableFunction<String, Person>) LogicTest::person);
+    interface PersonAtom extends Person, Atom<Person> {
+    }
 
-    static Person person(String name) {
+    interface PersonFunc extends Person, Func<Person> {
+    }
+
+    static Functor<PersonAtom> strPerson = functor((SerializableFunction<String, PersonAtom>) LogicTest::person);
+
+    static PersonAtom person(String name) {
         return term(strPerson, name);
     }
 
-    static Functor<Person> intPerson = functor((SerializableFunction<IntAtom, Person>) LogicTest::person);
+    static Functor<PersonAtom> intPerson = functor((SerializableFunction<IntAtom, PersonAtom>) LogicTest::person);
 
-    static Person person(IntAtom i) {
+    static PersonAtom person(IntAtom i) {
         return term(intPerson, i);
     }
 
-    static Person person(int i) {
+    static PersonAtom person(int i) {
         return person(i(i));
+    }
+
+    static PersonAtom personAtomVar(String name) {
+        return var(PersonAtom.class, name);
     }
 
     static Person personVar(String name) {
@@ -121,46 +133,116 @@ public class LogicTest {
 
     static Functor<Pred> parentChild = functor(LogicTest::parentChild);
 
-    static Pred parentChild(Person parent, Person child) {
+    static Pred parentChild(PersonAtom parent, PersonAtom child) {
         return term(parentChild, parent, child);
+    }
+
+    static Functor<PersonFunc> parent = functor(LogicTest::parent);
+
+    static PersonFunc parent(Person child) {
+        return term(parent, child);
+    }
+
+    static Functor<PersonFunc> child = functor(LogicTest::child);
+
+    static PersonFunc child(Person parent) {
+        return term(child, parent);
     }
 
     static Functor<Pred> ancestorDescendent = functor(LogicTest::ancestorDescendent);
 
-    static Pred ancestorDescendent(Person ancestor, Person descendent) {
+    static Pred ancestorDescendent(PersonAtom ancestor, PersonAtom descendent) {
         return term(ancestorDescendent, ancestor, descendent);
+    }
+
+    static Functor<PersonFunc> ancestor = functor(LogicTest::ancestor);
+
+    static PersonFunc ancestor(Person descendent) {
+        return term(ancestor, descendent);
+    }
+
+    static Functor<PersonFunc> descendent = functor(LogicTest::descendent);
+
+    static PersonFunc descendent(Person ancestor) {
+        return term(descendent, ancestor);
     }
 
     // Variables
 
-    Root   U      = rootVar("U");
+    Root       U      = rootVar("U");
 
-    IntAtom P      = ilv("P");
-    IntAtom Q      = ilv("Q");
+    IntAtom    P      = ilv("P");
+    IntAtom    Q      = ilv("Q");
 
-    Person A      = personVar("A");
-    Person D      = personVar("D");
-    Person R      = personVar("R");
-    Person B      = personVar("B");
-    Person C      = personVar("C");
+    PersonAtom A      = personAtomVar("A");
+    PersonAtom B      = personAtomVar("B");
+    PersonAtom C      = personAtomVar("C");
+
+    Person     X      = personVar("X");
+    Person     Y      = personVar("Y");
+    Person     Z      = personVar("Z");
 
     // Terms
 
-    Person Carel  = person("Carel");
-    Person Jan    = person("Jan");
-    Person Elske  = person("Elske");
-    Person Wim    = person("Wim");
-    Person Joppe  = person("Joppe");
-    Person Heleen = person("Heleen");
-    Person Marijn = person("Marijn");
+    PersonAtom Carel  = person("Carel");
+    PersonAtom Jan    = person("Jan");
+    PersonAtom Elske  = person("Elske");
+    PersonAtom Wim    = person("Wim");
+    PersonAtom Joppe  = person("Joppe");
+    PersonAtom Heleen = person("Heleen");
+    PersonAtom Marijn = person("Marijn");
 
-    Root   Root   = root("Root");
+    Root       Root   = root("Root");
+
+    // Family Rules
+
+    private void familyRules() {
+        Logic.isAtomRule();
+
+        rule(is(parent(X), A), goal(is(X, B), parentChild(A, B)));
+        rule(is(child(X), A), goal(is(X, B), parentChild(B, A)));
+
+        rule(is(ancestor(X), A), goal(is(X, B), ancestorDescendent(A, B)));
+        rule(is(descendent(X), A), goal(is(X, B), ancestorDescendent(B, A)));
+
+        rule(ancestorDescendent(A, C), goal(parentChild(A, C)));
+        rule(ancestorDescendent(A, C), goal(ancestorDescendent(A, B), parentChild(B, C)));
+    }
+
+    @RepeatedTest(100)
+    public void famTest0() {
+        run(() -> {
+            familyRules();
+
+            fact(parentChild(Carel, Jan));
+            fact(parentChild(Jan, Wim));
+            fact(parentChild(Elske, Wim));
+            fact(parentChild(Wim, Joppe));
+            fact(parentChild(Heleen, Joppe));
+            fact(parentChild(Wim, Marijn));
+            fact(parentChild(Heleen, Marijn));
+
+            isTrue(goal(is(parent(Joppe), Heleen)));
+            isTrue(goal(is(child(Jan), Wim)));
+
+            isFalse(goal(is(parent(Wim), Marijn)));
+            isFalse(goal(is(parent(Wim), Heleen)));
+            isFalse(goal(is(child(Wim), Wim)));
+
+            isTrue(goal(is(descendent(Wim), Marijn)));
+            isTrue(goal(is(descendent(Carel), Marijn)));
+
+            isFalse(goal(is(descendent(Marijn), Wim)));
+            isFalse(goal(is(descendent(Heleen), Wim)));
+            isFalse(goal(is(descendent(Joppe), Carel)));
+            isFalse(goal(is(descendent(Carel), Carel)));
+        });
+    }
 
     @RepeatedTest(100)
     public void famTest1() {
         run(() -> {
-            rule(ancestorDescendent(A, D), goal(parentChild(A, D)));
-            rule(ancestorDescendent(A, D), goal(ancestorDescendent(A, R), parentChild(R, D)));
+            familyRules();
 
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
@@ -190,18 +272,17 @@ public class LogicTest {
     @RepeatedTest(100)
     public void famTest2() {
         run(() -> {
-            rule(ancestorDescendent(A, D), goal(parentChild(A, D)));
-            rule(ancestorDescendent(A, D), goal(ancestorDescendent(A, C), parentChild(C, D)));
+            familyRules();
 
-            Person Carel = person("Carel");
-            Person Jan = person("Jan");
-            Person Wim = person("Wim");
+            PersonAtom Carel = person("Carel");
+            PersonAtom Jan = person("Jan");
+            PersonAtom Wim = person("Wim");
 
             fact(parentChild(Carel, Jan));
             fact(parentChild(Jan, Wim));
 
             hasBindings(goal(ancestorDescendent(A, Wim)), binding(A, Jan), binding(A, Carel));
-            hasBindings(goal(ancestorDescendent(Carel, D)), binding(D, Jan), binding(D, Wim));
+            hasBindings(goal(ancestorDescendent(Carel, C)), binding(C, Jan), binding(C, Wim));
         });
     }
 
@@ -210,8 +291,8 @@ public class LogicTest {
         run(() -> {
             rule(parentChild(B, C), goal(parentChild(B, C)));
 
-            Person Jan = person("Jan");
-            Person Wim = person("Wim");
+            PersonAtom Jan = person("Jan");
+            PersonAtom Wim = person("Wim");
 
             hasBindings(goal(parentChild(Wim, Jan)), incomplete(parentChild(Wim, Jan), parentChild(Wim, Jan)));
             isIncomplete(goal(parentChild(Wim, Jan)));
@@ -225,7 +306,7 @@ public class LogicTest {
 
             rule(parentChild(person(Q), person(P)), goal(lt(Q, i(4)), is(plus(Q, i(1)), P)));
             rule(rootPerson(U, person(0)), goal());
-            rule(rootPerson(U, D), goal(rootPerson(U, R), parentChild(R, D)));
+            rule(rootPerson(U, C), goal(rootPerson(U, A), parentChild(A, C)));
 
             isTrue(goal(parentChild(person(0), person(1))));
             isTrue(goal(parentChild(person(3), person(4))));
@@ -237,8 +318,8 @@ public class LogicTest {
             isTrue(goal(rootPerson(Root, person(3))));
             isTrue(goal(rootPerson(Root, person(4))));
 
-            hasBindings(goal(rootPerson(Root, D)), binding(D, person(0)), binding(D, person(1)), //
-                    binding(D, person(2)), binding(D, person(3)), binding(D, person(4)));
+            hasBindings(goal(rootPerson(Root, C)), binding(C, person(0)), binding(C, person(1)), //
+                    binding(C, person(2)), binding(C, person(3)), binding(C, person(4)));
         });
     }
 
