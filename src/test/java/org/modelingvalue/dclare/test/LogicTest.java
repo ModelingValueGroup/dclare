@@ -189,6 +189,9 @@ public class LogicTest {
     Person     Y      = personVar("Y");
     Person     Z      = personVar("Z");
 
+    RootAtom   U      = rootAtomVar("U");
+    Root       V      = rootVar("V");
+
     // Terms
 
     PersonAtom Carel  = person("Carel");
@@ -201,8 +204,7 @@ public class LogicTest {
 
     RootAtom   Root   = root("Root");
 
-    RootAtom   U      = rootAtomVar("U");
-    Root       V      = rootVar("V");
+    // Root Rules
 
     private void rootRules() {
         arithmeticRules();
