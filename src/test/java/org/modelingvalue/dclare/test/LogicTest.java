@@ -295,7 +295,7 @@ public class LogicTest {
             isFalse(goal(ancestorDescendent(Joppe, Carel)));
             isFalse(goal(ancestorDescendent(Carel, Carel)));
 
-            hasBindings(goal(collect(parentChild(Wim, C), prepend(C, l(), PL))), binding(PL, l(Marijn, Joppe)));
+            hasBindings(goal(collect(parentChild(Wim, C), add(C, l(), PL))), binding(PL, l(Joppe, Marijn)));
         });
     }
 

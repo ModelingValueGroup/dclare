@@ -43,6 +43,7 @@ import org.modelingvalue.collections.util.SerializableSupplier;
 import org.modelingvalue.collections.util.SerializableSupplier.SerializableSupplierImpl;
 import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
+import org.modelingvalue.collections.util.StringUtil;
 import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.CoreSetableModifier;
 
@@ -78,7 +79,7 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static final Constant<FunctImpl, List<RuleImpl>>                  RULES       = Constant.of("RULES", null, CoreSetableModifier.durable);
 
-    private static abstract class ClauseImpl<F extends Term> extends StructImpl implements InvocationHandler {
+    private static abstract class ClauseImpl<F extends Term> extends StructImpl implements InvocationHandler, Comparable<ClauseImpl<F>> {
         private static final long   serialVersionUID = 7315776001191198132L;
 
         private static final Method EQUALS;
@@ -156,6 +157,33 @@ public final class Logic {
         protected abstract Class<F> type();
 
         protected abstract ClauseImpl<F> term(Object[] array);
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Override
+        public int compareTo(ClauseImpl<F> o) {
+            int r = length() - o.length();
+            if (r != 0) {
+                return r;
+            }
+            for (int i = 0; i < length(); i++) {
+                Object tv = get(i);
+                Object ov = o.get(i);
+                if (tv instanceof Comparable && tv.getClass().equals(ov.getClass())) {
+                    r = ((Comparable) tv).compareTo(ov);
+                    if (r != 0) {
+                        break;
+                    }
+                } else {
+                    String ts = StringUtil.toString(tv);
+                    String os = StringUtil.toString(ov);
+                    r = ts.compareTo(os);
+                    if (r != 0) {
+                        break;
+                    }
+                }
+            }
+            return r;
+        }
     }
 
     private static final Object noProxy(Object object) {
@@ -378,30 +406,52 @@ public final class Logic {
 
     // Prepend
 
-    @SuppressWarnings("rawtypes")
-    private static final FunctImpl<Pred> PREPEND_FUNCTOR       = functImpl((SerializableTriFunction<Object, L, L, Pred>) Logic::prepend, t -> {
-                                                                   TermImpl e = t.getTerm(1);
-                                                                   TermImpl<L> i = t.getTerm(2);
-                                                                   TermImpl<L> o = t.getTerm(3);
-                                                                   if (e != null && i != null && o != null) {
-                                                                       return termImpl(LIST_FUNCTOR_2, e, i).equals(o) ? Set.of(t) : Set.of();
-                                                                   } else if (e != null && i != null && o == null) {
-                                                                       return Set.of(t.set(3, termImpl(LIST_FUNCTOR_2, e, i)));
-                                                                   } else if (e != null && i == null && o != null) {
-                                                                       throw new UnsupportedOperationException("TODO");
-                                                                   } else if (e == null && i != null && o != null) {
-                                                                       throw new UnsupportedOperationException("TODO");
-                                                                   } else if (e == null && i == null && o != null) {
-                                                                       throw new UnsupportedOperationException("TODO");
-                                                                   } else {
-                                                                       return t.incomplete();
-                                                                   }
-                                                               });
-    @SuppressWarnings("rawtypes")
-    private static final Functor<Pred>   PREPEND_FUNCTOR_PROXY = PREPEND_FUNCTOR.proxy();
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static List<TermImpl> addOrdered(List<TermImpl> l, TermImpl e) {
+        for (int i = 0; i < l.size(); i++) {
+            if (l.get(i).compareTo(e) > 0) {
+                return l.insert(i, e);
+            }
+        }
+        return l.append(e);
+    }
 
-    public static <E> Pred prepend(E e, L<E> i, L<E> o) {
-        return term(PREPEND_FUNCTOR_PROXY, e, i, o);
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Set<List<TermImpl>> remove(List<TermImpl> l, TermImpl e) {
+        Set<List<TermImpl>> ls = Set.of();
+        for (int i = l.firstIndexOf(e); i >= 0; i = l.firstIndexOf(i, l.size(), e)) {
+            ls = ls.add(l.removeIndex(i));
+        }
+        return ls;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<Pred> ADD_FUNCTOR       = functImpl((SerializableTriFunction<Object, L, L, Pred>) Logic::add, t -> {
+                                                               TermImpl e = t.getTerm(1);
+                                                               TermImpl<L> i = t.getTerm(2);
+                                                               TermImpl<L> o = t.getTerm(3);
+                                                               List<TermImpl> il = i != null ? i.list() : null;
+                                                               List<TermImpl> ol = o != null ? o.list() : null;
+                                                               if (e != null && il != null && ol != null) {
+                                                                   return addOrdered(il, e).equals(ol) ? Set.of(t) : Set.of();
+                                                               } else if (e != null && il != null && ol == null) {
+                                                                   return Set.of(t.set(3, list(addOrdered(il, e))));
+                                                               } else if (e != null && il == null && ol != null) {
+                                                                   return remove(ol, e).map(r -> (TermImpl) t.set(2, r)).asSet();
+                                                               } else if (e == null && il != null && ol != null) {
+                                                                   if (il.anyMatch(ol::notContains)) {
+                                                                       return Set.of();
+                                                                   }
+                                                                   return ol.removeAll(il).map(r -> (TermImpl) t.set(1, r)).asSet();
+                                                               } else {
+                                                                   return t.incomplete();
+                                                               }
+                                                           });
+    @SuppressWarnings("rawtypes")
+    private static final Functor<Pred>   ADD_FUNCTOR_PROXY = ADD_FUNCTOR.proxy();
+
+    public static <E> Pred add(E e, L<E> i, L<E> o) {
+        return term(ADD_FUNCTOR_PROXY, e, i, o);
     }
 
     // Variables
@@ -662,13 +712,13 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
-            int non = nrOfNulls();
-            if (non > 1 || non >= totalLength()) {
-                return Set.of(Logic.incomplete(der.append(this)));
-            }
             SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
             if (lambda != null) {
                 return lambda.apply(this);
+            }
+            int non = nrOfNulls();
+            if (non > 1 || non >= totalLength()) {
+                return Set.of(Logic.incomplete(der.append(this)));
             }
             Set<TermImpl> facts = FACTS.get(this);
             if (facts != null) {
@@ -708,9 +758,6 @@ public final class Logic {
         @SuppressWarnings("rawtypes")
         protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
             int non = nrOfNulls();
-            if (non > 1 || non >= totalLength()) {
-                return Integer.MAX_VALUE;
-            }
             SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
             if (lambda != null) {
                 Collection<TermImpl> result = lambda.apply(this);
@@ -718,7 +765,10 @@ public final class Logic {
                     Set<TermImpl> set = (Set<TermImpl>) result;
                     return set.anyMatch(TermImpl::isIncomplete) ? Integer.MAX_VALUE : Integer.MIN_VALUE + set.size();
                 }
-                return non;
+                return non - nrOfBindings(goal);
+            }
+            if (non > 1 || non >= totalLength()) {
+                return Integer.MAX_VALUE;
             }
             Set<TermImpl> facts = FACTS.get(this);
             if (facts != null) {
@@ -906,52 +956,75 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
+        private Map<VarImpl, Object> localVariables;
+
+        @SuppressWarnings("rawtypes")
         protected Map<VarImpl, Object> localVariables() {
-            Map<VarImpl, Object> predVars = pred().variables();
-            Map<VarImpl, Object> accumVars = accum().variables();
-            return predVars.filter(accumVars::contains).asMap(Function.identity());
+            if (localVariables == null) {
+                Map<VarImpl, Object> predVars = pred().variables();
+                Map<VarImpl, Object> accumVars = accum().variables();
+                localVariables = predVars.filter(accumVars::contains).asMap(Function.identity());
+            }
+            return localVariables;
         }
+
+        @SuppressWarnings("rawtypes")
+        private Map<VarImpl, Object> variables;
 
         @SuppressWarnings("rawtypes")
         @Override
         protected Map<VarImpl, Object> variables() {
-            Map<VarImpl, Object> predVars = pred().variables();
-            Map<VarImpl, Object> accumVars = accum().variables();
-            return Collection.concat(predVars.exclude(accumVars::contains), accumVars.exclude(predVars::contains)).asMap(Function.identity());
+            if (variables == null) {
+                Map<VarImpl, Object> predVars = pred().variables();
+                Map<VarImpl, Object> accumVars = accum().variables();
+                variables = Collection.concat(predVars.exclude(accumVars::contains), accumVars.exclude(predVars::contains)).asMap(Function.identity());
+            }
+            return variables;
         }
 
-        @SuppressWarnings("rawtypes")
-        private static int identityIndex(TermImpl accum) {
-            for (int i = 1; i < accum.length(); i++) {
-                if (accum.get(i) instanceof TermImpl) {
-                    return i;
-                }
-            }
-            return -1;
-        }
+        private int identityIndex = -1;
 
         @SuppressWarnings("rawtypes")
-        private static int resultIndex(TermImpl accum) {
-            for (int i = 1; i < accum.length(); i++) {
-                if (accum.get(i) instanceof Class) {
-                    return i;
+        private int identityIndex() {
+            if (identityIndex < 0) {
+                TermImpl accum = accum();
+                for (int i = 1; i < accum.length(); i++) {
+                    if (accum.get(i) instanceof TermImpl) {
+                        identityIndex = i;
+                        break;
+                    }
                 }
             }
-            return -1;
+            return identityIndex;
+        }
+
+        private int resultIndex = -1;
+
+        @SuppressWarnings("rawtypes")
+        private int resultIndex() {
+            if (resultIndex < 0) {
+                TermImpl accum = accum();
+                for (int i = 1; i < accum.length(); i++) {
+                    if (accum.get(i) instanceof VarImpl && !localVariables().containsKey((VarImpl) accum.get(i))) {
+                        resultIndex = i;
+                        break;
+                    }
+                }
+            }
+            return resultIndex;
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         @Override
         protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
-            Map<VarImpl, Object> localVars = localVariables();
+            Map<VarImpl, Object> localVars = ((CollectImpl) goal).localVariables();
+            int ii = ((CollectImpl) goal).identityIndex();
+            int ri = ((CollectImpl) goal).resultIndex();
             TermImpl goalPred = ((CollectImpl) goal).pred();
-            TermImpl pred = pred().setBinding(localVars);
             TermImpl goalAccum = ((CollectImpl) goal).accum();
             TermImpl accum = accum();
-            int ii = identityIndex(accum);
-            int ri = resultIndex(accum);
             Set<TermImpl> rs = Set.of(accum.getTerm(ii));
-            for (TermImpl m : ((TermImpl<?>) pred).match(goalPred, der, rec)) {
+            for (TermImpl m : ((TermImpl<?>) pred().setBinding(localVars)).match(goalPred, der, rec)) {
                 Map<VarImpl, Object> b = goalPred.getBinding(m, Map.of());
                 Set<TermImpl> a = Set.of();
                 for (TermImpl r : rs) {
