@@ -18,13 +18,14 @@
 //      but also our friend. "He will live on in many of the lines of code you see below."                               ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.logic;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Entry;
@@ -42,8 +43,13 @@ import org.modelingvalue.collections.util.SerializableSupplier;
 import org.modelingvalue.collections.util.SerializableSupplier.SerializableSupplierImpl;
 import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
+import org.modelingvalue.dclare.Constant;
+import org.modelingvalue.dclare.CoreSetableModifier;
 
-public class Logic {
+public final class Logic {
+
+    private Logic() {
+    }
 
     private static final boolean                                              TRACE_LOGIC = Boolean.getBoolean("TRACE_LOGIC");
 
@@ -306,6 +312,11 @@ public class Logic {
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
+        protected List<Class> args() {
+            return (List<Class>) get(3);
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
         protected SerializableFunction<TermImpl<T>, Collection<TermImpl>> lambda() {
             return (SerializableFunction<TermImpl<T>, Collection<TermImpl>>) get(4);
         }
@@ -363,6 +374,34 @@ public class Logic {
             l = termImpl(LIST_FUNCTOR_2, unproxy(es.get(i)), l);
         }
         return l;
+    }
+
+    // Prepend
+
+    @SuppressWarnings("rawtypes")
+    private static final FunctImpl<Pred> PREPEND_FUNCTOR       = functImpl((SerializableTriFunction<Object, L, L, Pred>) Logic::prepend, t -> {
+                                                                   TermImpl e = t.getTerm(1);
+                                                                   TermImpl<L> i = t.getTerm(2);
+                                                                   TermImpl<L> o = t.getTerm(3);
+                                                                   if (e != null && i != null && o != null) {
+                                                                       return termImpl(LIST_FUNCTOR_2, e, i).equals(o) ? Set.of(t) : Set.of();
+                                                                   } else if (e != null && i != null && o == null) {
+                                                                       return Set.of(t.set(3, termImpl(LIST_FUNCTOR_2, e, i)));
+                                                                   } else if (e != null && i == null && o != null) {
+                                                                       throw new UnsupportedOperationException("TODO");
+                                                                   } else if (e == null && i != null && o != null) {
+                                                                       throw new UnsupportedOperationException("TODO");
+                                                                   } else if (e == null && i == null && o != null) {
+                                                                       throw new UnsupportedOperationException("TODO");
+                                                                   } else {
+                                                                       return t.incomplete();
+                                                                   }
+                                                               });
+    @SuppressWarnings("rawtypes")
+    private static final Functor<Pred>   PREPEND_FUNCTOR_PROXY = PREPEND_FUNCTOR.proxy();
+
+    public static <E> Pred prepend(E e, L<E> i, L<E> o) {
+        return term(PREPEND_FUNCTOR_PROXY, e, i, o);
     }
 
     // Variables
@@ -523,12 +562,12 @@ public class Logic {
             if (get(0).equals(term.get(0))) {
                 for (int i = 1; i < length(); i++) {
                     Object tv = term.get(i);
-                    Class tt = tv instanceof TermImpl ? ((TermImpl) tv).type() : tv instanceof Class ? (Class) tv : null;
+                    Class tt = typeOf(tv);
                     tv = tv instanceof Class ? null : tv;
                     if (get(i) instanceof VarImpl) {
                         VarImpl var = (VarImpl) get(i);
                         Object vv = vars.get(var);
-                        Class vt = vv instanceof TermImpl ? ((TermImpl) vv).type() : vv instanceof Class ? (Class) vv : null;
+                        Class vt = typeOf(vv);
                         vv = vv instanceof Class ? null : vv;
                         if (vv != null) {
                             if (tv != null && !tv.equals(vv)) {
@@ -571,12 +610,20 @@ public class Logic {
             }
         }
 
+        @SuppressWarnings("rawtypes")
+        private static Class typeOf(Object v) {
+            return v instanceof ClauseImpl ? ((ClauseImpl) v).type() : v instanceof Class ? (Class) v : null;
+        }
+
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected TermImpl setBinding(Map<VarImpl, Object> vars) {
             Object[] array = toArray();
             for (int i = 1; i < length(); i++) {
                 if (get(i) instanceof VarImpl) {
-                    array[i] = vars.get((VarImpl) get(i));
+                    Object v = vars.get((VarImpl) get(i));
+                    if (v != null) {
+                        array[i] = v;
+                    }
                 } else if (get(i) instanceof TermImpl) {
                     array[i] = ((TermImpl) get(i)).setBinding(vars);
                 }
@@ -801,6 +848,134 @@ public class Logic {
             return functor() == INCOMPLETE_FUNCTOR;
         }
     };
+
+    // CollectTerm
+
+    public static interface Collect extends Pred {
+    }
+
+    private static final FunctImpl<Collect> COLLECT_FUNCTOR       = functImpl((SerializableBiFunction<Pred, Pred, Collect>) Logic::collect, null);
+    private static final Functor<Collect>   COLLECT_FUNCTOR_PROXY = COLLECT_FUNCTOR.proxy();
+
+    @SuppressWarnings("unchecked")
+    public static Collect collect(Pred pred, Pred accum) {
+        return new CollectImpl(pred, accum).proxy();
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected static CollectImpl collectImpl(TermImpl pred, TermImpl accum) {
+        return new CollectImpl(pred, accum);
+    }
+
+    private static final class CollectImpl extends TermImpl<Collect> {
+        private static final long serialVersionUID = -2799691054715131197L;
+
+        private CollectImpl(Pred pred, Pred accum) {
+            super(COLLECT_FUNCTOR_PROXY, pred, accum);
+        }
+
+        @SuppressWarnings("rawtypes")
+        private CollectImpl(TermImpl pred, TermImpl accum) {
+            super(COLLECT_FUNCTOR, pred, accum);
+        }
+
+        private CollectImpl(Object[] args) {
+            super(args);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected Collect proxy() {
+            return (Collect) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Collect.class}, this);
+        }
+
+        @Override
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        protected CollectImpl term(Object[] array) {
+            return new CollectImpl(array);
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected final TermImpl<?> pred() {
+            return ((TermImpl) get(1));
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected final TermImpl<?> accum() {
+            return ((TermImpl) get(2));
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected Map<VarImpl, Object> localVariables() {
+            Map<VarImpl, Object> predVars = pred().variables();
+            Map<VarImpl, Object> accumVars = accum().variables();
+            return predVars.filter(accumVars::contains).asMap(Function.identity());
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Map<VarImpl, Object> variables() {
+            Map<VarImpl, Object> predVars = pred().variables();
+            Map<VarImpl, Object> accumVars = accum().variables();
+            return Collection.concat(predVars.exclude(accumVars::contains), accumVars.exclude(predVars::contains)).asMap(Function.identity());
+        }
+
+        @SuppressWarnings("rawtypes")
+        private static int identityIndex(TermImpl accum) {
+            for (int i = 1; i < accum.length(); i++) {
+                if (accum.get(i) instanceof TermImpl) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @SuppressWarnings("rawtypes")
+        private static int resultIndex(TermImpl accum) {
+            for (int i = 1; i < accum.length(); i++) {
+                if (accum.get(i) instanceof Class) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        @Override
+        protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+            Map<VarImpl, Object> localVars = localVariables();
+            TermImpl goalPred = ((CollectImpl) goal).pred();
+            TermImpl pred = pred().setBinding(localVars);
+            TermImpl goalAccum = ((CollectImpl) goal).accum();
+            TermImpl accum = accum();
+            int ii = identityIndex(accum);
+            int ri = resultIndex(accum);
+            Set<TermImpl> rs = Set.of(accum.getTerm(ii));
+            for (TermImpl m : ((TermImpl<?>) pred).match(goalPred, der, rec)) {
+                Map<VarImpl, Object> b = goalPred.getBinding(m, Map.of());
+                Set<TermImpl> a = Set.of();
+                for (TermImpl r : rs) {
+                    TermImpl s = accum.setBinding(b).set(ii, r);
+                    a = a.addAll(s.match(goalAccum, der, rec));
+                }
+                rs = a.map(t -> t.getTerm(ri)).asSet();
+            }
+            return rs.map(t -> set(2, accum.set(ri, t)));
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+            return super.termPrio(goal, der, rec);
+        }
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        protected Map<VarImpl, Object> getBinding(TermImpl<Collect> term, Map<VarImpl, Object> vars) {
+            Map<VarImpl, Object> localVars = localVariables();
+            return super.getBinding(term, vars).exclude(e -> localVars.containsKey(e.getKey())).asMap(Function.identity());
+        }
+    }
 
     // Rules
 
@@ -1038,7 +1213,7 @@ public class Logic {
     // Equals
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Functor<Pred> eq = functor(Arithmetic::eq, t -> {
+    private static Functor<Pred> eq = functor(Logic::eq, t -> {
         TermImpl at = t.getTerm(1);
         TermImpl bt = t.getTerm(2);
         if (at == null && bt == null) {
@@ -1074,7 +1249,7 @@ public class Logic {
     }
 
     @SuppressWarnings("rawtypes")
-    private static Functor<Pred> is = functor((SerializableBiFunction<Func, Atom, Pred>) Arithmetic::is);
+    private static Functor<Pred> is = functor((SerializableBiFunction<Func, Atom, Pred>) Logic::is);
 
     public static <T extends Term> Pred is(T t, Atom<T> a) {
         return term(is, t, a);

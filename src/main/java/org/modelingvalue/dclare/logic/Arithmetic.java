@@ -18,7 +18,9 @@
 //      but also our friend. "He will live on in many of the lines of code you see below."                               ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare;
+package org.modelingvalue.dclare.logic;
+
+import static org.modelingvalue.dclare.logic.Logic.*;
 
 import java.math.BigInteger;
 
@@ -26,8 +28,17 @@ import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableBiFunction;
 import org.modelingvalue.collections.util.SerializableFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction;
+import org.modelingvalue.dclare.logic.Logic.Atom;
+import org.modelingvalue.dclare.logic.Logic.Func;
+import org.modelingvalue.dclare.logic.Logic.Functor;
+import org.modelingvalue.dclare.logic.Logic.Pred;
+import org.modelingvalue.dclare.logic.Logic.Term;
+import org.modelingvalue.dclare.logic.Logic.TermImpl;
 
-public class Arithmetic extends Logic {
+public final class Arithmetic {
+
+    private Arithmetic() {
+    }
 
     // Integer
 

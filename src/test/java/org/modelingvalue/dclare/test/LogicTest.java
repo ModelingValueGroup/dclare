@@ -22,8 +22,8 @@ package org.modelingvalue.dclare.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.modelingvalue.dclare.Arithmetic.*;
-import static org.modelingvalue.dclare.Logic.*;
+import static org.modelingvalue.dclare.logic.Arithmetic.*;
+import static org.modelingvalue.dclare.logic.Logic.*;
 import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -33,11 +33,11 @@ import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableFunction;
-import org.modelingvalue.dclare.Arithmetic.IntAtom;
-import org.modelingvalue.dclare.Logic;
-import org.modelingvalue.dclare.Logic.*;
 import org.modelingvalue.dclare.Universe;
 import org.modelingvalue.dclare.UniverseTransaction;
+import org.modelingvalue.dclare.logic.Arithmetic.IntAtom;
+import org.modelingvalue.dclare.logic.Logic;
+import org.modelingvalue.dclare.logic.Logic.*;
 
 public class LogicTest {
 
@@ -192,6 +192,9 @@ public class LogicTest {
     RootAtom   U      = rootAtomVar("U");
     Root       V      = rootVar("V");
 
+    @SuppressWarnings("unchecked")
+    L<Person>  PL     = var(L.class, "PL");
+
     // Terms
 
     PersonAtom Carel  = person("Carel");
@@ -291,6 +294,8 @@ public class LogicTest {
             isFalse(goal(ancestorDescendent(Heleen, Wim)));
             isFalse(goal(ancestorDescendent(Joppe, Carel)));
             isFalse(goal(ancestorDescendent(Carel, Carel)));
+
+            hasBindings(goal(collect(parentChild(Wim, C), prepend(C, l(), PL))), binding(PL, l(Marijn, Joppe)));
         });
     }
 
