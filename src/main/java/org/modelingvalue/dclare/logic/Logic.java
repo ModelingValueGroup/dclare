@@ -707,7 +707,7 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         public Set<TermImpl> incomplete() {
-            return Set.of(Logic.incomplete(Logic.list(this)));
+            return Set.of(Logic.incomplete(List.of(this)));
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
@@ -732,7 +732,7 @@ public final class Logic {
                 }
                 int i = der.lastIndexOf(this);
                 if (i >= 0) {
-                    return Set.of(Logic.incomplete(der.sublist(i, der.size()).append(this)));
+                    return Set.of(Logic.incomplete(der.append(this)));
                 }
                 der = der.append(this);
                 Set<TermImpl> set = Set.of(), add = Set.of();
@@ -1024,16 +1024,27 @@ public final class Logic {
             TermImpl goalAccum = ((CollectImpl) goal).accum();
             TermImpl accum = accum();
             Set<TermImpl> rs = Set.of(accum.getTerm(ii));
-            for (TermImpl m : ((TermImpl<?>) pred().setBinding(localVars)).match(goalPred, der, rec)) {
-                Map<VarImpl, Object> b = goalPred.getBinding(m, Map.of());
-                Set<TermImpl> a = Set.of();
-                for (TermImpl r : rs) {
-                    TermImpl s = accum.setBinding(b).set(ii, r);
-                    a = a.addAll(s.match(goalAccum, der, rec));
+            Set<TermImpl> inc = Set.of();
+            for (TermImpl pm : ((TermImpl<?>) pred().setBinding(localVars)).match(goalPred, der, rec)) {
+                if (pm.isIncomplete()) {
+                    inc = inc.add(pm);
+                } else {
+                    Map<VarImpl, Object> b = goalPred.getBinding(pm, Map.of());
+                    Set<TermImpl> a = Set.of();
+                    for (TermImpl r : rs) {
+                        TermImpl s = accum.setBinding(b).set(ii, r);
+                        for (TermImpl am : ((TermImpl<?>) s).match(goalAccum, der, rec)) {
+                            if (am.isIncomplete()) {
+                                inc = inc.add(am);
+                            } else {
+                                a = a.add(am);
+                            }
+                        }
+                    }
+                    rs = a.map(t -> t.getTerm(ri)).asSet();
                 }
-                rs = a.map(t -> t.getTerm(ri)).asSet();
             }
-            return rs.map(t -> set(2, accum.set(ri, t)));
+            return Collection.concat(inc, rs.map(t -> set(2, accum.set(ri, t))));
         }
 
         @SuppressWarnings("rawtypes")
