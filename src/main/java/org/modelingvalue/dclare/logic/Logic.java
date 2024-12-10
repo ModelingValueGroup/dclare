@@ -1045,8 +1045,12 @@ public final class Logic {
                 TermImpl accum = accum();
                 for (int i = 1; i < accum.length(); i++) {
                     if (accum.get(i) instanceof TermImpl) {
-                        identityIndex = i;
-                        break;
+                        Class<?> rt = ((VarImpl) accum.get(resultIndex())).type();
+                        Class<?> at = ((TermImpl) accum.get(i)).type();
+                        if (rt.isAssignableFrom(at)) {
+                            identityIndex = i;
+                            break;
+                        }
                     }
                 }
             }
