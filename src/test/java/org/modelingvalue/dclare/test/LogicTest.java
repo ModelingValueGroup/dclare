@@ -24,17 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.modelingvalue.dclare.logic.Arithmetic.*;
 import static org.modelingvalue.dclare.logic.Logic.*;
-import static org.modelingvalue.dclare.test.support.Shared.THE_POOL;
-
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.RepeatedTest;
-import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.SerializableFunction;
-import org.modelingvalue.dclare.Universe;
-import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.logic.Arithmetic.IntAtom;
 import org.modelingvalue.dclare.logic.Logic;
 import org.modelingvalue.dclare.logic.Logic.*;
@@ -44,11 +38,7 @@ public class LogicTest {
     // Utilities
 
     void run(Runnable test) {
-        UniverseTransaction universeTransaction = new UniverseTransaction(Universe.of(), THE_POOL);
-        boolean seq = ThreadLocalRandom.current().nextBoolean();
-        universeTransaction.put("test", seq ? Collection.sequential(test) : test);
-        universeTransaction.stop();
-        universeTransaction.waitForEnd();
+        Logic.run(test);
     }
 
     static void isTrue(Goal goal) {

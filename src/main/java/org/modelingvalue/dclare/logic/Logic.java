@@ -24,6 +24,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -33,6 +34,7 @@ import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.struct.impl.StructImpl;
+import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.SerializableBiFunction;
 import org.modelingvalue.collections.util.SerializableBiFunction.SerializableBiFunctionImpl;
 import org.modelingvalue.collections.util.SerializableFunction;
@@ -44,12 +46,22 @@ import org.modelingvalue.collections.util.SerializableSupplier.SerializableSuppl
 import org.modelingvalue.collections.util.SerializableTriFunction;
 import org.modelingvalue.collections.util.SerializableTriFunction.SerializableTriFunctionImpl;
 import org.modelingvalue.collections.util.StringUtil;
-import org.modelingvalue.dclare.Constant;
-import org.modelingvalue.dclare.CoreSetableModifier;
 
 public final class Logic {
 
     private Logic() {
+    }
+
+    private static final Context<Database> DATABASE = Context.of();
+
+    public static final void run(Runnable runnable) {
+        DATABASE.run(new Database(), runnable);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static final class Database {
+        private final AtomicReference<Map<TermImpl, Set<TermImpl>>>   facts = new AtomicReference<>(Map.of());
+        private final AtomicReference<Map<FunctImpl, List<RuleImpl>>> rules = new AtomicReference<>(Map.of());
     }
 
     private static final boolean                                              TRACE_LOGIC = Boolean.getBoolean("TRACE_LOGIC");
@@ -73,11 +85,6 @@ public final class Logic {
                                                                                                   return l.append(e);
                                                                                               }
                                                                                           };
-    @SuppressWarnings("rawtypes")
-    private static final Constant<TermImpl, Set<TermImpl>>                    FACTS       = Constant.of("FACTS", null, CoreSetableModifier.durable);
-
-    @SuppressWarnings("rawtypes")
-    private static final Constant<FunctImpl, List<RuleImpl>>                  RULES       = Constant.of("RULES", null, CoreSetableModifier.durable);
 
     private static abstract class ClauseImpl<F extends Term> extends StructImpl implements InvocationHandler, Comparable<ClauseImpl<F>> {
         private static final long   serialVersionUID = 7315776001191198132L;
@@ -627,18 +634,19 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        protected final void makeFact() {
+        protected final void makeFact(Database database) {
             if (functor().lambda() != null) {
                 throw new IllegalArgumentException("No facts of a functor with a lambda allowed. " + this);
             }
-            if (RULES.get(functor()) != null) {
+            if (database.rules.get().get(functor()) != null) {
                 throw new IllegalArgumentException("No facts of a functor with rules allowed. " + this);
             }
-            FACTS.force(this, ADD_FACT, this);
+            database.facts.updateAndGet(m -> m.put(this, ADD_FACT.apply(m.get(this), this)));
             Object[] array = toArray();
             for (int i = 1; i < array.length; i++) {
                 array[i] = getType(i);
-                FACTS.force(term(array), ADD_FACT, this);
+                TermImpl<F> term = term(array);
+                database.facts.updateAndGet(m -> m.put(term, ADD_FACT.apply(m.get(term), this)));
                 array = toArray();
             }
         }
@@ -760,7 +768,7 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
             if (lambda != null) {
                 return lambda.apply(this);
@@ -769,11 +777,11 @@ public final class Logic {
             if (non > 1 || non >= totalLength()) {
                 return Set.of(Logic.incomplete(der.append(this)));
             }
-            Set<TermImpl> facts = FACTS.get(this);
+            Set<TermImpl> facts = database.facts.get().get(this);
             if (facts != null) {
                 return facts;
             }
-            List<RuleImpl> rules = RULES.get(functor());
+            List<RuleImpl> rules = database.rules.get().get(functor());
             if (rules != null) {
                 Set<TermImpl> r = rec.get(this);
                 if (r != null) {
@@ -787,7 +795,7 @@ public final class Logic {
                 Set<TermImpl> set = Set.of(), add = Set.of();
                 boolean found = false, incomplete = false;
                 do {
-                    add = or(rules, non, der, add.isEmpty() ? rec : rec.put(this, add)).removeAll(set);
+                    add = or(rules, non, der, add.isEmpty() ? rec : rec.put(this, add), database).removeAll(set);
                     found = add.anyMatch(this::equalFunctor);
                     incomplete |= add.anyMatch(this::isIncomplete);
                     if (incomplete && found && set.isEmpty()) {
@@ -795,17 +803,22 @@ public final class Logic {
                     }
                     set = set.addAll(add);
                 } while (found && incomplete);
-                FACTS.force(this, set);
-                for (TermImpl e : set) {
-                    FACTS.force(e, Set.of(e));
-                }
+                memoization(set, database);
                 return set;
             }
             return Set.of();
         }
 
         @SuppressWarnings("rawtypes")
-        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        private void memoization(Set<TermImpl> set, Database database) {
+            database.facts.updateAndGet(m -> m.put(this, set));
+            for (TermImpl e : set) {
+                database.facts.updateAndGet(m -> m.put(e, Set.of(e)));
+            }
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             int non = nrOfNulls();
             SerializableFunction<TermImpl<F>, Collection<TermImpl>> lambda = functor().lambda();
             if (lambda != null) {
@@ -819,11 +832,11 @@ public final class Logic {
             if (non > 1 || non >= totalLength()) {
                 return Integer.MAX_VALUE;
             }
-            Set<TermImpl> facts = FACTS.get(this);
+            Set<TermImpl> facts = database.facts.get().get(this);
             if (facts != null) {
                 return Integer.MIN_VALUE + facts.size();
             }
-            List<RuleImpl> rules = RULES.get(functor());
+            List<RuleImpl> rules = database.rules.get().get(functor());
             if (rules != null) {
                 Set<TermImpl> r = rec.get(this);
                 if (r != null) {
@@ -841,10 +854,10 @@ public final class Logic {
         }
 
         @SuppressWarnings("rawtypes")
-        private Set<TermImpl> or(List<RuleImpl> rules, int non, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        private Set<TermImpl> or(List<RuleImpl> rules, int non, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             Set<TermImpl> r = Set.of();
             for (RuleImpl rule : rules) {
-                Set<TermImpl> eval = rule.eval(this, der, rec);
+                Set<TermImpl> eval = rule.eval(this, der, rec, database);
                 if (non == 0 && eval.equals(Set.of(this))) {
                     return (Set<TermImpl>) eval;
                 }
@@ -1072,7 +1085,7 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         @Override
-        protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        protected Collection<TermImpl> match(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             Map<VarImpl, Object> localVars = ((CollectImpl) goal).localVariables();
             int ii = ((CollectImpl) goal).identityIndex();
             int ri = ((CollectImpl) goal).resultIndex();
@@ -1081,7 +1094,7 @@ public final class Logic {
             TermImpl accum = accum();
             Set<TermImpl> rs = Set.of(accum.getTerm(ii));
             Set<TermImpl> inc = Set.of();
-            for (TermImpl pm : ((TermImpl<?>) pred().setBinding(localVars)).match(goalPred, der, rec)) {
+            for (TermImpl pm : ((TermImpl<?>) pred().setBinding(localVars)).match(goalPred, der, rec, database)) {
                 if (pm.isIncomplete()) {
                     inc = inc.add(pm);
                 } else {
@@ -1089,7 +1102,7 @@ public final class Logic {
                     Set<TermImpl> a = Set.of();
                     for (TermImpl r : rs) {
                         TermImpl s = accum.setBinding(b).set(ii, r);
-                        for (TermImpl am : ((TermImpl<?>) s).match(goalAccum, der, rec)) {
+                        for (TermImpl am : ((TermImpl<?>) s).match(goalAccum, der, rec, database)) {
                             if (am.isIncomplete()) {
                                 inc = inc.add(am);
                             } else {
@@ -1105,8 +1118,8 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
-            return super.termPrio(goal, der, rec);
+        protected int termPrio(TermImpl goal, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
+            return super.termPrio(goal, der, rec, database);
         }
 
         @SuppressWarnings("rawtypes")
@@ -1129,7 +1142,9 @@ public final class Logic {
     public static Rule rule(Pred pred, Goal goal) {
         RuleImpl ruleImpl = new RuleImpl(pred, goal);
         TermImpl termImpl = Logic.<Pred, TermImpl> unproxy(pred);
-        RULES.force(termImpl.functor(), ADD_RULE, ruleImpl);
+        FunctImpl functor = termImpl.functor();
+        Database database = DATABASE.get();
+        database.rules.updateAndGet(m -> m.put(functor, ADD_RULE.apply(m.get(functor), ruleImpl)));
         return ruleImpl.proxy();
     }
 
@@ -1166,7 +1181,7 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        protected Set<TermImpl> eval(TermImpl term, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        protected Set<TermImpl> eval(TermImpl term, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             TermImpl head = term();
             Map<VarImpl, Object> binding = head.getBinding(term, Map.of());
             if (binding == null) {
@@ -1175,7 +1190,7 @@ public final class Logic {
             if (TRACE_LOGIC) {
                 System.err.println("!!!!!!!!!!!!!! " + "  ".repeat(der.size()) + this + " " + binding.toString().substring(3));
             }
-            Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(binding), der, rec);
+            Collection<Map<VarImpl, Object>> r = goal().eval(variables().putAll(binding), der, rec, database);
             return r.map(m -> {
                 TermImpl it = (TermImpl) m.get(INCOMPLETE_VAR);
                 return it != null ? it : head.setBinding(m);
@@ -1263,12 +1278,12 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         public Collection<Map<VarImpl, Object>> eval() {
-            return eval(variables(), List.of(), Map.of());
+            return eval(variables(), List.of(), Map.of(), DATABASE.get());
         }
 
         @SuppressWarnings("rawtypes")
-        protected Collection<Map<VarImpl, Object>> eval(Map<VarImpl, Object> vars, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
-            return eval(goals(), Set.of(vars), der, rec);
+        protected Collection<Map<VarImpl, Object>> eval(Map<VarImpl, Object> vars, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
+            return eval(goals(), Set.of(vars), der, rec, database);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -1277,7 +1292,7 @@ public final class Logic {
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        private Collection<Map<VarImpl, Object>> eval(List<TermImpl> goals, Collection<Map<VarImpl, Object>> vars, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             if (goals.isEmpty()) {
                 return vars;
             }
@@ -1289,10 +1304,10 @@ public final class Logic {
                 for (TermImpl g : goals) {
                     actual = actual.add(g.setBinding(v));
                 }
-                int i = first(actual, goals, der, rec);
+                int i = first(actual, goals, der, rec, database);
                 TermImpl f = actual.get(i);
                 TermImpl g = goals.get(i);
-                Collection<TermImpl> m = f.match(g, der, rec);
+                Collection<TermImpl> m = f.match(g, der, rec, database);
                 return eval(goals.removeIndex(i), m.<Map<VarImpl, Object>> map(t -> {
                     if (t.type() == Incomplete.class) {
                         return Map.of(Entry.of(INCOMPLETE_VAR, t));
@@ -1300,16 +1315,16 @@ public final class Logic {
                         Map<VarImpl, Object> b = g.getBinding(t, Map.of());
                         return b == null ? Map.of() : v.putAll(b);
                     }
-                }), der, rec);
+                }), der, rec, database);
             });
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private static int first(List<TermImpl> actual, List<TermImpl> goals, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec) {
+        private static int first(List<TermImpl> actual, List<TermImpl> goals, List<TermImpl> der, Map<TermImpl, Set<TermImpl>> rec, Database database) {
             int first = -1;
             int min = Integer.MAX_VALUE;
             for (int i = 0; i < actual.size(); i++) {
-                int prio = actual.get(i).termPrio(goals.get(i), der, rec);
+                int prio = actual.get(i).termPrio(goals.get(i), der, rec, database);
                 if (first == -1 || prio < min) {
                     first = i;
                     min = prio;
@@ -1376,7 +1391,7 @@ public final class Logic {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static void fact(Rel rel) {
-        Logic.<Pred, TermImpl> unproxy(rel).makeFact();
+        Logic.<Pred, TermImpl> unproxy(rel).makeFact(DATABASE.get());
     }
 
     // Is
