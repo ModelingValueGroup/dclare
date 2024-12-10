@@ -453,7 +453,7 @@ public final class Logic {
         return l;
     }
 
-    // Prepend
+    // Add
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static List<TermImpl> addOrdered(List<TermImpl> l, TermImpl e) {
@@ -954,16 +954,13 @@ public final class Logic {
         }
     };
 
-    // CollectTerm
+    // Collect
 
-    public static interface Collect extends Pred {
-    }
-
-    private static final FunctImpl<Collect> COLLECT_FUNCTOR       = functImpl((SerializableBiFunction<Pred, Pred, Collect>) Logic::collect, null);
-    private static final Functor<Collect>   COLLECT_FUNCTOR_PROXY = COLLECT_FUNCTOR.proxy();
+    private static final FunctImpl<Pred> COLLECT_FUNCTOR       = functImpl((SerializableBiFunction<Pred, Pred, Pred>) Logic::collect, null);
+    private static final Functor<Pred>   COLLECT_FUNCTOR_PROXY = COLLECT_FUNCTOR.proxy();
 
     @SuppressWarnings("unchecked")
-    public static Collect collect(Pred pred, Pred accum) {
+    public static Pred collect(Pred pred, Pred accum) {
         return new CollectImpl(pred, accum).proxy();
     }
 
@@ -972,7 +969,7 @@ public final class Logic {
         return new CollectImpl(pred, accum);
     }
 
-    private static final class CollectImpl extends TermImpl<Collect> {
+    private static final class CollectImpl extends TermImpl<Pred> {
         private static final long serialVersionUID = -2799691054715131197L;
 
         private CollectImpl(Pred pred, Pred accum) {
@@ -990,8 +987,8 @@ public final class Logic {
 
         @Override
         @SuppressWarnings("unchecked")
-        protected Collect proxy() {
-            return (Collect) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Collect.class}, this);
+        protected Pred proxy() {
+            return (Pred) Proxy.newProxyInstance(type().getClassLoader(), new Class[]{Pred.class}, this);
         }
 
         @Override
@@ -1114,7 +1111,7 @@ public final class Logic {
 
         @SuppressWarnings("rawtypes")
         @Override
-        protected Map<VarImpl, Object> getBinding(TermImpl<Collect> term, Map<VarImpl, Object> vars) {
+        protected Map<VarImpl, Object> getBinding(TermImpl<Pred> term, Map<VarImpl, Object> vars) {
             Map<VarImpl, Object> localVars = localVariables();
             return super.getBinding(term, vars).exclude(e -> localVars.containsKey(e.getKey())).asMap(Function.identity());
         }
