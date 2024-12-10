@@ -1335,16 +1335,20 @@ public final class Logic {
     @SuppressWarnings("rawtypes")
     private static Functor<Pred> is = functor((SerializableBiFunction<Func, Atom, Pred>) Logic::is);
 
-    public static <T extends Term> Pred is(T t, Atom<T> a) {
-        return term(is, t, a);
+    public static <T extends Term> Pred is(T a, T b) {
+        return term(is, a, b);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static void isAtomRule() {
         Atom A1 = var(Atom.class, "A1");
         Atom A2 = var(Atom.class, "A2");
+        Func F1 = var(Func.class, "F1");
+        Func F2 = var(Func.class, "F2");
 
         rule(is(A1, A2), goal(eq(A1, A2)));
+        rule(is(F1, F2), goal(is(F2, A2), is(F1, A2)));
+        rule(is(A1, F1), goal(is(F1, A1)));
     }
 
     // Bindings

@@ -251,9 +251,9 @@ public class LogicTest {
             fact(parentChild(Heleen, Marijn));
 
             isTrue(goal(is(parent(Joppe), Heleen)));
-            isTrue(goal(is(child(Jan), Wim)));
+            isTrue(goal(is(Wim, child(Jan))));
 
-            isFalse(goal(is(parent(Wim), Marijn)));
+            isFalse(goal(is(Marijn, parent(Wim))));
             isFalse(goal(is(parent(Wim), Heleen)));
             isFalse(goal(is(child(Wim), Wim)));
 
