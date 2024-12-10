@@ -225,7 +225,7 @@ public class LogicTest {
     // Family Rules
 
     private void familyRules() {
-        isAtomRule();
+        isRules();
 
         rule(is(parent(X), A), goal(is(X, B), parentChild(A, B)));
         rule(is(child(X), A), goal(is(X, B), parentChild(B, A)));

@@ -237,7 +237,7 @@ public final class Arithmetic {
     // Is Rules
 
     public static void arithmeticRules() {
-        isAtomRule();
+        isRules();
 
         IntAtom P = iav("PL");
         IntAtom Q = iav("QL");

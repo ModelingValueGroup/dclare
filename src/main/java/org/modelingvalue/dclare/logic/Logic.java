@@ -184,6 +184,52 @@ public final class Logic {
             }
             return r;
         }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected ClauseImpl<F> eq(ClauseImpl<F> other) {
+            Object[] array = toArray();
+            for (int i = 0; i < array.length; i++) {
+                Object tv = get(i);
+                Object ov = other.get(i);
+                if (tv != ov) {
+                    if (tv instanceof ClauseImpl && ov instanceof ClauseImpl) {
+                        ClauseImpl eq = ((ClauseImpl) tv).eq((ClauseImpl) ov);
+                        if (eq != null) {
+                            array[i] = eq;
+                        } else {
+                            return null;
+                        }
+                    } else if (tv instanceof ClauseImpl && ov instanceof Class) {
+                        if (((Class) ov).isAssignableFrom(((ClauseImpl) tv).type())) {
+                            array[i] = tv;
+                        } else {
+                            return null;
+                        }
+                    } else if (tv instanceof Class && ov instanceof ClauseImpl) {
+                        if (((Class) tv).isAssignableFrom(((ClauseImpl) ov).type())) {
+                            array[i] = ov;
+                        } else {
+                            return null;
+                        }
+                    } else if (!(tv instanceof Class) && ov instanceof Class) {
+                        if (((Class) ov).isAssignableFrom(tv.getClass())) {
+                            array[i] = tv;
+                        } else {
+                            return null;
+                        }
+                    } else if (tv instanceof Class && !(ov instanceof Class)) {
+                        if (((Class) tv).isAssignableFrom(ov.getClass())) {
+                            array[i] = ov;
+                        } else {
+                            return null;
+                        }
+                    } else if (!Objects.equals(tv, ov)) {
+                        return null;
+                    }
+                }
+            }
+            return term(array);
+        }
     }
 
     private static final Object noProxy(Object object) {
@@ -897,6 +943,12 @@ public final class Logic {
         protected boolean isIncomplete() {
             return functor() == INCOMPLETE_FUNCTOR;
         }
+
+        @Override
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        protected TermImpl<F> eq(ClauseImpl<F> other) {
+            return (TermImpl<F>) super.eq(other);
+        }
     };
 
     // CollectTerm
@@ -1307,7 +1359,8 @@ public final class Logic {
         } else if (bt == null) {
             return Set.of(t.set(2, at));
         } else {
-            return at.equals(bt) ? Set.of(t) : Set.of();
+            TermImpl eq = at.eq(bt);
+            return eq == null ? Set.of() : Set.of(t.set(1, eq).set(2, eq));
         }
     });
 
@@ -1340,7 +1393,7 @@ public final class Logic {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static void isAtomRule() {
+    public static void isRules() {
         Atom A1 = var(Atom.class, "A1");
         Atom A2 = var(Atom.class, "A2");
         Func F1 = var(Func.class, "F1");
