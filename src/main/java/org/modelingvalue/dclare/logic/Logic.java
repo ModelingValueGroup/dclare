@@ -187,6 +187,9 @@ public final class Logic {
 
         @SuppressWarnings({"rawtypes", "unchecked"})
         protected ClauseImpl<F> eq(ClauseImpl<F> other) {
+            if (this == other) {
+                return this;
+            }
             Object[] array = toArray();
             for (int i = 0; i < array.length; i++) {
                 Object tv = get(i);
