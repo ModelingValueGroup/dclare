@@ -177,7 +177,7 @@ public class ConstantState {
             if (ist == null) {
                 ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
-            return ist;
+            return ist == NULL ? null : ist;
         }
 
         @SuppressWarnings("unchecked")
