@@ -160,10 +160,15 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 if (isTraceDerivation(mutable, observed)) {
                     runSilent(() -> System.err.println(tracePre(mutable, this) + "!!!! " + mutable + "." + observer + "() => THROWS " + t));
                 }
-                universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
+                handleException(mutable, observer, t);
             }
         }));
 
+    }
+
+    @SuppressWarnings("rawtypes")
+    protected void handleException(Mutable mutable, Observer observer, Throwable t) {
+        universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
     }
 
     @Override
