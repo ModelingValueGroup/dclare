@@ -87,7 +87,9 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     @SuppressWarnings("rawtypes")
     @Override
     protected void handleException(Mutable mutable, Observer observer, Throwable t) {
-        // Ignore
+        if (t instanceof RuntimeException) {
+            throw (RuntimeException) t;
+        }
     }
 
     @Override
