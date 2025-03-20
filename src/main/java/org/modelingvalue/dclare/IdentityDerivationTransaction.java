@@ -84,14 +84,6 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
         return super.isTraceDerivation(object, setable) && (universeTransaction().getConfig().isTraceMatching() || memoization(object) != memoization());
     }
 
-    @SuppressWarnings("rawtypes")
-    @Override
-    protected void handleException(Mutable mutable, Observer observer, Throwable t) {
-        if (t instanceof RuntimeException) {
-            throw (RuntimeException) t;
-        }
-    }
-
     @Override
     protected String getCurrentTypeForTrace() {
         return "ID";

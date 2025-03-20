@@ -167,7 +167,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     @SuppressWarnings("rawtypes")
-    protected void handleException(Mutable mutable, Observer observer, Throwable t) {
+    protected final void handleException(Mutable mutable, Observer observer, Throwable t) {
         universeTransaction().handleException(new TransactionException(mutable, new TransactionException(observer, t)));
     }
 
