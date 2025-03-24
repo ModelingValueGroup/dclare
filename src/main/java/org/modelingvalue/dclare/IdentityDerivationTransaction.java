@@ -88,4 +88,10 @@ public class IdentityDerivationTransaction extends AbstractDerivationTransaction
     protected String getCurrentTypeForTrace() {
         return "ID";
     }
+
+    @Override
+    @SuppressWarnings("rawtypes")
+    protected void handleException(Mutable mutable, Observer observer, Throwable t) {
+        // Ignore: Will result in missing matches in complex identity situations, hence, less incremental
+    }
 }
