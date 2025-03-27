@@ -21,6 +21,7 @@
 package org.modelingvalue.dclare;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -330,29 +331,31 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
     }
 
     protected static class Derived<O, T> extends Pair<O, Observed<O, T>> {
-        private static final long   serialVersionUID = -2566539820227398813L;
+        private static final long        serialVersionUID = -2566539820227398813L;
 
         @SuppressWarnings("rawtypes")
-        private final Derived<?, ?> outer;
-        private T                   value;
+        private final Derived<?, ?>      outer;
+        private final AtomicReference<T> value;
 
         @SuppressWarnings("rawtypes")
         protected Derived(O a, Observed<O, T> b, Derived<?, ?> outer) {
             super(a, b);
             this.outer = outer;
+            this.value = new AtomicReference<>();
         }
 
         protected T get() {
+            T value = this.value.get();
             return value == ConstantState.NULL ? null : value;
         }
 
         @SuppressWarnings("unchecked")
         protected void set(T value) {
-            this.value = value == null ? (T) ConstantState.NULL : value;
+            this.value.set(value == null ? (T) ConstantState.NULL : value);
         }
 
         protected boolean isSet() {
-            return value != null;
+            return this.value.get() != null;
         }
 
         protected boolean isDerived(Object object, Observed<?, ?> observed) {
