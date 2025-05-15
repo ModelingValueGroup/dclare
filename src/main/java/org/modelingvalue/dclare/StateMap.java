@@ -146,11 +146,6 @@ public class StateMap implements Serializable {
         }).collect(Collectors.joining("\n"));
     }
 
-    @SuppressWarnings("unchecked")
-    public <O, T> T get(O obj, Setable<O, T> settable) {
-        return (T) map.get(obj).get(settable);
-    }
-
     public <O, T> StateMap clear(O obj, Setable<O, T> settable) {
         return new StateMap(map.put(obj, map.get(obj).removeKey(settable)));
     }

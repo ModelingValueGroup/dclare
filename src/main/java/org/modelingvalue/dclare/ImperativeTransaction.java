@@ -117,7 +117,7 @@ public class ImperativeTransaction extends LeafTransaction {
 
     public final boolean commit(State dclare, boolean timeTraveling) {
         commiting = true;
-        boolean insync = setted.isEmpty() && dclare.get(this, CHANGE_NR).equals(state.get(this, CHANGE_NR));
+        boolean insync = setted.isEmpty() && dclare.getRaw(this, CHANGE_NR).equals(state.getRaw(this, CHANGE_NR));
         if (preState() != dclare) {
             dclare2imper(dclare, timeTraveling, insync);
         }
@@ -185,7 +185,7 @@ public class ImperativeTransaction extends LeafTransaction {
                     }
                 });
             } catch (Throwable t) {
-                CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
+                CHANGE_NR.set(ImperativeTransaction.this, imper.getRaw(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
         }, direction, CoreLeafModifier.preserved);

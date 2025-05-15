@@ -64,7 +64,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     protected boolean hasQueued(State state, Mutable object, Priority prio) {
-        return !state.get(object, state.actions(prio)).isEmpty() || !state.get(object, state.children(prio)).isEmpty();
+        return !state.getRaw(object, state.actions(prio)).isEmpty() || !state.getRaw(object, state.children(prio)).isEmpty();
     }
 
     private void move(Mutable object, Priority from, Priority to) {

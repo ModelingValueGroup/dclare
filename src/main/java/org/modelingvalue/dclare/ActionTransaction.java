@@ -158,18 +158,18 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(currentState.get().get(object, property), element));
+        return set(object, property, function.apply(currentState.get().getRaw(object, property), element));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        return set(object, property, oper.apply(currentState.get().get(object, property)));
+        return set(object, property, oper.apply(currentState.get().getRaw(object, property)));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
         property.init(post);
-        T pre = state().get(object, property);
+        T pre = state().getRaw(object, property);
         set(object, property, pre, post);
         return pre;
     }

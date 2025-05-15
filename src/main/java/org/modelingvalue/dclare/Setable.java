@@ -375,7 +375,7 @@ public class Setable<O, T> extends Getable<O, T> {
             }
         }
         if (scope != null) {
-            Set s = state.get(object, scope.get());
+            Set s = state.getRaw(object, scope.get());
             if (post instanceof ContainingCollection) {
                 if (!s.containsAll((ContainingCollection) post)) {
                     errors = errors.add(new OutOfScopeException(object, this, post, s));

@@ -95,7 +95,7 @@ public interface Mutable extends TransactionClass {
     default boolean dBecameOrphan() {
         LeafTransaction tx = LeafTransaction.getCurrent();
         return tx.preStartState(Priority.OUTER).getRaw(this, Mutable.D_PARENT_CONTAINING) != null && //
-                tx.state().get(this, Mutable.D_PARENT_CONTAINING) == null;
+                tx.state().getRaw(this, Mutable.D_PARENT_CONTAINING) == null;
     }
 
     default void dChangedParentContaining(Pair<Mutable, Setable<Mutable, ?>> pre, Pair<Mutable, Setable<Mutable, ?>> post) {
@@ -242,7 +242,7 @@ public interface Mutable extends TransactionClass {
 
     @Override
     default State run(State state, MutableTransaction parent) {
-        Pair<Mutable, Setable<Mutable, ?>> pair = state.get(this, D_PARENT_CONTAINING);
+        Pair<Mutable, Setable<Mutable, ?>> pair = state.getRaw(this, D_PARENT_CONTAINING);
         if (pair != null && parent.mutable().equals(pair.a())) {
             return TransactionClass.super.run(state, parent);
         } else {
@@ -266,7 +266,7 @@ public interface Mutable extends TransactionClass {
     }
 
     default boolean dIsOrphan(State state) {
-        return state.get(this, D_PARENT_CONTAINING) == null;
+        return state.getRaw(this, D_PARENT_CONTAINING) == null;
     }
 
     default ConstantState dMemoization(AbstractDerivationTransaction tx) {

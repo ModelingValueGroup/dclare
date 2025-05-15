@@ -77,8 +77,8 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        assertEquals(10, (int) result.get(object, source));
-        assertEquals(10, (int) result.get(object, target));
+        assertEquals(10, (int) result.getRaw(object, source));
+        assertEquals(10, (int) result.getRaw(object, target));
     }
 
     @RepeatedTest(32)
@@ -96,8 +96,8 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        assertEquals(10, (int) result.get(object, source));
-        assertEquals(10, (int) result.get(object, target));
+        assertEquals(10, (int) result.getRaw(object, source));
+        assertEquals(10, (int) result.getRaw(object, target));
     }
 
     @Test
@@ -126,7 +126,7 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
         printState(universeTransaction, result);
-        assertEquals(length, (int) result.get(TestMutable.of(length - 1, clazz), total));
+        assertEquals(length, (int) result.getRaw(TestMutable.of(length - 1, clazz), total));
     }
 
     static final Observed<TestMutable, TestMutable> next     = Observed.of("next", null, () -> DclareTests.previous);
@@ -156,7 +156,7 @@ public class DclareTests {
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
-        assertEquals(TestMutable.of(11, clazz), result.get(TestMutable.of(10, clazz), next));
+        assertEquals(TestMutable.of(11, clazz), result.getRaw(TestMutable.of(10, clazz), next));
         printState(universeTransaction, result);
     }
 
@@ -199,9 +199,9 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
         printState(universeTransaction, result);
-        assertEquals(Set.of(), result.get(c1, children));
-        assertNull(result.get(ggc6, qualifiedName));
-        assertEquals("u.c2.gc2.ggc3", result.get(ggc3, qualifiedName));
+        assertEquals(Set.of(), result.getRaw(c1, children));
+        assertNull(result.getRaw(ggc6, qualifiedName));
+        assertEquals("u.c2.gc2.ggc3", result.getRaw(ggc3, qualifiedName));
     }
 
     @Test
@@ -270,15 +270,15 @@ public class DclareTests {
 
         state = universeTransaction.waitForIdle();
         printState(universeTransaction, state);
-        assertNull(state.get(universe, child));
+        assertNull(state.getRaw(universe, child));
 
         state = universeTransaction.putAndWaitForIdle("inject1", () -> child.set(universe, child1));
         printState(universeTransaction, state);
-        assertEquals(child1, state.get(universe, child));
+        assertEquals(child1, state.getRaw(universe, child));
 
         state = universeTransaction.putAndWaitForIdle("inject2", () -> child.set(universe, child2));
         printState(universeTransaction, state);
-        assertEquals(child2, state.get(universe, child));
+        assertEquals(child2, state.getRaw(universe, child));
 
         universeTransaction.stop();
         state = universeTransaction.waitForStopped();
@@ -339,13 +339,13 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        List<TestMutable> before = result.get(universe, begin);
-        List<TestMutable> after  = result.get(universe, end);
-        List<TestMutable> list   = result.get(universe, children);
+        List<TestMutable> before = result.getRaw(universe, begin);
+        List<TestMutable> after  = result.getRaw(universe, end);
+        List<TestMutable> list   = result.getRaw(universe, children);
         assertEquals(List.of(one, two), list);
         assertEquals(List.of(one), before);
         assertEquals(List.of(two), after);
-        assertEquals(false, result.get(one, property));
-        assertEquals(true, result.get(two, property));
+        assertEquals(false, result.getRaw(one, property));
+        assertEquals(true, result.getRaw(two, property));
     }
 }

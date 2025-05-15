@@ -253,42 +253,42 @@ public class ModelMaker {
     }
 
     public int getXyzzy_source() {
-        return tx.currentState().get(xyzzy, source);
+        return tx.currentState().getRaw(xyzzy, source);
     }
 
     public int getXyzzy_target() {
-        return tx.currentState().get(xyzzy, target);
+        return tx.currentState().getRaw(xyzzy, target);
     }
 
     public int getXyzzy_target2() {
-        return tx.currentState().get(xyzzy, target2);
+        return tx.currentState().getRaw(xyzzy, target2);
     }
 
     public List<String> getXyzzy_aList() {
-        return tx.currentState().get(xyzzy, aList);
+        return tx.currentState().getRaw(xyzzy, aList);
     }
 
     public Set<String> getXyzzy_aSet() {
-        return tx.currentState().get(xyzzy, aSet);
+        return tx.currentState().getRaw(xyzzy, aSet);
     }
 
     public Set<TestMutable> getXyzzy_extraSet() {
-        return tx.currentState().get(xyzzy, extraSet);
+        return tx.currentState().getRaw(xyzzy, extraSet);
     }
 
     public Map<String, String> getXyzzy_aMap() {
-        return tx.currentState().get(xyzzy, aMap);
+        return tx.currentState().getRaw(xyzzy, aMap);
     }
 
     public DefaultMap<String, String> getXyzzy_aDefMap() {
-        return tx.currentState().get(xyzzy, aDefMap);
+        return tx.currentState().getRaw(xyzzy, aDefMap);
     }
 
     public QualifiedSet<String, String> getXyzzy_aQuaSet() {
-        return tx.currentState().get(xyzzy, aQuaSet);
+        return tx.currentState().getRaw(xyzzy, aQuaSet);
     }
 
     public TestMutable getXyzzy_extra() {
-        return tx.currentState().get(xyzzy, extra);
+        return tx.currentState().getRaw(xyzzy, extra);
     }
 }

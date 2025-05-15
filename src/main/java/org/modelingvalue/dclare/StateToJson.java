@@ -36,9 +36,9 @@ import org.modelingvalue.json.ToJson;
 
 @SuppressWarnings({"rawtypes", "unused"})
 public class StateToJson extends ToJson {
-    public static final  String                            ID_FIELD_NAME     = "@id";
-    public static final  String                            ID_REF_FIELD_NAME = "@idref";
-    public static final  String                            NAME_FIELD_NAME   = "name";
+    public static final String                             ID_FIELD_NAME     = "@id";
+    public static final String                             ID_REF_FIELD_NAME = "@idref";
+    public static final String                             NAME_FIELD_NAME   = "name";
     private static final Comparator<Entry<Object, Object>> FIELD_SORTER      = ((Comparator<Entry<Object, Object>>) (e1, e2) -> isNameOrId(e1) ? -1 : isNameOrId(e2) ? +1 : 0).thenComparing(e -> e.getKey().toString());
 
     private static boolean isNameOrId(Entry<Object, Object> e) {
@@ -98,31 +98,27 @@ public class StateToJson extends ToJson {
 
     protected Map<Object, Object> getMapIterator_Mutable(Mutable mutable) {
         Predicate<Setable> setableFilter = getSetableFilter();
-        return mutable.dClass()
-                      .dSetables() //
-                      .map((Setable setable) -> {
-                          if (!setableFilter.test(setable)) {
-                              return null;
-                          }
-                          @SuppressWarnings("unchecked")
-                          Object value = state.get(mutable, setable);
-                          @SuppressWarnings("unchecked")
-                          Object defValue = setable.getDefault(mutable);
-                          if (Objects.equals(value, defValue)) {
-                              return null;
-                          }
-                          return org.modelingvalue.collections.Entry.of((Object) renderTag(setable), renderValue(mutable, setable, value));
-                      }) //
-                      .filter(Objects::nonNull) //
-                      .asMap(e -> e)
-                      .toMutable();
+        return mutable.dClass().dSetables() //
+                .map((Setable setable) -> {
+                    if (!setableFilter.test(setable)) {
+                        return null;
+                    }
+                    @SuppressWarnings("unchecked")
+                    Object value = state.getRaw(mutable, setable);
+                    @SuppressWarnings("unchecked")
+                    Object defValue = setable.getDefault(mutable);
+                    if (Objects.equals(value, defValue)) {
+                        return null;
+                    }
+                    return org.modelingvalue.collections.Entry.of((Object) renderTag(setable), renderValue(mutable, setable, value));
+                }) //
+                .filter(Objects::nonNull) //
+                .asMap(e -> e).toMutable();
     }
 
     @SuppressWarnings("unchecked")
     protected Map<Object, Object> getMapIterator_QualifiedSet(QualifiedSet qualifiedSet) {
-        return qualifiedSet.toKeys()
-                           .asMap(k -> org.modelingvalue.collections.Entry.of(k, qualifiedSet.get(k)))
-                           .toMutable();
+        return qualifiedSet.toKeys().asMap(k -> org.modelingvalue.collections.Entry.of(k, qualifiedSet.get(k))).toMutable();
     }
 
     @SuppressWarnings("unchecked")

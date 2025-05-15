@@ -643,7 +643,7 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public boolean isStopped(State state) {
-        return state.get(universe(), STOPPED);
+        return state.getRaw(universe(), STOPPED);
     }
 
     public void put(Object id, Runnable action) {

@@ -229,7 +229,7 @@ public class ObserverTransaction extends ActionTransaction {
         ObserverTrace trace = new ObserverTrace(mutable(), observer(), traces.last(), nrOfChanges, //
                 observeds.filter(e -> !e.getKey().isPlumbing()).flatMap(e -> e.getValue().map(m -> {
                     m = m.dResolve(mutable());
-                    return Entry.of(ObservedInstance.of(m, e.getKey()), pre.get(m, e.getKey()));
+                    return Entry.of(ObservedInstance.of(m, e.getKey()), pre.getRaw(m, e.getKey()));
                 })).asMap(e -> e), //
                 pre.diff(current(), o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).//
                         flatMap(e1 -> e1.getValue().map(e2 -> Entry.of(ObservedInstance.of((Mutable) e1.getKey(), (Observed) e2.getKey()), e2.getValue().b()))).asMap(e -> e));

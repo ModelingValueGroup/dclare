@@ -136,7 +136,7 @@ public class MutableState implements IState {
     }
 
     private State setChanged(State state, Mutable changed, TransactionId txid) {
-        while (changed != null && !(changed instanceof Universe) && state.get(changed, Mutable.D_CHANGE_ID) != txid) {
+        while (changed != null && !(changed instanceof Universe) && state.getRaw(changed, Mutable.D_CHANGE_ID) != txid) {
             state = state.set(changed, Mutable.D_CHANGE_ID, txid);
             changed = state.getA(changed, Mutable.D_PARENT_CONTAINING);
         }

@@ -397,7 +397,7 @@ public class State extends StateMap implements IState, Serializable {
 
     @Override
     public TransactionId transactionId() {
-        return get(universeTransaction.universe(), Mutable.D_CHANGE_ID);
+        return getRaw(universeTransaction.universe(), Mutable.D_CHANGE_ID);
     }
 
     @Override
