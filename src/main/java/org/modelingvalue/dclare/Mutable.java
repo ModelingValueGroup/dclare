@@ -195,7 +195,7 @@ public interface Mutable extends TransactionClass {
             Set<Setable> containments = MutableClass.D_CONTAINMENTS.get(dClass);
             Set<Mutable> children = containments.flatMap(s -> s.<Mutable> getCollection(this)).asSet();
             children.forEach(m -> m.pushNow());
-            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).filter(d -> d.direction().isLazy()).asSet();
+            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).asSet();
             nonDerivers.forEach(o -> tx.runDeriver(this, null, o, 0));
             Set<Observed> observeds = MutableClass.D_PUSH_IF_PULL.get(dClass);
             observeds.forEach(o -> o.get(this));
