@@ -402,7 +402,7 @@ public class State extends StateMap implements IState, Serializable {
 
     @Override
     public <O, T> T getRaw(O object, Getable<O, T> property) {
-        return get(object, property);
+        return super.get(object, property);
     }
 
     @Override
