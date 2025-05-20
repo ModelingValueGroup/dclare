@@ -151,7 +151,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     protected void runDeriver(Mutable mutable, Observed observed, Observer observer, int i) {
-        if (isTraceDerivation(mutable, observed)) {
+        if (isTraceDerivation(mutable, observed) || observer.isTracing()) {
             runSilent(() -> System.err.println(tracePre(mutable, this) + String.format(">>%d> ", i) + mutable + "." + observer + "()"));
         }
         INDENT.run(INDENT.get() + 1, () -> DERIVER.run(Pair.of(mutable, observer), () -> {
@@ -218,9 +218,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
             } else {
                 setInMemoization(mem, object, observed, result, false);
             }
-            if (isTraceDerivation(object, observed)) {
+            Pair<Mutable, Observer> deriver = DERIVER.get();
+            if (isTraceDerivation(object, observed) || (deriver != null && deriver.b().isTracing())) {
                 runSilent(() -> {
-                    Pair<Mutable, Observer> deriver = DERIVER.get();
                     if (deriver != null) {
                         System.err.println(tracePre(object, this) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + observed + "=" + pre + "->" + result + ")");
                     } else {
@@ -301,6 +301,11 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
         Construction cons = Construction.of(deriver.a(), deriver.b(), reason);
         setInMemoization(memoization(deriver.a()), result, Newable.D_ALL_DERIVATIONS, Newable.D_ALL_DERIVATIONS.getDefault(result).add(cons), true);
         Mutable.D_INITIAL_CONSTRUCTION.force(result, cons);
+        if (isTraceDerivation(deriver.a(), null) || deriver.b().isTracing()) {
+            runSilent(() -> {
+                System.err.println(tracePre(deriver.a(), this) + "CON  " + deriver.a() + "." + deriver.b() + "(" + cons.reason() + "->" + result + ")");
+            });
+        }
         return result;
     }
 
