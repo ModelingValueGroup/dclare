@@ -76,7 +76,7 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
 
     @SuppressWarnings("rawtypes")
     protected <O, T> boolean doDeriveSet(O object, Getable<O, T> getable, T nonDerived) {
-        return object instanceof Mutable && getable instanceof Observed && isDeriving();
+        return object instanceof Mutable && getable instanceof Observed && DERIVER.get() != null;
     }
 
     protected <O, T> T getNonDerived(O object, Getable<O, T> getable) {
@@ -219,13 +219,9 @@ public abstract class AbstractDerivationTransaction extends ReadOnlyTransaction 
                 setInMemoization(mem, object, observed, result, false);
             }
             Pair<Mutable, Observer> deriver = DERIVER.get();
-            if (isTraceDerivation(object, observed) || (deriver != null && deriver.b().isTracing())) {
+            if (isTraceDerivation(object, observed) || deriver.b().isTracing()) {
                 runSilent(() -> {
-                    if (deriver != null) {
-                        System.err.println(tracePre(object, this) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + observed + "=" + pre + "->" + result + ")");
-                    } else {
-                        System.err.println(tracePre(object, this) + "SET  (" + object + "." + observed + "=" + pre + "->" + result + ")");
-                    }
+                    System.err.println(tracePre(object, this) + "SET  " + deriver.a() + "." + deriver.b() + "(" + object + "." + observed + "=" + pre + "->" + result + ")");
                 });
             }
             if (observed.containment()) {
