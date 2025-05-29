@@ -192,13 +192,13 @@ public interface Mutable extends TransactionClass {
         AbstractDerivationTransaction tx = (AbstractDerivationTransaction) LeafTransaction.getCurrent();
         try {
             MutableClass dClass = dClass();
+            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).asSet();
+            nonDerivers.forEach(o -> tx.runDeriver(this, null, o, 0));
             Set<Setable> containments = MutableClass.D_CONTAINMENTS.get(dClass);
             Set<Mutable> children = containments.flatMap(s -> s.<Mutable> getCollection(this)).asSet();
             children.forEach(m -> m.pushNow());
-            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).asSet();
-            nonDerivers.forEach(o -> tx.runDeriver(this, null, o, 0));
-            Set<Observed> observeds = MutableClass.D_PUSH_IF_PULL.get(dClass);
-            observeds.forEach(o -> o.get(this));
+            //  Set<Observed> observeds = MutableClass.D_PUSH_IF_PULL.get(dClass);
+            //  observeds.forEach(o -> o.get(this));
         } catch (Throwable t) {
             tx.universeTransaction().handleException(t);
         }
