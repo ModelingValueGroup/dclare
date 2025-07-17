@@ -72,7 +72,7 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
     private final Action<Universe>                                                                     poll                    = Action.of("$poll", this::poll);
     //
-    private final boolean                                                                              pull;
+    private final boolean                                                                              pull; //Execute transaction lazily (as opposed to )
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
     protected final ConcurrentLinkedQueue<Action<Universe>>                                            immediateQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
