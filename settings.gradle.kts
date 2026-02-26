@@ -1,3 +1,10 @@
+pluginManagement {
+    repositories {
+        maven { url = uri("https://modelingvaluegroup.github.io/gradlePlugins/") }
+        gradlePluginPortal()
+    }
+}
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
 //                                                                                                                       ~
@@ -21,11 +28,6 @@
 rootProject.name = "dclare"
 
 include()
-
-plugins {
-    id("com.gradle.enterprise") version ("3.5")
-}
-
 val inEclipse=System.getenv("GRADLE_ECLIPSE")
 println("Gradle: inEclipse="+inEclipse)
 if(inEclipse!=null && inEclipse.equals("true")) {
