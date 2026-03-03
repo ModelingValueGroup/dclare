@@ -32,9 +32,9 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: 17
+          java-version: 21
           distribution: zulu
 
       ################################################################################
       - name: "build"
-        run: ./gradlew --info --scan
+        run: ./gradlew --info
