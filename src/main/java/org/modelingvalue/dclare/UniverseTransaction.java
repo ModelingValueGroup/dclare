@@ -312,6 +312,9 @@ public class UniverseTransaction extends MutableTransaction {
         stop();
         history = history.append(state);
         constantState.stop();
+        if (pullConstantState != null) {
+            pullConstantState.stop();
+        }
         end(state); //TODO wire onto MoodManager
         stopped = true; //TODO wire onto MoodManager
         setStoppedMood(state);
@@ -467,6 +470,10 @@ public class UniverseTransaction extends MutableTransaction {
             } while (priority != null);
             return state;
         } finally {
+            if (tmpConstants != null) {
+                tmpConstants.stop();
+                tmpConstants = null;
+            }
             postState = null;
             preStartStates.setState(emptyState);
             startStates.setState(emptyState);

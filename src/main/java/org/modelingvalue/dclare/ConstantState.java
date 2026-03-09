@@ -289,7 +289,7 @@ public class ConstantState {
                     }
                 }
             }
-        }, "ConstantState.remover");
+        }, "ConstantState.remover-" + name);
         remover.setDaemon(true);
         remover.start();
     }
