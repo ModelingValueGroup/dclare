@@ -28,8 +28,8 @@ plugins {
     eclipse
 }
 dependencies {
-    implementation("org.modelingvalue:immutable-collections:4.1.0-BRANCHED")
-    implementation("org.modelingvalue:mvg-json:4.1.0-BRANCHED")
+    implementation("org.modelingvalue:immutable-collections:6.0.0-BRANCHED")
+    implementation("org.modelingvalue:mvg-json:6.0.0-BRANCHED")
 }
 publishing {
     publications {
