@@ -18,85 +18,16 @@
 //      but also our friend. "He will live on in many of the lines of code you see below."                               ~
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package org.modelingvalue.dclare.sync;
+package org.modelingvalue.dclare;
 
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+public interface ILeafTransaction {
 
-import java.io.Closeable;
+    <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue);
 
-@SuppressWarnings("unused")
-public abstract class WorkDaemon<WORK> extends Thread implements Closeable {
-    private boolean   stop;
-    private boolean   busy = true;
-    private Throwable throwable;
+    <O, T> T set(O object, Setable<O, T> property, T post);
 
-    public WorkDaemon(String name) {
-        super(name);
-        setDaemon(true);
-    }
+    State state();
 
-    protected abstract WORK waitForWork() throws InterruptedException;
+    <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority);
 
-    protected abstract void execute(WORK w) throws InterruptedException;
-
-    @Override
-    public void run() {
-        traceLog("@%s: WorkDaemon BEGIN", getName());
-        while (!stop) {
-            try {
-                busy = false;
-                WORK w = waitForWork();
-                busy = true;
-                execute(w);
-            } catch (InterruptedException e) {
-                traceLog("@%s: WorkDaemon InterruptedException (stop=%s)", getName(), stop);
-                if (!stop) {
-                    throwable = new Error("unexpected interrupt", e);
-                }
-            } catch (Error e) {
-                traceLog("@%s: WorkDaemon Error (stop=%s)", getName(), stop);
-                if (!(e.getCause() instanceof InterruptedException)) {
-                    throwable = new Error("unexpected interrupt", e);
-                }
-            } catch (Throwable t) {
-                traceLog("@%s: WorkDaemon Throwable (stop=%s)", getName(), stop);
-                throwable = new Error("unexpected throwable", t);
-            }
-        }
-        traceLog("@%s: WorkDaemon END", getName());
-    }
-
-    @Override
-    public void close() {
-        traceLog("@%s: WorkDaemon close: stop:=true", getName());
-        stop = true;
-    }
-
-    public boolean needsToStop() {
-        return stop;
-    }
-
-    public void interruptAndClose() {
-        stop = true;
-        traceLog("@%s: WorkDaemon interrupting", getName());
-        interrupt();
-        traceLog("@%s: WorkDaemon close", getName());
-        close();
-    }
-
-    public boolean isBusy() {
-        return busy && isAlive();
-    }
-
-    public Throwable getThrowable() {
-        return throwable;
-    }
-
-    public void join_() {
-        try {
-            join();
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
-    }
 }

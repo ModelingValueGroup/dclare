@@ -1,27 +1,24 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
-
-import org.modelingvalue.collections.Collection;
-import org.modelingvalue.collections.List;
-import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.Set;
-import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
-import org.modelingvalue.collections.util.MutationWrapper;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -31,15 +28,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Comparator;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import org.modelingvalue.collections.Collection;
+import org.modelingvalue.collections.List;
+import org.modelingvalue.collections.Map;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.util.ContextPool;
+import org.modelingvalue.collections.util.ContextThread;
+import org.modelingvalue.collections.util.MutationWrapper;
 
 /**
  * This class will enable you to build a model in a dclare universe and then finish.
@@ -49,19 +52,31 @@ import java.util.stream.IntStream;
  * This state will be the start state at the next invocation of this class and the method can (and will) be skipped.
  * This is meant for setting up a constant state in the universe that is used every time.
  *
- * @param <U> the Universe class for this repo
+ * @param <U>
+ *            the Universe class for this repo
  */
 @SuppressWarnings("unused")
 public abstract class OneShot<U extends Universe> {
-    private static final boolean                                     TRACE_ONE_SHOT         = Boolean.getBoolean("TRACE_ONE_SHOT");
-    private static final String                                      TRACE_ONE_SHOT_OBJECT  = System.getProperty("TRACE_ONE_SHOT_OBJECT");
-    private static final String                                      TRACE_ONE_SHOT_SETABLE = System.getProperty("TRACE_ONE_SHOT_SETABLE");
-    private static final MutationWrapper<Map<Class<?>, StateMap>>    STATE_MAP_CACHE        = new MutationWrapper<>(Map.of());
-    private static final MutationWrapper<Map<Class<?>, Set<Method>>> ALL_METHODS_CACHE      = new MutationWrapper<>(Map.of());
-    private static final ContextPoolPool                             CONTEXT_POOL_POOL      = new ContextPoolPool();
+    private static final MutationWrapper<Map<Class<?>, StateMap>>      STATE_MAP_CACHE      = new MutationWrapper<>(Map.of());
+    private static final MutationWrapper<Map<Class<?>, Set<Method>>>   ALL_METHODS_CACHE    = new MutationWrapper<>(Map.of());
+    private static final MutationWrapper<Map<Class<?>, ConstantState>> CONSTANT_STATE_CACHE = new MutationWrapper<>(Map.of());
+    private static       OneShotTracer                                 TRACER               = new OneShotTracer.ToStderr();
+    private static       ContextPoolPool                               CONTEXT_POOL_POOL;
+
+    public static void setTracer(OneShotTracer tracer) {
+        TRACER = tracer;
+    }
+
+    private static synchronized ContextPoolPool contextPoolPool() {
+        if (CONTEXT_POOL_POOL == null) {
+            CONTEXT_POOL_POOL = new ContextPoolPool();
+        }
+        return CONTEXT_POOL_POOL;
+    }
 
     private final Class<?> cacheKey = getClass();
     private final U        universe;
+    private final boolean  pull;
     private       State    endState;
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -70,15 +85,9 @@ public abstract class OneShot<U extends Universe> {
         boolean caching() default false;
     }
 
-
-    @SuppressWarnings("DataFlowIssue")
-    public OneShot(U universe) {
+    public OneShot(U universe, boolean pull) {
         this.universe = universe;
-
-        List<String> cachingMethods = getAllMethodsOf(cacheKey).filter(m -> m.getAnnotation(OneShotAction.class).caching()).map(Method::getName).asList();
-        if (1 < cachingMethods.count()) {
-            throw new IllegalStateException("the oneshot " + cacheKey.getSimpleName() + " has too many caching actions: " + cachingMethods.collect(Collectors.joining(", ")));
-        }
+        this.pull     = pull;
     }
 
     /**
@@ -105,11 +114,11 @@ public abstract class OneShot<U extends Universe> {
      * @return the ContextPool that was created
      */
     public ContextPool getContextPool() {
-        return CONTEXT_POOL_POOL.getContextPool();
+        return contextPoolPool().getContextPool();
     }
 
     public void doneWithContextPool(ContextPool contextPool) {
-        if (!CONTEXT_POOL_POOL.doneWithContextPool(contextPool)) {
+        if (!contextPoolPool().doneWithContextPool(contextPool)) {
             contextPool.shutdownNow();
         }
     }
@@ -120,6 +129,7 @@ public abstract class OneShot<U extends Universe> {
 
     public void clearCache() {
         STATE_MAP_CACHE.update(m -> m.remove(cacheKey));
+        CONSTANT_STATE_CACHE.update(m -> m.remove(cacheKey));
     }
 
     /**
@@ -128,7 +138,6 @@ public abstract class OneShot<U extends Universe> {
      *
      * @return the end state
      */
-    @SuppressWarnings("DataFlowIssue")
     public State getEndState() {
         if (endState != null) {
             return endState;
@@ -137,16 +146,21 @@ public abstract class OneShot<U extends Universe> {
             if (endState == null) {
                 ContextPool contextPool = getContextPool();
                 try {
+                    long                t0                  = System.nanoTime();
                     StateMap            cachedStateMap      = STATE_MAP_CACHE.get().get(cacheKey);
+                    ConstantState       cachedConstantState = CONSTANT_STATE_CACHE.get().get(cacheKey);
                     boolean             runningFromCache    = cachedStateMap != null;
-                    UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, getConfig(), null, cachedStateMap);
-                    long                t0                  = System.currentTimeMillis();
+                    UniverseTransaction universeTransaction = new UniverseTransaction(getUniverse(), contextPool, pull, getConfig(), null, cachedStateMap, cachedConstantState);
                     List<MyAction>      allActions          = getAllActions(runningFromCache);
-                    trace("START", "#actions=%d", allActions.size());
+                    TRACER.traceStart(cacheKey.getSimpleName(), allActions.size());
                     allActions.forEach(a -> a.putAndWaitForIdle(universeTransaction));
                     universeTransaction.stop();
                     endState = universeTransaction.waitForEnd();
-                    trace("DONE", "duration=%5d ms", System.currentTimeMillis() - t0);
+                    if (cachedConstantState == null) {
+                        CONSTANT_STATE_CACHE.update(a -> a.computeIfAbsent(cacheKey, __ -> universeTransaction.constantState()));
+                    }
+                    long t1 = System.nanoTime();
+                    TRACER.traceDone(cacheKey.getSimpleName(), nano2ms(t1 - t0));
                 } finally {
                     doneWithContextPool(contextPool);
                 }
@@ -183,36 +197,39 @@ public abstract class OneShot<U extends Universe> {
         }
 
         protected void putAndWaitForIdle(UniverseTransaction universeTransaction) {
-            long    t00                = System.currentTimeMillis();
             boolean writeResultToCache = isCachingMethod && !runningFromCache;
             boolean skip               = isCachingMethod && runningFromCache;
             if (skip) {
-                trace(" CACHE-SKIP", "%s", id());
+                TRACER.traceCacheSkip(OneShot.this.cacheKey.getSimpleName(), id());
             } else {
-                trace(" >>ACTION", "%s", id());
+                TRACER.traceActionBegin(OneShot.this.cacheKey.getSimpleName(), id());
+                long  t0                = System.nanoTime();
                 State intermediateState = universeTransaction.putAndWaitForIdle(this);
-                traceDiff(intermediateState);
-                trace(" <<ACTION", "%s duration=%5d ms\n", id(), System.currentTimeMillis() - t00);
                 if (writeResultToCache) {
-                    trace(" CACHE-WRITE", "%s", id());
+                    TRACER.traceCacheWrite(OneShot.this.cacheKey.getSimpleName(), id());
                     STATE_MAP_CACHE.update(a -> a.computeIfAbsent(cacheKey, __ -> intermediateState.getStateMap()));
                 }
-            }
-        }
-
-        private static void traceDiff(State intermediateState) {
-            if (TRACE_ONE_SHOT_OBJECT != null || TRACE_ONE_SHOT_SETABLE != null) {
-                Predicate<String> objPred = TRACE_ONE_SHOT_OBJECT == null ? s -> true : Pattern.compile(TRACE_ONE_SHOT_OBJECT).asPredicate();
-                Predicate<String> setPred = TRACE_ONE_SHOT_SETABLE == null ? s -> true : Pattern.compile(TRACE_ONE_SHOT_SETABLE).asPredicate();
-                System.err.println("******************************State*************************************");
-                System.err.println(intermediateState.universeTransaction().emptyState().diffString(intermediateState, o -> objPred.test(o.toString()), s -> s.isTraced() && setPred.test(s.toString())));
-                System.err.println("************************************************************************");
+                long t1          = System.nanoTime();
+                long overallNano = t1 - t0;
+                long methodNano  = durationNano();
+                long dtOverall   = nano2ms(overallNano);
+                long dtMethod    = nano2ms(methodNano);
+                long dtRules     = nano2ms(overallNano - methodNano);
+                TRACER.traceActionEnd(OneShot.this.cacheKey.getSimpleName(), id(), dtOverall, dtMethod, dtRules);
             }
         }
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private static Set<Method> getAllMethodsOf(Class<?> clazz) {
-        return ALL_METHODS_CACHE.updateAndGet(a -> a.computeIfAbsent(clazz, __ -> computeAllMethodsOf(clazz))).get(clazz);
+        return ALL_METHODS_CACHE.updateAndGet(a -> a.computeIfAbsent(clazz, __ -> {
+            Set<Method>  methods        = computeAllMethodsOf(clazz);
+            List<String> cachingMethods = methods.filter(m -> m.getAnnotation(OneShotAction.class).caching()).map(Method::getName).asList();
+            if (1 < cachingMethods.count()) {
+                throw new IllegalStateException("the oneshot " + clazz.getSimpleName() + " has too many caching actions: " + cachingMethods.collect(Collectors.joining(", ")));
+            }
+            return methods;
+        })).get(clazz);
     }
 
     private static Set<Method> computeAllMethodsOf(Class<?> clazz) {
@@ -231,33 +248,28 @@ public abstract class OneShot<U extends Universe> {
         return map.toValues().asSet();
     }
 
-    private void trace(String what, String format, Object... args) {
-        if (TRACE_ONE_SHOT) {
-            System.err.printf("TRACE_ONE_SHOT: %-14s %-40s  -  %s\n", what, cacheKey.getSimpleName(), String.format(format, args));
-        }
+    private static long nano2ms(long nano) {
+        return nano / 1_000_000;
     }
 
     private static class ContextPoolPool {
-        private static final boolean                              NO_POOL_POOL_TRACE             = Boolean.getBoolean("NO_POOL_POOL_TRACE");
-        private static final int                                  POOL_POOL_SIZE                 = Integer.getInteger("POOL_POOL_SIZE", Collection.PARALLELISM);
-        private static final int                                  POOL_POOL_ALARM_THRESHOLD_SEC  = Integer.getInteger("POOL_POOL_ALARM_THRESHOLD_SEC", 30);
-        private static final int                                  POOL_POOL_AQUIRE_TIMEOUT_SEC   = Integer.getInteger("POOL_POOL_AQUIRE_TIMEOUT_SEC", 30);
-        private static final int                                  POOL_POOL_MONITOR_INTERVAL_SEC = Integer.getInteger("POOL_POOL_MONITOR_INTERVAL_SEC", 60);
-        //
-        private final        BlockingQueue<PoolInfo>              idleQueue                      = new LinkedBlockingQueue<>(makePools());
-        private final        BlockingQueue<PoolInfo>              busyQueue                      = new LinkedBlockingQueue<>();
-        private final        AtomicReference<PoolPoolInfo>        poolPoolInfo                   = new AtomicReference<>(new PoolPoolInfo());
-        private final        java.util.Map<ContextPool, PoolInfo> poolInfoMap;
+        private static final int POOL_POOL_SIZE                 = Integer.getInteger("POOL_POOL_SIZE", Collection.PARALLELISM);
+        private static final int POOL_POOL_ALARM_THRESHOLD_SEC  = Integer.getInteger("POOL_POOL_ALARM_THRESHOLD_SEC", 30);
+        private static final int POOL_POOL_AQUIRE_TIMEOUT_SEC   = Integer.getInteger("POOL_POOL_AQUIRE_TIMEOUT_SEC", 30);
+        private static final int POOL_POOL_MONITOR_INTERVAL_SEC = Integer.getInteger("POOL_POOL_MONITOR_INTERVAL_SEC", 60);
+
+        private final BlockingDeque<PoolInfo>              idleQueue    = new LinkedBlockingDeque<>(makePools());
+        private final BlockingDeque<PoolInfo>              busyQueue    = new LinkedBlockingDeque<>();
+        private final AtomicReference<PoolPoolInfo>        poolPoolInfo = new AtomicReference<>(new PoolPoolInfo());
+        private final java.util.Map<ContextPool, PoolInfo> poolInfoMap;
 
         private static java.util.Collection<PoolInfo> makePools() {
-            return IntStream.range(0, POOL_POOL_SIZE)
-                            .mapToObj(i -> new PoolInfo())
-                            .toList();
+            return IntStream.range(0, POOL_POOL_SIZE).mapToObj(i -> new PoolInfo()).toList();
         }
 
         public ContextPoolPool() {
-            trace("INIT");
             poolInfoMap = makePoolInfoMap();
+            TRACER.tracePoolPoolInit(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
             new PoolPoolMonitor(this).start();
         }
 
@@ -268,18 +280,19 @@ public abstract class OneShot<U extends Universe> {
         public ContextPool getContextPool() {
             try {
                 PoolPoolInfo.preUpdate(poolPoolInfo);
-                trace("get");
+                TRACER.tracePoolPoolGet(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
                 long     t0   = System.nanoTime();
-                PoolInfo info = idleQueue.poll(POOL_POOL_AQUIRE_TIMEOUT_SEC, TimeUnit.SECONDS);
-                long     dt   = (System.nanoTime() - t0) / 1_000_000;
+                PoolInfo info = idleQueue.pollFirst(POOL_POOL_AQUIRE_TIMEOUT_SEC, TimeUnit.SECONDS);
+                long     t1   = System.nanoTime();
+                long     dt   = nano2ms(t1 - t0);
                 if (info == null) {
-                    trace("timeout");
+                    TRACER.tracePoolPoolTimeout(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
                     throw new RuntimeException("timeout after " + dt + " ms while waiting for ContextPool");
                 }
                 PoolPoolInfo.postUpdate(poolPoolInfo, dt);
                 info.start();
-                busyQueue.add(info);
-                trace(String.format("waited %6d ms", dt));
+                busyQueue.addFirst(info);
+                TRACER.tracePoolPoolWaited(Thread.currentThread().getName(), dt, idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
                 return info.pool;
             } catch (InterruptedException e) {
                 throw new RuntimeException("interrupted while waiting for ContextPool", e);
@@ -292,24 +305,13 @@ public abstract class OneShot<U extends Universe> {
                 return false;
             }
             if (!busyQueue.remove(info)) {
-                trace("pool not busy");
-                throw new IllegalStateException("pool not busy");
+                TRACER.tracePoolPoolNotBusy(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
+                throw new IllegalStateException("PP_NOT_BUSY");
             }
             info.stop();
-            idleQueue.add(info);
-            trace("done");
+            idleQueue.addFirst(info);
+            TRACER.tracePoolPoolDone(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get());
             return true;
-        }
-
-        private void trace(String msg) {
-            if (!NO_POOL_POOL_TRACE) {
-                System.err.printf("TRACE: ContextPoolPool: [%-25s] %-25s: idle/busy=%3d/%3d: %s\n",
-                                  Thread.currentThread().getName(),
-                                  msg,
-                                  idleQueue.size(),
-                                  busyQueue.size(),
-                                  poolPoolInfo.get());
-            }
         }
 
         private void check() {
@@ -317,7 +319,7 @@ public abstract class OneShot<U extends Universe> {
                 if (info.busy) {
                     long duration = info.duration();
                     if (POOL_POOL_ALARM_THRESHOLD_SEC * 1000L < duration) {
-                        System.err.printf("ALARM: ContextPool probably stuck (busy for %-8d ms): %s\n", duration, info.pool);
+                        TRACER.tracePoolPoolAlarmStuck(Thread.currentThread().getName(), idleQueue.size(), busyQueue.size(), poolPoolInfo.get(), duration, info.pool.toString());
                     }
                 }
             }
@@ -340,7 +342,7 @@ public abstract class OneShot<U extends Universe> {
                         Thread.sleep(POOL_POOL_MONITOR_INTERVAL_SEC * 1000L);
                         contextPoolPool.check();
                     } catch (InterruptedException e) {
-                        System.err.println("WARNING PoolPoolMonitor interrupted!");
+                        TRACER.tracePoolPoolMonitorQuit();
                         return;
                     }
                 }
@@ -380,56 +382,39 @@ public abstract class OneShot<U extends Universe> {
             }
         }
 
-        private static class PoolPoolInfo {
-            private final long gets;
-            private final long immediates;
-            private final long waits;
-            private final long totalWaitTime;
-            private final long maxWaitTime;
+    }
 
-            public PoolPoolInfo() {
-                this.gets          = 0;
-                this.immediates    = 0;
-                this.waits         = 0;
-                this.totalWaitTime = 0;
-                this.maxWaitTime   = 0;
-            }
+    public record PoolPoolInfo(long gets,
+                               long immediates,
+                               long waits,
+                               long totalWaitTime,
+                               long maxWaitTime) {
+        public PoolPoolInfo() {
+            this(0, 0, 0, 0, 0);
+        }
 
-            public static void preUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo) {
-                update(poolPoolInfo, info -> new PoolPoolInfo(info.gets + 1, info.immediates, info.waits, info.totalWaitTime, info.maxWaitTime));
-            }
+        public static void preUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo) {
+            update(poolPoolInfo, info -> new PoolPoolInfo(info.gets + 1, info.immediates, info.waits, info.totalWaitTime, info.maxWaitTime));
+        }
 
-            public static void postUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo, long dt) {
-                update(poolPoolInfo, info -> new PoolPoolInfo(info.gets, info.immediates + (0 == dt ? 1 : 0), info.waits + (0 == dt ? 0 : 1), info.totalWaitTime + dt, Math.max(info.maxWaitTime, dt)));
-            }
+        public static void postUpdate(AtomicReference<PoolPoolInfo> poolPoolInfo, long dt) {
+            update(poolPoolInfo, info -> new PoolPoolInfo(info.gets, info.immediates + (0 == dt ? 1 : 0), info.waits + (0 == dt ? 0 : 1), info.totalWaitTime + dt, Math.max(info.maxWaitTime, dt)));
+        }
 
-            private static void update(AtomicReference<PoolPoolInfo> poolPoolInfo, Function<PoolPoolInfo, PoolPoolInfo> f) {
-                for (; ; ) {
-                    PoolPoolInfo oldInfo = poolPoolInfo.get();
-                    PoolPoolInfo newInfo = f.apply(oldInfo);
-                    if (poolPoolInfo.compareAndSet(oldInfo, newInfo)) {
-                        break;
-                    }
+        private static void update(AtomicReference<PoolPoolInfo> poolPoolInfo, Function<PoolPoolInfo, PoolPoolInfo> f) {
+            for (; ; ) {
+                PoolPoolInfo oldInfo = poolPoolInfo.get();
+                PoolPoolInfo newInfo = f.apply(oldInfo);
+                if (poolPoolInfo.compareAndSet(oldInfo, newInfo)) {
+                    break;
                 }
             }
+        }
 
-            private PoolPoolInfo(long gets, long immediates, long waits, long totalWaitTime, long maxWaitTime) {
-                this.gets          = gets;
-                this.immediates    = immediates;
-                this.waits         = waits;
-                this.totalWaitTime = totalWaitTime;
-                this.maxWaitTime   = maxWaitTime;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("%4d gets (%4d immediates %4d waits %8d ms totalWait, %8d ms max-wait)",
-                                     gets,
-                                     immediates,
-                                     waits,
-                                     totalWaitTime,
-                                     maxWaitTime);
-            }
+        @SuppressWarnings("NullableProblems")
+        @Override
+        public String toString() {
+            return String.format("%4d gets (%4d immediates %4d waits %8d ms totalWait, %8d ms max-wait)", gets, immediates, waits, totalWaitTime, maxWaitTime);
         }
     }
 }

@@ -1,22 +1,26 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
 import static org.modelingvalue.dclare.CoreSetableModifier.symmetricOpposite;
-import static org.modelingvalue.dclare.Priority.one;
 
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -39,6 +43,7 @@ import org.modelingvalue.dclare.ex.ReferencedOrphanException;
 
 public class Setable<O, T> extends Getable<O, T> {
     private static final boolean          DANGER_ALWAYS_ALLOW_ORPHANS = Boolean.getBoolean("DANGER_ALWAYS_ALLOW_ORPHANS");
+    private static final boolean          NO_DEDUPLICATION            = Boolean.getBoolean("NO_DEDUPLICATION");
 
     private static final Context<Boolean> MOVING                      = Context.of(false);
 
@@ -149,7 +154,7 @@ public class Setable<O, T> extends Getable<O, T> {
     }
 
     protected boolean deduplicate(T value) {
-        return value instanceof ContainingCollection;
+        return !NO_DEDUPLICATION && value instanceof ContainingCollection;
     }
 
     public Direction direction() {
@@ -198,6 +203,10 @@ public class Setable<O, T> extends Getable<O, T> {
         return opposite != null ? opposite.get() : null;
     }
 
+    public boolean hasOpposite() {
+        return opposite != null;
+    }
+
     @Override
     public Setable<O, Set<?>> scope() {
         return scope != null ? scope.get() : null;
@@ -214,16 +223,20 @@ public class Setable<O, T> extends Getable<O, T> {
             changed.accept(tx, object, preValue, postValue);
         }
         if (containment) {
+            boolean push = tx.push();
             Setable.<T, Mutable> diff(preValue, postValue, added -> {
-                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.get(added, Mutable.D_PARENT_CONTAINING);
+                Pair<Mutable, Setable<Mutable, ?>> prePair = tx.getRaw(added, Mutable.D_PARENT_CONTAINING);
                 if (prePair != null) {
                     MOVING.run(true, () -> prePair.b().remove(prePair.a(), added));
                 }
                 Mutable.D_PARENT_CONTAINING.set(added, Pair.of((Mutable) object, (Setable<Mutable, ?>) this));
                 if (prePair == null) {
-                    added.dActivate();
-                } else {
-                    tx.set((Mutable) object, tx.state().children(one), Set::add, added);
+                    tx.dActivate(added);
+                }
+                for (Priority prio : Priority.ALL) {
+                    if ((prePair != null && prio == Priority.one) || !tx.current(added, tx.state().children(prio)).isEmpty() || !tx.current(added, tx.state().actions(prio)).isEmpty()) {
+                        tx.set((Mutable) object, tx.state().children(prio), Set::add, added);
+                    }
                 }
             }, removed -> {
                 for (Priority prio : Priority.ALL) {
@@ -231,7 +244,9 @@ public class Setable<O, T> extends Getable<O, T> {
                 }
                 if (!MOVING.get()) {
                     Mutable.D_PARENT_CONTAINING.setDefault(removed);
-                    removed.dHandleRemoved((Mutable) object);
+                    if (push) {
+                        removed.dHandleRemoved((Mutable) object);
+                    }
                 }
             });
         }
@@ -360,7 +375,7 @@ public class Setable<O, T> extends Getable<O, T> {
             }
         }
         if (scope != null) {
-            Set s = state.get(object, scope.get());
+            Set s = state.getRaw(object, scope.get());
             if (post instanceof ContainingCollection) {
                 if (!s.containsAll((ContainingCollection) post)) {
                     errors = errors.add(new OutOfScopeException(object, this, post, s));

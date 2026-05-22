@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -28,6 +33,8 @@ import java.util.function.Function;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
 import org.modelingvalue.collections.QualifiedSet;
+import org.modelingvalue.collections.Set;
+import org.modelingvalue.collections.impl.HashCollectionImpl;
 import org.modelingvalue.collections.util.Context;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.collections.util.StringUtil;
@@ -149,12 +156,12 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        public <V> V get(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null) {
-                V soll = deriver == null ? constant.getDefault(object) : derive(leafTransaction, object, constant, deriver);
-                ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
+                V soll = deriver == null ? constant.getDefault(object) : derive(cch, object, constant, deriver);
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, false);
             }
             return ist == NULL ? null : ist;
         }
@@ -164,11 +171,21 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V soll, boolean forced) {
+        public <V> V getOrSet(ILeafTransaction cch, O object, Constant<O, V> constant, V soll) {
+            Map<Constant<O, ?>, Object> prev = constants;
+            V ist = (V) prev.get(constant);
+            if (ist == null) {
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, false);
+            }
+            return ist == NULL ? null : ist;
+        }
+
+        @SuppressWarnings("unchecked")
+        public <V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, V soll, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
             if (ist == null || forced) {
-                ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, forced);
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {
                 throw new NonDeterministicException(object, constant, "Constant is not consistent " + StringUtil.toString(object) + "." + constant + "=" + StringUtil.toString(ist) + "!=" + StringUtil.toString(soll));
@@ -177,12 +194,12 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        public <V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element) {
+        public <V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> function, E element, boolean forced) {
             Map<Constant<O, ?>, Object> prev = constants;
             V ist = (V) prev.get(constant);
-            V soll = function.apply(ist, element);
-            if (ist == null) {
-                ist = set(leafTransaction, object, constant, prev, soll == null ? (V) NULL : soll, false);
+            V soll = function.apply(ist == null ? constant.getDefault(object) : ist == NULL ? null : ist, element);
+            if (ist == null || forced) {
+                ist = set(cch, object, constant, prev, soll == null ? (V) NULL : soll, forced);
             }
             if (!Objects.equals(ist == NULL ? null : ist, soll)) {
                 throw new NonDeterministicException(object, constant, "Constant is not consistent " + StringUtil.toString(object) + "." + constant + "=" + StringUtil.toString(ist) + "!=" + StringUtil.toString(soll));
@@ -207,7 +224,7 @@ public class ConstantState {
         }
 
         @SuppressWarnings("unchecked")
-        private <V> V set(LeafTransaction tx, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
+        private <V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, Map<Constant<O, ?>, Object> prev, V soll, boolean forced) {
             V ist;
             Map<Constant<O, ?>, Object> next = prev.put(constant, soll);
             while (!UPDATOR.compareAndSet(this, prev, next)) {
@@ -218,14 +235,15 @@ public class ConstantState {
                 }
                 next = prev.put(constant, soll);
             }
-            if (!forced && !Objects.equals(constant.getDefault(object), soll == NULL ? null : soll)) {
-                tx.changed(object, constant, constant.getDefault(object), soll == NULL ? null : soll);
+            V def = constant.getDefault(object);
+            if (!forced && !Objects.equals(def, soll == NULL ? null : soll)) {
+                cch.changed(object, constant, def, def, soll == NULL ? null : soll);
             }
             return soll;
         }
 
         @SuppressWarnings({"unchecked", "resource"})
-        private <V> V derive(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        private <V> V derive(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
             List<Pair<Object, Constant>> list = List.of();
             while (true) {
                 try {
@@ -238,7 +256,7 @@ public class ConstantState {
                                     Pair<Object, Constant> me = Pair.of(object, constant);
                                     throw new NonDeterministicException(object, constant, "Circular constant definition: " + list.sublist(list.lastIndexOf(me), list.size()).add(me));
                                 }
-                                ConstantState.this.get(leafTransaction, lazy.a(), lazy.b());
+                                ConstantState.this.get(cch, lazy.a(), lazy.b());
                             }
                         } finally {
                             WEAK.setOnThread(weak);
@@ -271,7 +289,7 @@ public class ConstantState {
                     }
                 }
             }
-        }, "ConstantState.remover");
+        }, "ConstantState.remover-" + name);
         remover.setDaemon(true);
         remover.start();
     }
@@ -286,28 +304,32 @@ public class ConstantState {
         remover.interrupt();
     }
 
-    public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object, referenceType(constant)).get(leafTransaction, object, constant, constant.deriver());
+    public <O, V> V get(ILeafTransaction cch, O object, Constant<O, V> constant) {
+        return getConstants(cch, object, referenceType(constant)).get(cch, object, constant, constant.deriver());
     }
 
-    public <O, V> O object(LeafTransaction leafTransaction, O object) {
-        return getConstants(leafTransaction, object, ReferenceType.weak).object();
+    public <O, V> O object(ILeafTransaction cch, O object) {
+        return getConstants(cch, object, ReferenceType.weak).object();
     }
 
-    public <O, V> V get(LeafTransaction leafTransaction, O object, Constant<O, V> constant, Function<O, V> deriver) {
-        return getConstants(leafTransaction, object, referenceType(constant)).get(leafTransaction, object, constant, deriver);
+    public <O, V> V get(ILeafTransaction cch, O object, Constant<O, V> constant, Function<O, V> deriver) {
+        return getConstants(cch, object, referenceType(constant)).get(cch, object, constant, deriver);
     }
 
-    public <O, V> boolean isSet(LeafTransaction leafTransaction, O object, Constant<O, V> constant) {
-        return getConstants(leafTransaction, object, referenceType(constant)).isSet(constant);
+    public <O, V> boolean isSet(ILeafTransaction cch, O object, Constant<O, V> constant) {
+        return getConstants(cch, object, referenceType(constant)).isSet(constant);
     }
 
-    public <O, V> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, V value, boolean forced) {
-        return getConstants(leafTransaction, object, referenceType(constant)).set(leafTransaction, object, constant, value, forced);
+    public <O, V> V getOrSet(ILeafTransaction cch, O object, Constant<O, V> constant, V value) {
+        return getConstants(cch, object, referenceType(constant)).getOrSet(cch, object, constant, value);
     }
 
-    public <O, V, E> V set(LeafTransaction leafTransaction, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element) {
-        return getConstants(leafTransaction, object, referenceType(constant)).set(leafTransaction, object, constant, deriver, element);
+    public <O, V> V set(ILeafTransaction cch, O object, Constant<O, V> constant, V value, boolean forced) {
+        return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, value, forced);
+    }
+
+    public <O, V, E> V set(ILeafTransaction cch, O object, Constant<O, V> constant, BiFunction<V, E, V> deriver, E element, boolean forced) {
+        return getConstants(cch, object, referenceType(constant)).set(cch, object, constant, deriver, element, forced);
     }
 
     private <O, V> ReferenceType referenceType(Constant<O, V> constant) {
@@ -315,12 +337,13 @@ public class ConstantState {
     }
 
     @SuppressWarnings("unchecked")
-    private <O> Constants<O> getConstants(LeafTransaction leafTransaction, O object, ReferenceType referenceType) {
+    private <O> Constants<O> getConstants(ILeafTransaction cch, O object, ReferenceType referenceType) {
         QualifiedSet<Object, Constants> prev = state.get();
         Constants constants = prev.get(object);
         if (constants == null) {
-            object = leafTransaction.state().canonical(object);
+            object = cch.state().canonical(object);
             constants = new Constants<>(object, referenceType, queue);
+            prev = pruneEqualHashes(object, prev);
             QualifiedSet<Object, Constants> next = prev.add(constants);
             Constants<O> now;
             while (!state.compareAndSet(prev, next)) {
@@ -333,6 +356,7 @@ public class ConstantState {
                     }
                     return now;
                 }
+                prev = pruneEqualHashes(object, prev);
                 next = prev.add(constants);
             }
         } else if (referenceType.strongness > constants.referenceType().strongness) {
@@ -341,7 +365,28 @@ public class ConstantState {
         return constants;
     }
 
-    private void removeConstants(Constants constants) {
+    private <O> QualifiedSet<Object, Constants> pruneEqualHashes(O object, QualifiedSet<Object, Constants> prev) {
+        Set<Constants> allWithEqualhash = prev.allWithEqualhash(object);
+        while (allWithEqualhash.size() >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL - 4) {
+            int i = 0;
+            for (Constants c : allWithEqualhash) {
+                if (!(c.ref instanceof Constants.DurableRef)) {
+                    prev = removeConstants(c);
+                    if (++i >= HashCollectionImpl.EQUAL_HASHCODE_WARNING_LEVEL / 2) {
+                        break;
+                    }
+                }
+            }
+            if (i == 0) {
+                break;
+            } else {
+                allWithEqualhash = prev.allWithEqualhash(object);
+            }
+        }
+        return prev;
+    }
+
+    private QualifiedSet<Object, Constants> removeConstants(Constants constants) {
         QualifiedSet<Object, Constants> prev = state.get();
         Object object = constants.object();
         constants = prev.get(object);
@@ -350,11 +395,13 @@ public class ConstantState {
             while (!state.compareAndSet(prev, next)) {
                 prev = state.get();
                 if (prev.get(object) == null) {
-                    return;
+                    return prev;
                 }
                 next = prev.removeKey(object);
             }
+            return next;
         }
+        return prev;
     }
 
     private static enum ReferenceType {

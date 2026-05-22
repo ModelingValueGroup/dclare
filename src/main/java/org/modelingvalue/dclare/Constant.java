@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -45,6 +50,10 @@ public class Constant<O, T> extends Setable<O, T> {
 
     public static <C, V> Constant<C, V> of(Object id, V def, Function<C, V> deriver, SetableModifier<?>... modifiers) {
         return new Constant<>(id, o -> def, null, null, deriver, null, modifiers);
+    }
+
+    public static <C, V> Constant<C, V> of(Object id, V def, Function<C, V> deriver, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
+        return new Constant<>(id, o -> def, null, null, deriver, changed, modifiers);
     }
 
     public static <C, V> Constant<C, V> of(Object id, Function<C, V> deriver, QuadConsumer<LeafTransaction, C, V, V> changed, SetableModifier<?>... modifiers) {
@@ -83,9 +92,15 @@ public class Constant<O, T> extends Setable<O, T> {
 
     @Override
     public <E> T set(O object, BiFunction<T, E, T> function, E element) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
-        return constants.set(leafTransaction, object, this, function, element);
+        return constants.set(leafTransaction, object, this, function, element, false);
+    }
+
+    public <E> T force(O object, BiFunction<T, E, T> function, E element) {
+        LeafTransaction leafTransaction = currentLeaf(object);
+        ConstantState constants = leafTransaction.constantState();
+        return constants.set(leafTransaction, object, this, function, element, true);
     }
 
     @Override
@@ -93,38 +108,38 @@ public class Constant<O, T> extends Setable<O, T> {
         if (deriver != null) {
             throw new Error("Constant " + this + " is derived");
         }
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, false);
     }
 
     public T force(O object, T value) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.set(leafTransaction, object, this, value, true);
     }
 
     @Override
     public T get(O object) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this);
     }
 
     public O object(O object) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.object(leafTransaction, object);
     }
 
     public T get(O object, Function<O, T> deriver) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.get(leafTransaction, object, this, deriver);
     }
 
     public boolean isSet(O object) {
-        LeafTransaction leafTransaction = LeafTransaction.getCurrent();
+        LeafTransaction leafTransaction = currentLeaf(object);
         ConstantState constants = leafTransaction.constantState();
         return constants.isSet(leafTransaction, object, this);
     }

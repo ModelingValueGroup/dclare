@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare.test;
 
@@ -22,9 +27,15 @@ import static org.modelingvalue.dclare.test.support.CommunicationHelper.busyWait
 import java.io.IOException;
 import java.util.ConcurrentModificationException;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.modelingvalue.collections.util.TraceTimer;
-import org.modelingvalue.dclare.test.support.*;
+import org.modelingvalue.dclare.test.support.CommunicationHelper;
+import org.modelingvalue.dclare.test.support.CommunicationPeer;
+import org.modelingvalue.dclare.test.support.ModelMaker;
+import org.modelingvalue.dclare.test.support.PeerTester;
+import org.modelingvalue.dclare.test.support.TestDeltaAdaptor;
 
 public class CommunicationTests {
     static {
@@ -77,8 +88,6 @@ public class CommunicationTests {
             assertEquals(NEW_VALUE, b.getXyzzy_aDefMap().size());
             assertEquals(NEW_VALUE, a.getXyzzy_aQuaSet().size());
             assertEquals(NEW_VALUE, b.getXyzzy_aQuaSet().size());
-            assertEquals(NEW_VALUE, a.getXyzzy_aQuaDefSet().size());
-            assertEquals(NEW_VALUE, b.getXyzzy_aQuaDefSet().size());
 
             assertEquals("~1", a.getXyzzy_aList().get(1));
             assertEquals("~1", b.getXyzzy_aList().get(1));
@@ -90,8 +99,6 @@ public class CommunicationTests {
             assertEquals("1!dm!v!", b.getXyzzy_aDefMap().get("1!dm!k!"));
             assertEquals("QS1", a.getXyzzy_aQuaSet().get("QS1"));
             assertEquals("QS1", b.getXyzzy_aQuaSet().get("QS1"));
-            assertEquals("QDS1", a.getXyzzy_aQuaDefSet().get("QDS1"));
-            assertEquals("QDS1", b.getXyzzy_aQuaDefSet().get("QDS1"));
         }
         busyWaitAllForIdle();
     }

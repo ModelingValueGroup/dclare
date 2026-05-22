@@ -65,6 +65,9 @@ tmp/
 tmp/**
 tmp/**/*
 
+#### vscode
+.vscode/
+
 #### java (https://github.com/github/gitignore/blob/master/Java.gitignore)
 *.class
 *.ear

@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -60,15 +65,15 @@ public class State extends StateMap implements IState, Serializable {
         }
     }
 
-    private State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+    protected State(UniverseTransaction universeTransaction, DefaultMap<Object, DefaultMap<Setable, Object>> map, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
         super(map);
         this.universeTransaction = universeTransaction;
         this.actions = actions;
         this.children = children;
     }
 
-    private State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap) {
-        return newMap.isEmpty() ? universeTransaction.emptyState() : new State(universeTransaction, newMap, actions, children);
+    protected State newState(DefaultMap<Object, DefaultMap<Setable, Object>> newMap, Queued<Action<?>>[] actions, Queued<Mutable>[] children) {
+        return new State(universeTransaction, newMap, actions, children);
     }
 
     @Override
@@ -116,7 +121,7 @@ public class State extends StateMap implements IState, Serializable {
         children[prio1.ordinal()] = c2;
         actions[prio2.ordinal()] = a1;
         children[prio2.ordinal()] = c1;
-        return new State(universeTransaction, map(), actions, children);
+        return newState(map(), actions, children);
     }
 
     public <O, T> State set(O object, Setable<O, T> property, T value) {
@@ -161,7 +166,7 @@ public class State extends StateMap implements IState, Serializable {
     }
 
     <O, T> State set(O object, DefaultMap<Setable, Object> post) {
-        return newState(post.isEmpty() ? map().removeKey(object) : map().put(object, post));
+        return newState(post.isEmpty() ? map().removeKey(object) : map().put(object, post), actions, children);
     }
 
     @SuppressWarnings("unchecked")
@@ -195,13 +200,15 @@ public class State extends StateMap implements IState, Serializable {
             if (changeHandler != null) {
                 for (Entry<Setable, Object> p : props) {
                     if (p != ps.getEntry(p.getKey())) {
-                        deduplicate(p);
+                        if (p.getKey().deduplicate(p.getValue())) {
+                            deduplicate(p);
+                        }
                         changeHandler.handleChange(o, p.getKey(), ps, pss, props, this);
                     }
                 }
             }
             return props;
-        }, maps, maps.length));
+        }, maps, maps.length), actions, children);
     }
 
     @Override
@@ -259,7 +266,16 @@ public class State extends StateMap implements IState, Serializable {
     public <R> R derive(Supplier<R> supplier, ConstantState constantState) {
         DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(supplier, this, constantState);
+            return tx.derive(supplier, this, constantState, tx);
+        } finally {
+            universeTransaction.derivation.closeTransaction(tx);
+        }
+    }
+
+    public <R> R derive(Supplier<R> supplier, ConstantState constantState, ILeafTransaction iLeafTransaction) {
+        DerivationTransaction tx = universeTransaction.derivation.openTransaction(universeTransaction);
+        try {
+            return tx.derive(supplier, this, constantState, iLeafTransaction);
         } finally {
             universeTransaction.derivation.closeTransaction(tx);
         }
@@ -278,7 +294,7 @@ public class State extends StateMap implements IState, Serializable {
         ConstantState derivationState = new ConstantState("LAZY", universeTransaction::handleException);
         LazyDerivationTransaction tx = universeTransaction.lazyDerivation.openTransaction(universeTransaction);
         try {
-            return tx.derive(() -> tx.derive(), this, derivationState);
+            return tx.derive(() -> tx.derive(), this, derivationState, tx);
         } finally {
             derivationState.stop();
             universeTransaction.lazyDerivation.closeTransaction(tx);
@@ -381,7 +397,17 @@ public class State extends StateMap implements IState, Serializable {
 
     @Override
     public TransactionId transactionId() {
-        return get(universeTransaction.universe(), Mutable.D_CHANGE_ID);
+        return getRaw(universeTransaction.universe(), Mutable.D_CHANGE_ID);
+    }
+
+    @Override
+    public <O, T> T getRaw(O object, Getable<O, T> property) {
+        return super.get(object, property);
+    }
+
+    @Override
+    public IState raw() {
+        return getClass() == State.class ? this : new State(universeTransaction, map(), actions, children);
     }
 
 }

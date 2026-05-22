@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -24,19 +29,35 @@ import org.modelingvalue.collections.util.Internable;
 public interface Direction extends LeafModifier<Direction>, SetableModifier<Direction>, Internable {
 
     static Direction of(Object id, Direction... opposites) {
-        return new DirectionImpl(id, false, opposites);
+        return new DirectionImpl(id, false, FixpointGroup.DEFAULT, opposites);
     }
 
     static Direction of(Object id, Supplier<Set<Direction>> oppositeSupplier) {
-        return new DirectionImpl(id, false, oppositeSupplier);
+        return new DirectionImpl(id, false, FixpointGroup.DEFAULT, oppositeSupplier);
     }
 
     static Direction of(Object id, boolean lazy, Direction... opposites) {
-        return new DirectionImpl(id, lazy, opposites);
+        return new DirectionImpl(id, lazy, FixpointGroup.DEFAULT, opposites);
     }
 
     static Direction of(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
-        return new DirectionImpl(id, lazy, oppositeSupplier);
+        return new DirectionImpl(id, lazy, FixpointGroup.DEFAULT, oppositeSupplier);
+    }
+
+    static Direction of(Object id, FixpointGroup fixpointGroup, Direction... opposites) {
+        return new DirectionImpl(id, false, fixpointGroup, opposites);
+    }
+
+    static Direction of(Object id, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, false, fixpointGroup, oppositeSupplier);
+    }
+
+    static Direction of(Object id, boolean lazy, FixpointGroup fixpointGroup, Direction... opposites) {
+        return new DirectionImpl(id, lazy, fixpointGroup, opposites);
+    }
+
+    static Direction of(Object id, boolean lazy, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
+        return new DirectionImpl(id, lazy, fixpointGroup, oppositeSupplier);
     }
 
     Direction DEFAULT = new Direction() {
@@ -54,28 +75,37 @@ public interface Direction extends LeafModifier<Direction>, SetableModifier<Dire
         public boolean isLazy() {
             return false;
         }
+
+        @Override
+        public FixpointGroup fixpointGroup() {
+            return FixpointGroup.DEFAULT;
+        }
     };
 
     Set<Direction> opposites();
 
     boolean isLazy();
 
+    FixpointGroup fixpointGroup();
+
     static final class DirectionImpl implements Direction {
 
         private final Object                   id;
         private final boolean                  lazy;
         private final Supplier<Set<Direction>> oppositeSupplier;
+        private final FixpointGroup            fixpointGroup;
 
         private Set<Direction>                 opposites = null;
 
-        private DirectionImpl(Object id, boolean lazy, Direction... opposites) {
-            this(id, lazy, () -> Collection.of(opposites).asSet());
+        private DirectionImpl(Object id, boolean lazy, FixpointGroup fixpointGroup, Direction... opposites) {
+            this(id, lazy, fixpointGroup, () -> Collection.of(opposites).asSet());
         }
 
-        private DirectionImpl(Object id, boolean lazy, Supplier<Set<Direction>> oppositeSupplier) {
+        private DirectionImpl(Object id, boolean lazy, FixpointGroup fixpointGroup, Supplier<Set<Direction>> oppositeSupplier) {
             this.id = id;
             this.lazy = lazy;
             this.oppositeSupplier = oppositeSupplier;
+            this.fixpointGroup = fixpointGroup;
         }
 
         @Override
@@ -110,6 +140,11 @@ public interface Direction extends LeafModifier<Direction>, SetableModifier<Dire
                 }
             }
             return opposites;
+        }
+
+        @Override
+        public final FixpointGroup fixpointGroup() {
+            return fixpointGroup;
         }
 
     }

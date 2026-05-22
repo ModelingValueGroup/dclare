@@ -1,31 +1,42 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare.test.support;
+
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.modelingvalue.collections.util.TraceTimer.traceLog;
+import static org.modelingvalue.dclare.CoreSetableModifier.containment;
+
+import java.util.function.Predicate;
 
 import org.modelingvalue.collections.Collection;
 import org.modelingvalue.collections.DefaultMap;
 import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Map;
-import org.modelingvalue.collections.QualifiedDefaultSet;
 import org.modelingvalue.collections.QualifiedSet;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
+import org.modelingvalue.collections.util.ContextPool;
 import org.modelingvalue.collections.util.ContextThread;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
 import org.modelingvalue.collections.util.Pair;
 import org.modelingvalue.dclare.Constant;
 import org.modelingvalue.dclare.DclareConfig;
@@ -35,13 +46,6 @@ import org.modelingvalue.dclare.Setable;
 import org.modelingvalue.dclare.UniverseTransaction;
 import org.modelingvalue.dclare.sync.SerializationHelper;
 import org.modelingvalue.dclare.sync.Util;
-
-import java.util.function.Predicate;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.modelingvalue.collections.util.TraceTimer.traceLog;
-import static org.modelingvalue.dclare.CoreSetableModifier.containment;
 
 @SuppressWarnings({"FieldCanBeLocal", "unchecked", "rawtypes"})
 public class ModelMaker {
@@ -63,7 +67,6 @@ public class ModelMaker {
     private static final Observed<TestMutable, Map<String, String>>                                           aMap                                     = TestObserved.of("#aMap", ModelMaker::id, ModelMaker::desMap, Map.of());
     private static final Observed<TestMutable, DefaultMap<String, String>>                                    aDefMap                                  = TestObserved.of("#aDefMap", ModelMaker::id, ModelMaker::desDefMap, DefaultMap.of(k -> "zut"));
     private static final Observed<TestMutable, QualifiedSet<String, String>>                                  aQuaSet                                  = TestObserved.of("#aQuaSet", ModelMaker::id, ModelMaker::desQuaSet, QualifiedSet.of(v -> v));
-    private static final Observed<TestMutable, QualifiedDefaultSet<String, String>>                           aQuaDefSet                               = TestObserved.of("#aQuaDefSet", ModelMaker::id, ModelMaker::desQuaDefSet, QualifiedDefaultSet.of(v -> v, k -> "zutje"));
 
     public static final SerializationHelper<TestMutableClass, TestMutable, TestObserved<TestMutable, Object>> SERIALIZATION_HELPER                     = new SerializationHelper<>() {
                                                                                                                                                            ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,11 +181,6 @@ public class ModelMaker {
         return obs.getDefault(mutable).addAll(oo);
     }
 
-    private static QualifiedDefaultSet<String, String> desQuaDefSet(TestMutable mutable, TestObserved<TestMutable, QualifiedDefaultSet<String, String>> obs, Object o) {
-        List<String> oo = (List<String>) o;
-        return obs.getDefault(mutable).addAll(oo);
-    }
-
     private static final TestMutableClass            extraClass      = TestMutableClass.of("ExtraClass");
     private static final TestMutableClass            plughClassMain  = TestMutableClass.of("PlughClass").observe(                                                                                                                    //
             o -> target.set(o, source.get(o))).observe(                                                                                                                                                                              //
@@ -199,8 +197,7 @@ public class ModelMaker {
                                                                     o -> aSet.set(o, Collection.range(0, source.get(o)).flatMap(i -> Collection.of("&" + i, "@" + i * 2)).asSet())).observe(                                         //
                                                                             o -> aMap.set(o, Collection.range(0, source.get(o)).asMap(i -> Entry.of(i + "!m!k!", i + "!m!v!")))).observe(                                            //
                                                                                     o -> aDefMap.set(o, aDefMap.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> Entry.of(i + "!dm!k!", i + "!dm!v!"))))).observe(   //
-                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i)))).observe(                       //
-                                                                                                    o -> aQuaDefSet.set(o, aQuaDefSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QDS" + i))));
+                                                                                            o -> aQuaSet.set(o, aQuaSet.getDefault(o).addAll(Collection.range(0, source.get(o)).map(i -> "QS" + i))));
     private final String                             name;
     private final TestMutable                        xyzzy;
     private final Constant<TestMutable, TestMutable> plugConst;
@@ -256,46 +253,42 @@ public class ModelMaker {
     }
 
     public int getXyzzy_source() {
-        return tx.currentState().get(xyzzy, source);
+        return tx.currentState().getRaw(xyzzy, source);
     }
 
     public int getXyzzy_target() {
-        return tx.currentState().get(xyzzy, target);
+        return tx.currentState().getRaw(xyzzy, target);
     }
 
     public int getXyzzy_target2() {
-        return tx.currentState().get(xyzzy, target2);
+        return tx.currentState().getRaw(xyzzy, target2);
     }
 
     public List<String> getXyzzy_aList() {
-        return tx.currentState().get(xyzzy, aList);
+        return tx.currentState().getRaw(xyzzy, aList);
     }
 
     public Set<String> getXyzzy_aSet() {
-        return tx.currentState().get(xyzzy, aSet);
+        return tx.currentState().getRaw(xyzzy, aSet);
     }
 
     public Set<TestMutable> getXyzzy_extraSet() {
-        return tx.currentState().get(xyzzy, extraSet);
+        return tx.currentState().getRaw(xyzzy, extraSet);
     }
 
     public Map<String, String> getXyzzy_aMap() {
-        return tx.currentState().get(xyzzy, aMap);
+        return tx.currentState().getRaw(xyzzy, aMap);
     }
 
     public DefaultMap<String, String> getXyzzy_aDefMap() {
-        return tx.currentState().get(xyzzy, aDefMap);
+        return tx.currentState().getRaw(xyzzy, aDefMap);
     }
 
     public QualifiedSet<String, String> getXyzzy_aQuaSet() {
-        return tx.currentState().get(xyzzy, aQuaSet);
-    }
-
-    public QualifiedDefaultSet<String, String> getXyzzy_aQuaDefSet() {
-        return tx.currentState().get(xyzzy, aQuaDefSet);
+        return tx.currentState().getRaw(xyzzy, aQuaSet);
     }
 
     public TestMutable getXyzzy_extra() {
-        return tx.currentState().get(xyzzy, extra);
+        return tx.currentState().getRaw(xyzzy, extra);
     }
 }

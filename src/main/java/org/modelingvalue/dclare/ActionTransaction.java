@@ -1,23 +1,29 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.modelingvalue.collections.DefaultMap;
@@ -33,9 +39,41 @@ import org.modelingvalue.collections.util.TraceTimer;
 import org.modelingvalue.dclare.ex.TransactionException;
 
 public class ActionTransaction extends LeafTransaction implements StateMergeHandler {
-    private final CurrentState currentState = new CurrentState();
-    private State              preState;
-    private State              postState;
+    private final CurrentState     currentState  = new CurrentState();
+    private final ILeafTransaction changeHandler = new ILeafTransaction() {
+                                                     @SuppressWarnings("unchecked")
+                                                     @Override
+                                                     public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+                                                         ActionTransaction.this.changed(object, setable, preValue, rawPreValue, postValue);
+                                                         if (setable.id() instanceof Observed) {
+                                                             ActionTransaction.this.set(object, (Observed<O, T>) setable.id(), preValue, postValue);
+                                                         }
+                                                     }
+
+                                                     @Override
+                                                     public State state() {
+                                                         return ActionTransaction.this.state();
+                                                     }
+
+                                                     @Override
+                                                     public <O, T> T set(O object, Setable<O, T> property, T post) {
+                                                         // LeafTransaction.getCurrent().runSilent(() -> System.err.println("PUSH " + object + "." + property + "=" + post));
+                                                         return ActionTransaction.this.set(object, property, post);
+                                                     }
+
+                                                     @Override
+                                                     public <O extends Mutable> void trigger(O mutable, Action<O> action, Priority priority) {
+                                                         ActionTransaction.this.trigger(mutable, action, priority);
+                                                     }
+                                                 };
+    @SuppressWarnings("unchecked")
+    private final Supplier<Object> supplier      = () -> {
+                                                     ((Action<Mutable>) action()).run(mutable());
+                                                     return null;
+                                                 };
+
+    private State                  preState;
+    private State                  postState;
 
     protected ActionTransaction(UniverseTransaction universeTransaction) {
         super(universeTransaction);
@@ -47,7 +85,11 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings("unchecked")
     protected void run(State pre, UniverseTransaction universeTransaction) {
-        ((Action<Mutable>) action()).run(mutable());
+        if (push()) {
+            ((Action<Mutable>) action()).run(mutable());
+        } else {
+            state().derive(supplier, pullConstantState(), changeHandler);
+        }
     }
 
     @SuppressWarnings("rawtypes")
@@ -61,9 +103,9 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
                 run(pre, universeTransaction());
                 if (universeTransaction().getConfig().isTraceActions()) {
                     postState = currentState.merge();
-                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed /* && !s.isPlumbing() */).asMap(e -> e);
+                    Map<Object, Map<Setable, Pair<Object, Object>>> diff = preState.diff(postState, o -> o instanceof Mutable, s -> s instanceof Observed && !s.isPlumbing()).asMap(e -> e);
                     if (!diff.isEmpty()) {
-                        runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")"));
+                        runSilent(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (" + postState.shortDiffString(diff, mutable()) + ")"));
                     }
                 } else {
                     postState = currentState.result();
@@ -116,18 +158,18 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @Override
     public <O, T, E> T set(O object, Setable<O, T> property, BiFunction<T, E, T> function, E element) {
-        return set(object, property, function.apply(currentState.get().get(object, property), element));
+        return set(object, property, function.apply(currentState.get().getRaw(object, property), element));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, UnaryOperator<T> oper) {
-        return set(object, property, oper.apply(currentState.get().get(object, property)));
+        return set(object, property, oper.apply(currentState.get().getRaw(object, property)));
     }
 
     @Override
     public <O, T> T set(O object, Setable<O, T> property, T post) {
         property.init(post);
-        T pre = state().get(object, property);
+        T pre = state().getRaw(object, property);
         set(object, property, pre, post);
         return pre;
     }
@@ -147,7 +189,7 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             }
             return po;
         }, post, oldNew))) {
-            changed(object, property, oldNew[0], oldNew[1]);
+            changed(object, property, pre, oldNew[0], oldNew[1]);
         }
     }
 
@@ -157,13 +199,15 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
 
     @SuppressWarnings({"rawtypes", "unchecked", "RedundantSuppression"})
     @Override
-    protected <O, T> void changed(O object, Setable<O, T> setable, T preValue, T postValue) {
-        super.changed(object, setable, preValue, postValue);
-        if (setable.preserved()) {
-            setChanged(object, setable, postValue);
-        }
-        if (setable instanceof Observed) {
-            trigger(object, (Observed<O, T>) setable);
+    public <O, T> void changed(O object, Setable<O, T> setable, T preValue, T rawPreValue, T postValue) {
+        super.changed(object, setable, preValue, rawPreValue, postValue);
+        if (push()) {
+            if (setable.preserved()) {
+                setChanged(object, setable, postValue);
+            }
+            if (setable instanceof Observed && !Objects.equals(preValue, postValue)) {
+                trigger(object, (Observed<O, T>) setable);
+            }
         }
     }
 
@@ -175,9 +219,10 @@ public class ActionTransaction extends LeafTransaction implements StateMergeHand
             for (Mutable m : e.getValue()) {
                 Mutable target = m.dResolve((Mutable) object);
                 if (!action().equals(observer) || !source.equals(target)) {
-                    trigger(target, observer, observer.initPriority());
+                    Priority priority = observer.fixpointGroup() == fixpointGroup() ? observer.initPriority() : Priority.five;
+                    trigger(target, observer, priority);
                     if (universeTransaction().getConfig().isTraceMutable()) {
-                        runNonObserving(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (TRIGGER " + target + "." + observer + ")"));
+                        runSilent(() -> System.err.println(DclareTrace.getLineStart("DCLARE", this) + mutable() + "." + action() + " (TRIGGER " + target + "." + observer + ")"));
                     }
                 }
             }

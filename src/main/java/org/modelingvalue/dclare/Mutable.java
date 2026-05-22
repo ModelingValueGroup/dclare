@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -31,9 +36,11 @@ import org.modelingvalue.dclare.Observer.Constructed;
 @SuppressWarnings("unused")
 public interface Mutable extends TransactionClass {
 
-    Mutable                                                  THIS                     = new This();
+    Mutable                                                  THIS                     = This.singleton();
 
     Set<Mutable>                                             THIS_SINGLETON           = Set.of(THIS);
+
+    Constant<Mutable, Set<Mutable>>                          SINGLETON                = Constant.of("$SINGLETON", Set::of);
 
     @SuppressWarnings("rawtypes")
     ParentContaining                                         D_PARENT_CONTAINING      = new ParentContaining("D_PARENT_CONTAINING", plumbing, preserved);
@@ -42,9 +49,8 @@ public interface Mutable extends TransactionClass {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     Setable<Mutable, Set<? extends Observer<?>>>             D_OBSERVERS              = Setable.of("D_OBSERVERS", Set.of(), (tx, obj, pre, post) -> Setable.<Set<? extends Observer<?>>, Observer> diff(pre, post,              //
-            added -> added.trigger(obj),                                                                                                                                                                                        //
-            removed -> {
-            }));
+            added -> added.trigger(obj, added.fixpointGroup() == FixpointGroup.DEFAULT ? added.initPriority() : Priority.five),                                                                                                 //
+            removed -> removed.deObserve(tx, obj)));
 
     Observer<Mutable>                                        D_OBSERVERS_RULE         = NonCheckingObserver.of("D_OBSERVERS_RULE", m -> D_OBSERVERS.set(m, m.dAllObservers().exclude(o -> o.direction().isLazy()).asSet()));
 
@@ -67,6 +73,11 @@ public interface Mutable extends TransactionClass {
                                                                                                   });
                                                                                       }, plumbing, doNotMerge);
 
+    @SuppressWarnings("unchecked")
+    Action<Mutable>                                          D_PUSH_IF_PULL_ACTION    = Action.of("D_PUSH_IF_PULL_ACTION", m -> {
+                                                                                          MutableClass.D_PUSH_IF_PULL.get(m.dClass()).forEach(o -> o.get(m));
+                                                                                      });
+
     default Construction dInitialConstruction() {
         return D_INITIAL_CONSTRUCTION.get(this);
     }
@@ -83,8 +94,8 @@ public interface Mutable extends TransactionClass {
 
     default boolean dBecameOrphan() {
         LeafTransaction tx = LeafTransaction.getCurrent();
-        return tx.preStartState(Priority.OUTER).get(this, Mutable.D_PARENT_CONTAINING) != null && //
-                tx.state().get(this, Mutable.D_PARENT_CONTAINING) == null;
+        return tx.preStartState(Priority.OUTER).getRaw(this, Mutable.D_PARENT_CONTAINING) != null && //
+                tx.state().getRaw(this, Mutable.D_PARENT_CONTAINING) == null;
     }
 
     default void dChangedParentContaining(Pair<Mutable, Setable<Mutable, ?>> pre, Pair<Mutable, Setable<Mutable, ?>> post) {
@@ -159,18 +170,38 @@ public interface Mutable extends TransactionClass {
         return cls.isInstance(p) ? (T) p : null;
     }
 
-    default void dActivate() {
-        D_OBSERVERS_RULE.trigger(this);
-        D_PUSHING_CONSTANTS_RULE.trigger(this);
-        for (Mutable child : dChildren()) {
-            child.dActivate();
+    default void dActivate(LeafTransaction tx) {
+        if (tx.push()) {
+            D_OBSERVERS_RULE.trigger(this);
+            D_PUSHING_CONSTANTS_RULE.trigger(this);
+        } else if (!MutableClass.D_PUSH_IF_PULL.get(dClass()).isEmpty()) {
+            D_PUSH_IF_PULL_ACTION.trigger(this);
         }
     }
 
     default void dDeactivate(LeafTransaction tx) {
-        D_OBSERVERS_RULE.deObserve(tx, this);
-        D_PUSHING_CONSTANTS_RULE.deObserve(tx, this);
-        D_OBSERVERS.setDefault(this);
+        if (tx.push()) {
+            D_OBSERVERS_RULE.deObserve(tx, this);
+            D_PUSHING_CONSTANTS_RULE.deObserve(tx, this);
+            D_OBSERVERS.setDefault(this);
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    default void pushNow() {
+        AbstractDerivationTransaction tx = (AbstractDerivationTransaction) LeafTransaction.getCurrent();
+        try {
+            MutableClass dClass = dClass();
+            Set<Observer> nonDerivers = MutableClass.D_NON_DERIVERS.get(dClass).asSet();
+            nonDerivers.forEach(o -> tx.runDeriver(this, null, o, 0));
+            Set<Setable> containments = MutableClass.D_CONTAINMENTS.get(dClass);
+            Set<Mutable> children = containments.flatMap(s -> s.<Mutable> getCollection(this)).asSet();
+            children.forEach(m -> m.pushNow());
+            //  Set<Observed> observeds = MutableClass.D_PUSH_IF_PULL.get(dClass);
+            //  observeds.forEach(o -> o.get(this));
+        } catch (Throwable t) {
+            tx.universeTransaction().handleException(t);
+        }
     }
 
     MutableClass dClass();
@@ -211,7 +242,7 @@ public interface Mutable extends TransactionClass {
 
     @Override
     default State run(State state, MutableTransaction parent) {
-        Pair<Mutable, Setable<Mutable, ?>> pair = state.get(this, D_PARENT_CONTAINING);
+        Pair<Mutable, Setable<Mutable, ?>> pair = state.getRaw(this, D_PARENT_CONTAINING);
         if (pair != null && parent.mutable().equals(pair.a())) {
             return TransactionClass.super.run(state, parent);
         } else {
@@ -235,7 +266,7 @@ public interface Mutable extends TransactionClass {
     }
 
     default boolean dIsOrphan(State state) {
-        return state.get(this, D_PARENT_CONTAINING) == null;
+        return state.getRaw(this, D_PARENT_CONTAINING) == null;
     }
 
     default ConstantState dMemoization(AbstractDerivationTransaction tx) {
@@ -256,4 +287,16 @@ public interface Mutable extends TransactionClass {
             return super.get(object);
         }
     }
+
+    default boolean dHasParentCycle(State state) {
+        List<Mutable> ancestors = List.of(this);
+        for (Mutable parent = state.getA(this, D_PARENT_CONTAINING); parent != null; parent = state.getA(parent, D_PARENT_CONTAINING)) {
+            if (ancestors.contains(parent)) {
+                return true;
+            }
+            ancestors = ancestors.add(parent);
+        }
+        return false;
+    }
+
 }

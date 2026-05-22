@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare.test;
 
@@ -72,8 +77,8 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        assertEquals(10, (int) result.get(object, source));
-        assertEquals(10, (int) result.get(object, target));
+        assertEquals(10, (int) result.getRaw(object, source));
+        assertEquals(10, (int) result.getRaw(object, target));
     }
 
     @RepeatedTest(32)
@@ -91,8 +96,8 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        assertEquals(10, (int) result.get(object, source));
-        assertEquals(10, (int) result.get(object, target));
+        assertEquals(10, (int) result.getRaw(object, source));
+        assertEquals(10, (int) result.getRaw(object, target));
     }
 
     @Test
@@ -121,7 +126,7 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
         printState(universeTransaction, result);
-        assertEquals(length, (int) result.get(TestMutable.of(length - 1, clazz), total));
+        assertEquals(length, (int) result.getRaw(TestMutable.of(length - 1, clazz), total));
     }
 
     static final Observed<TestMutable, TestMutable> next     = Observed.of("next", null, () -> DclareTests.previous);
@@ -151,7 +156,7 @@ public class DclareTests {
         universeTransaction.stop();
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
-        assertEquals(TestMutable.of(11, clazz), result.get(TestMutable.of(10, clazz), next));
+        assertEquals(TestMutable.of(11, clazz), result.getRaw(TestMutable.of(10, clazz), next));
         printState(universeTransaction, result);
     }
 
@@ -194,9 +199,9 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
 
         printState(universeTransaction, result);
-        assertEquals(Set.of(), result.get(c1, children));
-        assertNull(result.get(ggc6, qualifiedName));
-        assertEquals("u.c2.gc2.ggc3", result.get(ggc3, qualifiedName));
+        assertEquals(Set.of(), result.getRaw(c1, children));
+        assertNull(result.getRaw(ggc6, qualifiedName));
+        assertEquals("u.c2.gc2.ggc3", result.getRaw(ggc3, qualifiedName));
     }
 
     @Test
@@ -265,15 +270,15 @@ public class DclareTests {
 
         state = universeTransaction.waitForIdle();
         printState(universeTransaction, state);
-        assertNull(state.get(universe, child));
+        assertNull(state.getRaw(universe, child));
 
         state = universeTransaction.putAndWaitForIdle("inject1", () -> child.set(universe, child1));
         printState(universeTransaction, state);
-        assertEquals(child1, state.get(universe, child));
+        assertEquals(child1, state.getRaw(universe, child));
 
         state = universeTransaction.putAndWaitForIdle("inject2", () -> child.set(universe, child2));
         printState(universeTransaction, state);
-        assertEquals(child2, state.get(universe, child));
+        assertEquals(child2, state.getRaw(universe, child));
 
         universeTransaction.stop();
         state = universeTransaction.waitForStopped();
@@ -334,13 +339,13 @@ public class DclareTests {
         State result = assertDoesNotThrow(() -> universe.waitForEnd(universeTransaction));
         printState(universeTransaction, result);
 
-        List<TestMutable> before = result.get(universe, begin);
-        List<TestMutable> after  = result.get(universe, end);
-        List<TestMutable> list   = result.get(universe, children);
+        List<TestMutable> before = result.getRaw(universe, begin);
+        List<TestMutable> after  = result.getRaw(universe, end);
+        List<TestMutable> list   = result.getRaw(universe, children);
         assertEquals(List.of(one, two), list);
         assertEquals(List.of(one), before);
         assertEquals(List.of(two), after);
-        assertEquals(false, result.get(one, property));
-        assertEquals(true, result.get(two, property));
+        assertEquals(false, result.getRaw(one, property));
+        assertEquals(true, result.getRaw(two, property));
     }
 }

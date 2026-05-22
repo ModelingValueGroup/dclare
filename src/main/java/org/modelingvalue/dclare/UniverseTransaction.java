@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -20,6 +25,7 @@ import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -31,7 +37,7 @@ import org.modelingvalue.collections.Entry;
 import org.modelingvalue.collections.List;
 import org.modelingvalue.collections.Set;
 import org.modelingvalue.collections.util.Concurrent;
-import org.modelingvalue.collections.util.ContextThread.ContextPool;
+import org.modelingvalue.collections.util.ContextPool;
 import org.modelingvalue.collections.util.StatusProvider;
 import org.modelingvalue.collections.util.StatusProvider.AbstractStatus;
 import org.modelingvalue.collections.util.StatusProvider.StatusIterator;
@@ -64,8 +70,11 @@ public class UniverseTransaction extends MutableTransaction {
     private final Action<Universe>                                                                     clearOrphans            = Action.of("$clearOrphans", this::clearOrphans);
     private final Action<Universe>                                                                     checkConsistency        = Action.of("$checkConsistency", this::checkConsistency);
     private final Action<Universe>                                                                     deriveLazy              = Action.of("$deriveLazy", this::deriveLazy);
+    private final Action<Universe>                                                                     poll                    = Action.of("$poll", this::poll);
     //
+    private final boolean                                                                              pull;
     protected final BlockingQueue<Action<Universe>>                                                    inQueue;
+    protected final ConcurrentLinkedQueue<Action<Universe>>                                            immediateQueue;
     private final BlockingQueue<State>                                                                 resultQueue             = new LinkedBlockingQueue<>(1);                          //TODO wire onto MoodManager
     private final State                                                                                emptyState              = createState(StateMap.EMPTY_STATE_MAP);
     private final State                                                                                startState;
@@ -77,7 +86,8 @@ public class UniverseTransaction extends MutableTransaction {
     protected final AtomicReference<Set<Throwable>>                                                    errors                  = new AtomicReference<>(Set.of());
     private final AtomicReference<Set<Throwable>>                                                      inconsistencies         = new AtomicReference<>(Set.of());
     private final AtomicReference<Boolean>                                                             orphansDetected         = new AtomicReference<>(null);
-    private final ConstantState                                                                        constantState           = new ConstantState("CONST", this::handleException);
+    private final ConstantState                                                                        constantState;
+    private final ConstantState                                                                        pullConstantState;
     private final StatusProvider<Status>                                                               statusProvider;
     private final Timer                                                                                timer                   = new Timer("UniverseTransactionTimer", true);
     private final MutableStates                                                                        preStartStates;
@@ -158,25 +168,29 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer) {
-        this(universe, pool, config, startStatusConsumer, null);
+        this(universe, pool, false, config, startStatusConsumer, null, null);
     }
 
-    public UniverseTransaction(Universe universe, ContextPool pool, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap) {
+    public UniverseTransaction(Universe universe, ContextPool pool, boolean pull, DclareConfig config, Consumer<Status> startStatusConsumer, StateMap startStateMap, ConstantState startConstantState) {
         super(null);
         if (universe == null) {
             throw new IllegalArgumentException("UniverseTransaction can not start without a Universe (universe argument is null)");
         }
+        this.pull = pull;
+        this.constantState = startConstantState != null ? startConstantState : new ConstantState("CONST", this::handleException);
+        this.pullConstantState = pull ? new ConstantState("PULL", this::handleException) : null;
         State initState = createStartState(universe, startStateMap);
         startState = initState.get(() -> incrementChangeId(universe, initState));
         Status startStatus = new Status(Mood.starting, null, startState, null, Set.of());
         statusProvider = new StatusProvider<>(this, startStatus);
         this.config = Objects.requireNonNull(config);
         inQueue = new LinkedBlockingQueue<>(config.getMaxInInQueue());
+        immediateQueue = new ConcurrentLinkedQueue<>();
         universeStatistics = new UniverseStatistics(this);
         start(universe, null);
         preState = startState;
-        preStartStates = new MutableStates(Priority.two, () -> createMutableState(emptyState));
-        startStates = new MutableStates(Priority.two, () -> createMutableState(emptyState));
+        preStartStates = new MutableStates(Priority.INNER, () -> createMutableState(emptyState));
+        startStates = new MutableStates(Priority.INNER, () -> createMutableState(emptyState));
         List<IState> states = List.of();
         for (int i = 0; i < startStates.length(); i++) {
             Priority p = startStates.priority(i);
@@ -189,6 +203,16 @@ public class UniverseTransaction extends MutableTransaction {
         if (startStatusConsumer != null) {
             startStatusConsumer.accept(startStatus);
         }
+    }
+
+    @Override
+    public final boolean pull() {
+        return pull;
+    }
+
+    @Override
+    public final boolean push() {
+        return !pull;
     }
 
     private State createStartState(Universe universe, StateMap stateMap) {
@@ -256,14 +280,14 @@ public class UniverseTransaction extends MutableTransaction {
                         }
                         runActions(preActions);
                         runAction(action);
-                        if (initialized) {
+                        if (initialized && push()) {
                             runAction(checkConsistency);
                         }
                         handleTooManyChanges(state);
                         runActions(postActions);
                     }
                     commit(state, timeTraveling, imperativeTransactions.iterator());
-                    if (!killed && inQueue.isEmpty() && isStopped(state)) {
+                    if (!killed && inQueue.isEmpty() && immediateQueue.isEmpty() && isStopped(state)) {
                         break;
                     }
                 } catch (Throwable t) {
@@ -288,6 +312,9 @@ public class UniverseTransaction extends MutableTransaction {
         stop();
         history = history.append(state);
         constantState.stop();
+        if (pullConstantState != null) {
+            pullConstantState.stop();
+        }
         end(state); //TODO wire onto MoodManager
         stopped = true; //TODO wire onto MoodManager
         setStoppedMood(state);
@@ -419,7 +446,7 @@ public class UniverseTransaction extends MutableTransaction {
                 if (!killed && orphansDetected.get() == Boolean.TRUE) {
                     preOrphansState = startState(Priority.INNER).preState();
                     state = trigger(state, universe(), clearOrphans, Priority.INNER);
-                    priority = Priority.two;
+                    priority = Priority.INNER;
                 } else {
                     priority = killed ? null : hasQueued(state);
                     if (!killed && (priority == null || priority == Priority.OUTER) && orphansDetected.get() == null) {
@@ -443,6 +470,10 @@ public class UniverseTransaction extends MutableTransaction {
             } while (priority != null);
             return state;
         } finally {
+            if (tmpConstants != null) {
+                tmpConstants.stop();
+                tmpConstants = null;
+            }
             postState = null;
             preStartStates.setState(emptyState);
             startStates.setState(emptyState);
@@ -470,7 +501,11 @@ public class UniverseTransaction extends MutableTransaction {
     }
 
     public int numInQueue() {
-        return inQueue.size();
+        return inQueue.size() + immediateQueue.size();
+    }
+
+    protected boolean hasImmediate() {
+        return !immediateQueue.isEmpty();
     }
 
     public boolean isHandling() { //TODO wire onto MoodManager
@@ -582,11 +617,11 @@ public class UniverseTransaction extends MutableTransaction {
     private void handleTooManyChanges(State state) {
         if (!killed && stats().debugging() && !errors.get().anyMatch(e -> e instanceof TooManyChangesException)) {
             ObserverTrace trace = state//
-                    .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Traces) //
-                    .flatMap(e1 -> e1.getValue().map(e2 -> ((Set<ObserverTrace>) e2.getValue()).sorted().findFirst().orElseThrow())) //
+                    .filter(o -> o instanceof Mutable, s -> s instanceof Observer.Debugs) //
+                    .flatMap(e1 -> e1.getValue().map(e2 -> ((List<ObserverTrace>) e2.getValue()).last())) //
                     .min((a, b) -> Integer.compare(b.done().size(), a.done().size())) //
                     .orElseThrow();
-            throw new TooManyChangesException(state, trace, trace.done().size());
+            throw new TooManyChangesException(state, trace, stats().totalChanges());
         }
     }
 
@@ -611,11 +646,11 @@ public class UniverseTransaction extends MutableTransaction {
             return o instanceof Mutable && ((Mutable) o).dIsOrphan(postState) && !tx.toBeCleared((Mutable) o).isEmpty();
         }).map(e -> (Mutable) e.getKey()).asSet();
         orphansDetected.set(!orphans.isEmpty());
-        orphans.forEach(tx::clearOrphan);
+        orphans.forEach(tx::dDeactivate);
     }
 
     public boolean isStopped(State state) {
-        return state.get(universe(), STOPPED);
+        return state.getRaw(universe(), STOPPED);
     }
 
     public void put(Object id, Runnable action) {
@@ -632,11 +667,35 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
+    public void offer(Action<Universe> action) {
+        if (!killed) {
+            immediateQueue.offer(action);
+            put(poll);
+        }
+    }
+
     private Action<Universe> take() {
         try {
             return inQueue.take();
         } catch (InterruptedException e) {
             throw new Error(e);
+        }
+    }
+
+    protected boolean poll(State[] state) {
+        Action<Universe> action = immediateQueue.poll();
+        if (action != null) {
+            state[0] = state[0].set(universe(), state[0].actions(Priority.zero), Set::add, action);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    protected void poll(Universe universe) {
+        Action<Universe> action = immediateQueue.poll();
+        if (action != null) {
+            action.trigger(universe);
         }
     }
 
@@ -686,8 +745,8 @@ public class UniverseTransaction extends MutableTransaction {
         }
     }
 
-    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, boolean keepTransaction) {
-        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id), preState, this, scheduler, diffHandler, keepTransaction);
+    public ImperativeTransaction addImperative(String id, StateDeltaHandler diffHandler, Consumer<Runnable> scheduler, LeafModifier<?>... modifiers) {
+        ImperativeTransaction n = ImperativeTransaction.of(Imperative.of(id, modifiers), preState, this, scheduler, diffHandler);
         synchronized (this) {
             imperativeTransactions = imperativeTransactions.add(n);
         }
@@ -812,6 +871,10 @@ public class UniverseTransaction extends MutableTransaction {
 
     public ConstantState constantState() {
         return constantState;
+    }
+
+    public ConstantState pullConstantState() {
+        return pullConstantState;
     }
 
     public <T, O> TransactionId setPreserved(O object, Setable<O, T> property, T post, Action<?> action) {

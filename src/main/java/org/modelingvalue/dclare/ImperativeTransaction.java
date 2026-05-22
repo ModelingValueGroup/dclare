@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -32,8 +37,8 @@ public class ImperativeTransaction extends LeafTransaction {
     protected static final DefaultMap<Object, Set<Setable>> SETTED_MAP = DefaultMap.of(k -> Set.of());
 
     @SuppressWarnings("rawtypes")
-    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
-        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler, keepTransaction);
+    public static ImperativeTransaction of(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler) {
+        return new ImperativeTransaction(cls, init, universeTransaction, scheduler, diffHandler);
     }
 
     private final static Setable<ImperativeTransaction, Long> CHANGE_NR = Setable.of("$CHANGE_NR", 0L);
@@ -53,7 +58,7 @@ public class ImperativeTransaction extends LeafTransaction {
     private DefaultMap<Object, Set<Setable>>                  allSetted;
 
     @SuppressWarnings("rawtypes")
-    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler, boolean keepTransaction) {
+    protected ImperativeTransaction(Imperative cls, State init, UniverseTransaction universeTransaction, Consumer<Runnable> scheduler, StateDeltaHandler diffHandler) {
         super(universeTransaction);
         this.state = universeTransaction.createMutableState(init);
         this.setted = SETTED_MAP;
@@ -62,7 +67,7 @@ public class ImperativeTransaction extends LeafTransaction {
         this.direction = Direction.of(cls.id());
         this.actionId = NamedIdentity.of(this, cls.id().toString());
         super.start(cls, universeTransaction);
-        this.scheduler = keepTransaction ? r -> scheduler.accept(() -> {
+        this.scheduler = cls.keep() ? r -> scheduler.accept(() -> {
             if (isOpen()) {
                 LeafTransaction.getContext().setOnThread(this);
                 try {
@@ -112,13 +117,13 @@ public class ImperativeTransaction extends LeafTransaction {
 
     public final boolean commit(State dclare, boolean timeTraveling) {
         commiting = true;
-        boolean insync = setted.isEmpty() && dclare.get(this, CHANGE_NR).equals(state.get(this, CHANGE_NR));
+        boolean insync = setted.isEmpty() && dclare.getRaw(this, CHANGE_NR).equals(state.getRaw(this, CHANGE_NR));
         if (preState() != dclare) {
             dclare2imper(dclare, timeTraveling, insync);
         }
         if (!setted.isEmpty()) {
             insync = false;
-            imper2dclare();
+            universeTransaction().put(imper2dclare());
         } else if (insync && active) {
             active = false;
             universeTransaction().removeActive(this);
@@ -148,14 +153,25 @@ public class ImperativeTransaction extends LeafTransaction {
         diffHandler.handleDelta(imper, dclare, insync, finalAllSetted);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void imper2dclare() {
+    private void immediate() {
+        if (!setted.isEmpty()) {
+            universeTransaction().offer(imper2dclare());
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private Action<Universe> imper2dclare() {
         State imper = state();
-        DefaultMap<Object, Set<Setable>> finalSetted = setted;
+        DefaultMap<Object, Set<Setable>> changed = setted;
         setted = SETTED_MAP;
-        universeTransaction().put(Action.of(actionId, u -> {
+        return changeAction(imper, changed);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Action<Universe> changeAction(State imper, DefaultMap<Object, Set<Setable>> changed) {
+        return Action.of(actionId, u -> {
             try {
-                finalSetted.forEachOrdered(e -> {
+                changed.forEachOrdered(e -> {
                     DefaultMap<Setable, Object> props = imper.getProperties(e.getKey());
                     for (Setable p : e.getValue()) {
                         if (p instanceof Queued && ((Queued) p).actions()) {
@@ -169,14 +185,14 @@ public class ImperativeTransaction extends LeafTransaction {
                     }
                 });
             } catch (Throwable t) {
-                CHANGE_NR.set(ImperativeTransaction.this, imper.get(ImperativeTransaction.this, CHANGE_NR));
+                CHANGE_NR.set(ImperativeTransaction.this, imper.getRaw(ImperativeTransaction.this, CHANGE_NR));
                 universeTransaction().handleException(t);
             }
-        }, direction, LeafModifier.preserved));
+        }, direction, CoreLeafModifier.preserved);
     }
 
     @Override
-    protected <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
+    public <O extends Mutable> void trigger(O target, Action<O> action, Priority priority) {
         set(target, state.actions(priority), Set::add, action);
     }
 
@@ -221,7 +237,11 @@ public class ImperativeTransaction extends LeafTransaction {
                         active = true;
                         universeTransaction().addActive(this);
                     }
-                    universeTransaction().commit();
+                    if (imperative().immediate()) {
+                        schedule(this::immediate);
+                    } else {
+                        universeTransaction().commit();
+                    }
                 }
             }
         }
@@ -246,4 +266,5 @@ public class ImperativeTransaction extends LeafTransaction {
     protected String getCurrentTypeForTrace() {
         return "IM";
     }
+
 }

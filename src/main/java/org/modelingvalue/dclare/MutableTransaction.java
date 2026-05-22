@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -59,7 +64,7 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     }
 
     protected boolean hasQueued(State state, Mutable object, Priority prio) {
-        return !state.get(object, state.actions(prio)).isEmpty() || !state.get(object, state.children(prio)).isEmpty();
+        return !state.getRaw(object, state.actions(prio)).isEmpty() || !state.getRaw(object, state.children(prio)).isEmpty();
     }
 
     private void move(Mutable object, Priority from, Priority to) {
@@ -131,17 +136,17 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
         }
         if (random.size() <= 2 || universeTransaction().getConfig().isRunSequential()) {
             runSequential(random);
-            if (!universeTransaction().isKilled() && (parent() == null || !hasQueued(state[0], parent().mutable(), one))) {
-                move(mutable(), one, zero);
+            if (!universeTransaction().isKilled() && !hasToGoUp()) {
+                moveOneToZero();
             }
         } else {
             List<? extends TransactionClass> begin = random.sublist(0, random.size() >> 1);
             runParallel(begin);
             if (!universeTransaction().isKilled()) {
-                if (parent() == null || !hasQueued(state[0], parent().mutable(), one)) {
+                if (!hasToGoUp()) {
                     state[0] = state[0].set(mutable(), state[0].actions(zero), Set::addAll, actions.removeAll(begin));
                     state[0] = state[0].set(mutable(), state[0].children(zero), Set::addAll, children.removeAll(begin));
-                    move(mutable(), one, zero);
+                    moveOneToZero();
                 } else {
                     state[0] = state[0].set(mutable(), state[0].actions(one), Set::addAll, actions.removeAll(begin));
                     state[0] = state[0].set(mutable(), state[0].children(one), Set::addAll, children.removeAll(begin));
@@ -149,6 +154,16 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             }
         }
 
+    }
+
+    private void moveOneToZero() {
+        if (parent() != null || !universeTransaction().poll(state)) {
+            move(mutable(), one, zero);
+        }
+    }
+
+    private boolean hasToGoUp() {
+        return parent() != null && (hasQueued(state[0], parent().mutable(), one) || universeTransaction().hasImmediate());
     }
 
     private <T extends TransactionClass> void runParallel(List<T> todo) {
@@ -200,10 +215,12 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
             triggeredMutables.init(Set.of());
             try {
                 State state = base.merge(this, branches, branches.length);
-                state = trigger(state, triggeredActions.result(), one);
-                for (int i = 0; i < triggeredMutables.length(); i++) {
-                    Priority priority = triggeredMutables.priority(i);
-                    state = triggerMutables(state, triggeredMutables.result(priority), priority);
+                if (push()) {
+                    state = trigger(state, triggeredActions.result(), one);
+                    for (int i = 0; i < triggeredMutables.length(); i++) {
+                        Priority priority = triggeredMutables.priority(i);
+                        state = triggerMutables(state, triggeredMutables.result(priority), priority);
+                    }
                 }
                 return state;
             } finally {
@@ -223,46 +240,47 @@ public class MutableTransaction extends Transaction implements StateMergeHandler
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     public void handleChange(Object object, Setable setable, DefaultMap<Setable, Object> baseValues, DefaultMap<Setable, Object>[] branchesValues, DefaultMap<Setable, Object> resultValues, State base) {
-        if (setable instanceof Observers) {
-            Observers<?, ?> os = (Observers) setable;
-            DefaultMap<Observer, Set<Mutable>> baseObservers = StateMap.get(baseValues, os);
-            DefaultMap<Observer, Set<Mutable>> resultObservers = StateMap.get(resultValues, os);
-            os.observed().checkTooManyObservers(universeTransaction(), object, resultObservers);
-            DefaultMap<Observer, Set<Mutable>> addedResultObservers = resultObservers.removeAll(baseObservers, Set::removeAll);
-            if (!addedResultObservers.isEmpty()) {
-                Observed<?, ?> observedProp = os.observed();
-                Object baseValue = StateMap.get(baseValues, observedProp);
-                for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                    Object branchValue = StateMap.get(branchValues, observedProp);
-                    if (!Objects.equals(branchValue, baseValue)) {
-                        DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
-                        Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
-                                asMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).asSet()));
-                        triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
+        if (push()) {
+            if (setable instanceof Observers) {
+                Observers<?, ?> os = (Observers) setable;
+                DefaultMap<Observer, Set<Mutable>> baseObservers = StateMap.get(baseValues, os);
+                DefaultMap<Observer, Set<Mutable>> resultObservers = StateMap.get(resultValues, os);
+                os.observed().checkTooManyObservers(universeTransaction(), object, resultObservers);
+                DefaultMap<Observer, Set<Mutable>> addedResultObservers = resultObservers.removeAll(baseObservers, Set::removeAll);
+                if (!addedResultObservers.isEmpty()) {
+                    Observed<?, ?> observedProp = os.observed();
+                    Object baseValue = StateMap.get(baseValues, observedProp);
+                    for (DefaultMap<Setable, Object> branchValues : branchesValues) {
+                        Object branchValue = StateMap.get(branchValues, observedProp);
+                        if (!Objects.equals(branchValue, baseValue)) {
+                            DefaultMap<Observer, Set<Mutable>> branchObservers = StateMap.get(branchValues, os);
+                            Map<Observer, Set<Mutable>> missingBranchObservers = addedResultObservers.removeAll(branchObservers, Set::removeAll).//
+                                    asMap(e -> Entry.of(e.getKey(), e.getValue().map(m -> m.dResolve((Mutable) object)).asSet()));
+                            triggeredActions.change(ts -> ts.addAll(missingBranchObservers, Set::addAll));
+                        }
                     }
                 }
-            }
-        } else if (setable instanceof Queued) {
-            Queued<TransactionClass> q = (Queued) setable;
-            Priority prio = base.priority(q);
-            if (prio != zero) {
-                Set<TransactionClass> resultTriggered = StateMap.get(resultValues, q);
-                Set<TransactionClass> baseTriggered = StateMap.get(baseValues, q);
-                if (!resultTriggered.removeAll(baseTriggered).isEmpty()) {
-                    Mutable resultParent = StateMap.getA(resultValues, D_PARENT_CONTAINING);
-                    if (resultParent != null) {
-                        for (DefaultMap<Setable, Object> branchValues : branchesValues) {
-                            Mutable branchParent = StateMap.getA(branchValues, D_PARENT_CONTAINING);
-                            if (!resultParent.equals(branchParent)) {
-                                triggeredMutables.change(prio, ts -> ts.add(resultParent));
-                                break;
+            } else if (setable instanceof Queued) {
+                Queued<TransactionClass> q = (Queued) setable;
+                Priority prio = base.priority(q);
+                if (prio != zero) {
+                    Set<TransactionClass> resultTriggered = StateMap.get(resultValues, q);
+                    Set<TransactionClass> baseTriggered = StateMap.get(baseValues, q);
+                    if (!resultTriggered.removeAll(baseTriggered).isEmpty()) {
+                        Mutable resultParent = StateMap.getA(resultValues, D_PARENT_CONTAINING);
+                        if (resultParent != null) {
+                            for (DefaultMap<Setable, Object> branchValues : branchesValues) {
+                                Mutable branchParent = StateMap.getA(branchValues, D_PARENT_CONTAINING);
+                                if (!resultParent.equals(branchParent)) {
+                                    triggeredMutables.change(prio, ts -> ts.add(resultParent));
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
         }
-
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

@@ -1,17 +1,22 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// (C) Copyright 2018-2023 Modeling Value Group B.V. (http://modelingvalue.org)                                        ~
-//                                                                                                                     ~
-// Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in      ~
-// compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0  ~
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on ~
-// an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the  ~
-// specific language governing permissions and limitations under the License.                                          ~
-//                                                                                                                     ~
-// Maintainers:                                                                                                        ~
-//     Wim Bast, Tom Brus, Ronald Krijgsheld                                                                           ~
-// Contributors:                                                                                                       ~
-//     Arjan Kok, Carel Bast                                                                                           ~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//  (C) Copyright 2018-2026 Modeling Value Group B.V. (http://modelingvalue.org)                                         ~
+//                                                                                                                       ~
+//  Licensed under the GNU Lesser General Public License v3.0 (the 'License'). You may not use this file except in       ~
+//  compliance with the License. You may obtain a copy of the License at: https://choosealicense.com/licenses/lgpl-3.0   ~
+//  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on  ~
+//  an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the   ~
+//  specific language governing permissions and limitations under the License.                                           ~
+//                                                                                                                       ~
+//  Maintainers:                                                                                                         ~
+//      Wim Bast, Tom Brus                                                                                               ~
+//                                                                                                                       ~
+//  Contributors:                                                                                                        ~
+//      Ronald Krijgsheld ✝, Arjan Kok, Carel Bast                                                                       ~
+// --------------------------------------------------------------------------------------------------------------------- ~
+//  In Memory of Ronald Krijgsheld, 1972 - 2023                                                                          ~
+//      Ronald was suddenly and unexpectedly taken from us. He was not only our long-term colleague and team member      ~
+//      but also our friend. "He will live on in many of the lines of code you see below."                               ~
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 package org.modelingvalue.dclare;
 
@@ -65,24 +70,26 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         return new Observer<M>(id, setable, predicate, value, modifiers);
     }
 
-    private final Traces                        traces;
-    private final Debugs                        debugs;
-    private final ExceptionSetable              exception;
-    private final Observerds                    observeds;
-    private final Constructed                   constructed;
+    private final Traces                                           traces;
+    private final Debugs                                           debugs;
+    private final ExceptionSetable                                 exception;
+    private final Observerds                                       observeds;
+    private final Constructed                                      constructed;
     @SuppressWarnings("rawtypes")
-    private final Set<Setable<O, ?>>            targets;
-    private final boolean                       anonymous;
-    private final boolean                       atomic;
+    private final Set<Setable<O, ?>>                               targets;
+    private final boolean                                          anonymous;
+    private final boolean                                          atomic;
 
-    private long                                runCount     = -1;
-    private int                                 instances;
-    private int                                 changes;
-    private boolean                             stopped;
-    private boolean                             trace;
+    private long                                                   runCount     = -1;
+    private int                                                    instances;
+    private int                                                    changes;
+    private boolean                                                stopped;
+    private boolean                                                trace;
 
     @SuppressWarnings("rawtypes")
-    private final Entry<Observer, Set<Mutable>> thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    private final Entry<Observer, Set<Mutable>>                    thisInstance = Entry.of(this, Mutable.THIS_SINGLETON);
+    @SuppressWarnings("rawtypes")
+    private final Constant<Mutable, Entry<Observer, Set<Mutable>>> entry        = Constant.of(Pair.of(this, "entry"), m -> Entry.of(this, Mutable.SINGLETON.get(m)));
 
     protected Observer(Object id, Consumer<O> action, LeafModifier<?>... modifiers) {
         this(id, action, Set.of(), modifiers);
@@ -119,8 +126,8 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
         exception = ExceptionSetable.of(this);
         constructed = Constructed.of(this);
         this.targets = targets;
-        this.anonymous = hasModifier(LeafModifier.anonymous);
-        this.atomic = hasModifier(LeafModifier.atomic);
+        this.anonymous = hasModifier(CoreLeafModifier.anonymous);
+        this.atomic = hasModifier(CoreLeafModifier.atomic);
     }
 
     public Observerds observeds() {
@@ -231,7 +238,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
                 for (ObserverTrace trace : post) {
                     result = result.add(new DebugTrace(object, observer(), trace));
                 }
-                if (!LeafTransaction.getCurrent().universeTransaction().stats().debugging()) {
+                if (!currentLeaf(object).universeTransaction().stats().debugging()) {
                     set(object, getDefault(object));
                 }
             }
@@ -378,7 +385,7 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     @SuppressWarnings("rawtypes")
     private Entry entry(Mutable object, Mutable self) {
-        return object.equals(self) ? thisInstance : Entry.of(this, Set.of(object));
+        return object.equals(self) ? thisInstance : entry.get(object);
     }
 
     @SuppressWarnings("rawtypes")
@@ -400,6 +407,10 @@ public class Observer<O extends Mutable> extends Action<O> implements Internable
 
     public Debugs debugs() {
         return debugs;
+    }
+
+    public boolean isActive(Mutable mutable) {
+        return !isStopped() && Mutable.D_OBSERVERS.get(mutable).contains(this);
     }
 
 }
