@@ -24,6 +24,10 @@ jobs:
     env:
       ALLREP_TOKEN: "${{secrets.ALLREP_TOKEN}}"
       TOKEN: "${{secrets.ALLREP_TOKEN}}"
+      CENTRAL_USERNAME: "${{secrets.CENTRAL_USERNAME}}"
+      CENTRAL_PASSWORD: "${{secrets.CENTRAL_PASSWORD}}"
+      MVG_SIGNING_KEY: "${{secrets.MVG_SIGNING_KEY}}"
+      MVG_SIGNING_PASSPHRASE: "${{secrets.MVG_SIGNING_PASSPHRASE}}"
       CI: "true"
     steps:
       - uses: actions/checkout@v6
