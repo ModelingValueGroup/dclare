@@ -30,7 +30,7 @@ jobs:
       MVG_SIGNING_PASSPHRASE: "${{secrets.MVG_SIGNING_PASSPHRASE}}"
       CI: "true"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
