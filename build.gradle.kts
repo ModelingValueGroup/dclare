@@ -23,13 +23,13 @@ defaultTasks("mvgCorrector", "test", "publish", "mvgTagger")
 plugins {
     `java-library`
     `maven-publish`
-    id("org.modelingvalue.gradle.mvgplugin") version "3.0.0"
+    id("org.modelingvalue.gradle.mvgplugin") version "3.0.1"
     idea
     eclipse
 }
 dependencies {
-    implementation("org.modelingvalue:immutable-collections:6.0.2-BRANCHED")
-    implementation("org.modelingvalue:mvg-json:6.0.1-BRANCHED")
+    implementation("org.modelingvalue:immutable-collections:6.0.3-BRANCHED")
+    implementation("org.modelingvalue:mvg-json:6.0.2-BRANCHED")
 }
 publishing {
     publications {
